@@ -1,81 +1,298 @@
 // ============================================================
-// iaMÕÁ…‰…Í”ˆB‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈË[›ØÚXÚÂš[\ÜÂˆÙ]Ø]YÛÜKÙ]]K›Ü›X][YKÙ[™\˜]RY›İËˆ\œÙTYÚ[˜][Û‹YÚYÚ^\Õ˜[Y]BŸHœ›ÛH	Ë‹‹İ][ËÚ[\œËšœÉÎÂš[\ÜÈ™XÛÜ™ÙX\˜ÚÙ^]ÛÜ™Ù]ÙX\˜ÚİYÙÙ\İ[ÛœÈHœ›ÛH	Ë‹‹İ][ËÜÙX\˜ÚšœÉÎÂ‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈİ\X˜\ÙHÜ‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB˜\Ş[˜È[˜İ[ÛˆÙ]Y[[ÜPRÙ^J[‹Ù^JHÂˆÛÛœİİ\X˜\ÙU\›H[‹”ÕTPTÑWÕT“ÂˆÛÛœİİ\X˜\ÙRÙ^HH[‹”ÕTPTÑWĞS“Ó—ÒÑVNÂˆˆÛÛœİ™\ÜH]ØZ]™]Ú
-	Üİ\X˜\ÙU\›KÜ™\İİŒKÛY[[ÜšY\ÏÚÙ^OY\K‰Ù[˜ÛÙUT’PÛÛ\Û™[
-Ù^J_IœÙ[XİJ˜ÂˆXY\œÎˆÂˆ	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Üİ\X˜\ÙRÙ^_Xˆ	Ø\ZÙ^IÎˆİ\X˜\ÙRÙ^BˆBˆJNÂˆYˆ
-\™\Ü›ÚÊH™]\›ˆ[ÂˆÛÛœİ]HH]ØZ]™\ÜšœÛÛŠ
-NÂˆ™]\›ˆ]H	‰ˆ]K›[™İˆÈ]VÌHˆ[ÂŸB˜\Ş[˜È[˜İ[ÛˆÙ][Y[[ÜšY\Ê[ŠHÂˆÛÛœİİ\X˜\ÙU\›H[‹”ÕTPTÑWÕT“ÂˆÛÛœİİ\X˜\ÙRÙ^HH[‹”ÕTPTÑWĞS“Ó—ÒÑVNÂˆˆÛÛœİ™\ÜH]ØZ]™]Ú
-	Üİ\X˜\ÙU\›KÜ™\İİŒKÛY[[ÜšY\ÏÜÙ[XİJ˜ÂˆXY\œÎˆÂˆ	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Üİ\X˜\ÙRÙ^_Xˆ	Ø\ZÙ^IÎˆİ\X˜\ÙRÙ^BˆBˆJNÂˆYˆ
-\™\Ü›ÚÊH™]\›ˆ×NÂˆ™]\›ˆ]ØZ]™\ÜšœÛÛŠ
-NÂŸB˜\Ş[˜È[˜İ[Ûˆ]Y[[ÜJ[‹Ù^K]JHÂˆÛÛœİİ\X˜\ÙU\›H[‹”ÕTPTÑWÕT“ÂˆÛÛœİİ\X˜\ÙRÙ^HH[‹”ÕTPTÑWĞS“Ó—ÒÑVNÂˆˆÛÛœİ^\İ[™ÈH]ØZ]Ù]Y[[ÜPRÙ^J[‹Ù^JNÂˆYˆ
-^\İ[™ÊHÂˆ]ØZ]™]Ú
-	Üİ\X˜\ÙU\›KÜ™\İİŒKÛY[[ÜšY\ÏÚÙ^OY\K‰Ù[˜ÛÙUT’PÛÛ\Û™[
-Ù^J_XÂˆY]Ùˆ	ÔUÒ	ËˆXY\œÎˆÂˆ	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Üİ\X˜\ÙRÙ^_Xˆ	Ø\ZÙ^IÎˆİ\X˜\ÙRÙ^Kˆ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰ÂˆKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJ]JBˆJNÂˆH[ÙHÂˆÛÛœİØ]YÛÜHHÙ]Ø]YÛÜJÙ^JNÂˆÛÛœİ]HHÙ]]JÙ^JNÂˆ]ØZ]™]Ú
-	Üİ\X˜\ÙU\›KÜ™\İİŒKÛY[[ÜšY\ØÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÂˆ	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Üİ\X˜\ÙRÙ^_Xˆ	Ø\ZÙ^IÎˆİ\X˜\ÙRÙ^Kˆ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰ÂˆKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÂˆÙ^NˆÙ^Kˆ˜[YNˆ]K˜[YKˆØ]YÛÜNˆØ]YÛÜKˆ]Nˆ]KˆÜ™X]YØ]ˆ]K˜Ü™X]YØ]›İÊ
-Kˆ\]YØ]ˆ]K\]YØ]›İÊ
-BˆJBˆJNÂˆBŸB˜\Ş[˜È[˜İ[Ûˆ[]SY[[ÜJ[‹Ù^JHÂˆÛÛœİİ\X˜\ÙU\›H[‹”ÕTPTÑWÕT“ÂˆÛÛœİİ\X˜\ÙRÙ^HH[‹”ÕTPTÑWĞS“Ó—ÒÑVNÂˆˆ]ØZ]™]Ú
-	Üİ\X˜\ÙU\›KÜ™\İİŒKÛY[[ÜšY\ÏÚÙ^OY\K‰Ù[˜ÛÙUT’PÛÛ\Û™[
-Ù^J_XÂˆY]Ùˆ	ÑSUIËˆXY\œÎˆÂˆ	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Üİ\X˜\ÙRÙ^_Xˆ	Ø\ZÙ^IÎˆİ\X˜\ÙRÙ^BˆBˆJNÂŸB‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈ€¢òòÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¦W‡÷'B7–æ2gVæ7F–öâ†æFÆTÖVÖ÷'•FööÂ†æÖRÂ6fT&w2ÂVçb’°¢ÆWBFW‡BÒrs°¢òòÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¢òò&VÖVÖ&W ¢òòÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¢–b†æÖRÓÓÒw&VÖVÖ&W"r’°¢–b‚6fT&w2æ¶W’ÇÂ6fT&w2çfÇVR’°¢FW‡BÒpºÀ¶W’0Ù…±Õ”œì(€€€€€€€ô•±Í”ì(€€€€€€€€€€€½¹ÍĞ•á¥ÍÑ¥¹œ€ô…İ…¥Ğ•Ñ5•µ½Éå	å-•ä¡•¹Ø°Í…™•ÉÌ¹­•ä¤ì(€€€€€€€€€€€¥˜€¡•á¥ÍÑ¥¹œ¤ì(€€€€€€€€€€€€€€€Ñ•áĞ€ô€“ÈÁ€¹Ş\]@ğµ½Ù•}…Ñ•½Éäœì(€€€€€€€€€€€ô•±Í”ì(€€€€€€€€€€€€€€€½¹ÍĞ‘…Ñ„€ôì(€€€€€€€€€€€€€€€€€€€Ù…±Õ”èÍ…™•ÉÌ¹Ù…±Õ”°(€€€€€€€€€€€€€€€€€€€É•…Ñ•‘}…Ğè¹½Ü ¤°(€€€€€€€€€€€€€€€€€€€ÕÁ‘…Ñ•‘}…Ğè¹½Ü ¤(€€€€€€€€€€€€€€€ôì(€€€€€€€€€€€€€€€…İ…¥ĞÁÕÑ5•µ½Éä¡•¹Ø°Í…™•ÉÌ¹­•ä°‘…Ñ„¤ì(€€€€€€€€€€€€€€€½¹ÍĞ…Ñ•½Éä€ô•Ñ…Ñ•½Éä¡Í…™•ÉÌ¹­•ä¤ì(€€€€€€€€€€€€€€€Ñ•áĞ€ô€,°¢r²6fT&w2æ¶W’²uÆâ hœ€¬…Ñ•½Éä€¬€q¹H6¢r²f÷&ÖEF–ÖR†FFæ7&VFVEöB“°¢Ğ¢Ğ¢Ğ¢òòÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¢òò&V6ÆÂÒ¿_ä(€€€€¼¼€ôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôô(€€€•±Í”¥˜€¡¹…µ”€ôôô€É•…±°œ¤ì(€€€€€€€¥˜€ …Í…™•ÉÌ¹­•ä¤ì(€€€€€€€€€€€Ñ•áĞ€ô€œ ­•äœì(€€€€€€€ô•±Í”ì(€€€€€€€€€€€½¹ÍĞ‘…Ñ„€ô…İ…¥Ğ•Ñ5•µ½Éå	å-•ä¡•¹Ø°Í…™•ÉÌ¹­•ä¤ì(€€€€€€€€€€€¥˜€ …‘…Ñ„¤ì(€€€€€€€€€€€€€€€Ñ•áĞ€ô€Œ  "' + safeArgs.key + '"';
+// è®°å¿†ç®¡ç†å·¥å…·ï¼ˆSupabase ç‰ˆï¼‰
+// ============================================================
+// @ts-nocheck
+import {
+    getCategory, getTitle, formatTime, generateId, now,
+    parsePagination, highlightText, isValidDate
+} from '../utils/helpers.js';
+import { recordSearchKeyword, getSearchSuggestions } from '../utils/search.js';
+// ============================================================
+// Supabase æ“ä½œå‡½æ•°
+// ============================================================
+async function getMemoryByKey(env, key) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    
+    const resp = await fetch(`${supabaseUrl}/rest/v1/memories?key=eq.${encodeURIComponent(key)}&select=*`, {
+        headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey
+        }
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data && data.length > 0 ? data[0] : null;
+}
+async function getAllMemories(env) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    
+    const resp = await fetch(`${supabaseUrl}/rest/v1/memories?select=*`, {
+        headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey
+        }
+    });
+    if (!resp.ok) return [];
+    return await resp.json();
+}
+async function putMemory(env, key, data) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    
+    const existing = await getMemoryByKey(env, key);
+    if (existing) {
+        await fetch(`${supabaseUrl}/rest/v1/memories?key=eq.${encodeURIComponent(key)}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+    } else {
+        const category = getCategory(key);
+        const title = getTitle(key);
+        await fetch(`${supabaseUrl}/rest/v1/memories`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                key: key,
+                value: data.value,
+                category: category,
+                title: title,
+                created_at: data.created_at || now(),
+                updated_at: data.updated_at || now()
+            })
+        });
+    }
+}
+async function deleteMemory(env, key) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    
+    await fetch(`${supabaseUrl}/rest/v1/memories?key=eq.${encodeURIComponent(key)}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey
+        }
+    });
+}
+// ============================================================
+// å·¥å…·å¤„ç†å™¨
+// ============================================================
+export async function handleMemoryTool(name, safeArgs, env) {
+    let text = '';
+    // ============================================================
+    // remember
+    // ============================================================
+    if (name === 'remember') {
+        if (!safeArgs.key || !safeArgs.value) {
+            text = 'âŒ ç¼ºå°‘å‚æ•°ï¼šéœ€è¦ key å’Œ value';
+        } else {
+            const existing = await getMemoryByKey(env, safeArgs.key);
+            if (existing) {
+                text = 'âš ï¸ è¯¥è®°å¿†å·²å­˜åœ¨ã€‚å¦‚éœ€ä¿®æ”¹å†…å®¹è¯·ä½¿ç”¨ updateï¼Œå¦‚éœ€ä¿®æ”¹åˆ†ç±»è¯·ä½¿ç”¨ move_category';
+            } else {
+                const data = {
+                    value: safeArgs.value,
+                    created_at: now(),
+                    updated_at: now()
+                };
+                await putMemory(env, safeArgs.key, data);
+                const category = getCategory(safeArgs.key);
+                text = 'âœ… å·²æ–°å»ºè®°å¿†ï¼š' + safeArgs.key + '\ní ½í³‚ åˆ†ç±»ï¼š' + category + '\ní ½í³… åˆ›å»ºæ—¶é—´ï¼š' + formatTime(data.created_at);
+            }
+        }
+    }
+    // ============================================================
+    // recall - æ”¯æŒåˆ†æ®µè¯»å–é•¿å†…å®¹
+    // ============================================================
+    else if (name === 'recall') {
+        if (!safeArgs.key) {
+            text = 'âŒ ç¼ºå°‘å‚æ•°ï¼šéœ€è¦ key';
+        } else {
+            const data = await getMemoryByKey(env, safeArgs.key);
+            if (!data) {
+                text = 'âŒ æ²¡æœ‰æ‰¾åˆ° "' + safeArgs.key + '"';
             } else {
                 const content = data.value;
                 const chunkSize = safeArgs.chunk_size || 5000;
                 const offset = safeArgs.offset || 0;
                 
-                // ¹ Yx(€€€€€€€€€€€€€€€¥˜€¡½¹Ñ•¹Ğ¹±•¹Ñ €ğô¡Õ¹­M¥é”¤ì(€€€€€€€€€€€€€€€€€€€Ñ•áĞ€ô€•ˆ	È
-ÈØY™P\™ÜËšÙ^H
-È	×Ø†¢r²FFæ6FVv÷'’²uÆİ#˜œ€¬½¹Ñ•¹Ğ€¬€q¹H' + formatTime(data.created_at) + '\lò0‰È
-È›Ü›X][YJ]K\]YØ]
-NÂˆH[ÙHÂˆËÈ×‚ˆÛÛœİİ[Ú[šÜÈHX]˜ÙZ[
-ÛÛ[›[™İÈÚ[šÔÚ^™JNÂˆÛÛœİİ\œ™[Ú[šÈHX]™›ÛÜŠÙ™œÙ]ÈÚ[šÔÚ^™JH
-ÈNÂˆÛÛœİİ\HÙ™œÙ]ÂˆÛÛœİ[™HX]›Z[ŠÙ™œÙ]
-ÈÚ[šÔÚ^™KÛÛ[›[™İ
-NÂˆÛÛœİÚ[šÈHÛÛ[œÛXÙJİ\[™
-NÂˆˆ^HØ€œ€¬Í…™•ÉÌ¹­•ä€¬€q¸ˆ' + data.category + '\oRn‰È
-È›Ü›X][YJ]K˜Ü™X]YØ]
-H
-È	×¼¢r²f÷&ÖEF–ÖR†FFçWFFVEöB’²uÆåÆí   ' + currentChunk + '/' + totalChunks + ' Ä€œ€¬½¹Ñ•¹Ğ¹±•¹Ñ €¬€œ‰©q¸œ€¬¡Õ¹¬€¬€q¹q¸H;§&V6ÆÂ†¶W“Ò"r²6fT&w2æ¶W’²r"Âöfg6WCÒr²VæB²rÂ6‡Væµ÷6—¦SÒr²6‡Væµ6—¦R²r’s°¢Ğ¢Ğ¢Ğ¢Ğ¢òòÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¢òòWFFP¢òòÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¢VÇ6R–b†æÖRÓÓÒwWFFRr’°¢–b‚6fT&w2æ¶W’ÇÂ6fT&w2çfÇVR’°¢FW‡BÒ0„Z¶W’0Ù…±Õ”œì(€€€€€€€ô•±Í”ì(€€€€€€€€€€€½¹ÍĞ•á¥ÍÑ¥¹œ€ô…İ…¥Ğ•Ñ5•µ½Éå	å-•ä¡•¹Ø°Í…™•ÉÌ¹­•ä¤ì(€€€€€€€€€€€¥˜€ …•á¥ÍÑ¥¹œ¤ì(€€€€€€€€€€€€€€€Ñ•áĞ€ô€œ ø "' + safeArgs.key + '"T,?™[Y[X™\‰ÎÂˆH[ÙHÂˆÛÛœİ]HHÂˆ˜[YNˆØY™P\™ÜË˜[YKˆ\]YØ]ˆ›İÊ
-BˆNÂˆ]ØZ]]Y[[ÜJ[‹ØY™P\™ÜËšÙ^KÈ‹‹™^\İ[™Ë‹‹™]HJNÂˆ^H	üƒœ€¬Í…™•ÉÌ¹­•ä€¬€q½K‰È
-ÈØY™P\™ÜË˜[YH
-È	×”¢r²f÷&ÖEF–ÖR†W†—7F–æræ7&VFVEöB’²uÆ?-(œ€¬™½Éµ…ÑQ¥µ”¡¹½Ü ¤¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€ô(€€€€¼¼€ôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôô(€€€€¼¼É•¹…µ”(€€€€¼¼€ôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôô(€€€•±Í”¥˜€¡¹…µ”€ôôô€É•¹…µ”œ¤ì(€€€€€€€¥˜€ …Í…™•ÉÌ¹½±‘}­•äñğ€…Í…™•ÉÌ¹¹•İ}­•ä¤ì(€€€€€€€€€€€Ñ•áĞ€ô€œ ½±‘}­•äŒ new_key';
+                // å¦‚æœå†…å®¹é•¿åº¦åœ¨é™åˆ¶å†…ï¼Œç›´æ¥è¿”å›
+                if (content.length <= chunkSize) {
+                    text = 'í ½í³– ' + safeArgs.key + '\ní ½í³‚ åˆ†ç±»ï¼š' + data.category + '\ní ½í³ å†…å®¹ï¼š' + content + '\ní ½í³… åˆ›å»ºï¼š' + formatTime(data.created_at) + '\nâœï¸ æ›´æ–°ï¼š' + formatTime(data.updated_at);
+                } else {
+                    // åˆ†æ®µè¿”å›
+                    const totalChunks = Math.ceil(content.length / chunkSize);
+                    const currentChunk = Math.floor(offset / chunkSize) + 1;
+                    const start = offset;
+                    const end = Math.min(offset + chunkSize, content.length);
+                    const chunk = content.slice(start, end);
+                    
+                    text = 'í ½í³– ' + safeArgs.key + '\ní ½í³‚ åˆ†ç±»ï¼š' + data.category + '\ní ½í³… åˆ›å»ºï¼š' + formatTime(data.created_at) + '\nâœï¸ æ›´æ–°ï¼š' + formatTime(data.updated_at) + '\n\ní ½í³ å†…å®¹ï¼ˆç¬¬ ' + currentChunk + '/' + totalChunks + ' æ®µï¼Œå…± ' + content.length + ' å­—ç¬¦ï¼‰ï¼š\n' + chunk + '\n\ní ½í²¡ ç»§ç»­è¯»å–ï¼šrecall(key="' + safeArgs.key + '", offset=' + end + ', chunk_size=' + chunkSize + ')';
+                }
+            }
+        }
+    }
+    // ============================================================
+    // update
+    // ============================================================
+    else if (name === 'update') {
+        if (!safeArgs.key || !safeArgs.value) {
+            text = 'âŒ ç¼ºå°‘å‚æ•°ï¼šéœ€è¦ key å’Œ value';
+        } else {
+            const existing = await getMemoryByKey(env, safeArgs.key);
+            if (!existing) {
+                text = 'âŒ æ²¡æœ‰æ‰¾åˆ° "' + safeArgs.key + '"ï¼Œæ— æ³•æ›´æ–°ã€‚å¦‚éœ€æ–°å»ºè¯·ä½¿ç”¨ remember';
+            } else {
+                const data = {
+                    value: safeArgs.value,
+                    updated_at: now()
+                };
+                await putMemory(env, safeArgs.key, { ...existing, ...data });
+                text = 'âœï¸ å·²æ›´æ–°ï¼š' + safeArgs.key + '\ní ½í³ æ–°å†…å®¹ï¼š' + safeArgs.value + '\ní ½í³… åˆ›å»ºï¼š' + formatTime(existing.created_at) + '\nâœï¸ æ›´æ–°ï¼š' + formatTime(now());
+            }
+        }
+    }
+    // ============================================================
+    // rename
+    // ============================================================
+    else if (name === 'rename') {
+        if (!safeArgs.old_key || !safeArgs.new_key) {
+            text = 'âŒ ç¼ºå°‘å‚æ•°ï¼šéœ€è¦ old_key å’Œ new_key';
         } else if (safeArgs.old_key === safeArgs.new_key) {
-            text = 'ò key À$œì(€€€€€€€ô•±Í”ì(€€€€€€€€€€€½¹ÍĞ•á¥ÍÑ¥¹œ€ô…İ…¥Ğ•Ñ5•µ½Éå	å-•ä¡•¹Ø°Í…™•ÉÌ¹½±‘}­•ä¤ì(€€€€€€€€€€€¥˜€ …•á¥ÍÑ¥¹œ¤ì(€€€€€€€€€€€€€€€Ñ•áĞ€ô€Œ  "' + safeArgs.old_key + '"';
+            text = 'âš ï¸ æ–°æ—§ key ç›¸åŒï¼Œæ— éœ€ä¿®æ”¹';
+        } else {
+            const existing = await getMemoryByKey(env, safeArgs.old_key);
+            if (!existing) {
+                text = 'âŒ æ²¡æœ‰æ‰¾åˆ° "' + safeArgs.old_key + '"';
             } else {
                 const duplicate = await getMemoryByKey(env, safeArgs.new_key);
                 if (duplicate) {
-                    text = $ò key "' + safeArgs.new_key + '",Œs°¢ÒVÇ6R°¢v—BFVÆWFTÖVÖ÷'’†VçbÂ6fT&w2æöÆEö¶W’“°¢6öç7BFFÒ°¢fÇVS¢W†—7F–ærçfÇVRÀ¢7&VFVEöC¢W†—7F–æræ7&VFVEöBÀ¢WFFVEöC¢æ÷r‚¢Ó°¢v—BWDÖVÖ÷'’†VçbÂ6fT&w2ææWuö¶W’ÂFF“°¢FW‡BÒ?,‰È
-ÈØY™P\™ÜË›ÛÚÙ^H
-È	É"r²6fT&w2ææWuö¶W’°¢uÆí hœ€¬•á¥ÍÑ¥¹œ¹Ù…±Õ”€¬(€€€€€€€€€€€€€€€€€€€€€€€€q¹H' + formatTime(existing.created_at) +
-                        '\còÒ‰È
-È›Ü›X][YJ›İÊ
-JNÂˆBˆBˆBˆBˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆËÈ›Ü™Ù]ˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆ[ÙHYˆ
-˜[YHOOH	Ù›Ü™Ù]	ÊHÂˆYˆ
-\ØY™P\™ÜËšÙ^JHÂˆ^H	Âë HÙ^IÎÂˆH[ÙHÂˆÛÛœİ^\İ[™ÈH]ØZ]Ù]Y[[ÜPRÙ^J[‹ØY™P\™ÜËšÙ^JNÂˆYˆ
-Y^\İ[™ÊHÂˆ^H	Â‡"r²6fT&w2æ¶W’²r"s°¢ÒVÇ6R°¢v—BFVÆWFTÖVÖ÷'’†VçbÂ6fT&w2æ¶W’“°¢FW‡BÒsÈ‚‰È
-ÈØY™P\™ÜËšÙ^H
-È	×´¢r²W†—7F–ærçfÇVR²uÆå hœ€¬™½Éµ…ÑQ¥µ”¡•á¥ÍÑ¥¹œ¹É•…Ñ•‘}…Ğ¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€ô(€€€€¼¼€ôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôô(€€€€¼¼±¥ÍÑ}…Ñ•½É¥•Ì(€€€€¼¼€ôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôô(€€€•±Í”¥˜€¡¹…µ”€ôôô€±¥ÍÑ}…Ñ•½É¥•Ìœ¤ì(€€€€€€€½¹ÍĞ…±°€ô…İ…¥Ğ•Ñ±±5•µ½É¥•Ì¡•¹Ø¤ì(€€€€€€€¥˜€¡…±°¹±•¹Ñ €ôôô€À¤ì(€€€€€€€€€€€Ñ•áĞ€ô€½H!¡ìœì(€€€€€€€ô•±Í”ì(€€€€€€€€€€€½¹ÍĞ…Ñ•½Éå5…À€ôíôì(€€€€€€€€€€€™½È€¡½¹ÍĞ¥Ñ•´½˜…±°¤ì(€€€€€€€€€€€€€€€½¹ÍĞ…Ğ€ô¥Ñ•´¹…Ñ•½Éäñğ€˜	ÎÂˆØ]YÛÜSX\ØØ]HH
-Ø]YÛÜSX\ØØ]H
-H
-ÈNÂˆBˆÛÛœİÛÜYHØš™Xİ™[šY\ÊØ]YÛÜSX\
-KœÛÜ
-
-KŠHOˆ–ÌWHHVÌWJNÂˆ][™\ÈHØ† H	È
-ÈÛÜY›[™İ
-È	È¥Æâs°¢f÷"†6öç7B¶6BÂ6÷VçEÒöb6÷'FVB’°¢Æ–æW2³ÒrÒr²6B²pœ€¬½Õ¹Ğ€¬€¡W‰ÎÂˆBˆ^H[™\ÎÂˆBˆBˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆËÈ™XØ[ØWØØ]YÛÜBˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆ[ÙHYˆ
-˜[YHOOH	Ü™XØ[ØWØØ]YÛÜIÊHÂˆYˆ
-\ØY™P\™ÜË˜Ø]YÛÜJHÂˆ^H	Âë HØ]YÛÜIÎÂˆH[ÙHÂˆÛÛœİÈ[Z]İ\œÛÜˆHH\œÙTYÚ[˜][ÛŠØY™P\™ÜÊNÂˆÛÛœİ[H]ØZ]Ù][Y[[ÜšY\Ê[ŠNÂˆÛÛœİX]ÚYH[™š[\Š][HOˆ][K˜Ø]YÛÜHOOHØY™P\™ÜË˜Ø]YÛÜJNÂˆYˆ
-X]ÚY›[™İOOH
-HÂˆ^H	ô‚È‰È
-ÈØY™P\™ÜË˜Ø]YÛÜH
-È	Èˆbs°¢ÒVÇ6R°¢ÖF6†VBç6÷'B‚†Â"’ÓâæWrFFR†"æ7&VFVEöB’ÒæWrFFR†æ7&VFVEöB’“°¢ÆWB7F'D–æFW‚Ò°¢–b†7W'6÷"’°¢6öç7B–G‚ÒÖF6†VBæf–æD–æFW‚†—FVÒÓâ—FVÒæ–BÓÓÒ7W'6÷"“°¢–b†–G‚ÓÒÓ’7F'D–æFW‚Ò–G‚²°¢Ğ¢6öç7BvRÒÖF6†VBç6Æ–6R‡7F'D–æFW‚Â7F'D–æFW‚²Æ–Ö—B“°¢6öç7BæW‡D7W'6÷"ÒÖF6†VBæÆVæwF‚â7F'D–æFW‚²Æ–Ö—BòvU·vRæÆVæwF‚ÒÓòæ–B¢çVÆÃ°¢–b‡vRæÆVæwF‚ÓÓÒ’°¢FW‡BÒm œœì(€€€€€€€€€€€€€€€ô•±Í”ì(€€€€€€€€€€€€€€€€€€€±•Ğ±¥¹•Ì€ô€œˆ,€ˆœ€¬Í…™•ÉÌ¹…Ñ•½Éä€¬€œˆŒ1 ' + matched.length + ' ú ' + page.length + ' ™q¸œì(€€€€€€€€€€€€€€€€€€€™½È€¡½¹ÍĞ¥Ñ•´½˜Á…”¤ì(€€€€€€€€€€€€€€€€€€€€€€€½¹ÍĞÑ¥Ñ±”€ô•ÑQ¥Ñ±”¡¥Ñ•´¹­•ä¤ì(€€€€€€€€€€€€€€€€€€€€€€€±¥¹•Ì€¬ô€œ´€œ€¬Ñ¥Ñ±”€¬€œè€œ€¬¥Ñ•´¹Ù…±Õ”€¬€q¸€H	È
-È›Ü›X][YJ][K˜Ü™X]YØ]
-H
-È	×‰ÎÂˆBˆYˆ
-™^İ\œÛÜŠHÂˆ[™\È
-ÏH	×Ğ¹•áÑ}ÕÉÍ½Èè€œ€¬¹•áÑÕÉÍ½È€¬€İüIÎÂˆBˆ^H[™\ÎÂˆBˆBˆBˆBˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆËÈ[İ™WØØ]YÛÜBˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆ[ÙHYˆ
-˜[YHOOH	Û[İ™WØØ]YÛÜIÊHÂˆYˆ
-\ØY™P\™ÜËšÙ^H\ØY™P\™ÜË›™]ĞØ]YÛÜJHÂˆ^HÂhHÙ^HÂæWt6FVv÷'’s°¢ÒVÇ6R°¢6öç7BW†—7F–ærÒv—BvWDÖVÖ÷'”'”¶W’†VçbÂ6fT&w2æ¶W’“°¢–b‚W†—7F–ær’°¢FW‡BÒpƒà€ˆœ€¬Í…™•ÉÌ¹­•ä€¬€œˆœì(€€€€€€€€€€€ô•±Í”ì(€€€€€€€€€€€€€€€½¹ÍĞ¹•İ-•ä€ôÍ…™•ÉÌ¹¹•İ…Ñ•½Éä€¬€œ¼œ€¬•ÑQ¥Ñ±”¡Í…™•ÉÌ¹­•ä¤ì(€€€€€€€€€€€€€€€½¹ÍĞ‘ÕÁ±¥…Ñ”€ô…İ…¥Ğ•Ñ5•µ½Éå	å-•ä¡•¹Ø°¹•İ-•ä¤ì(€€€€€€€€€€€€€€€¥˜€¡‘ÕÁ±¥…Ñ”¤ì(€€€€€€€€€€€€€€€€€€€Ñ•áĞ€ô€“È­•ä€ˆœ€¬¹•İ-•ä€¬€œˆ†7IÎÂˆH[ÙHÂˆ]ØZ][]SY[[ÜJ[‹ØY™P\™ÜËšÙ^JNÂˆÛÛœİ]HHÂˆ˜[YNˆ^\İ[™Ë˜[YKˆÜ™X]YØ]ˆ^\İ[™Ë˜Ü™X]YØ]ˆ\]YØ]ˆ›İÊ
-BˆNÂˆ]ØZ]]Y[[ÜJ[‹™]ÒÙ^K]JNÂˆ^HØ²hœ€¬Í…™•ÉÌ¹­•ä€¬€œ‚ ' + newKey + '\n"‰È
-È^\İ[™Ë˜Ø]YÛÜH
-È	É"r²6fT&w2ææWt6FVv÷'’²uÆÅ#¨œ€¬™½Éµ…ÑQ¥µ”¡•á¥ÍÑ¥¹œ¹É•…Ñ•‘}…Ğ¤€¬€q»È' + formatTime(now());
+                    text = 'âš ï¸ ç›®æ ‡ key "' + safeArgs.new_key + '" å·²å­˜åœ¨ï¼Œè¯·å…ˆå¤„ç†å†²çª';
+                } else {
+                    await deleteMemory(env, safeArgs.old_key);
+                    const data = {
+                        value: existing.value,
+                        created_at: existing.created_at,
+                        updated_at: now()
+                    };
+                    await putMemory(env, safeArgs.new_key, data);
+                    text = 'âœï¸ å·²é‡å‘½åï¼š' + safeArgs.old_key + ' â†’ ' + safeArgs.new_key +
+                        '\ní ½í³ å†…å®¹ï¼š' + existing.value +
+                        '\ní ½í³… åˆ›å»ºï¼š' + formatTime(existing.created_at) +
+                        '\nâœï¸ æ›´æ–°ï¼š' + formatTime(now());
+                }
+            }
+        }
+    }
+    // ============================================================
+    // forget
+    // ============================================================
+    else if (name === 'forget') {
+        if (!safeArgs.key) {
+            text = 'âŒ ç¼ºå°‘å‚æ•°ï¼šéœ€è¦ key';
+        } else {
+            const existing = await getMemoryByKey(env, safeArgs.key);
+            if (!existing) {
+                text = 'âŒ æ²¡æœ‰æ‰¾åˆ° "' + safeArgs.key + '"';
+            } else {
+                await deleteMemory(env, safeArgs.key);
+                text = 'í ½í·‘ï¸ å·²åˆ é™¤ï¼š' + safeArgs.key + '\ní ½í³ å†…å®¹ï¼š' + existing.value + '\ní ½í³… åˆ›å»ºï¼š' + formatTime(existing.created_at);
+            }
+        }
+    }
+    // ============================================================
+    // list_categories
+    // ============================================================
+    else if (name === 'list_categories') {
+        const all = await getAllMemories(env);
+        if (all.length === 0) {
+            text = 'í ½í³­ æš‚æ— è®°å¿†ï¼Œè¿˜æ²¡æœ‰åˆ†ç±»';
+        } else {
+            const categoryMap = {};
+            for (const item of all) {
+                const cat = item.category || 'é»˜è®¤';
+                categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+            }
+            const sorted = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]);
+            let lines = 'í ½í³‚ åˆ†ç±»åˆ—è¡¨ï¼ˆå…± ' + sorted.length + ' ä¸ªåˆ†ç±»ï¼‰ï¼š\n';
+            for (const [cat, count] of sorted) {
+                lines += '- ' + cat + 'ï¼ˆ' + count + 'æ¡ï¼‰\n';
+            }
+            text = lines;
+        }
+    }
+    // ============================================================
+    // recall_by_category
+    // ============================================================
+    else if (name === 'recall_by_category') {
+        if (!safeArgs.category) {
+            text = 'âŒ ç¼ºå°‘å‚æ•°ï¼šéœ€è¦ category';
+        } else {
+            const { limit, cursor } = parsePagination(safeArgs);
+            const all = await getAllMemories(env);
+            const matched = all.filter(item => item.category === safeArgs.category);
+            if (matched.length === 0) {
+                text = 'í ½í³­ åˆ†ç±» "' + safeArgs.category + '" ä¸‹æš‚æ— è®°å¿†';
+            } else {
+                matched.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                let startIndex = 0;
+                if (cursor) {
+                    const idx = matched.findIndex(item => item.id === cursor);
+                    if (idx !== -1) startIndex = idx + 1;
+                }
+                const page = matched.slice(startIndex, startIndex + limit);
+                const nextCursor = matched.length > startIndex + limit ? page[page.length - 1]?.id : null;
+                if (page.length === 0) {
+                    text = 'í ½í³­ æ²¡æœ‰æ›´å¤šè®°å¿†äº†';
+                } else {
+                    let lines = 'í ½í³‚ åˆ†ç±» "' + safeArgs.category + '" çš„è®°å¿†ï¼ˆå…± ' + matched.length + ' æ¡ï¼Œæ˜¾ç¤º ' + page.length + ' æ¡ï¼‰ï¼š\n';
+                    for (const item of page) {
+                        const title = getTitle(item.key);
+                        lines += '- ' + title + ': ' + item.value + '\n  í ½í³… ' + formatTime(item.created_at) + '\n';
+                    }
+                    if (nextCursor) {
+                        lines += '\ní ½í³Œ next_cursor: ' + nextCursor + 'ï¼ˆç»§ç»­ç¿»é¡µè¯·ä¼ æ­¤å€¼ï¼‰';
+                    }
+                    text = lines;
+                }
+            }
+        }
+    }
+    // ============================================================
+    // move_category
+    // ============================================================
+    else if (name === 'move_category') {
+        if (!safeArgs.key || !safeArgs.newCategory) {
+            text = 'âŒ ç¼ºå°‘å‚æ•°ï¼šéœ€è¦ key å’Œ newCategory';
+        } else {
+            const existing = await getMemoryByKey(env, safeArgs.key);
+            if (!existing) {
+                text = 'âŒ æ²¡æœ‰æ‰¾åˆ° "' + safeArgs.key + '"';
+            } else {
+                const newKey = safeArgs.newCategory + '/' + getTitle(safeArgs.key);
+                const duplicate = await getMemoryByKey(env, newKey);
+                if (duplicate) {
+                    text = 'âš ï¸ ç›®æ ‡ key "' + newKey + '" å·²å­˜åœ¨ï¼Œè¯·å…ˆå¤„ç†å†²çª';
+                } else {
+                    await deleteMemory(env, safeArgs.key);
+                    const data = {
+                        value: existing.value,
+                        created_at: existing.created_at,
+                        updated_at: now()
+                    };
+                    await putMemory(env, newKey, data);
+                    text = 'í ½íºš å·²ç§»åŠ¨ï¼š' + safeArgs.key + ' â†’ ' + newKey + '\ní ½í³‚ åˆ†ç±»ï¼š' + existing.category + ' â†’ ' + safeArgs.newCategory + '\ní ½í³… åˆ›å»ºï¼š' + formatTime(existing.created_at) + '\nâœï¸ æ›´æ–°ï¼š' + formatTime(now());
                 }
             }
         }
@@ -85,92 +302,179 @@ BˆNÂˆ]ØZ]]Y[[ÜJ[‹™]ÒÙ^K]JNÂ
     // ============================================================
     else if (name === 'search') {
         if (!safeArgs.keyword) {
-            text = #N#IÎÂˆH[ÙHÂˆÛÛœİÙ^]ÛÜ™HØY™P\™ÜËšÙ^]ÛÜ™š[J
-NÂˆÛÛœİÙ^]ÛÜ™ÈHÙ^]ÛÜ™œÜ]
-×ÊËÊK™š[\ŠÈOˆË›[™İˆ
-NÂˆÛÛœİÈ[Z]İ\œÛÜˆHH\œÙTYÚ[˜][ÛŠØY™P\™ÜÊNÂˆÛÛœİ[H]ØZ]Ù][Y[[ÜšY\Ê[ŠNÂˆÛÛœİX]ÚYH×NÂˆ›Üˆ
-ÛÛœİ][HÙˆ[
-HÂˆÛÛœİÛÛXš[™YH
-][KšÙ^H
-È	È	È
-È][K˜[YJKÓİÙ\Ø\ÙJ
-NÂˆÛÛœİ[X]ÚHÙ^]ÛÜ™Ë™]™\JİÈOˆÛÛXš[™Yš[˜ÛY\ÊİËÓİÙ\Ø\ÙJ
-JJNÂˆYˆ
-[X]Ú
-HÂˆX]ÚYœ\Ú
-][JNÂˆBˆBˆX]ÚYœÛÜ
-
-KŠHOˆ™]È]J‹˜Ü™X]YØ]
-HH™]È]JK˜Ü™X]YØ]
-JNÂˆ]İ\[™^HÂˆYˆ
-İ\œÛÜŠHÂˆÛÛœİYHX]ÚY™š[™[™^
-][HOˆ][KšYOOHİ\œÛÜŠNÂˆYˆ
-YOOHLJHİ\[™^HY
-ÈNÂˆBˆÛÛœİYÙHHX]ÚYœÛXÙJİ\[™^İ\[™^
-È[Z]
-NÂˆÛÛœİ™^İ\œÛÜˆHX]ÚY›[™İˆİ\[™^
-È[Z]ÈYÙVÜYÙK›[™İHWOËšYˆ[ÂˆYˆ
-YÙK›[™İOOH
-HÂˆ^HX]ÚY›[™İOOHÈ	ôƒãF' : /R…¤Øœì(€€€€€€€€€€€ô•±Í”ì(€€€€€€€€€€€€€€€±•Ğ±¥¹•Ì€ô€“HÀ€œ€¬µ…Ñ¡•¹±•¹Ñ €¬€œÎˆ	È
-ÈYÙK›[™İ
-È	È\n';
+            text = 'âŒ è¯·è¾“å…¥æœç´¢å…³é”®è¯';
+        } else {
+            const keyword = safeArgs.keyword.trim();
+            const keywords = keyword.split(/\s+/).filter(k => k.length > 0);
+            const { limit, cursor } = parsePagination(safeArgs);
+            const all = await getAllMemories(env);
+            const matched = [];
+            for (const item of all) {
+                const combined = (item.key + ' ' + item.value).toLowerCase();
+                const allMatch = keywords.every(kw => combined.includes(kw.toLowerCase()));
+                if (allMatch) {
+                    matched.push(item);
+                }
+            }
+            matched.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            let startIndex = 0;
+            if (cursor) {
+                const idx = matched.findIndex(item => item.id === cursor);
+                if (idx !== -1) startIndex = idx + 1;
+            }
+            const page = matched.slice(startIndex, startIndex + limit);
+            const nextCursor = matched.length > startIndex + limit ? page[page.length - 1]?.id : null;
+            if (page.length === 0) {
+                text = matched.length === 0 ? 'í ½í´ æ²¡æœ‰æ‰¾åˆ°åŒ¹é…çš„è®°å¿†' : 'í ½í³­ æ²¡æœ‰æ›´å¤šåŒ¹é…ç»“æœäº†';
+            } else {
+                let lines = 'í ½í´ æ‰¾åˆ° ' + matched.length + ' æ¡ç»“æœï¼ˆæ˜¾ç¤º ' + page.length + ' æ¡ï¼‰ï¼š\n';
                 for (const item of page) {
                     const category = getCategory(item.key);
                     const title = getTitle(item.key);
                     let highlightedTitle = highlightText(title, keywords);
                     let highlightedValue = highlightText(item.value, keywords);
-                    lines += '- [' + category + '] ' + highlightedTitle + ': ' + highlightedValue + '\n /Rr²f÷&ÖEF–ÖR†—FVÒæ7&VFVEöB’²uÆâs°¢Ğ¢–b†æW‡D7W'6÷"’°¢Æ–æW2³ÒuÆì next_cursor: ' + nextCursor + &}d’s°¢Ğ¢FW‡BÒÆ–æW3°¢Ğ¢v—B&V6÷&E6V&6„¶W—v÷&B†VçbÂ¶W—v÷&B“°¢Ğ¢Ğ¢òòÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¢òò&V6ÆÅöÆÀ¢òòÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¢VÇ6R–b†æÖRÓÓÒw&V6ÆÅöÆÂr’°¢6öç7B²Æ–Ö—BÂ7W'6÷"ÒÒ'6Uv–æF–öâ‡6fT&w2“°¢6öç7B÷&FW"Ò‡6fT&w2æ÷&FW"ÇÂvFW62r’çFôÆ÷vW$66R‚“°¢6öç7BÆÂÒv—BvWDÆÄÖVÖ÷&–W2†Vçb“°¢–b†ÆÂæÆVæwF‚ÓÓÒ’°¢FW‡BÒ} Àˆxœì(€€€€€€€ô•±Í”ì(€€€€€€€€€€€…±°¹Í½ÉĞ ¡„°ˆ¤€ôøì(€€€€€€€€€€€€€€€½¹ÍĞÑ„€ô¹•Ü…Ñ”¡„¹É•…Ñ•‘}…Ğ¤ì(€€€€€€€€€€€€€€€½¹ÍĞÑˆ€ô¹•Ü…Ñ”¡ˆ¹É•…Ñ•‘}…Ğ¤ì(€€€€€€€€€€€€€€€É•ÑÕÉ¸½É‘•È€ôôô€…ÍŒœ€üÑ„€´Ñˆ€èÑˆ€´Ñ„ì(€€€€€€€€€€€ô¤ì(€€€€€€€€€€€±•ĞÍÑ…ÉÑ%¹‘•à€ô€Àì(€€€€€€€€€€€¥˜€¡ÕÉÍ½È¤ì(€€€€€€€€€€€€€€€½¹ÍĞ¥‘à€ô…±°¹™¥¹‘%¹‘•à¡¥Ñ•´€ôø¥Ñ•´¹¥€ôôôÕÉÍ½È¤ì(€€€€€€€€€€€€€€€¥˜€¡¥‘à€„ôô€´Ä¤ÍÑ…ÉÑ%¹‘•à€ô¥‘à€¬€Äì(€€€€€€€€€€€ô(€€€€€€€€€€€½¹ÍĞÁ…”€ô…±°¹Í±¥”¡ÍÑ…ÉÑ%¹‘•à°ÍÑ…ÉÑ%¹‘•à€¬±¥µ¥Ğ¤ì(€€€€€€€€€€€½¹ÍĞ¹•áÑÕÉÍ½È€ô…±°¹±•¹Ñ €øÍÑ…ÉÑ%¹‘•à€¬±¥µ¥Ğ€üÁ…•mÁ…”¹±•¹Ñ €´€Åtü¹¥€è¹Õ±°ì(€€€€€€€€€€€¥˜€¡Á…”¹±•¹Ñ €ôôô€À¤ì(€€€€€€€€€€€€€€€Ñ•áĞ€ô€›H'';
+                    lines += '- [' + category + '] ' + highlightedTitle + ': ' + highlightedValue + '\n  í ½í³… ' + formatTime(item.created_at) + '\n';
+                }
+                if (nextCursor) {
+                    lines += '\ní ½í³Œ next_cursor: ' + nextCursor + 'ï¼ˆç»§ç»­ç¿»é¡µè¯·ä¼ æ­¤å€¼ï¼‰';
+                }
+                text = lines;
+            }
+            await recordSearchKeyword(env, keyword);
+        }
+    }
+    // ============================================================
+    // recall_all
+    // ============================================================
+    else if (name === 'recall_all') {
+        const { limit, cursor } = parsePagination(safeArgs);
+        const order = (safeArgs.order || 'desc').toLowerCase();
+        const all = await getAllMemories(env);
+        if (all.length === 0) {
+            text = 'í ½í³­ æš‚æ— è®°å¿†ï¼Œå…ˆå­˜ä¸€æ¡å§ï½';
+        } else {
+            all.sort((a, b) => {
+                const ta = new Date(a.created_at);
+                const tb = new Date(b.created_at);
+                return order === 'asc' ? ta - tb : tb - ta;
+            });
+            let startIndex = 0;
+            if (cursor) {
+                const idx = all.findIndex(item => item.id === cursor);
+                if (idx !== -1) startIndex = idx + 1;
+            }
+            const page = all.slice(startIndex, startIndex + limit);
+            const nextCursor = all.length > startIndex + limit ? page[page.length - 1]?.id : null;
+            if (page.length === 0) {
+                text = 'í ½í³­ æ²¡æœ‰æ›´å¤šè®°å¿†äº†';
             } else {
-                let lines = %¢(! ' + all.length + ' ú ' + page.length + ' ™q¸œì(€€€€€€€€€€€€€€€™½È€¡½¹ÍĞ¥Ñ•´½˜Á…”¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍĞ…Ñ•½Éä€ô•Ñ…Ñ•½Éä¡¥Ñ•´¹­•ä¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍĞÑ¥Ñ±”€ô•ÑQ¥Ñ±”¡¥Ñ•´¹­•ä¤ì(€€€€€€€€€€€€€€€€€€€±¥¹•Ì€¬ô€œ´lœ€¬…Ñ•½Éä€¬€t€œ€¬Ñ¥Ñ±”€¬€œè€œ€¬¥Ñ•´¹Ù…±Õ”€¬€q¸€½H	È
-È›Ü›X][YJ][K˜Ü™X]YØ]
-H
-È	×‰ÎÂˆBˆYˆ
-™^İ\œÛÜŠHÂˆ[™\È
-ÏH	×°¹•áÑ}ÕÉÍ½Èè€œ€¬¹•áÑÕÉÍ½È€¬€™õ’IÎÂˆBˆ^H[™\ÎÂˆBˆBˆBˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆËÈ˜[™ÛBˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆ[ÙHYˆ
-˜[YHOOH	Ü˜[™ÛIÊHÂˆÛÛœİØ]YÛÜHHØY™P\™ÜË˜Ø]YÛÜH[ÂˆÛÛœİ[H]ØZ]Ù][Y[[ÜšY\Ê[ŠNÂˆYˆ
-[›[™İOOH
-HÂˆ^H	´ˆâs°¢ÒVÇ6R°¢ÆWB6æF–FFW2ÒÆÃ°¢–b†6FVv÷'’’°¢6æF–FFW2ÒÆÂæf–ÇFW"†—FVÒÓâ—FVÒæ6FVv÷'’ÓÓÒ6FVv÷'’“°¢–b†6æF–FFW2æÆVæwF‚ÓÓÒ’°¢FW‡BÒp†È‰È
-ÈØ]YÛÜH
-È	Èˆ bs°¢Ğ¢Ğ¢–b†6æF–FFW2æÆVæwF‚â’°¢6öç7B&æFöÔ—FVÒÒ6æF–FFW5´ÖF‚æfÆö÷"„ÖF‚ç&æFöÒ‚’¢6æF–FFW2æÆVæwF‚•Ó°¢FW‡BÒr#¦—–ÉÈ
-È˜[™ÛR][K˜Ø]YÛÜH
-È	×H	È
-ÈÙ]]J˜[™ÛR][KšÙ^JH
-È	Îˆ	È
-È˜[™ÛR][K˜[YH
-È	×Ô€œ€¬™½Éµ…ÑQ¥µ”¡É…¹‘½µ%Ñ•´¹É•…Ñ•‘}…Ğ¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€ô(€€€€¼¼€ôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôô(€€€€¼¼É•…±±}‰å}‘…Ñ”(€€€€¼¼€ôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôôô(€€€•±Í”¥˜€¡¹…µ”€ôôô€É•…±±}‰å}‘…Ñ”œ¤ì(€€€€€€€¥˜€ …Í…™•ÉÌ¹ÍÑ…ÉÑ}‘…Ñ”ñğ€…Í…™•ÉÌ¹•¹‘}‘…Ñ”¤ì(€€€€€€€€€€€Ñ•áĞ€ô€œ ÍÑ…ÉÑ}‘…Ñ”Œ end_date';
+                let lines = 'í ½í³š å…¨éƒ¨è®°å¿†ï¼ˆå…± ' + all.length + ' æ¡ï¼Œæ˜¾ç¤º ' + page.length + ' æ¡ï¼‰ï¼š\n';
+                for (const item of page) {
+                    const category = getCategory(item.key);
+                    const title = getTitle(item.key);
+                    lines += '- [' + category + '] ' + title + ': ' + item.value + '\n  í ½í³… ' + formatTime(item.created_at) + '\n';
+                }
+                if (nextCursor) {
+                    lines += '\ní ½í³Œ next_cursor: ' + nextCursor + 'ï¼ˆç»§ç»­ç¿»é¡µè¯·ä¼ æ­¤å€¼ï¼‰';
+                }
+                text = lines;
+            }
+        }
+    }
+    // ============================================================
+    // random
+    // ============================================================
+    else if (name === 'random') {
+        const category = safeArgs.category || null;
+        const all = await getAllMemories(env);
+        if (all.length === 0) {
+            text = 'í ½í³­ æš‚æ— è®°å¿†ï¼Œå…ˆå­˜ä¸€æ¡å§ï½';
+        } else {
+            let candidates = all;
+            if (category) {
+                candidates = all.filter(item => item.category === category);
+                if (candidates.length === 0) {
+                    text = 'âŒ åˆ†ç±» "' + category + '" ä¸‹æš‚æ— è®°å¿†';
+                }
+            }
+            if (candidates.length > 0) {
+                const randomItem = candidates[Math.floor(Math.random() * candidates.length)];
+                text = 'í ¼í¾² éšæœºä¸€æ¡ï¼š\n[' + randomItem.category + '] ' + getTitle(randomItem.key) + ': ' + randomItem.value + '\ní ½í³… ' + formatTime(randomItem.created_at);
+            }
+        }
+    }
+    // ============================================================
+    // recall_by_date
+    // ============================================================
+    else if (name === 'recall_by_date') {
+        if (!safeArgs.start_date || !safeArgs.end_date) {
+            text = 'âŒ ç¼ºå°‘å‚æ•°ï¼šéœ€è¦ start_date å’Œ end_date';
         } else if (!isValidDate(safeArgs.start_date) || !isValidDate(safeArgs.end_date)) {
-            text = #~àeeedµ54µ¼ÉÎÂˆH[ÙHÂˆÛÛœİÈ[Z]İ\œÛÜˆHH\œÙTYÚ[˜][ÛŠØY™P\™ÜÊNÂˆÛÛœİİ\H™]È]JØY™P\™ÜËœİ\Ù]JNÂˆÛÛœİ[™H™]È]JØY™P\™ÜË™[™Ù]JNÂˆ[™œÙ]İ\œÊŒËNKNKNNJNÂˆÛÛœİ[H]ØZ]Ù][Y[[ÜšY\Ê[ŠNÂˆÛÛœİX]ÚYH×NÂˆ›Üˆ
-ÛÛœİ][HÙˆ[
-HÂˆÛÛœİÜ™X]YH™]È]J][K˜Ü™X]YØ]
-NÂˆYˆ
-Ü™X]YHİ\	‰ˆÜ™X]YH[™
-HÂˆX]ÚYœ\Ú
-][JNÂˆBˆBˆX]ÚYœÛÜ
-
-KŠHOˆ™]È]J‹˜Ü™X]YØ]
-HH™]È]JK˜Ü™X]YØ]
-JNÂˆ]İ\[™^HÂˆYˆ
-İ\œÛÜŠHÂˆÛÛœİYHX]ÚY™š[™[™^
-][HOˆ][KšYOOHİ\œÛÜŠNÂˆYˆ
-YOOHLJHİ\[™^HY
-ÈNÂˆBˆÛÛœİYÙHHX]ÚYœÛXÙJİ\[™^İ\[™^
-È[Z]
-NÂˆÛÛœİ™^İ\œÛÜˆHX]ÚY›[™İˆİ\[™^
-È[Z]ÈYÙVÜYÙK›[™İHWOËšYˆ[ÂˆYˆ
-YÙK›[™İOOH
-HÂˆ^HX]ÚY›[™İOOHÈÔ¥Ô–' : &Ò	M‰ÎÂˆH[ÙHÂˆ][™\ÈH	€œ€¬Í…™•ÉÌ¹ÍÑ…ÉÑ}‘…Ñ”€¬€œø€œ€¬Í…™•ÉÌ¹•¹‘}‘…Ñ”€¬€œ€a ' + matched.length + '(z ' + page.length + ' iq¸œì(€€€€€€€€€€€€€€€™½È€¡½¹ÍĞ¥Ñ•´½˜Á…”¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍĞ…Ñ•½Éä€ô•Ñ…Ñ•½Éä¡¥Ñ•´¹­•ä¤ì(€€€€€€€€€€€€€€€€€€€½¹ÍĞÑ¥Ñ±”€ô•ÑQ¥Ñ±”¡¥Ñ•´¹­•ä¤ì(€€€€€€€€€€€€€€€€€€€±¥¹•Ì€¬ô€œ´lœ€¬…Ñ•½Éä€¬€t€œ€¬Ñ¥Ñ±”€¬€œè€œ€¬¥Ñ•´¹Ù…±Õ”€¬€q¸€H	È
-È›Ü›X][YJ][K˜Ü™X]YØ]
-H
-È	×‰ÎÂˆBˆYˆ
-™^İ\œÛÜŠHÂˆ[™\È
-ÏH	×Ğ¹•áÑ}ÕÉÍ½Èè€œ€¬¹•áÑÕÉÍ½È€¬€İüIÎÂˆBˆ^H[™\ÎÂˆBˆBˆBˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆËÈİ]ÂˆËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆ[ÙHYˆ
-˜[YHOOH	Üİ]ÉÊHÂˆÛÛœİ[H]ØZ]Ù][Y[[ÜšY\Ê[ŠNÂˆYˆ
-[›[™İOOH
-HÂˆ^H	è¥Æí£Æì‡‰ÎÂˆH[ÙHÂˆÛÛœİİ[H[›[™İÂˆÛÛœİØ]YÛÜSX\HßNÂˆ]ÙYZĞÛİ[HÂˆÛÛœİÛ™UÙYZĞYÛÈH™]È]J
-NÂˆÛ™UÙYZĞYÛËœÙ]]JÛ™UÙYZĞYÛË™Ù]]J
-HHÊNÂˆ›Üˆ
-ÛÛœİ][HÙˆ[
-HÂˆÛÛœİØ]H][K˜Ø]YÛÜH	Ğœì(€€€€€€€€€€€€€€€…Ñ•½Éå5…Ám…Ñt€ô€¡…Ñ•½Éå5…Ám…Ñtñğ€À¤€¬€Äì(€€€€€€€€€€€€€€€¥˜€¡¹•Ü…Ñ”¡¥Ñ•´¹É•…Ñ•‘}…Ğ¤€øô½¹•]••­¼¤ì(€€€€€€€€€€€€€€€€€€€İ••­½Õ¹Ğ¬¬ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€½¹ÍĞÍ½ÉÑ•‘…Ñ•½É¥•Ì€ô=‰©•Ğ¹•¹ÑÉ¥•Ì¡…Ñ•½Éå5…À¤¹Í½ÉĞ ¡„°ˆ¤€ôø‰lÅt€´…lÅt¤ì(€€€€€€€€€€€½¹ÍĞ…Ñ•½Éå1¥ÍĞ€ôÍ½ÉÑ•‘…Ñ•½É¥•Ì¹µ…À ¡m…Ğ°½Õ¹Ñt¤€ôø…Ğ€¬€œ œ€¬½Õ¹Ğ€¬€)').join( IÊNÂˆ^H	è¥Æâr°¢í¢r²F÷FÂ²uÆâr°¢|"r²6÷'FVD6FVv÷&–W2æÆVæwF‚²uÆâr°¢F¢r²6FVv÷'”Æ—7B²uÆâr°¢u èœ€¬İ••­½Õ¹Ğ€¬€œ';
+            text = 'âŒ æ—¥æœŸæ ¼å¼æ— æ•ˆï¼Œè¯·ä½¿ç”¨ YYYY-MM-DD æ ¼å¼';
+        } else {
+            const { limit, cursor } = parsePagination(safeArgs);
+            const start = new Date(safeArgs.start_date);
+            const end = new Date(safeArgs.end_date);
+            end.setHours(23, 59, 59, 999);
+            const all = await getAllMemories(env);
+            const matched = [];
+            for (const item of all) {
+                const created = new Date(item.created_at);
+                if (created >= start && created <= end) {
+                    matched.push(item);
+                }
+            }
+            matched.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            let startIndex = 0;
+            if (cursor) {
+                const idx = matched.findIndex(item => item.id === cursor);
+                if (idx !== -1) startIndex = idx + 1;
+            }
+            const page = matched.slice(startIndex, startIndex + limit);
+            const nextCursor = matched.length > startIndex + limit ? page[page.length - 1]?.id : null;
+            if (page.length === 0) {
+                text = matched.length === 0 ? 'í ½í³­ è¯¥æ—¶é—´æ®µå†…æ²¡æœ‰è®°å¿†' : 'í ½í³­ æ²¡æœ‰æ›´å¤šç»“æœäº†';
+            } else {
+                let lines = 'í ½í³… ' + safeArgs.start_date + ' ~ ' + safeArgs.end_date + ' çš„è®°å¿†ï¼ˆå…± ' + matched.length + ' æ¡ï¼Œæ˜¾ç¤º ' + page.length + ' æ¡ï¼‰ï¼š\n';
+                for (const item of page) {
+                    const category = getCategory(item.key);
+                    const title = getTitle(item.key);
+                    lines += '- [' + category + '] ' + title + ': ' + item.value + '\n  í ½í³… ' + formatTime(item.created_at) + '\n';
+                }
+                if (nextCursor) {
+                    lines += '\ní ½í³Œ next_cursor: ' + nextCursor + 'ï¼ˆç»§ç»­ç¿»é¡µè¯·ä¼ æ­¤å€¼ï¼‰';
+                }
+                text = lines;
+            }
+        }
+    }
+    // ============================================================
+    // stats
+    // ============================================================
+    else if (name === 'stats') {
+        const all = await getAllMemories(env);
+        if (all.length === 0) {
+            text = 'í ½í³Š ç»Ÿè®¡ï¼š\næ€»æ¡æ•°ï¼š0\næš‚æ— è®°å¿†ï¼Œå…ˆå­˜ä¸€æ¡å§ï½';
+        } else {
+            const total = all.length;
+            const categoryMap = {};
+            let weekCount = 0;
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            for (const item of all) {
+                const cat = item.category || 'é»˜è®¤';
+                categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+                if (new Date(item.created_at) >= oneWeekAgo) {
+                    weekCount++;
+                }
+            }
+            const sortedCategories = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]);
+            const categoryList = sortedCategories.map(([cat, count]) => cat + '(' + count + 'æ¡)').join('ã€');
+            text = 'í ½í³Š ç»Ÿè®¡ï¼š\n' +
+                'æ€»æ¡æ•°ï¼š' + total + '\n' +
+                'åˆ†ç±»æ•°ï¼š' + sortedCategories.length + '\n' +
+                'å„åˆ†ç±»ï¼š' + categoryList + '\n' +
+                'í ½í³… æœ€è¿‘ä¸€å‘¨æ–°å¢ï¼š' + weekCount + ' æ¡';
         }
     }
     // ============================================================
@@ -180,7 +484,9 @@ HÂˆÛÛœİØ]H][K˜Ø]YÛÜH	Ğœì(€€€€€€€€€€€€€€€…Ñ•½Éå5…Á
         const prefix = safeArgs.prefix || '';
         const suggestions = await getSearchSuggestions(env, prefix);
         if (suggestions.length === 0) {
-            text = prefix ? &	Òr¢õ ¢2³âs°¢ÒVÇ6R°¢ÆWBÆ–æW2Òõ%\n';
+            text = prefix ? 'í ½í²¡ æ²¡æœ‰åŒ¹é…çš„è”æƒ³è¯' : 'í ½í²¡ æš‚æ— æœç´¢å†å²ï¼Œå¤šæœå‡ æ¬¡å°±ä¼šæœ‰è”æƒ³äº†ï½';
+        } else {
+            let lines = 'í ½í²¡ è”æƒ³è¯ï¼š\n';
             for (const word of suggestions) {
                 lines += '- ' + word + '\n';
             }
