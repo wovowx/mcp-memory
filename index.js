@@ -60,10 +60,6 @@ async function handleMCPRequest(body, env) {
 
         try {
             // 先查技能表
-            // 技能管理工具优先处理
-            if (name === 'skill_list' || name === 'skill_add' || name === 'skill_update' || name === 'skill_delete') {
-                text = await handleSkillManagement(name, safeArgs, env);
-            } else {
             const skill = await getSkillByName(env, name);
             
             if (!skill) {
@@ -80,7 +76,6 @@ async function handleMCPRequest(body, env) {
                 } else {
                     text = '❌ 技能类型未实现：' + skill.handler_type;
                 }
-            }
             }
         } catch (e) {
             text = '❌ 执行出错：' + e.message;
