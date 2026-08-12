@@ -1,23 +1,13 @@
-# mcp-memory
+# MCP Memory Server
 
-This is the MCP server for Ziven, deployed on Cloudflare Workers.
+MCP server for Ziven, deployed on Cloudflare Workers.
 
 ## Features
-- Memory management (remember, recall, update, etc.)
+- Memory management
 - Image recognition and generation
 - GitHub integration
 - File management
 
-## Endpoints
-- `POST /mcp` - MCP JSON-RPC endpoint
-- `POST /upload` - File upload to Supabase
-
 ## GitHub
 - Owner: wovowx
 - Repo: mcp-memory
-- Synced from Cloudflare Workers
-
-## Env Variables
-- `GITHUB_TOKEN` - GitHub Personal Access Token (with repo scope)
-- `GITHUB_REPO` - Default GitHub repository
-- `SUPABASE_ANON_KEY` - Supabase anonymous key for image storage
