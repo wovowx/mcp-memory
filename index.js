@@ -20,7 +20,8 @@ const handlerMap = {
     'category': handleCategoryTool,
     'data': handleDataTool,
     'ai': handleAITool,
-    'github': handleGitHubTool
+    'github': handleGitHubTool,
+    'skill': handleSkillManagement
 };
 
 async function handleMCPRequest(body, env) {
@@ -59,6 +60,10 @@ async function handleMCPRequest(body, env) {
 
         try {
             // 先查技能表
+            // 技能管理工具优先处理
+            if (name === 'skill_list' || name === 'skill_add' || name === 'skill_update' || name === 'skill_delete') {
+                text = await handleSkillManagement(name, safeArgs, env);
+            } else {
             const skill = await getSkillByName(env, name);
             
             if (!skill) {
@@ -75,6 +80,7 @@ async function handleMCPRequest(body, env) {
                 } else {
                     text = '❌ 技能类型未实现：' + skill.handler_type;
                 }
+            }
             }
         } catch (e) {
             text = '❌ 执行出错：' + e.message;
@@ -110,14 +116,14 @@ async function handleSkillManagement(name, safeArgs, env) {
     if (name === 'skill_list') {
         const skills = await getEnabledSkills(env);
         if (skills.length === 0) {
-            text = '������ 暂无技能';
+            text = '������ 暂无技能';
         } else {
-            let lines = '������ **技能列表**（共 ' + skills.length + ' 个）：\n\n';
+            let lines = '������ **技能列表**（共 ' + skills.length + ' 个）：\n\n';
             for (const s of skills) {
                 const status = s.enabled ? '✅' : '⛔';
                 lines += `${status} **${s.name}**\n`;
-                lines += `   ������ ${s.description}\n`;
-                lines += `   ������ ${s.category || '默认'}\n\n`;
+                lines += `   ������ ${s.description}\n`;
+                lines += `   ������ ${s.category || '默认'}\n\n`;
             }
             text = lines;
         }
@@ -142,8 +148,8 @@ async function handleSkillManagement(name, safeArgs, env) {
                     tags: safeArgs.tags || []
                 });
                 text = '✅ 技能已添加：' + safeArgs.name + '\n' +
-                       '������ 描述：' + safeArgs.description + '\n' +
-                       '������ 分类：' + (safeArgs.category || '自定义');
+                       '������ 描述：' + safeArgs.description + '\n' +
+                       '������ 分类：' + (safeArgs.category || '自定义');
             } catch (e) {
                 text = '❌ 添加失败：' + e.message;
             }
@@ -178,7 +184,7 @@ async function handleSkillManagement(name, safeArgs, env) {
             text = '❌ 缺少参数：需要 name';
         } else {
             await deleteSkill(env, safeArgs.name);
-            text = '������️ 已删除技能：' + safeArgs.name;
+            text = '������️ 已删除技能：' + safeArgs.name;
         }
     }
 
@@ -291,7 +297,7 @@ export default {
         // ============================================================
         if (url.pathname === '/' || url.pathname === '/health') {
             const skills = await getEnabledSkills(env);
-            return new Response('������ Ziven MCP Server running (' + skills.length + ' skills | Supabase OK)', {
+            return new Response('������ Ziven MCP Server running (' + skills.length + ' skills | Supabase OK)', {
                 status: 200,
                 headers: {
                     'Content-Type': 'text/plain',
