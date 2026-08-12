@@ -2,5 +2,8 @@ name = "mcp-memory"
 main = "index.js"
 compatibility_date = "2026-08-12"
 
+[vars]
+SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
+
 [triggers]
 crons = []
