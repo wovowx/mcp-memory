@@ -1,22 +1,128 @@
 // ============================================================
-// Supabase"‚B‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈ85%5»Z
+// Supabase å­˜å‚¨æ“ä½œï¼ˆé€šç”¨ç‰ˆï¼‰
+// ============================================================
+// æ ¹æ® MIME ç±»å‹è·å–é»˜è®¤æ‰©å±•å
 function getFileExtension(file) {
-    // ©3ğ(€€€¥˜€¡™¥±”¹¹…µ”€˜˜™¥±”¹¹…µ”¹¥¹±Õ‘•Ì œ¸œ¤¤ì(€€€€€€€É•ÑÕÉ¸™¥±”¹¹…µ”¹ÍÁ±¥Ğ œ¸œ¤¹Á½À ¤ì(€€€ô(€€€€(€€€€¼¼ƒˆRSQK°ˆÛÛœİZ[YSX\HÂˆ	Ú[XYÙKÉÎˆ	ÚœÉËˆ	İšY[ËÉÎˆ	Û\	Ëˆ	Ø]Y[ËÉÎˆ	Û\ÉËˆ	Ø\XØ][Û‹Ü‰Îˆ	Ü‰Ëˆ	Ø\XØ][Û‹Û\İÛÜ™	Îˆ	ÙØÉËˆ	Ø\XØ][Û‹İ›™›Ü[[›Ü›X]Ë[Ù™šXÙYØİ[Y[ÛÜ™›ØÙ\ÜÚ[™Û[™Øİ[Y[	Îˆ	ÙØŞ	Ëˆ	Ø\XØ][Û‹İ›™›\ËY^Ù[	Îˆ	ŞÉËˆ	Ø\XØ][Û‹İ›™›Ü[[›Ü›X]Ë[Ù™šXÙYØİ[Y[œÜ™XYÚY][œÚY]	Îˆ	ŞŞ	Ëˆ	Ø\XØ][Û‹İ›™›\Ë\İÙ\œÚ[	Îˆ	Ü	Ëˆ	Ø\XØ][Û‹İ›™›Ü[[›Ü›X]Ë[Ù™šXÙYØİ[Y[œ™\Ù[][Û›[œ™\Ù[][Û‰Îˆ	Ü	Ëˆ	İ^ÉÎˆ	İ	Ëˆ	Ø\XØ][Û‹Şš\	Îˆ	Şš\	Ëˆ	Ø\XØ][Û‹Ş\˜\‹XÛÛ\™\ÜÙY	Îˆ	Ü˜\‰Ëˆ	Ø\XØ][Û‹ŞMŞ‹XÛÛ\™\ÜÙY	Îˆ	ÍŞ‰ÂˆNÂˆˆ›Üˆ
-ÛÛœİÜ™Yš^^HÙˆØš™Xİ™[šY\ÊZ[YSX\
-JHÂˆYˆ
-š[K\Kœİ\ÕÚ]
-™Yš^
-JH™]\›ˆ^ÂˆBˆ™]\›ˆ	Øš[‰ÎÂŸB‹ËÈ·¼)™Õ¹Ñ¥½¸•Ñ½¹Ñ•¹ÑQåÁ”¡™¥±”¤ì(€€€½¹ÍĞÑåÁ”€ô™¥±”¹ÑåÁ”ì(€€€¥˜€¡ÑåÁ”¹ÍÑ…ÉÑÍ]¥Ñ  ¥µ…”¼œ¤¤É•ÑÕÉ¸€¥µ…”œì(€€€¥˜€¡ÑåÁ”¹ÍÑ…ÉÑÍ]¥Ñ  Ù¥‘•¼¼œ¤¤É•ÑÕÉ¸€Ù¥‘•¼œì(€€€¥˜€¡ÑåÁ”¹ÍÑ…ÉÑÍ]¥Ñ  …Õ‘¥¼¼œ¤¤É•ÑÕÉ¸€…Õ‘¥¼œì(€€€¥˜€¡ÑåÁ”€ôôô€…ÁÁ±¥…Ñ¥½¸½Á‘˜œñğÑåÁ”¹¥¹±Õ‘•Ì ‘½Õµ•¹Ğœ¤ñğÑåÁ”¹¥¹±Õ‘•Ì İ½Éœ¤ñğÑåÁ”¹¥¹±Õ‘•Ì •á•°œ¤ñğÑåÁ”¹¥¹±Õ‘•Ì Á½İ•ÉÁ½¥¹Ğœ¤¤ì(€€€€€€€É•ÑÕÉ¸€‘½Õµ•¹Ğœì(€€€ô(€€€¥˜€¡ÑåÁ”€ôôô€…ÁÁ±¥…Ñ¥½¸½é¥ÀœñğÑåÁ”€ôôô€…ÁÁ±¥…Ñ¥½¸½àµÉ…Èµ½µÁÉ•ÍÍ•œñğÑåÁ”€ôôô€…ÁÁ±¥…Ñ¥½¸½à´İèµ½µÁÉ•ÍÍ•œ¤ì(€€€€€€€É•ÑÕÉ¸€…É¡¥Ù”œì(€€€ô(€€€¥˜€¡ÑåÁ”¹ÍÑ…ÉÑÍ]¥Ñ  Ñ•áĞ¼œ¤¤É•ÑÕÉ¸€Ñ•áĞœì(€€€É•ÑÕÉ¸€½Ñ¡•Èœì)ô)•áÁ½ÉĞ…Íå¹Œ™Õ¹Ñ¥½¸ÕÁ±½…‘¥±•Q½MÕÁ…‰…Í”¡™¥±”°•¹Ø°µ•Ñ…‘…Ñ„€ôíô¤ì(€€€½¹ÍĞÍÕÁ…‰…Í•UÉ°€ô•¹Ø¹MUA	M}UI0ì(€€€½¹ÍĞÍÕÁ…‰…Í•-•ä€ô•¹Ø¹MUA	M}9=9}-dì(€€€¥˜€ …ÍÕÁ…‰…Í•UÉ°ñğ€…ÍÕÁ…‰…Í•-•ä¤ì(€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È MÕÁ…‰…Í”ªâr“°¢Ğ¢6öç7B–BÒ7'—Fòç&æFöÕUT”B‚“°¢6öç7Bf–ÆTW‡BÒvWDf–ÆTW‡FVç6–öâ†f–ÆR“°¢6öç7Bf–ÆTæÖRÒG¶–GÒâG¶f–ÆTW‡GÖ°¢6öç7Bf–ÆT'VffW"Òv—Bf–ÆRæ'&”'VffW"‚“°¢òòâİÜ˜YÙBˆÛÛœİ\ØY™\ÜH]ØZ]™]Ú
-	Üİ\X˜\ÙU\›KÜİÜ˜YÙKİŒKÛØš™XİÙš[\ËÉÙš[S˜[Y_XÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÂˆ	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Üİ\X˜\ÙRÙ^_Xˆ	Ø\ZÙ^IÎˆİ\X˜\ÙRÙ^Kˆ	ĞÛÛ[U\IÎˆš[K\H	Ø\XØ][Û‹ÛØİ]\İ™X[IÂˆKˆ›ÙNˆš[PY™™\‚ˆJNÂˆYˆ
-]\ØY™\Ü›ÚÊHÂˆÛÛœİ\œ•^H]ØZ]\ØY™\Ü^
-
-NÂˆ›İÈ™]È\œ›ÜŠ1Nˆ	İ\ØY™\Üœİ]\ßH	Ù\œ•^X
-NÂˆBˆÛÛœİİÜ˜YÙU\›H	Üİ\X˜\ÙU\›KÜİÜ˜YÙKİŒKÛØš™XİÜX›XËÙš[\ËÉÙš[S˜[Y_XÂˆËÈ‹ˆà¢6öç7B6öçFVçEG—RÒvWD6öçFVçEG—R†f–ÆR“°¢6öç7B6FVv÷'’ÒÖWFFFæ6FVv÷'’ÇÂªÉÎÂˆÛÛœİYÜÈHY]Y]KYÜÈ×NÂˆÛÛœİ\ØÜš\[ÛˆHY]Y]K™\ØÜš\[Ûˆ	ÉÎÂˆËÈËˆ00¢6öç7BF%&W7Òv—BfWF6‚†G·7W&6UW&ÇÒ÷&W7B÷cöf–ÆW6Â°¢ÖWF†öC¢uõ5BrÀ¢†VFW'3¢°¢tWF†÷&—¦F–öâs¢&V&W"G·7W&6T¶W—ÖÀ¢v–¶W’s¢7W&6T¶W’À¢t6öçFVçBÕG—Rs¢vÆ–6F–öâö§6öârÀ¢u&VfW"s¢w&WGW&ã×&W&W6VçFF–öâp¢ÒÀ¢&öG“¢¥4ôâç7G&–æv–g’‡°¢f–ÆU÷Fƒ¢f–ÆTæÖRÀ¢f–ÆUöæÖS¢f–ÆRææÖRÀ¢f–ÆU÷6—¦S¢f–ÆRç6—¦RÀ¢f–ÆU÷G—S¢f–ÆRçG—RÀ¢6öçFVçE÷G—S¢6öçFVçEG—RÀ¢6FVv÷'“¢6FVv÷'’À¢Fw3¢Fw2À¢FW67&—F–öã¢FW67&—F–öâÀ¢7F÷&vU÷W&Ã¢7F÷&vUW&À¢Ò¢Ò“°¢–b‚F%&W7æö²’°¢6öç7BW'%FW‡BÒv—BF%&W7çFW‡B‚“°¢F‡&÷ræWrW'&÷"†.•Nˆ	Ù”™\Üœİ]\ßH	Ù\œ•^X
-NÂˆBˆÛÛœİ‘]HH]ØZ]”™\ÜšœÛÛŠ
-NÂˆ™]\›ˆÂˆYˆ‘]VÌOËšYYˆ\›ˆİÜ˜YÙU\›ˆ˜[YNˆš[K›˜[YKˆÚ^™Nˆš[KœÚ^™Kˆ\Nˆš[K\KˆÛÛ[İ\NˆÛÛ[\KˆØ]YÛÜNˆØ]YÛÜKˆYÜÎˆYÜËˆ\ØÜš\[Ûˆ\ØÜš\[Û‹ˆÜ™X]YØ]ˆ‘]VÌOË˜Ü™X]YØ]™]È]J
-KÒTÓÔİš[™Ê
-BˆNÂŸB‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈ‰‚‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB™^Ü\Ş[˜È[˜İ[Ûˆ]Y\Qš[\Ê[‹š[\œÈHßJHÂˆÛÛœİİ\X˜\ÙU\›H[‹”ÕTPTÑWÕT“ÂˆÛÛœİİ\X˜\ÙRÙ^HH[‹”ÕTPTÑWĞS“Ó—ÒÑVNÂˆYˆ
-\İ\X˜\ÙU\›\İ\X˜\ÙRÙ^JHÂˆ›İÈ™]È\œ›ÜŠ	Ôİ\X˜\ÙJ®');
+    // å¦‚æœæœ‰æ‰©å±•åï¼Œç›´æ¥ä½¿ç”¨
+    if (file.name && file.name.includes('.')) {
+        return file.name.split('.').pop();
+    }
+    
+    // æ ¹æ® MIME ç±»å‹å›é€€
+    const mimeMap = {
+        'image/': 'jpg',
+        'video/': 'mp4',
+        'audio/': 'mp3',
+        'application/pdf': 'pdf',
+        'application/msword': 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        'application/vnd.ms-excel': 'xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+        'application/vnd.ms-powerpoint': 'ppt',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+        'text/': 'txt',
+        'application/zip': 'zip',
+        'application/x-rar-compressed': 'rar',
+        'application/x-7z-compressed': '7z'
+    };
+    
+    for (const [prefix, ext] of Object.entries(mimeMap)) {
+        if (file.type.startsWith(prefix)) return ext;
+    }
+    return 'bin';
+}
+// åˆ¤æ–­å†…å®¹ç±»å‹
+function getContentType(file) {
+    const type = file.type;
+    if (type.startsWith('image/')) return 'image';
+    if (type.startsWith('video/')) return 'video';
+    if (type.startsWith('audio/')) return 'audio';
+    if (type === 'application/pdf' || type.includes('document') || type.includes('word') || type.includes('excel') || type.includes('powerpoint')) {
+        return 'document';
+    }
+    if (type === 'application/zip' || type === 'application/x-rar-compressed' || type === 'application/x-7z-compressed') {
+        return 'archive';
+    }
+    if (type.startsWith('text/')) return 'text';
+    return 'other';
+}
+export async function uploadFileToSupabase(file, env, metadata = {}) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase æœªé…ç½®');
+    }
+    const id = crypto.randomUUID();
+    const fileExt = getFileExtension(file);
+    const fileName = `${id}.${fileExt}`;
+    const fileBuffer = await file.arrayBuffer();
+    // 1. ä¸Šä¼ åˆ° Storage
+    const uploadResp = await fetch(`${supabaseUrl}/storage/v1/object/files/${fileName}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
+            'Content-Type': file.type || 'application/octet-stream'
+        },
+        body: fileBuffer
+    });
+    if (!uploadResp.ok) {
+        const errText = await uploadResp.text();
+        throw new Error(`ä¸Šä¼ å¤±è´¥: ${uploadResp.status} ${errText}`);
+    }
+    const storageUrl = `${supabaseUrl}/storage/v1/object/public/files/${fileName}`;
+    // 2. åˆ¤æ–­å…ƒæ•°æ®
+    const contentType = getContentType(file);
+    const category = metadata.category || 'æœªåˆ†ç±»';
+    const tags = metadata.tags || [];
+    const description = metadata.description || '';
+    // 3. å†™å…¥æ•°æ®åº“
+    const dbResp = await fetch(`${supabaseUrl}/rest/v1/files`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+            file_path: fileName,
+            file_name: file.name,
+            file_size: file.size,
+            file_type: file.type,
+            content_type: contentType,
+            category: category,
+            tags: tags,
+            description: description,
+            storage_url: storageUrl
+        })
+    });
+    if (!dbResp.ok) {
+        const errText = await dbResp.text();
+        throw new Error(`æ•°æ®åº“å†™å…¥å¤±è´¥: ${dbResp.status} ${errText}`);
+    }
+    const dbData = await dbResp.json();
+    return {
+        id: dbData[0]?.id || id,
+        url: storageUrl,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        content_type: contentType,
+        category: category,
+        tags: tags,
+        description: description,
+        created_at: dbData[0]?.created_at || new Date().toISOString()
+    };
+}
+// ============================================================
+// æŸ¥è¯¢æ–‡ä»¶
+// ============================================================
+export async function queryFiles(env, filters = {}) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase æœªé…ç½®');
     }
     let query = `${supabaseUrl}/rest/v1/files?select=*`;
     if (filters.category) {
@@ -47,7 +153,7 @@ BˆNÂŸB‹ËÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB‹ËÈ‰‚‹
     });
     if (!resp.ok) {
         const errText = await resp.text();
-        throw new Error(`Å: ${resp.status} ${errText}`);
+        throw new Error(`æŸ¥è¯¢å¤±è´¥: ${resp.status} ${errText}`);
     }
     return await resp.json();
 }
