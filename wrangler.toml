@@ -2,13 +2,6 @@ name = "mcp-memory"
 main = "index.js"
 compatibility_date = "2025-07-24"
 
-[build]
-command = "npm run build"
-
-[build.upload]
-format = "modules"
-dir = "."
-
 [vars]
 SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
 
