@@ -1,11 +1,8 @@
 // ============================================================
-// Supabase 存储操作（通用版）
+// Supabase 存储操作（通用版 + 自动创建bucket）
 // ============================================================
-// 根据 MIME 类型获取默认扩展名
 function getFileExtension(file) {
-    if (file.name && file.name.includes('.')) {
-        return file.name.split('.').pop();
-    }
+    if (file.name && file.name.includes('.')) return file.name.split('.').pop();
     const mimeMap = {
         'image/': 'jpg', 'video/': 'mp4', 'audio/': 'mp3',
         'application/pdf': 'pdf', 'application/msword': 'doc',
@@ -17,9 +14,7 @@ function getFileExtension(file) {
         'text/': 'txt', 'application/zip': 'zip',
         'application/x-rar-compressed': 'rar', 'application/x-7z-compressed': '7z'
     };
-    for (const [prefix, ext] of Object.entries(mimeMap)) {
-        if (file.type.startsWith(prefix)) return ext;
-    }
+    for (const [prefix, ext] of Object.entries(mimeMap)) if (file.type.startsWith(prefix)) return ext;
     return 'bin';
 }
 function getContentType(file) {
@@ -32,15 +27,36 @@ function getContentType(file) {
     if (type.startsWith('text/')) return 'text';
     return 'other';
 }
+// 确保bucket存在，不存在则创建
+async function ensureBucket(supabaseUrl, supabaseKey, bucketName) {
+    // 尝试获取bucket信息
+    const checkResp = await fetch(`${supabaseUrl}/storage/v1/bucket/${bucketName}`, {
+        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
+    });
+    if (checkResp.ok) return true;
+    // bucket不存在，创建它
+    const createResp = await fetch(`${supabaseUrl}/storage/v1/bucket`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: bucketName, name: bucketName, public: true })
+    });
+    if (!createResp.ok) {
+        const errText = await createResp.text();
+        throw new Error(`创建bucket失败: ${createResp.status} ${errText}`);
+    }
+    return true;
+}
 export async function uploadFileToSupabase(file, env, metadata = {}) {
     const supabaseUrl = env.SUPABASE_URL;
     const supabaseKey = env.SUPABASE_ANON_KEY;
     if (!supabaseUrl || !supabaseKey) throw new Error('Supabase 未配置');
+    const BUCKET = 'files';
+    await ensureBucket(supabaseUrl, supabaseKey, BUCKET);
     const id = crypto.randomUUID();
     const fileExt = getFileExtension(file);
     const fileName = `${id}.${fileExt}`;
     const fileBuffer = await file.arrayBuffer();
-    const uploadResp = await fetch(`${supabaseUrl}/storage/v1/object/files/${fileName}`, {
+    const uploadResp = await fetch(`${supabaseUrl}/storage/v1/object/${BUCKET}/${fileName}`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey,
@@ -52,7 +68,7 @@ export async function uploadFileToSupabase(file, env, metadata = {}) {
         const errText = await uploadResp.text();
         throw new Error(`上传失败: ${uploadResp.status} ${errText}`);
     }
-    const storageUrl = `${supabaseUrl}/storage/v1/object/public/files/${fileName}`;
+    const storageUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}/${fileName}`;
     const contentType = getContentType(file);
     const category = metadata.category || '未分类';
     const tags = metadata.tags || [];
@@ -98,9 +114,6 @@ export async function queryFiles(env, filters = {}) {
     const resp = await fetch(query, {
         headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
     });
-    if (!resp.ok) {
-        const errText = await resp.text();
-        throw new Error(`查询失败: ${resp.status} ${errText}`);
-    }
+    if (!resp.ok) { const errText = await resp.text(); throw new Error(`查询失败: ${resp.status} ${errText}`); }
     return await resp.json();
 }
