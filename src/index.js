@@ -10,10 +10,7 @@ import { handleCategoryTool } from './tools/category.js';
 import { handleDataTool } from './tools/data.js';
 import { handleAITool } from './tools/ai.js';
 import { handleGitHubTool } from './tools/github.js';
-
-// ============================================================
-// MCP 请求处理器
-// ============================================================
+import { handleDatabaseTool } from './tools/database.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -21,6 +18,7 @@ const handlerMap = {
     'data': handleDataTool,
     'ai': handleAITool,
     'github': handleGitHubTool,
+    'database': handleDatabaseTool,
     'skill': handleSkillManagement
 };
 
@@ -59,11 +57,9 @@ async function handleMCPRequest(body, env) {
         let text = '';
 
         try {
-            // 先查技能表
             const skill = await getSkillByName(env, name);
             
             if (!skill) {
-                // 如果是技能管理工具，特殊处理
                 if (name === 'skill_add' || name === 'skill_update' || name === 'skill_delete' || name === 'skill_list') {
                     text = await handleSkillManagement(name, safeArgs, env);
                 } else {
@@ -100,10 +96,6 @@ async function handleMCPRequest(body, env) {
         error: { code: -32601, message: 'Method not found: ' + method }
     };
 }
-
-// ============================================================
-// 技能管理工具
-// ============================================================
 
 async function handleSkillManagement(name, safeArgs, env) {
     let text = '';
@@ -186,18 +178,12 @@ async function handleSkillManagement(name, safeArgs, env) {
     return text;
 }
 
-// ============================================================
-// Worker 入口
-// ============================================================
-
 export default {
     async fetch(request, env) {
-        // 检查 Supabase 是否配置
         if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
             return buildErrorResponse('Supabase 未配置：请在环境变量中设置 SUPABASE_URL 和 SUPABASE_ANON_KEY', 500);
         }
 
-        // CORS 预检
         if (request.method === 'OPTIONS') {
             return new Response(null, {
                 status: 204,
@@ -212,9 +198,6 @@ export default {
 
         const url = new URL(request.url);
 
-        // ============================================================
-        // 文件上传接口（/upload）
-        // ============================================================
         if (url.pathname === '/upload' && request.method === 'POST') {
             try {
                 const formData = await request.formData();
@@ -240,9 +223,6 @@ export default {
             }
         }
 
-        // ============================================================
-        // MCP 入口
-        // ============================================================
         if (url.pathname === '/mcp') {
             if (request.method === 'GET') {
                 const encoder = new TextEncoder();
@@ -287,9 +267,6 @@ export default {
             return new Response('Method not allowed', { status: 405 });
         }
 
-        // ============================================================
-        // 健康检查
-        // ============================================================
         if (url.pathname === '/' || url.pathname === '/health') {
             const skills = await getEnabledSkills(env);
             return new Response('💚 Ziven MCP Server running (' + skills.length + ' skills | Supabase OK)', {
