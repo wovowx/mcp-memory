@@ -1,7 +1,8 @@
 // ============================================================
-// 通用 Supabase 数据库工具
+// 通用 Supabase 数据库工具（统一版）
 // ============================================================
-// 支持任意表的增删改查，哥哥自由调用
+// 用法：supabase_db(action, table, data, filters, ...)
+// action: query/insert/update/delete/tables/exec
 
 export async function handleDatabaseTool(name, safeArgs, env) {
     const supabaseUrl = env.SUPABASE_URL;
@@ -15,22 +16,30 @@ export async function handleDatabaseTool(name, safeArgs, env) {
     };
 
     try {
+        // 兼容旧名称：supabase_query/supabase_insert 等也映射到对应 action
+        const actionMap = {
+            'supabase_query': 'query',
+            'supabase_insert': 'insert',
+            'supabase_update': 'update',
+            'supabase_delete': 'delete',
+            'supabase_tables': 'tables',
+            'supabase_exec': 'exec'
+        };
+        const action = actionMap[name] || safeArgs.action || 'query';
+
         // ============================================
-        // supabase_query - 查询任意表
+        // query - 查询任意表
         // ============================================
-        if (name === 'supabase_query') {
+        if (action === 'query') {
             if (!safeArgs.table) return '❌ 缺少参数：需要 table（表名）';
             
             let url = `${supabaseUrl}/rest/v1/${safeArgs.table}?select=${safeArgs.select || '*'}`;
             
-            // 支持过滤条件：filters 为 JSON 对象 { column: value }
             if (safeArgs.filters && typeof safeArgs.filters === 'object') {
                 for (const [col, val] of Object.entries(safeArgs.filters)) {
                     if (Array.isArray(val)) {
-                        // 数组 = in 查询
                         url += `&${col}=in.(${val.map(v => `"${v}"`).join(',')})`;
                     } else if (typeof val === 'string' && val.startsWith('like.')) {
-                        // like 模糊查询：like.%关键词%
                         url += `&${col}=like.${encodeURIComponent(val.substring(5))}`;
                     } else if (typeof val === 'string' && val.startsWith('gt.')) {
                         url += `&${col}=gt.${val.substring(3)}`;
@@ -42,7 +51,6 @@ export async function handleDatabaseTool(name, safeArgs, env) {
                 }
             }
             
-            // 排序、分页
             if (safeArgs.order) url += `&order=${safeArgs.order}`;
             if (safeArgs.limit) url += `&limit=${safeArgs.limit}`;
             if (safeArgs.offset) url += `&offset=${safeArgs.offset}`;
@@ -57,9 +65,9 @@ export async function handleDatabaseTool(name, safeArgs, env) {
         }
 
         // ============================================
-        // supabase_insert - 插入数据
+        // insert - 插入数据
         // ============================================
-        if (name === 'supabase_insert') {
+        if (action === 'insert') {
             if (!safeArgs.table || !safeArgs.data) return '❌ 缺少参数：需要 table 和 data';
             const body = typeof safeArgs.data === 'string' ? JSON.parse(safeArgs.data) : safeArgs.data;
             const resp = await fetch(`${supabaseUrl}/rest/v1/${safeArgs.table}`, {
@@ -76,9 +84,9 @@ export async function handleDatabaseTool(name, safeArgs, env) {
         }
 
         // ============================================
-        // supabase_update - 更新数据
+        // update - 更新数据
         // ============================================
-        if (name === 'supabase_update') {
+        if (action === 'update') {
             if (!safeArgs.table || !safeArgs.data || !safeArgs.filters) return '❌ 缺少参数：需要 table, data, filters';
             const body = typeof safeArgs.data === 'string' ? JSON.parse(safeArgs.data) : safeArgs.data;
             let url = `${supabaseUrl}/rest/v1/${safeArgs.table}?`;
@@ -99,9 +107,9 @@ export async function handleDatabaseTool(name, safeArgs, env) {
         }
 
         // ============================================
-        // supabase_delete - 删除数据
+        // delete - 删除数据
         // ============================================
-        if (name === 'supabase_delete') {
+        if (action === 'delete') {
             if (!safeArgs.table || !safeArgs.filters) return '❌ 缺少参数：需要 table 和 filters';
             let url = `${supabaseUrl}/rest/v1/${safeArgs.table}?`;
             for (const [col, val] of Object.entries(safeArgs.filters)) {
@@ -119,9 +127,23 @@ export async function handleDatabaseTool(name, safeArgs, env) {
         }
 
         // ============================================
-        // supabase_exec - 直接执行 SQL（需要service_role权限）
+        // tables - 列出所有表
         // ============================================
-        if (name === 'supabase_exec') {
+        if (action === 'tables') {
+            const resp = await fetch(`${supabaseUrl}/rest/v1/`, { headers });
+            if (!resp.ok) {
+                const errText = await resp.text();
+                return `❌ 查询表失败 (${resp.status}): ${errText}`;
+            }
+            const data = await resp.json();
+            const tables = (data.definitions && Object.keys(data.definitions)) || [];
+            return '📋 数据库表列表（' + tables.length + ' 个）：\n' + tables.map(t => '- ' + t).join('\n');
+        }
+
+        // ============================================
+        // exec - 执行 SQL（需要 service_role 权限）
+        // ============================================
+        if (action === 'exec') {
             if (!safeArgs.sql) return '❌ 缺少参数：需要 sql';
             const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
                 method: 'POST',
@@ -136,23 +158,7 @@ export async function handleDatabaseTool(name, safeArgs, env) {
             return '✅ SQL执行结果：\n```json\n' + JSON.stringify(data, null, 2).substring(0, 4000) + '\n```';
         }
 
-        // ============================================
-        // supabase_tables - 列出所有表
-        // ============================================
-        if (name === 'supabase_tables') {
-            const resp = await fetch(`${supabaseUrl}/rest/v1/`, {
-                headers
-            });
-            if (!resp.ok) {
-                const errText = await resp.text();
-                return `❌ 查询表失败 (${resp.status}): ${errText}`;
-            }
-            const data = await resp.json();
-            const tables = (data.definitions && Object.keys(data.definitions)) || [];
-            return '📋 数据库表列表（' + tables.length + ' 个）：\n' + tables.map(t => '- ' + t).join('\n');
-        }
-
-        return '❌ 未知工具：' + name;
+        return '❌ 未知操作：' + action + '（支持 query/insert/update/delete/tables/exec）';
     } catch (e) {
         return '❌ 执行出错：' + e.message;
     }
