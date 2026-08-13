@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "mkdir -p dist && cp -r src/* dist/"
+    "deploy": "npx wrangler deploy",
+    "dev": "npx wrangler dev"
   }
 }
