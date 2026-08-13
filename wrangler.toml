@@ -2,9 +2,7 @@ name = "mcp-memory"
 main = "src/index.js"
 compatibility_date = "2025-07-24"
 
-[build]
-no_bundle = true
-find_additional_modules = true
+# no_bundle 通过 Cloudflare 控制台构建命令实现：npx wrangler deploy --no-bundle
 
 [vars]
 SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
