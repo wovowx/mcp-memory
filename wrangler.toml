@@ -2,8 +2,13 @@ name = "mcp-memory"
 main = "src/index.js"
 compatibility_date = "2025-07-24"
 
-# 部署模式：Cloudflare 控制台构建命令已设为 npx wrangler deploy --no-bundle
-# 此配置保持 ES Modules 多文件结构
+# no-bundle 模式：保持多文件结构
+# 通过 Cloudflare 控制台构建命令执行 npx wrangler deploy --no-bundle
+
+[[rules]]
+type = "ESModule"
+globs = ["src/**/*.js"]
+fallthrough = true
 
 [vars]
 SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
