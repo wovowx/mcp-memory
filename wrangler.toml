@@ -2,9 +2,6 @@ name = "mcp-memory"
 main = "src/index.js"
 compatibility_date = "2025-07-24"
 
-[build]
-command = "npx wrangler deploy --no-bundle"
-
 [vars]
 SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
 
