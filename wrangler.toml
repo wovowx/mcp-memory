@@ -2,9 +2,9 @@ name = "mcp-memory"
 main = "src/index.js"
 compatibility_date = "2025-07-24"
 
-# === Bundling 配置 ===
-# no-bundle 模式保持多文件结构（配合 Cloudflare 控制台构建命令 --no-bundle）
-# base_dir 默认 = main 入口所在目录（src/），所以 globs 相对于 src/ 写 **/*.js
+# no-bundle 模式保持多文件结构
+# 显式开启 find_additional_modules，遍历 src/ 下所有文件
+find_additional_modules = true
 
 [[rules]]
 type = "ESModule"
