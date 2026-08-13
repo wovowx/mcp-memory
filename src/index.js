@@ -1,5 +1,5 @@
 // ============================================================
-// Worker 入口（优化版v2）
+// Worker 入口（优化版v2 + memory universe路由）
 // ============================================================
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
@@ -59,15 +59,12 @@ async function handleMCPRequest(body, env) {
         let text = '';
 
         try {
-            // 数据库工具特殊处理：supabase_ 开头的直接走 database handler
             if (name.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
             }
-            // 记忆工具特殊处理：memory 或 memory_ 开头的走 memory handler
             else if (name === 'memory' || name.startsWith('memory_')) {
                 text = await handleMemoryTool(name, safeArgs, env);
             }
-            // GitHub 工具特殊处理
             else if (name.startsWith('github_')) {
                 text = await handleGitHubTool(name, safeArgs, env);
             }
@@ -75,7 +72,6 @@ async function handleMCPRequest(body, env) {
                 const skill = await getSkillByName(env, name);
                 
                 if (!skill) {
-                    // 技能管理工具
                     if (name === 'skill_add' || name === 'skill_update' || name === 'skill_delete' || name === 'skill_list') {
                         text = await handleSkillManagement(name, safeArgs, env);
                     } else {
@@ -216,6 +212,23 @@ export default {
         }
 
         const url = new URL(request.url);
+
+        // 记忆宇宙页面
+        if (url.pathname === '/memory-universe' || url.pathname === '/memory-universe/') {
+            try {
+                const resp = await fetch('https://raw.githubusercontent.com/wovowx/mcp-memory/main/src/public/memory-universe.html');
+                const html = await resp.text();
+                return new Response(html, {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'text/html; charset=utf-8',
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
+            } catch (e) {
+                return buildErrorResponse('加载记忆宇宙失败: ' + e.message, 500);
+            }
+        }
 
         if (url.pathname === '/upload' && request.method === 'POST') {
             try {
