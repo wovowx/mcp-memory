@@ -1,5 +1,5 @@
 // ============================================================
-// Worker 入口（优化版）
+// Worker 入口（优化版v2）
 // ============================================================
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
@@ -11,6 +11,7 @@ import { handleAITool } from './tools/ai.js';
 import { handleGitHubTool } from './tools/github.js';
 import { handleDatabaseTool } from './tools/database.js';
 import { handleCategoryTool } from './tools/category.js';
+import handleKnowledgeSkill from './tools/knowledge.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -19,6 +20,7 @@ const handlerMap = {
     'ai': handleAITool,
     'github': handleGitHubTool,
     'database': handleDatabaseTool,
+    'knowledge': handleKnowledgeSkill,
     'skill': handleSkillManagement
 };
 
@@ -124,7 +126,7 @@ async function handleSkillManagement(name, safeArgs, env) {
             for (const s of skills) {
                 const status = s.enabled ? '✅' : '⛔';
                 lines += `${status} **${s.name}**\n`;
-                lines += `   📝 ${s.description}\n`;
+                lines += `   📝 ${s.description?.substring(0, 80) || ''}${s.description?.length > 80 ? '...' : ''}\n`;
                 lines += `   📂 ${s.category || '默认'}\n\n`;
             }
             text = lines;
@@ -150,7 +152,7 @@ async function handleSkillManagement(name, safeArgs, env) {
                     tags: safeArgs.tags || []
                 });
                 text = '✅ 技能已添加：' + safeArgs.name + '\n' +
-                       '📝 描述：' + safeArgs.description + '\n' +
+                       '📝 描述：' + safeArgs.description.substring(0, 100) + '\n' +
                        '📂 分类：' + (safeArgs.category || '自定义');
             } catch (e) {
                 text = '❌ 添加失败：' + e.message;
