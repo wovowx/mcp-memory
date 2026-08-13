@@ -1,16 +1,16 @@
 // ============================================================
-// Worker 入口
+// Worker 入口（优化版）
 // ============================================================
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
 import { uploadFileToSupabase } from './utils/storage.js';
 import { getEnabledSkills, getSkillByName, addSkill, updateSkill, deleteSkill } from './utils/skills.js';
-import { handleMemoryTool } from './tools/memory.js';
-import { handleCategoryTool } from './tools/category.js';
+import { handleMemoryTool } from './tools/memory_unified.js';
 import { handleDataTool } from './tools/data.js';
 import { handleAITool } from './tools/ai.js';
 import { handleGitHubTool } from './tools/github.js';
 import { handleDatabaseTool } from './tools/database.js';
+import { handleCategoryTool } from './tools/category.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -60,10 +60,20 @@ async function handleMCPRequest(body, env) {
             // 数据库工具特殊处理：supabase_ 开头的直接走 database handler
             if (name.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
-            } else {
+            }
+            // 记忆工具特殊处理：memory 或 memory_ 开头的走 memory handler
+            else if (name === 'memory' || name.startsWith('memory_')) {
+                text = await handleMemoryTool(name, safeArgs, env);
+            }
+            // GitHub 工具特殊处理
+            else if (name.startsWith('github_')) {
+                text = await handleGitHubTool(name, safeArgs, env);
+            }
+            else {
                 const skill = await getSkillByName(env, name);
                 
                 if (!skill) {
+                    // 技能管理工具
                     if (name === 'skill_add' || name === 'skill_update' || name === 'skill_delete' || name === 'skill_list') {
                         text = await handleSkillManagement(name, safeArgs, env);
                     } else {
@@ -163,6 +173,7 @@ async function handleSkillManagement(name, safeArgs, env) {
                 if (safeArgs.category) updates.category = safeArgs.category;
                 if (safeArgs.enabled !== undefined) updates.enabled = safeArgs.enabled;
                 if (safeArgs.handler_config) updates.handler_config = safeArgs.handler_config;
+                if (safeArgs.handler_type) updates.handler_type = safeArgs.handler_type;
                 
                 await updateSkill(env, safeArgs.name, updates);
                 text = '✅ 技能已更新：' + safeArgs.name;
@@ -209,21 +220,14 @@ export default {
                 const formData = await request.formData();
                 const file = formData.get('file');
 
-                if (!file) {
-                    return buildErrorResponse('没有文件');
-                }
-
-                if (file.size > 50 * 1024 * 1024) {
-                    return buildErrorResponse('文件太大，最大 50MB');
-                }
+                if (!file) return buildErrorResponse('没有文件');
+                if (file.size > 50 * 1024 * 1024) return buildErrorResponse('文件太大，最大 50MB');
 
                 const blockedTypes = ['application/x-executable', 'application/x-msdownload', 'text/html', 'application/javascript'];
-                if (blockedTypes.includes(file.type)) {
-                    return buildErrorResponse('不支持该文件类型，为了安全请上传常规文件');
-                }
+                if (blockedTypes.includes(file.type)) return buildErrorResponse('不支持该文件类型');
+                
                 const result = await uploadFileToSupabase(file, env);
                 return jsonResponse(result);
-
             } catch (e) {
                 return buildErrorResponse(e.message, 500);
             }
@@ -237,11 +241,8 @@ export default {
                         controller.enqueue(encoder.encode('event: message\n'));
                         controller.enqueue(encoder.encode('data: {"type":"connected"}\n\n'));
                         const keepAlive = setInterval(() => {
-                            try {
-                                controller.enqueue(encoder.encode(': keepalive\n\n'));
-                            } catch {
-                                clearInterval(keepAlive);
-                            }
+                            try { controller.enqueue(encoder.encode(': keepalive\n\n')); }
+                            catch { clearInterval(keepAlive); }
                         }, 30000);
                         return () => clearInterval(keepAlive);
                     }
@@ -264,8 +265,7 @@ export default {
                     return jsonResponse(result);
                 } catch (e) {
                     return jsonResponse({
-                        jsonrpc: '2.0',
-                        id: null,
+                        jsonrpc: '2.0', id: null,
                         error: { code: -32700, message: 'Parse error: ' + e.message }
                     }, 400);
                 }
@@ -277,10 +277,7 @@ export default {
             const skills = await getEnabledSkills(env);
             return new Response('💚 Ziven MCP Server running (' + skills.length + ' skills | Supabase OK)', {
                 status: 200,
-                headers: {
-                    'Content-Type': 'text/plain',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' }
             });
         }
 
