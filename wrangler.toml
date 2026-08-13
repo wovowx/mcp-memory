@@ -2,6 +2,9 @@ name = "mcp-memory"
 main = "src/index.js"
 compatibility_date = "2025-07-24"
 
+# 保留 Cloudflare 控制台配置的环境变量（GITHUB_REPO/GITHUB_TOKEN/AGNES_API_KEY等）
+keep_vars = true
+
 # no-bundle 模式保持多文件结构
 # 显式开启 find_additional_modules，遍历 src/ 下所有文件
 find_additional_modules = true
