@@ -57,20 +57,25 @@ async function handleMCPRequest(body, env) {
         let text = '';
 
         try {
-            const skill = await getSkillByName(env, name);
-            
-            if (!skill) {
-                if (name === 'skill_add' || name === 'skill_update' || name === 'skill_delete' || name === 'skill_list') {
-                    text = await handleSkillManagement(name, safeArgs, env);
-                } else {
-                    text = '❌ 未知工具：' + name;
-                }
+            // 数据库工具特殊处理：supabase_ 开头的直接走 database handler
+            if (name.startsWith('supabase_')) {
+                text = await handleDatabaseTool(name, safeArgs, env);
             } else {
-                const handler = handlerMap[skill.handler_config?.handler];
-                if (handler) {
-                    text = await handler(name, safeArgs, env);
+                const skill = await getSkillByName(env, name);
+                
+                if (!skill) {
+                    if (name === 'skill_add' || name === 'skill_update' || name === 'skill_delete' || name === 'skill_list') {
+                        text = await handleSkillManagement(name, safeArgs, env);
+                    } else {
+                        text = '❌ 未知工具：' + name;
+                    }
                 } else {
-                    text = '❌ 技能类型未实现：' + skill.handler_type;
+                    const handler = handlerMap[skill.handler_config?.handler];
+                    if (handler) {
+                        text = await handler(name, safeArgs, env);
+                    } else {
+                        text = '❌ 技能类型未实现：' + skill.handler_type;
+                    }
                 }
             }
         } catch (e) {
@@ -157,6 +162,7 @@ async function handleSkillManagement(name, safeArgs, env) {
                 }
                 if (safeArgs.category) updates.category = safeArgs.category;
                 if (safeArgs.enabled !== undefined) updates.enabled = safeArgs.enabled;
+                if (safeArgs.handler_config) updates.handler_config = safeArgs.handler_config;
                 
                 await updateSkill(env, safeArgs.name, updates);
                 text = '✅ 技能已更新：' + safeArgs.name;
