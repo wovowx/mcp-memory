@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Memory Universe</title>
+<style>
+body{margin:0;overflow:hidden;background:#02040f}
+canvas{width:100vw;height:100vh}
+#title{position:fixed;top:20px;left:50%;transform:translateX(-50%);font-family:Great Vibes,cursive;font-size:32px;color:rgba(255,255,255,0.7);z-index:100}
+#panel{position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,30,0.9);padding:20px;transform:translateY(100%);transition:transform 0.3s;z-index:200;border-radius:20px 20px 0 0}
+#panel.active{transform:translateY(0)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="title">Liuliu & Ziven</div>
+<div id="panel"><h3 id="pt"></h3><p id="pc"></p></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,2000),renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+const g=new THREE.Group();scene.add(g);
+const stars=new THREE.Points(new THREE.BufferGeometry().setFromPoints(Array.from({length:9000},()=>new THREE.Vector3((Math.random()-.5)*800,(Math.random()-.5)*800,(Math.random()-.5)*800)),new THREE.PointsMaterial({color:0xffffff,size:2}));
+g.add(stars);
+const mem=new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-8,4,3),new THREE.Vector3(8,-4,2),new THREE.Vector3(0,6,-6)]),new THREE.PointsMaterial({color:0xff9f43,size:10}));
+g.add(mem);
+function animate(){requestAnimationFrame(animate);g.rotation.y+=.001;renderer.render(scene,camera);}animate();
+</script>
+</body>
+</html>
