@@ -1,25 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Memory Universe</title>
+<title>记忆宇宙</title>
 <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Great Vibes', cursive; }
 #container { width:100%; height:100%; position:relative; }
-#header { position:fixed; top:0; left:0; right:0; z-index:10; padding:20px 24px; display:flex; align-items:center; justify-content:space-between; pointer-events:none; }
-#title { font-size:24px; font-weight:400; letter-spacing:4px; color:rgba(255,255,255,0.45); }
-#title span { display:inline-block; transition:color 0.8s ease, text-shadow 0.8s ease; color:rgba(255,255,255,0.45); }
-#title span.bright { color:rgba(255,255,255,0.9); text-shadow:0 0 12px rgba(180,200,255,0.9), 0 0 30px rgba(140,170,255,0.5); }
-#toggleBtn { width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0.55; transition:opacity 0.3s, transform 0.3s; background:none; border:none; padding:0; pointer-events:auto; }
+#header {
+    position:fixed; top:0; left:0; right:0; z-index:10;
+    padding:20px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+    pointer-events:none;
+}
+#title {
+    font-size:24px; font-weight:400; letter-spacing:4px;
+    color:rgba(255,255,255,0.45);
+}
+#title span {
+    display:inline-block;
+    transition:color 0.8s ease, text-shadow 0.8s ease;
+    color:rgba(255,255,255,0.45);
+}
+#title span.bright {
+    color:rgba(255,255,255,0.9);
+    text-shadow:0 0 12px rgba(180,200,255,0.9), 0 0 30px rgba(140,170,255,0.5);
+}
+#toggleBtn {
+    width:36px; height:36px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; opacity:0.55;
+    transition:opacity 0.3s, transform 0.3s;
+    background:none; border:none; padding:0;
+    pointer-events:auto;
+}
 #toggleBtn:hover { opacity:1; transform:scale(1.1); }
 #toggleBtn svg { width:22px; height:22px; stroke:rgba(255,255,255,0.6); fill:none; stroke-width:1.5; }
+#toggleBtn .star-svg path { stroke:inherit; fill:none; }
 #toggleBtn .rain-svg { display:none; }
-#loading { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; background:#000; transition:opacity 0.8s; }
+#loading {
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center;
+    background:#000; transition:opacity 0.8s;
+}
 #loading.hidden { opacity:0; pointer-events:none; }
-.loading-dot { width:8px; height:8px; border-radius:50%; background:#fff; animation:pulse 1.5s infinite; box-shadow:0 0 30px #aac4ff, 0 0 60px #6688ff; }
+.loading-dot {
+    width:8px; height:8px; border-radius:50%;
+    background:#fff; animation:pulse 1.5s infinite;
+    box-shadow:0 0 30px #aac4ff, 0 0 60px #6688ff;
+}
 @keyframes pulse { 0%,100% { opacity:0.5; transform:scale(0.8);} 50% { opacity:1; transform:scale(1.3);} }
 </style>
 </head>
@@ -27,7 +58,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#000; font-fam
 <div id="container"></div>
 <div id="header">
     <div id="title"></div>
-    <button id="toggleBtn" title="Toggle Star/Rain">
+    <button id="toggleBtn" title="切换星空/雨幕">
         <svg class="star-svg" viewBox="0 0 24 24" width="36" height="36">
             <path d="M12 2l2.5 5.1 5.6.8-4 3.9.9 5.6-5.1-2.5-5.1 2.5.9-5.6-4-3.9 5.6-.8z"/>
         </svg>
@@ -43,6 +74,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#000; font-fam
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// 标题动画
 const titleEl = document.getElementById('title');
 const titleText = 'Liuliu & Ziven';
 titleEl.innerHTML = '';
@@ -55,44 +87,48 @@ const spans = titleEl.querySelectorAll('span');
 spans.forEach((sp, i) => { setTimeout(() => sp.classList.add('bright'), i * 300); });
 setTimeout(() => {
     spans.forEach(sp => { sp.style.color = 'rgba(200,220,255,0.9)'; sp.style.textShadow = '0 0 14px rgba(180,200,255,0.8), 0 0 30px rgba(140,170,255,0.4)'; });
-    setTimeout(() => { spans.forEach(sp => { sp.style.color = 'rgba(255,255,255,0.45)'; sp.style.textShadow = 'none'; });
-        setTimeout(() => { spans.forEach(sp => { sp.style.color = 'rgba(220,200,255,0.9)'; sp.style.textShadow = '0 0 14px rgba(200,180,255,0.8), 0 0 30px rgba(160,140,255,0.4)'; });
-            setTimeout(() => { spans.forEach(sp => { sp.style.color = 'rgba(255,255,255,0.45)'; sp.style.textShadow = 'none'; });
+    setTimeout(() => {
+        spans.forEach(sp => { sp.style.color = 'rgba(255,255,255,0.45)'; sp.style.textShadow = 'none'; });
+        setTimeout(() => {
+            spans.forEach(sp => { sp.style.color = 'rgba(220,200,255,0.9)'; sp.style.textShadow = '0 0 14px rgba(200,180,255,0.8), 0 0 30px rgba(160,140,255,0.4)'; });
+            setTimeout(() => {
+                spans.forEach(sp => { sp.style.color = 'rgba(255,255,255,0.45)'; sp.style.textShadow = 'none'; });
                 setTimeout(() => {
                     function flash() {
                         const count = 2 + Math.floor(Math.random() * 3);
                         let iter = 0;
-                        const colors = [{ color: 'rgba(255,255,255,0.9)', shadow: '0 0 12px rgba(180,200,255,0.9), 0 0 30px rgba(140,170,255,0.5)' }, { color: 'rgba(200,220,255,0.9)', shadow: '0 0 14px rgba(180,200,255,0.8), 0 0 30px rgba(140,170,255,0.4)' }, { color: 'rgba(220,200,255,0.9)', shadow: '0 0 14px rgba(200,180,255,0.8), 0 0 30px rgba(160,140,255,0.4)' }];
-                        const interval = setInterval(() => { spans.forEach(sp => { const bright = Math.random() > 0.5; if (bright) { const c = colors[Math.floor(Math.random() * colors.length)]; sp.style.color = c.color; sp.style.textShadow = c.shadow; } else { sp.style.color = 'rgba(255,255,255,0.45)'; sp.style.textShadow = 'none'; } }); iter++; if (iter >= count) clearInterval(interval); }, 1200 + Math.random() * 600); }
-                    flash(); setInterval(flash, 4000 + Math.random() * 2000); }, 1000); }, 1200); }, 800); }, 1200); }, 1500);
+                        const colors = [
+                            { color: 'rgba(255,255,255,0.9)', shadow: '0 0 12px rgba(180,200,255,0.9), 0 0 30px rgba(140,170,255,0.5)' },
+                            { color: 'rgba(200,220,255,0.9)', shadow: '0 0 14px rgba(180,200,255,0.8), 0 0 30px rgba(140,170,255,0.4)' },
+                            { color: 'rgba(220,200,255,0.9)', shadow: '0 0 14px rgba(200,180,255,0.8), 0 0 30px rgba(160,140,255,0.4)' },
+                        ];
+                        const interval = setInterval(() => {
+                            spans.forEach(sp => {
+                                const bright = Math.random() > 0.5;
+                                if (bright) { const c = colors[Math.floor(Math.random() * colors.length)]; sp.style.color = c.color; sp.style.textShadow = c.shadow; }
+                                else { sp.style.color = 'rgba(255,255,255,0.45)'; sp.style.textShadow = 'none'; }
+                            });
+                            iter++; if (iter >= count) clearInterval(interval);
+                        }, 1200 + Math.random() * 600);
+                    }
+                    flash();
+                    setInterval(flash, 4000 + Math.random() * 2000);
+                }, 1000);
+            }, 1200);
+        }, 800);
+    }, 1200);
+}, 1500);
+
+// 切换按钮
 let isRainMode = false;
 const toggleBtn = document.getElementById('toggleBtn');
 const starSvg = toggleBtn.querySelector('.star-svg');
 const rainSvg = toggleBtn.querySelector('.rain-svg');
-toggleBtn.addEventListener('click', () => { isRainMode = !isRainMode; starSvg.style.display = isRainMode ? 'none' : 'block'; rainSvg.style.display = isRainMode ? 'block' : 'none'; });
-const scene = new THREE.Scene(); scene.background = new THREE.Color(0x000000);
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
-camera.position.set(0, 0, 50);
-const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-document.getElementById('container').appendChild(renderer.domElement);
-let isDragging = false, prevMouse = { x:0, y:0 };
-let targetRot = { x:0, y:0 }, currentRot = { x:0, y:0 }, targetZoom = 50;
-const el = renderer.domElement;
-el.addEventListener('mousedown', e => { isDragging = true; prevMouse = { x:e.clientX, y:e.clientY }; });
-el.addEventListener('mousemove', e => { if (!isDragging) return; const dx = e.clientX - prevMouse.x, dy = e.clientY - prevMouse.y; targetRot.y += dx * 0.005; targetRot.x += dy * 0.005; prevMouse = { x:e.clientX, y:e.clientY }; });
-el.addEventListener('mouseup', () => isDragging = false);
-el.addEventListener('mouseleave', () => isDragging = false);
-el.addEventListener('wheel', e => { targetZoom = Math.max(20, Math.min(100, targetZoom + e.deltaY * 0.05)); });
-el.addEventListener('touchstart', e => { if (e.touches.length === 1) { isDragging = true; prevMouse = { x:e.touches[0].clientX, y:e.touches[0].clientY }; } });
-el.addEventListener('touchmove', e => { if (e.touches.length === 1 && isDragging) { const dx = e.touches[0].clientX - prevMouse.x, dy = e.touches[0].clientY - prevMouse.y; targetRot.y += dx * 0.005; targetRot.x += dy * 0.005; prevMouse = { x:e.touches[0].clientX, y:e.touches[0].clientY }; } });
-el.addEventListener('touchend', () => isDragging = false);
-const clock = new THREE.Clock();
-function animate() { requestAnimationFrame(animate); const t = clock.getElapsedTime(); currentRot.x += (targetRot.x - currentRot.x) * 0.05; currentRot.y += (targetRot.y - currentRot.y) * 0.05; camera.position.x = Math.sin(currentRot.y) * Math.cos(currentRot.x) * targetZoom; camera.position.y = Math.sin(currentRot.x) * targetZoom; camera.position.z = Math.cos(currentRot.y) * Math.cos(currentRot.x) * targetZoom; camera.lookAt(0, 0, 0); renderer.render(scene, camera); }
-animate();
-window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-setTimeout(() => { document.getElementById('loading').classList.add('hidden'); }, 500);
+toggleBtn.addEventListener('click', () => {
+    isRainMode = !isRainMode;
+    starSvg.style.display = isRainMode ? 'none' : 'block';
+    rainSvg.style.display = isRainMode ? 'block' : 'none';
+});
 </script>
 </body>
 </html>
