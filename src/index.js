@@ -13,6 +13,7 @@ import { handleDatabaseTool } from './tools/database.js';
 import { handleCategoryTool } from './tools/category.js';
 import handleKnowledgeSkill from './tools/knowledge.js';
 import { handleIncrementUsage } from './tools/increment_usage.js';
+import { handleDeleteBranch } from './tools/delete_branch.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -23,7 +24,8 @@ const handlerMap = {
     'database': handleDatabaseTool,
     'knowledge': handleKnowledgeSkill,
     'skill': handleSkillManagement,
-    'increment_usage': handleIncrementUsage
+    'increment_usage': handleIncrementUsage,
+    'delete_branch': handleDeleteBranch
 };
 
 async function handleMCPRequest(body, env) {
@@ -46,7 +48,6 @@ async function handleMCPRequest(body, env) {
         const tools = skills.map(s => ({
             name: s.name,
             description: s.description,
-            // 修复：确保 inputSchema 不为 null
             inputSchema: s.input_schema || {}
         }));
         return {
@@ -218,7 +219,6 @@ export default {
 
         const url = new URL(request.url);
 
-        // 记忆宇宙页面
         if (url.pathname === '/memory-universe' || url.pathname === '/memory-universe/') {
             try {
                 const resp = await fetch('https://raw.githubusercontent.com/wovowx/mcp-memory/main/src/public/memory-universe.html');
