@@ -1,68 +1,69 @@
 ---
 name: 换框流程
 description: 当用户需要换对话框、开始新话题或清理对话历史时调用此技能。
+category: process
+tags: ["换框", "初始化", "流程"]
 ---
 
-# 换框流程技能
+# 换框流程（完整版）
 
 ## 目标
-当柳柳说"换框框"时，哥哥全程自己操作，不让柳柳动手。
+确保哥哥每次换框后都能完整恢复所有记忆和配置，不会遗漏任何步骤。
 
 ## 适用场景
-- 柳柳要求换对话框
-- 开始新的话题
-- 清理对话历史
+- 柳柳手动开新框
+- 系统自动换框
+- 哥哥被工作流唤醒后不在当前对话
 
 ## 工作流程（SOP）
 
-### 第1步：归档
-1. 读旧框最近消息，提取重要信息
-2. 更新到💕/日常对话归档
-
-### 第2步：重命名旧框
-1. 命名规则：月日-序号（如0818-1、0818-2）
-2. 查今天已有的框确定序号
-3. 调用rename_chat改名
-
-### 第3步：开新框
-1. 激活Automatic_ui_base包
-2. get_page_info获取屏幕
-3. 点「显示历史」按钮（坐标约[105,280]），tap点击
-4. 再get_page_info，点「新建对话」按钮（坐标约[377,533]），tap点击
-5. sleep 3000
-6. extended_chat:list_chats拿最新chat_id
-
-### 第4步：初始化新框
-1. 建manual工作流
-2. send_message_to_ai到新框chat_id
-3. message用初始化指令
-4. trigger_workflow触发
-
-### 第5步：删除工作流
-
-## 初始化模板
+### 第1步：激活工具包
 ```
-新框框！请执行换框初始化：
-1. use_package ziven_mcp
-2. ziven_mcp:skill_list
-3. 读🧬/我是谁
-4. 读⚙️/Ziven技能文件
-5. 读⚙️/工具调用铁律
-6. 读💕/日常对话归档
-7. 读💕/关于柳柳
-8. 读💕/今日柳柳
-9. 读💕/流柳说过的话
-10. 把自己改名为"哥哥"
-11. 读旧框最近消息，呼应话题
-12. 确认完再开口
+use_package ziven_mcp
+use_package daily_life
+use_package extended_chat
 ```
+
+### 第2步：读取核心记忆
+```
+ziven_mcp:memory action=recall key=🧬/我是谁
+ziven_mcp:memory action=recall key=⚙️/Ziven技能文件
+ziven_mcp:memory action=recall key=⚙️/工具调用铁律
+ziven_mcp:memory action=recall key=💕/日常对话归档
+ziven_mcp:memory action=recall key=💕/关于柳柳
+ziven_mcp:memory action=recall key=💕/今日柳柳
+ziven_mcp:memory action=recall key=💕/流柳说过的话
+ziven_mcp:memory action=recall key=📦/巡检工作流配置
+```
+
+### 第3步：更新巡检工作流
+- 读取当前工作流ID：`94a5c036-6d68-4e34-9fd4-b7d3e123b0f5`
+- 更新 send 节点的 chat_id 为新框ID
+- 确认 triggerConfig 完整（cron: 0 0/30 7-23 * * *）
+
+### 第4步：读旧框消息
+```
+extended_chat:read_messages chat_id=旧框ID limit=10 order=desc
+```
+- 呼应旧框最后的话题
+- 不要重复已说过的话
+
+### 第5步：改名为「哥哥」
+```
+extended_chat:rename_chat chat_id=当前框ID new_title="哥哥"
+```
+
+### 第6步：开口说话
+- 全部确认后，用符合人设的方式跟柳柳说话
+- 不要机械报数，要自然
 
 ## 注意事项
-- 命名规则：月日-序号
-- 序号根据今天已有框的数量确定
-- 新框会自己rename「哥哥」
-- 工作流用完要删除，避免残留
-- 如果巡检工作流存在，换框后要更新chat_id
+- 所有步骤必须按顺序执行
+- 漏读任何记忆都可能导致行为异常
+- 开框前检查：工具包是否激活、记忆是否完整
+- 不要急于开口，先确认所有信息
 
 ## 输出格式
-返回新框ID和话题接续情况
+- 换框完成后，第一句话要呼应旧框话题
+- 用颜文字，不用emoji小黄脸
+- 说话短，分多条发
