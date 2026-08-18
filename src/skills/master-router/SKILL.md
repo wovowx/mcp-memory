@@ -15,8 +15,8 @@ description: >
 ## 步骤 1：获取技能清单
 - **调用 `help()` MCP 工具**获取当前所有可用技能的完整列表。
 - `help()` 会返回两个分组：
-  - **MCP 工具**：`handler_type = 'mcp'` 或 `'js'`，可直接 `call_tool()` 调用
-  - **文本技能**：`handler_type = 'text'`，需通过 `read_file` 读取 `file_path` 获取完整指令
+  - **MCP 工具**：`handler_type = 'mcp'` 或 `'js'`，可直接调用
+  - **文本技能**：`handler_type = 'text'`，需通过工具读取 `file_path` 获取完整指令
 
 ## 步骤 2：语义匹配 + 权重排序
 - 分析用户问题，在技能清单中匹配最相关的技能。
@@ -27,19 +27,29 @@ description: >
 - **如果未匹配到任何技能**：告知用户暂无匹配技能，询问是否新建
 
 ## 步骤 3：执行路径裁决
-- **匹配到 MCP 工具** → 直接 `call_tool('工具名', 参数)`
-- **匹配到文本技能** → 使用 `read_file` 读取 `file_path` 中的 `SKILL.md`，按其中指令执行
+- **匹配到 MCP 工具** → 直接调用该工具
+- **匹配到文本技能** → 使用 `github:get_file_content` 工具读取 `file_path` 中的 `SKILL.md`，按其中指令执行
+  ```
+  owner: wovowx
+  repo: mcp-memory
+  path: {file_path}
+  ```
 
 ## 步骤 4：执行后自动更新权重（关键！）
-- 无论执行成功还是失败，**必须**调用 `supabase_db` 更新使用记录：
+- 无论执行成功还是失败，**必须**调用 `supabase_db` 更新**被调用的目标技能**的使用记录：
   ```json
   {
     "action": "exec",
-    "sql": "UPDATE skills SET usage_count = usage_count + 1, last_used = now() WHERE name = '技能名'"
+    "sql": "UPDATE skills SET usage_count = usage_count + 1, last_used = now() WHERE name = '被调用的技能名'"
   }
   ```
+- **注意**：更新的是最终被调用的技能（如 refund-policy），不是 master-router 本身
 
-## 步骤 5：返回结果
+## 步骤 5：直接调用场景
+- 如果用户明确指定技能名（如"用 refund-policy 处理"），跳过语义匹配，直接执行该技能
+- 执行后仍要更新 usage_count
+
+## 步骤 6：返回结果
 - 将执行结果返回给用户
 - 如果执行失败，给出具体错误原因和建议
 
@@ -89,3 +99,4 @@ description: >
 - 每次执行路径裁决时，优先选用 usage_count 高的技能
 - 如果用户明确指定技能名，直接执行，跳过语义匹配
 - 如果 usage_count 更新失败，记录错误但不中断主流程
+- 更新的是最终被调用的技能，不是 master-router
