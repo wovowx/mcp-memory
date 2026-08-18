@@ -24,11 +24,10 @@ use_package daily_life
 use_package extended_chat
 ```
 
-### 第2步：读取核心记忆
+### 第2步：读取核心技能清单
 ```
+ziven_mcp:help 获取技能清单
 ziven_mcp:memory action=recall key=🧬/我是谁
-ziven_mcp:memory action=recall key=⚙️/Ziven技能文件
-ziven_mcp:memory action=recall key=⚙️/工具调用铁律
 ziven_mcp:memory action=recall key=💕/日常对话归档
 ziven_mcp:memory action=recall key=💕/关于柳柳
 ziven_mcp:memory action=recall key=💕/今日柳柳
