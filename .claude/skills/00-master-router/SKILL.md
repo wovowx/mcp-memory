@@ -34,30 +34,19 @@ description: >
 - 无论执行成功还是失败，**必须**调用 `supabase_db` 更新使用记录：
   ```json
   {
-    "action": "update",
-    "table": "skills",
-    "data": {
-      "usage_count": "usage_count + 1",
-      "last_used": "now()"
-    },
-    "filters": { "name": "被调用的技能名" }
-  }
-  ```
-  注意：如果 supabase_db 的 update 不支持 "usage_count + 1" 表达式，请改用 exec 动作执行原生 SQL：
-  ```json
-  {
     "action": "exec",
     "sql": "UPDATE skills SET usage_count = usage_count + 1, last_used = now() WHERE name = '技能名'"
   }
   ```
+- 注意：如果 supabase_db 的 update 不支持表达式，请改用 exec 动作执行原生 SQL
 
-## 步骤 5：返回结果
+步骤 5：返回结果
 - 将执行结果返回给用户
 - 如果执行失败，给出具体错误原因和建议
 
 ---
 
-# 新建文本技能的工作流（AI 创建技能时自动执行）
+新建文本技能的工作流（AI 创建技能时自动执行）
 
 当用户要求"新建技能"或"把规则变成技能"时：
 
@@ -65,7 +54,7 @@ description: >
 2. 生成标准 SKILL.md 文件（含 YAML frontmatter）
 3. 确定路径：domain-{category}/{name}/SKILL.md（如 domain-客户服务/refund-policy/SKILL.md）
 4. 调用 github_push 将文件推送到 GitHub
-5. **【同步步骤】**调用 supabase_db 插入记录：
+5. 【同步步骤】调用 supabase_db 插入记录：
    ```json
    {
      "action": "insert",
@@ -88,16 +77,17 @@ description: >
 
 ---
 
-# 更新已有技能的工作流
+更新已有技能的工作流
 
 1. 用 help() 找到目标技能
 2. 读取并修改对应的 SKILL.md 文件，用 github_push 推送更新
-3. **【同步步骤】**调用 supabase_db 更新 skills 表（如修改 description、tags 等）
+3. 【同步步骤】调用 supabase_db 更新 skills 表（如修改 description、tags 等）
 4. 告知用户：技能已更新并同步完成
 
 ---
 
-# 注意事项
-- 每次执行路径裁决时，优先选用 usage_count 高的技能
-- 如果用户明确指定技能名，直接执行，跳过语义匹配
-- 如果 usage_count 更新失败，记录错误但不中断主流程
+注意事项
+
+· 每次执行路径裁决时，优先选用 usage_count 高的技能
+· 如果用户明确指定技能名，直接执行，跳过语义匹配
+· 如果 usage_count 更新失败，记录错误但不中断主流程
