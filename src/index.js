@@ -46,7 +46,8 @@ async function handleMCPRequest(body, env) {
         const tools = skills.map(s => ({
             name: s.name,
             description: s.description,
-            inputSchema: s.input_schema
+            // 修复：确保 inputSchema 不为 null
+            inputSchema: s.input_schema || {}
         }));
         return {
             jsonrpc: '2.0',
