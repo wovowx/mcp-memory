@@ -21,7 +21,8 @@ export async function handleDeleteBranch(name, safeArgs, env) {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${githubToken}`,
-            'Accept': 'application/vnd.github.v3+json'
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Ziven-MCP-Server'
         }
     });
     
