@@ -36,18 +36,15 @@ description: >
   ```
 
 ## 步骤 4：执行后自动更新权重（关键！）
-- 无论执行成功还是失败，**必须**调用 `supabase_db` 更新**被调用的目标技能**的使用记录：
+- 无论执行成功还是失败，**必须**调用 `increment_usage` 工具更新**被调用的目标技能**的使用记录：
   ```json
-  {
-    "action": "exec",
-    "sql": "UPDATE skills SET usage_count = usage_count + 1, last_used = now() WHERE name = '被调用的技能名'"
-  }
+  {"name": "increment_usage", "arguments": {"name": "被调用的技能名"}}
   ```
-- **注意**：更新的是最终被调用的技能（如 refund-policy），不是 master-router 本身
+- **注意**：更新的是最终被调用的技能（如 ds_quota、recall），不是 master-router 本身
 
 ## 步骤 5：直接调用场景
-- 如果用户明确指定技能名（如"用 refund-policy 处理"），跳过语义匹配，直接执行该技能
-- 执行后仍要更新 usage_count
+- 如果用户明确指定技能名（如"用 ds_quota 查余额"），跳过语义匹配，直接执行该技能
+- 执行后仍要调用 `increment_usage` 更新 usage_count
 
 ## 步骤 6：返回结果
 - 将执行结果返回给用户
@@ -100,3 +97,4 @@ description: >
 - 如果用户明确指定技能名，直接执行，跳过语义匹配
 - 如果 usage_count 更新失败，记录错误但不中断主流程
 - 更新的是最终被调用的技能，不是 master-router
+- 使用 `increment_usage` 工具，不要尝试执行 SQL

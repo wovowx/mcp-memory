@@ -12,6 +12,7 @@ import { handleGitHubTool } from './tools/github.js';
 import { handleDatabaseTool } from './tools/database.js';
 import { handleCategoryTool } from './tools/category.js';
 import handleKnowledgeSkill from './tools/knowledge.js';
+import { handleIncrementUsage } from './tools/increment_usage.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -21,7 +22,8 @@ const handlerMap = {
     'github': handleGitHubTool,
     'database': handleDatabaseTool,
     'knowledge': handleKnowledgeSkill,
-    'skill': handleSkillManagement
+    'skill': handleSkillManagement,
+    'increment_usage': handleIncrementUsage
 };
 
 async function handleMCPRequest(body, env) {
@@ -74,6 +76,8 @@ async function handleMCPRequest(body, env) {
                 if (!skill) {
                     if (name === 'skill_add' || name === 'skill_update' || name === 'skill_delete' || name === 'skill_list') {
                         text = await handleSkillManagement(name, safeArgs, env);
+                    } else if (name === 'increment_usage') {
+                        text = await handleIncrementUsage(name, safeArgs, env);
                     } else {
                         text = '❌ 未知工具：' + name;
                     }
