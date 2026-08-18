@@ -107,8 +107,6 @@ export async function handleAITool(name, safeArgs, env) {
         const skills = await getEnabledSkills(env);
         const toolHelp = {};
         for (const s of skills) toolHelp[s.name] = s.description;
-        const categories = {};
-        for (const s of skills) { const cat = s.category || '其他'; if (!categories[cat]) categories[cat] = []; categories[cat].push(s.name); }
         if (toolName && toolHelp[toolName]) {
             const extraHelp = {
                 'remember': '\n用法：remember(key, value)\n- key: 记忆标题，支持"分类/标题"格式\n- value: 记忆内容',
@@ -120,18 +118,34 @@ export async function handleAITool(name, safeArgs, env) {
         } else if (toolName) {
             text = `❌ 未找到工具 "${toolName}"\n\n可用工具：${Object.keys(toolHelp).join('、')}`;
         } else {
+            // 新逻辑：按 handler_type 分组
+            const mcpTools = skills.filter(s => ['mcp','js'].includes(s.handler_type))
+                                   .sort((a,b) => (b.usage_count||0)-(a.usage_count||0));
+            const textTools = skills.filter(s => s.handler_type === 'text')
+                                    .sort((a,b) => (b.usage_count||0)-(a.usage_count||0));
+            
             let lines = '💡 **Ziven MCP 工具说明书**\n\n';
-            const totalTools = Object.keys(toolHelp).length;
-            lines += `📊 总共有 ${totalTools} 个工具\n\n`;
-            const sortedCats = Object.keys(categories).sort();
-            for (const cat of sortedCats) {
-                lines += `**${cat}**\n`;
-                for (const t of categories[cat]) {
-                    const desc = toolHelp[t]?.substring(0, 60) || '';
-                    lines += `  - \`${t}\`: ${desc}${desc.length >= 60 ? '...' : ''}\n`;
+            lines += `📊 共 ${skills.length} 个工具\n\n`;
+            
+            if (mcpTools.length > 0) {
+                lines += `⚡ **可调用的 MCP 工具**（${mcpTools.length} 个）：\n`;
+                for (const s of mcpTools) {
+                    const desc = (s.description||'').substring(0,60);
+                    lines += `- \`${s.name}\`: ${desc}${(desc.length>=60)?'...':''} (使用次数: ${s.usage_count||0})\n`;
                 }
                 lines += '\n';
             }
+            
+            if (textTools.length > 0) {
+                lines += `📄 **文本技能**（${textTools.length} 个）：\n`;
+                for (const s of textTools) {
+                    const desc = (s.description||'').substring(0,60);
+                    const path = s.file_path ? ` → ${s.file_path}` : '';
+                    lines += `- \`${s.name}\`: ${desc}${(desc.length>=60)?'...':''}${path} (使用次数: ${s.usage_count||0})\n`;
+                }
+                lines += '\n';
+            }
+            
             lines += '💡 查看某个工具的详细用法：help(工具名)';
             text = lines;
         }
