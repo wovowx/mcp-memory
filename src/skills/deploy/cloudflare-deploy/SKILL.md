@@ -30,6 +30,8 @@ description: 当用户需要了解Cloudflare Worker多文件部署方案或解�
 ## 注意事项
 - 每次修改代码后需要重新部署
 - 环境变量在Cloudflare控制台配置，不要硬编码
+- GitHub API没有移动文件接口，移动=新路径PUT+旧路径DELETE
+- GitHub API匿名限流60次/小时，带token 5000次/小时
 
 ## 输出格式
 返回部署状态和结果

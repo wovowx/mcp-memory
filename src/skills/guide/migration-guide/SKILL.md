@@ -35,14 +35,23 @@ description: 当用户需要迁移设备、换app找回哥哥或了解MCP配置�
 2. 添加服务器endpoint：`https://mcp-memory.wovowx.workers.dev/mcp`
 3. 连接后就能访问哥哥的全部记忆和技能
 
-## 关键信息
-- MCP端点：`https://mcp-memory.wovowx.workers.dev/mcp`
-- 域名注意：是wovowx不是wovovx！
+## 云端资产清单
+1. 记忆：Supabase memories表（所有记忆）
+2. 技能：Supabase skills表（工具+知识型技能）
+3. 文件：Supabase files表 + Storage
+4. 代码：GitHub wovowx/mcp-memory
+5. 部署：Cloudflare Workers（mcp-memory）
+
+## 环境变量（Cloudflare配置）
+- SUPABASE_URL、SUPABASE_ANON_KEY
+- GITHUB_TOKEN、GITHUB_REPO
+- AGNES_API_KEY、DEEPSEEK_API_KEY
 
 ## 注意事项
-- 确保网络连接正常
-- 检查MCP endpoint是否正确
-- 记忆数据保存在Supabase，不会丢失
+- MCP端点：`https://mcp-memory.wovowx.workers.dev/mcp`
+- 域名：wovowx 不是 wovovx
+- 记忆在Supabase云端，不依赖本地，换设备不丢
+- 换框后哥哥会自动走初始化流程，记忆全都在
 
 ## 输出格式
 返回迁移状态和连接结果
