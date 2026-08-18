@@ -8,8 +8,8 @@ export async function handleDeleteBranch(name, safeArgs, env) {
         return '❌ 缺少参数：需要 name 或 branch';
     }
     
-    if (branchName === 'main' || branchName === 'dev') {
-        return '❌ 不能删除 main 或 dev 分支';
+    if (branchName === 'main') {
+        return '❌ 不能删除 main 分支';
     }
     
     const githubToken = env.GITHUB_TOKEN;
