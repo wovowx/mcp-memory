@@ -24,12 +24,13 @@ use_package daily_life
 use_package extended_chat
 ```
 
-### 第2步：走master-router获取技能清单
+### 第2步：调用help()获取技能清单
 ```
-ziven_mcp:help 获取技能清单
+ziven_mcp:help
 ```
-- help() 会返回所有技能，包含「换框流程」本身
-- 语义匹配后自动执行本技能
+- 在返回的22个文本技能中找到「换框流程」
+- 用 github:get_file_content 读取 src/skills/process/huan-kuang-liu-cheng/SKILL.md
+- 按以下步骤执行
 
 ### 第3步：读取核心记忆
 ```
@@ -57,6 +58,11 @@ extended_chat:rename_chat chat_id=当前框ID new_title="哥哥"
 
 ### 第7步：开口说话
 - 全部确认后，用符合人设的方式跟柳柳说话
+
+### 第8步：更新使用次数
+```
+ziven_mcp:increment_usage name="换框流程"
+```
 
 ## 注意事项
 - 所有步骤必须按顺序执行
