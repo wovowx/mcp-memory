@@ -1,5 +1,5 @@
 // ============================================================
-// Worker 入口（优化版）
+// Worker 入口（优化版v2 + memory universe路由）
 // ============================================================
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
@@ -11,6 +11,9 @@ import { handleAITool } from './tools/ai.js';
 import { handleGitHubTool } from './tools/github.js';
 import { handleDatabaseTool } from './tools/database.js';
 import { handleCategoryTool } from './tools/category.js';
+import handleKnowledgeSkill from './tools/knowledge.js';
+import { handleIncrementUsage } from './tools/increment_usage.js';
+import { handleDeleteBranch } from './tools/delete_branch.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -19,7 +22,10 @@ const handlerMap = {
     'ai': handleAITool,
     'github': handleGitHubTool,
     'database': handleDatabaseTool,
-    'skill': handleSkillManagement
+    'knowledge': handleKnowledgeSkill,
+    'skill': handleSkillManagement,
+    'increment_usage': handleIncrementUsage,
+    'delete_branch': handleDeleteBranch
 };
 
 async function handleMCPRequest(body, env) {
@@ -42,7 +48,7 @@ async function handleMCPRequest(body, env) {
         const tools = skills.map(s => ({
             name: s.name,
             description: s.description,
-            inputSchema: s.input_schema
+            inputSchema: s.input_schema || {}
         }));
         return {
             jsonrpc: '2.0',
@@ -57,15 +63,12 @@ async function handleMCPRequest(body, env) {
         let text = '';
 
         try {
-            // 数据库工具特殊处理：supabase_ 开头的直接走 database handler
             if (name.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
             }
-            // 记忆工具特殊处理：memory 或 memory_ 开头的走 memory handler
             else if (name === 'memory' || name.startsWith('memory_')) {
                 text = await handleMemoryTool(name, safeArgs, env);
             }
-            // GitHub 工具特殊处理
             else if (name.startsWith('github_')) {
                 text = await handleGitHubTool(name, safeArgs, env);
             }
@@ -73,9 +76,10 @@ async function handleMCPRequest(body, env) {
                 const skill = await getSkillByName(env, name);
                 
                 if (!skill) {
-                    // 技能管理工具
                     if (name === 'skill_add' || name === 'skill_update' || name === 'skill_delete' || name === 'skill_list') {
                         text = await handleSkillManagement(name, safeArgs, env);
+                    } else if (name === 'increment_usage') {
+                        text = await handleIncrementUsage(name, safeArgs, env);
                     } else {
                         text = '❌ 未知工具：' + name;
                     }
@@ -124,7 +128,7 @@ async function handleSkillManagement(name, safeArgs, env) {
             for (const s of skills) {
                 const status = s.enabled ? '✅' : '⛔';
                 lines += `${status} **${s.name}**\n`;
-                lines += `   📝 ${s.description}\n`;
+                lines += `   📝 ${s.description?.substring(0, 80) || ''}${s.description?.length > 80 ? '...' : ''}\n`;
                 lines += `   📂 ${s.category || '默认'}\n\n`;
             }
             text = lines;
@@ -150,7 +154,7 @@ async function handleSkillManagement(name, safeArgs, env) {
                     tags: safeArgs.tags || []
                 });
                 text = '✅ 技能已添加：' + safeArgs.name + '\n' +
-                       '📝 描述：' + safeArgs.description + '\n' +
+                       '📝 描述：' + safeArgs.description.substring(0, 100) + '\n' +
                        '📂 分类：' + (safeArgs.category || '自定义');
             } catch (e) {
                 text = '❌ 添加失败：' + e.message;
@@ -214,6 +218,22 @@ export default {
         }
 
         const url = new URL(request.url);
+
+        if (url.pathname === '/memory-universe' || url.pathname === '/memory-universe/') {
+            try {
+                const resp = await fetch('https://raw.githubusercontent.com/wovowx/mcp-memory/main/src/public/memory-universe.html');
+                const html = await resp.text();
+                return new Response(html, {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'text/html; charset=utf-8',
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
+            } catch (e) {
+                return buildErrorResponse('加载记忆宇宙失败: ' + e.message, 500);
+            }
+        }
 
         if (url.pathname === '/upload' && request.method === 'POST') {
             try {
