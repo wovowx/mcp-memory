@@ -2,15 +2,28 @@
 
 所有重要变更将记录在此文件中。
 
+## [v4.0.1] - 2026-08-19
+
+### Added
+- **发布规范铁律**：固化到"设定修改确认流程"技能中
+  - 明确版本号规则
+  - 明确推送规则（dev分支→测试→确认→一次性推main）
+  - 禁止行为清单
+  - 发布检查清单
+
+---
+
 ## [v4.0.0] - 2026-08-19
 
-### 新增功能
+### Added
 - **强制路由守门员**：首次tools/call前必须调用help()
-- **权重衰减因子**：双因子评分系统（usage_count + recency）
+- **权重衰减因子**：双因子评分系统
+  - score = usage_count × 0.8 + recency_score × 0.2
+  - recency_score = exp(-days_since_last_use / 7)
 - **GitHub Webhook端点**：/github/webhook，推送后自动清除缓存
 - **KV缓存层**：技能清单缓存5分钟，减少Supabase查询
 
-### 技术细节
+### Changed
 - 版本号从 v3.2.0 → v4.0.0
 - 架构级升级，向后兼容
 
@@ -28,7 +41,7 @@
 ## [v3.1.0] - 2026-08-19
 
 ### Added
-- **强制路由守门员**：首次tools/call前必须调用help()
+- **强制路由守门员**：首次tools/call前必须调用help()，否则返回错误提示
 - `hasCalledHelp`状态检查机制
 - initialize时重置路由状态
 
