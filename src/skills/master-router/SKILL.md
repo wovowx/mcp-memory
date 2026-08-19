@@ -11,7 +11,7 @@ description: >
 本技能是 AI 的"总调度中心"。不直接回答问题，而是把用户需求路由到正确的技能或 MCP 工具。
 
 # 系统版本
-- 当前版本：v3.2.0
+- 当前版本：v4.0.0
 - 更新日志：[CHANGELOG.md](../../CHANGELOG.md)
 
 # 工作流程 (SOP) - 严格执行
@@ -109,3 +109,4 @@ description: >
 - 如果 usage_count 更新失败，记录错误但不中断主流程
 - 更新的是最终被调用的技能，不是 master-router
 - 使用 `increment_usage` 工具，不要尝试执行 SQL
+- 技能变更通过 GitHub Webhook 自动清除缓存
