@@ -2,6 +2,20 @@
 
 所有重要变更将记录在此文件中。
 
+## [v3.2.0] - 2026-08-19
+
+### Added
+- **权重衰减因子**：双因子评分系统
+  - 公式：`score = usage_count × 0.8 + recency_score × 0.2`
+  - recency_score = exp(-days_since_last_use / 7)
+  - 新技能不再被永久霸榜，近期使用过的技能优先级提升
+
+### Changed
+- 版本号 v3.1.0 → v3.2.0
+- skills.js 添加评分计算逻辑
+
+---
+
 ## [v3.1.0] - 2026-08-19
 
 ### Added
