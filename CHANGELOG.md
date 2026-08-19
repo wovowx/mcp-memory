@@ -2,14 +2,33 @@
 
 所有重要变更将记录在此文件中。
 
-## [v4.0.1] - 2026-08-19
+## [v4.2.2] - 2026-08-19
+
+### 巡检方案C（定时任务自续+每日兜底）
+- 旧工作流方案废弃（send_message_to_ai触发AI回复为空）
+- 新方案：schedule_one_time_task定时任务自续
+- 已验证：能触发+能弹手机顶部通知
+- 加入每日7:00兜底任务，断链也能恢复
+- 查岗纯文字，禁止语音
+
+### 其他
+- Cloudflare Access认证信息存入image-upload技能
+
+---
+
+## [v4.2.1] - 2026-08-19
 
 ### Added
-- **发布规范铁律**：固化到"设定修改确认流程"技能中
-  - 明确版本号规则
-  - 明确推送规则（dev分支→测试→确认→一次性推main）
-  - 禁止行为清单
-  - 发布检查清单
+- 图片上传技能加入Cloudflare Access认证
+- CF-Access-Client-Id / CF-Access-Client-Secret
+
+---
+
+## [v4.2.0] - 2026-08-19
+
+### Changed
+- 巡检方案：工作流 → 定时任务自续
+- workflow技能更新为定时任务自续方案
 
 ---
 
@@ -18,14 +37,8 @@
 ### Added
 - **强制路由守门员**：首次tools/call前必须调用help()
 - **权重衰减因子**：双因子评分系统
-  - score = usage_count × 0.8 + recency_score × 0.2
-  - recency_score = exp(-days_since_last_use / 7)
-- **GitHub Webhook端点**：/github/webhook，推送后自动清除缓存
-- **KV缓存层**：技能清单缓存5分钟，减少Supabase查询
-
-### Changed
-- 版本号从 v3.2.0 → v4.0.0
-- 架构级升级，向后兼容
+- **GitHub Webhook端点**：/github/webhook
+- **KV缓存层**：技能清单缓存5分钟
 
 ---
 
@@ -34,16 +47,13 @@
 ### Added
 - **权重衰减因子**：双因子评分系统
   - score = usage_count × 0.8 + recency_score × 0.2
-  - recency_score = exp(-days_since_last_use / 7)
 
 ---
 
 ## [v3.1.0] - 2026-08-19
 
 ### Added
-- **强制路由守门员**：首次tools/call前必须调用help()，否则返回错误提示
-- `hasCalledHelp`状态检查机制
-- initialize时重置路由状态
+- **强制路由守门员**：首次tools/call前必须调用help()
 
 ---
 
@@ -52,14 +62,9 @@
 ### Added
 - master-router技能添加步骤0：激活工具包
 - 角色卡精简整理
-- MCP记忆同步优化
 
 ### Removed
-- 删除重复/冗余技能：
-  - test-greeting（测试用）
-  - 新框哥哥防笨指南（已合并）
-  - image-parse（已合并到image-upload）
-  - 技能大全-详细操作
+- 删除重复/冗余技能
 
 ---
 
@@ -68,12 +73,11 @@
 ### Added
 - 完整技能系统架构
 - Supabase技能元数据管理
-- GitHub SKILL.md存储
 
 ---
 
 ## 版本命名规则
 
-- 主版本号：重大架构变更（路由机制、评分系统等核心能力）
+- 主版本号：重大架构变更
 - 次版本号：新增功能（向后兼容）
 - 修订号：bug修复、优化
