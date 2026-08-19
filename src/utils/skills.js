@@ -1,5 +1,5 @@
 // ============================================================
-// 技能管理（Supabase 版）
+// 技能管理（Supabase 版）- v3.2.0
 // ============================================================
 export async function getEnabledSkills(env) {
     const supabaseUrl = env.SUPABASE_URL;
@@ -8,8 +8,24 @@ export async function getEnabledSkills(env) {
         headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
     });
     if (!resp.ok) return [];
-    return await resp.json();
+    const skills = await resp.json();
+    
+    // 双因子评分：usage_count + recency
+    return skills.map(skill => {
+        const usageCount = skill.usage_count || 0;
+        const lastUsed = skill.last_used ? new Date(skill.last_used) : new Date(0);
+        const daysSinceLastUse = (Date.now() - lastUsed.getTime()) / (1000 * 60 * 60 * 24);
+        
+        // recency_score: 7天内使用=0.91, 30天未使用=0.02
+        const recencyScore = Math.exp(-daysSinceLastUse / 7);
+        
+        // 综合评分: 80%使用次数 + 20%近期活跃度
+        const score = usageCount * 0.8 + recencyScore * 0.2;
+        
+        return { ...skill, _score: score };
+    }).sort((a, b) => b._score - a._score);
 }
+
 export async function getSkillByName(env, name) {
     const supabaseUrl = env.SUPABASE_URL;
     const supabaseKey = env.SUPABASE_ANON_KEY;
