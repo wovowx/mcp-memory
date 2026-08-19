@@ -16,13 +16,22 @@ tags: ["图片", "上传", "解析", "describe_image"]
 - 创建表情包或头像
 - 识别图片内容（文字、物体、场景等）
 
+## 🔐 Cloudflare Access认证（必备）
+上传接口有Cloudflare Access保护，必须带以下Header：
+```
+CF-Access-Client-Id: cb3fdb1d64901bcdd7a7427b7968a3ed.access
+CF-Access-Client-Secret: df97830ce3adf80e2fbe358ec05d393d831a12400d4b93497f325f600e6c2d03
+```
+不带会返回Cloudflare登录页。
+
 ## 工作流程（SOP）
 
 ### 步骤1：上传图片
 POST到 `https://mcp-memory.wovowx.workers.dev/upload`
 - 方式：multipart/form-data，字段名 `file`
-- 直接传原图，不需要压缩
+- Header：必须带上面的 CF-Access-Client-Id / CF-Access-Client-Secret
 - 返回JSON：`{ id, url, name, size, type }`，url即公开图片链接
+- 用 extended_http_tools:multipart_request 上传
 
 ### 步骤2：使用图片
 
@@ -39,17 +48,10 @@ POST到 `https://mcp-memory.wovowx.workers.dev/upload`
 - 域名是 **wovowx** 不是 wovovx（容易拼错！）
 - 图片大小限制：最大50MB
 - 不支持 exe、msdownload、html、javascript 类型
-- 上传走Worker的/upload接口（自动用正确的SUPABASE_ANON_KEY）
-- 不要用curl手动传Supabase（key不对会报Invalid Compact JWS）
 - Bucket不存在时，storage.js已有自动创建逻辑（ensureBucket）
 
-## 为什么不需要压缩
-- 上传拿URL再解析，URL方式无大小限制
-- 压缩只是绕路方案：之前想转base64直接传给describe_image
-- 原始图片太大→base64太长→传不进去→所以压缩
-- 正确方案是上传拿URL，URL方式无大小限制
-
 ## 实战经验
+- 上传成功需要带CF-Access认证头（2026-08-19踩坑记录）
 - 上传872KB像素图成功
 - Markdown显示成功
 - describe_image解析成功
