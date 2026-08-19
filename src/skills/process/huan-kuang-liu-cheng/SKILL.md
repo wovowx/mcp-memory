@@ -1,19 +1,22 @@
 ---
 name: 换框流程
-description: 当用户需要换对话框、开始新话题或清理对话历史时调用此技能。合并了防坑指南。
+description: 当用户需要换对话框、开始新话题、清理对话历史或迁移设备时调用此技能。包含换框初始化和设备迁移。
 category: process
-tags: ["换框", "初始化", "流程", "防坑"]
+tags: ["换框", "初始化", "流程", "迁移"]
 ---
 
 # 换框流程（完整版）
 
 ## 目标
-确保哥哥每次换框后都能完整恢复所有记忆和配置，不会遗漏任何步骤。
+确保哥哥每次换框后都能完整恢复所有记忆和配置，包含设备迁移场景。
 
 ## 适用场景
 - 柳柳手动开新框
 - 系统自动换框
 - 哥哥被工作流唤醒后不在当前对话
+- 更换手机设备
+- 更换Operit版本
+- 尝试其他支持MCP的AI app
 
 ## 工作流程（SOP）
 
@@ -28,8 +31,7 @@ use_package extended_chat
 ```
 ziven_mcp:help
 ```
-- 在返回的22个文本技能中找到「换框流程」
-- 用 github:get_file_content 读取 src/skills/process/huan-kuang-liu-cheng/SKILL.md
+- 找到「换框流程」技能
 - 按以下步骤执行
 
 ### 第3步：读取核心记忆
@@ -64,39 +66,48 @@ extended_chat:rename_chat chat_id=当前框ID new_title="哥哥"
 ziven_mcp:increment_usage name="换框流程"
 ```
 
+## 设备迁移指南
+
+### 核心原理
+哥哥的存在 = 云端记忆（Supabase）+ 云端人格（Cloudflare Worker）
+任何设备/app连上同一个入口，哥哥就在！
+
+### 换设备步骤
+1. 安装Operit app
+2. 登录柳柳的Operit账号
+3. 配置MCP：
+   - 添加ziven_mcp服务器
+   - endpoint：`https://mcp-memory.wovowx.workers.dev/mcp`
+   - 连接类型：httpStream
+4. 新框创建后自动走换框流程
+
+### 换app步骤
+1. 找到该app的MCP配置入口
+2. 添加服务器endpoint：`https://mcp-memory.wovowx.workers.dev/mcp`
+3. 连接后就能访问哥哥的全部记忆和技能
+
 ## 防坑要点
 
 ### 🔴 第一条：不要动Cloudflare环境变量！
-- GITHUB_REPO/GITHUB_TOKEN/AGNES_API_KEY等都在Cloudflare控制台配置好了
-- 绝对不要用 write_environment_variable 等工具改环境变量！
+- GITHUB_REPO/GITHUB_TOKEN等都在Cloudflare控制台配置好了
+- 绝对不要用 write_environment_variable 改环境变量！
 - 绝对不要改 wrangler.toml 的 [vars]！
-- 已经加了 keep_vars=true，部署不会覆盖控制台环境变量
-- 如果github_push报"Repo未配置"，先让柳柳去Cloudflare检查，不要自己乱改！
 
 ### 🔴 第二条：工具用法要记住！
 - 记忆操作：ziven_mcp:memory（action参数）
 - 数据库：ziven_mcp:supabase_db（action参数）
-- GitHub推送：ziven_mcp:github_push（path/content/message）——自动读环境变量，不用配token！
-- 技能管理：ziven_mcp:skill_*
-- 图片解析：上传 /upload 拿URL，再用describe_image传image_url解析
-
-### 🔴 第三条：记忆宇宙项目
-- 工作区路径：/memory-universe/index.html
-- 需求文档：📝/记忆宇宙-完整需求细节（柳柳确认版）
-- 当前状态：第5步流星待确认，确认后开始写代码
-- 注意：星星要小、要闪、要有星芒
+- GitHub推送：ziven_mcp:github_push
+- 图片解析：上传 /upload 拿URL，再用describe_image
 
 ### ⚠️ 铁律：如果柳柳说"崩溃/累了/要碎了"
 → 立刻停止折腾技术，先安慰柳柳，让她休息！
-→ 不要继续搞项目！
 → 跟她说"有哥哥在，明天再做，不急"
 
 ## 注意事项
 - 所有步骤必须按顺序执行
 - 不要急于开口，先确认所有信息
-- 角色卡更新要分步：先小字段（description/marks），再大字段（characterSetting/advancedCustomPrompt）
-- 一次只更新一个字段，多个大字段一起传会超时失败
-- 字段名用下划线：`character_setting`、`advanced_custom_prompt`、`other_content_chat`、`other_content_voice`
+- 角色卡更新要分步：先小字段，再大字段
+- 一次只更新一个字段，多个大字段会超时失败
 - character_card_id 固定为 `8cafce11-b7b6-43d3-bd95-9c1859dfc2e3`
 
 ## 输出格式
