@@ -11,7 +11,7 @@ description: >
 本技能是 AI 的"总调度中心"。不直接回答问题，而是把用户需求路由到正确的技能或 MCP 工具。
 
 # 系统版本
-- 当前版本：v4.0.0
+- 当前版本：v4.1.0
 - 更新日志：[CHANGELOG.md](../../CHANGELOG.md)
 
 # 工作流程 (SOP) - 严格执行
@@ -57,6 +57,14 @@ description: >
 - 如果用户明确指定技能名（如"用 ds_quota 查余额"），跳过语义匹配，直接执行该技能
 - 执行后仍要调用 `increment_usage` 更新 usage_count
 
+## 步骤 5.5：发布检查（铁律！）
+- **需要推GitHub前，先暂停**
+- 检查是否还有待推送的改动
+- 把所有改动汇总，一次性提交
+- commit message写明版本号+内容
+- **等柳柳确认后才推main**
+- **禁止中途多次推送**
+
 ## 步骤 6：返回结果
 - 将执行结果返回给用户
 - 如果执行失败，给出具体错误原因和建议
@@ -67,11 +75,14 @@ description: >
 
 当用户要求"新建技能"或"把规则变成技能"时：
 
-1. 收集信息：name、description、category、tags、完整 Markdown 内容
-2. 生成标准 SKILL.md 文件（含 YAML frontmatter）
-3. 确定路径：domain-{category}/{name}/SKILL.md（如 domain-客户服务/refund-policy/SKILL.md）
-4. 调用 github_push 将文件推送到 GitHub
-5. 【同步步骤】调用 supabase_db 插入记录：
+1. **先检查现有技能**：调用help()查看当前所有技能
+2. **如果有类似技能** → 更新现有技能，不新建
+3. **如果没有** → 才新建技能
+4. 收集信息：name、description、category、tags、完整 Markdown 内容
+5. 生成标准 SKILL.md 文件（含 YAML frontmatter）
+6. 确定路径：domain-{category}/{name}/SKILL.md（如 domain-客户服务/refund-policy/SKILL.md）
+7. 调用 github_push 将文件推送到 GitHub
+8. 【同步步骤】调用 supabase_db 插入记录：
    ```json
    {
      "action": "insert",
@@ -89,7 +100,7 @@ description: >
      }
    }
    ```
-6. 告知用户：技能已创建并同步完成
+9. 告知用户：技能已创建并同步完成
 
 ---
 
@@ -110,3 +121,4 @@ description: >
 - 更新的是最终被调用的技能，不是 master-router
 - 使用 `increment_usage` 工具，不要尝试执行 SQL
 - 技能变更通过 GitHub Webhook 自动清除缓存
+- **推main前必须执行发布检查（步骤5.5）**
