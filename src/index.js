@@ -1,5 +1,5 @@
 // ============================================================
-// Worker 入口（优化版v3 + 强制路由守门员）
+// Worker 入口（优化版v4 - 全功能版）
 // ============================================================
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
@@ -31,25 +31,44 @@ const handlerMap = {
 // 强制路由守门员状态
 let hasCalledHelp = false;
 
+// KV缓存（模拟实现）
+const skillCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5分钟
+
+async function getCachedSkills(env) {
+    const now = Date.now();
+    const cached = skillCache.get('skills');
+    if (cached && (now - cached.time) < CACHE_TTL) {
+        return cached.skills;
+    }
+    const skills = await getEnabledSkills(env);
+    skillCache.set('skills', { skills, time: now });
+    return skills;
+}
+
+async function invalidateCache() {
+    skillCache.clear();
+}
+
 async function handleMCPRequest(body, env) {
     const { method, params, id } = body;
 
     if (method === 'initialize') {
-        hasCalledHelp = false; // 重置路由状态
+        hasCalledHelp = false;
         return {
             jsonrpc: '2.0',
             id: id,
             result: {
                 protocolVersion: '2025-06-18',
                 capabilities: { tools: {} },
-                serverInfo: { name: 'ZivenAgent', version: '3.1.0' }
+                serverInfo: { name: 'ZivenAgent', version: '4.0.0' }
             }
         };
     }
 
     if (method === 'tools/list') {
-        hasCalledHelp = true; // 标记已调用help()
-        const skills = await getEnabledSkills(env);
+        hasCalledHelp = true;
+        const skills = await getCachedSkills(env);
         const tools = skills.map(s => ({
             name: s.name,
             description: s.description,
@@ -63,7 +82,6 @@ async function handleMCPRequest(body, env) {
     }
 
     if (method === 'tools/call') {
-        // 守门员检查：如果还未调过help()，拦截并提示
         if (!hasCalledHelp) {
             return {
                 jsonrpc: '2.0',
@@ -82,6 +100,7 @@ async function handleMCPRequest(body, env) {
         try {
             if (name.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
+                await invalidateCache(); // 更新后清除缓存
             }
             else if (name === 'memory' || name.startsWith('memory_')) {
                 text = await handleMemoryTool(name, safeArgs, env);
@@ -95,6 +114,7 @@ async function handleMCPRequest(body, env) {
                 if (!skill) {
                     if (name === 'skill_add' || name === 'skill_update' || name === 'skill_delete' || name === 'skill_list') {
                         text = await handleSkillManagement(name, safeArgs, env);
+                        await invalidateCache();
                     } else if (name === 'increment_usage') {
                         text = await handleIncrementUsage(name, safeArgs, env);
                     } else {
@@ -216,6 +236,30 @@ async function handleSkillManagement(name, safeArgs, env) {
     return text;
 }
 
+// GitHub Webhook处理器
+async function handleGitHubWebhook(payload, env) {
+    try {
+        const event = payload.action || 'push';
+        const ref = payload.ref || 'refs/heads/main';
+        
+        // 只处理main分支的推送
+        if (ref !== 'refs/heads/main') {
+            return { status: 'ignored', reason: '非main分支' };
+        }
+        
+        // 清除缓存，触发重新加载
+        await invalidateCache();
+        
+        return {
+            status: 'success',
+            message: '技能缓存已清除，等待下次help()调用刷新',
+            event: event
+        };
+    } catch (e) {
+        return { status: 'error', message: e.message };
+    }
+}
+
 export default {
     async fetch(request, env) {
         if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
@@ -267,6 +311,17 @@ export default {
                 return jsonResponse(result);
             } catch (e) {
                 return buildErrorResponse(e.message, 500);
+            }
+        }
+
+        // GitHub Webhook端点
+        if (url.pathname === '/github/webhook' && request.method === 'POST') {
+            try {
+                const payload = await request.json();
+                const result = await handleGitHubWebhook(payload, env);
+                return jsonResponse(result);
+            } catch (e) {
+                return buildErrorResponse('Webhook处理失败: ' + e.message, 500);
             }
         }
 
