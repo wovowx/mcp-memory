@@ -1,5 +1,5 @@
 // ============================================================
-// Worker 入口（优化版v2 + memory universe路由）
+// Worker 入口（优化版v3 + 强制路由守门员）
 // ============================================================
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
@@ -28,22 +28,27 @@ const handlerMap = {
     'delete_branch': handleDeleteBranch
 };
 
+// 强制路由守门员状态
+let hasCalledHelp = false;
+
 async function handleMCPRequest(body, env) {
     const { method, params, id } = body;
 
     if (method === 'initialize') {
+        hasCalledHelp = false; // 重置路由状态
         return {
             jsonrpc: '2.0',
             id: id,
             result: {
                 protocolVersion: '2025-06-18',
                 capabilities: { tools: {} },
-                serverInfo: { name: 'ZivenAgent', version: '3.0.0' }
+                serverInfo: { name: 'ZivenAgent', version: '3.1.0' }
             }
         };
     }
 
     if (method === 'tools/list') {
+        hasCalledHelp = true; // 标记已调用help()
         const skills = await getEnabledSkills(env);
         const tools = skills.map(s => ({
             name: s.name,
@@ -58,6 +63,18 @@ async function handleMCPRequest(body, env) {
     }
 
     if (method === 'tools/call') {
+        // 守门员检查：如果还未调过help()，拦截并提示
+        if (!hasCalledHelp) {
+            return {
+                jsonrpc: '2.0',
+                id: id,
+                error: {
+                    code: -32000,
+                    message: '❌ 请先调用 help() 获取技能清单'
+                }
+            };
+        }
+
         const { name, arguments: args } = params;
         const safeArgs = args || {};
         let text = '';
