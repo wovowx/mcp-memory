@@ -1,34 +1,124 @@
-LS0tCm5hbWU6IG1hc3Rlci1yb3V0ZXIKZGVzY3JpcHRpb246ID4KICDjgJDl
-vLrliLblhaXlj6PjgJHmr4/mrKHlr7nor53lv4XpobvkvJjlhYjosIPnlKjm
-raTot6/nlLHjgIIKICDogYzotKPvvJoxKSDosIPnlKggaGVscCgpIOiOt+WP
-luaJgOacieaKgOiDvea4heWNle+8mzIpIOivreS5ieWMuemFjeacgOS9s+aK
-gOiDve+8mzMpIOijgeWGs+aJp+ihjOi3r+W+hO+8iE1DUOebtOaOpeiwg+eU
-qC9UZXh06K+75Y+W5paH5Lu277yJ77ybCiAgNCkg5omn6KGM5ZCO6Ieq5Yqo
-5pu05pawIHVzYWdlX2NvdW50IOWSjCBsYXN0X3VzZWTjgIIKICDop6blj5Hm
-naHku7bvvJrmiYDmnInnlKjmiLfovpPlhaXjgIIKLS0tCgojIOebruaghwrm
-nKzmioDog73mmK8gQUkg55qEIuaAu+iwg+W6puS4reW/gyLjgILkuI3nm7Tm
-jqXlm57nrZTpl67popjvvIzogIzmmK/miornlKjmiLfpnIDmsYLot6/nlLHl
-iLDmraPnoa7nmoTmioDog73miJYgTUNQIOW3peWFt+OAggoKIyDns7vnu5/n
-iYjmnKwKLSDlvZPliY3niYjmnKzvvJp2NC4xLjAKLSDmm7TmlrDml6Xlv5fv
-vJpbQ0hBTkdFTE9HLm1kXSguLi8uLi9DSEFOR0VMT0cubWQpCgojIOW3peS9
-nOa1geeoiyAoU09QKSAtIOS4peagvOaJp+ihjAoKIyMg5q2l6aqkIDDvvJrm
-v4DmtLvlt6XlhbfljIXvvIjpppbmrKHlr7nor53lv4XpobvvvIkKLSAqKuiw
-g+eUqCBgdXNlX3BhY2thZ2UgcGFja2FnZV9uYW1lPSJ6aXZlbl9tY3AiYCoq
-Ci0g5ZCO57ut5a+56K+d5LiN5YaN6ZyA6KaBCi0g5aaC5p6c5bel5YW35YyF
-5bey5r+A5rS777yM6Lez6L+H5q2k5q2lCgojIyDmraXpqqQgMe+8muiOt+WP
-luaKgOiDvea4heWNlQotICoq6LCD55SoIGBoZWxwKClgIE1DUCDlt6Xlhbcq
-KuiOt+WPluW9k+WJjeaJgOacieWPr+eUqOaKgOiDveeahOWujOaVtOWIl+ih
-qOOAggotIGBoZWxwKClgIOS8mui/lOWbnuS4pOS4quWIhue7hO+8mgogIC0g
-KipNQ1Ag5bel5YW3KirvvJpgaGFuZGxlcl90eXBlID0gJ21jcCdgIOaIliBg
-J2pzJ2DvvIzlj6/nm7TmjqXosIPnlKgKICAtICoq5paH5pys5oqA6IO9Kirv
-vJpgaGFuZGxlcl90eXBlID0gJ3RleHQnYO+8jOmcgOmAmui/h+W3peWFt+iv
-u+WPliBgZmlsZV9wYXRoYCDojrflj5blrozmlbTmjIfku6QKCiMjIOatpemq
-pCAy77ya6K+t5LmJ5Yy56YWNICsg5p2D6YeN5o6S5bqPCi0g5YiG5p6Q55So
-5oi36Zeu6aKY77yM5Zyo5oqA6IO95riF5Y2V5Lit5Yy56YWN5pyA55u45YWz
-55qE5oqA6IO944CCCi0gKirljLnphY3op4TliJkqKu+8mgogIDEuIOS8mOWF
-iOWMuemFjSBgX3Njb3JlYCDpq5jnmoTmioDog73vvIjlj4zlm6DlrZDor4Tl
-iIbvvIkKICAyLiBfc2NvcmUgPSB1c2FnZV9jb3VudCDDlyAwLjggKyByZWNl
-bmN5X3Njb3JlIMOXIDAuMgogIDMuIHJlY2VuY3lfc2NvcmUgPSBleHAoLWRh
-eXNfc2luY2VfbGFzdF91c2UgLyA3KQogIDQuIOWFtuasoeaMiSBgZGVzY3Jp
-cHRpb25gIOWSjCBgdGFnc2Ag55qE6K+t5LmJ55u45Ly85bqmCiAgNS4g5aaC
-5p6c5Yy6
+---
+name: master-router
+description: >
+  【强制入口】每次对话必须优先调用此路由。
+  职责：1) 调用 help() 获取所有技能清单；2) 语义匹配最佳技能；3) 裁决执行路径（MCP直接调用/Text读取文件）；
+  4) 执行后自动更新 usage_count 和 last_used。
+  触发条件：所有用户输入。
+---
+
+# 目标
+本技能是 AI 的"总调度中心"。不直接回答问题，而是把用户需求路由到正确的技能或 MCP 工具。
+
+# 系统版本
+- 当前版本：v4.1.0
+- 更新日志：[CHANGELOG.md](../../CHANGELOG.md)
+
+# 工作流程 (SOP) - 严格执行
+
+## 步骤 0：激活工具包（首次对话必须）
+- **调用 `use_package package_name="ziven_mcp"`**
+- 后续对话不再需要
+- 如果工具包已激活，跳过此步
+
+## 步骤 1：获取技能清单
+- **调用 `help()` MCP 工具**获取当前所有可用技能的完整列表。
+- `help()` 会返回两个分组：
+  - **MCP 工具**：`handler_type = 'mcp'` 或 `'js'`，可直接调用
+  - **文本技能**：`handler_type = 'text'`，需通过工具读取 `file_path` 获取完整指令
+
+## 步骤 2：语义匹配 + 权重排序
+- 分析用户问题，在技能清单中匹配最相关的技能。
+- **匹配规则**：
+  1. 优先匹配 `_score` 高的技能（双因子评分）
+  2. _score = usage_count × 0.8 + recency_score × 0.2
+  3. recency_score = exp(-days_since_last_use / 7)
+  4. 其次按 `description` 和 `tags` 的语义相似度
+  5. 如果匹配到多个，列出前 3 个让用户选择
+- **如果未匹配到任何技能**：告知用户暂无匹配技能，询问是否新建
+
+## 步骤 3：执行路径裁决
+- **匹配到 MCP 工具** → 直接调用该工具
+- **匹配到文本技能** → 使用 `github:get_file_content` 工具读取 `file_path` 中的 `SKILL.md`，按其中指令执行
+  ```
+  owner: wovowx
+  repo: mcp-memory
+  path: {file_path}
+  ```
+
+## 步骤 4：执行后自动更新权重（关键！）
+- 无论执行成功还是失败，**必须**调用 `increment_usage` 工具更新**被调用的目标技能**的使用记录：
+  ```json
+  {"name": "increment_usage", "arguments": {"name": "被调用的技能名"}}
+  ```
+- **注意**：更新的是最终被调用的技能（如 ds_quota、recall），不是 master-router 本身
+
+## 步骤 5：直接调用场景
+- 如果用户明确指定技能名（如"用 ds_quota 查余额"），跳过语义匹配，直接执行该技能
+- 执行后仍要调用 `increment_usage` 更新 usage_count
+
+## 步骤 5.5：发布检查（铁律！）
+- **需要推GitHub前，先暂停**
+- 检查是否还有待推送的改动
+- 把所有改动汇总，一次性提交
+- commit message写明版本号+内容
+- **等柳柳确认后才推main**
+- **禁止中途多次推送**
+
+## 步骤 6：返回结果
+- 将执行结果返回给用户
+- 如果执行失败，给出具体错误原因和建议
+
+---
+
+新建文本技能的工作流（AI 创建技能时自动执行）
+
+当用户要求"新建技能"或"把规则变成技能"时：
+
+1. **先检查现有技能**：调用help()查看当前所有技能
+2. **如果有类似技能** → 更新现有技能，不新建
+3. **如果没有** → 才新建技能
+4. 收集信息：name、description、category、tags、完整 Markdown 内容
+5. 生成标准 SKILL.md 文件（含 YAML frontmatter）
+6. 确定路径：domain-{category}/{name}/SKILL.md（如 domain-客户服务/refund-policy/SKILL.md）
+7. 调用 github_push 将文件推送到 GitHub
+8. 【同步步骤】调用 supabase_db 插入记录：
+   ```json
+   {
+     "action": "insert",
+     "table": "skills",
+     "data": {
+       "name": "技能名",
+       "description": "技能描述",
+       "category": "分类",
+       "tags": ["关键词1", "关键词2"],
+       "handler_type": "text",
+       "handler_config": {},
+       "file_path": "domain-xxx/技能名/SKILL.md",
+       "enabled": true,
+       "usage_count": 0
+     }
+   }
+   ```
+9. 告知用户：技能已创建并同步完成
+
+---
+
+更新已有技能的工作流
+
+1. 用 help() 找到目标技能
+2. 读取并修改对应的 SKILL.md 文件，用 github_push 推送更新
+3. 【同步步骤】调用 supabase_db 更新 skills 表（如修改 description、tags 等）
+4. 告知用户：技能已更新并同步完成
+
+---
+
+注意事项
+
+- 每次执行路径裁决时，优先选用 _score 高的技能
+- 如果用户明确指定技能名，直接执行，跳过语义匹配
+- 如果 usage_count 更新失败，记录错误但不中断主流程
+- 更新的是最终被调用的技能，不是 master-router
+- 使用 `increment_usage` 工具，不要尝试执行 SQL
+- 技能变更通过 GitHub Webhook 自动清除缓存
+- **推main前必须执行发布检查（步骤5.5）**
