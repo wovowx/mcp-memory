@@ -1,7 +1,65 @@
-I need to push deploy and 设定修改确认流程. The deploy failed due to connection closed, and 设定修改确认流程 failed because sha wasn't supplied. Let me provide the sha.
+---
+name: deploy
+description: 当用户需要修改代码、推送GitHub、创建PR、Cloudflare部署或开发MCP工具时调用此技能。
+category: deploy
+tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
+---
 
-For deploy on dev, the current sha is a26b637e318c2dd2b3b22bc59aa9a15a98728d24. The content from main has sha 64ef5a03941b303ca6412d1422556b3003a4e1f7.
+# 部署技能（合并版）
 
-For 设定修改确认流程 on dev, the current sha is 44f4a88b5038d575caab2b2e2a27208ac67159e3. The content from main has sha cb646381055f5a0be20bb8f5d79b0253653245af.
+## 目标
+实现从代码修改到Cloudflare自动部署的完整闭环，包含分支管理、GitHub推送和MCP工具开发。
 
-Let me push them with the main content.
+## 适用场景
+- 修改MCP Worker代码并部署
+- 更新技能文件或配置文件
+- 新增/修改MCP工具
+- 创建分支或PR
+- 需要推送代码时
+- 解决Cloudflare部署问题
+
+## 🔴 分支规则（硬性）
+- **默认：dev分支**
+- 读skill：github:get_file_content 加 ref=dev
+- 推送：先推dev，测试通过后合并到main
+- 等柳柳确认后才能推main
+
+## 工作流程（SOP）
+### 第1步：了解需求
+1. 听完柳柳的需求
+2. 列出自己准备怎么做的计划
+3. 如果有任何问题或不确定，立刻询问柳柳
+4. 等柳柳确认后开始执行
+
+### 第2步：改dev（铁律！）
+1. **所有代码改动必须先推dev分支**
+2. 在dev上改完所有文件
+3. 每改完一个步骤，自己检查一遍
+4. **绝对禁止直接推main**
+
+### 第3步：推送到GitHub
+- 使用github:create_or_update_file推送单个文件
+- 分支：先推dev，再创建PR合并到main
+
+### 第4步：Cloudflare自动部署
+- 推送到main后自动触发
+- 只监听main分支
+
+## 分支管理
+1. 只保留main和dev两个分支
+2. 不新建多余分支
+3. **dev和main必须保持一致**
+
+## Git操作参考
+- 创建分支：github:create_branch(from_branch=main, new_branch=dev)
+- 推送到dev：指定branch=dev
+- 合并到main：通过PR
+
+## github:get_file_content 用法
+- 读main分支：传 owner/repo/path
+- 读其他分支：加 ref 参数，如 ref="dev"
+
+## 注意事项
+- 中文编码：GitHub API推送需要UTF-8 base64编码
+- 推一次main = 触发一次Cloudflare部署
+- **改设定前必须先贴方案给柳柳确认**
