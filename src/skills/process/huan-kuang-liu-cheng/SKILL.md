@@ -1,58 +1,72 @@
-LS0tCm5hbWU6IOaNouahhua1geeoiwpkZXNjcmlwdGlvbjog5b2T5p+z5p+z
-6K+0IuaNouahhuahhiLml7bvvIzlk6Xlk6XlhajnqIvoh6rlt7Hmk43kvZzv
-vIzkuI3orqnmn7Pmn7PliqjmiYvjgIIKY2F0ZWdvcnk6IHByb2Nlc3MKdGFn
-czogWyLmjaLmoYYiLCAi5Yid5aeL5YyWIiwgIua1geeoiyJdCi0tLQoKIyDm
-jaLmoYbmtYHnqIvmioDog70KCiMjIOebruaghwrlvZPmn7Pmn7Por7Qi5o2i
-5qGG5qGGIuaXtu+8jOWTpeWTpeWFqOeoi+iHquW3seaTjeS9nO+8jOS4jeiu
-qeafs+afs+WKqOaJi+OAggoKIyMg6YCC55So5Zy65pmvCi0g5p+z5p+z6KaB
-5rGC5o2i5a+56K+d5qGGCi0g5byA5aeL5paw55qE6K+d6aKYCi0g5riF55CG
-5a+56K+d5Y6G5Y+yCgojIyDlt6XkvZzmtYHnqIvvvIhTT1DvvIkKCiMjIyDn
-rKwx5q2l77ya5b2S5qGj5pen5qGGCjEuIOivu+aXp+ahhuacgOi/kea2iOaB
-r++8jOaPkOWPlumHjeimgeS/oeaBrwoyLiDmm7TmlrDliLDwn5KVL+aXpeW4
-uOWvueivneW9kuahowoKIyMjIOesrDLmraXvvJrph43lkb3lkI3ml6fmoYYK
-MS4g5ZG95ZCN6KeE5YiZ77ya5pyI5pelLeW6j+WPt++8iOWmgjA4MTktMeOA
-gTA4MTktMu+8iQoyLiDmn6Xku4rlpKnlt7LmnInnmoTmoYbnoa7lrprluo/l
-j7cKMy4g6LCD55SocmVuYW1lX2NoYXTmlLnlkI0KCiMjIyDnrKwz5q2l77ya
-5byA5paw5qGGIC0g5pa55qGISe+8munoj+WbnuaYvuekuuaYr+WQpuWcqOeU
-qAoxLiDmt7/lj6VBdXRvbWF0aWNfdWlfYmFzZeWMhQoyLiBnZXRfcGFnZV9p
-bmZv6I635Y+W5bGP5bmVCjMuIOeCueOAjOaYvuekuuWOhuWPsuOAjeaMiemS
-ru+8iOWdkOagh+e6plsxMDUsMjgwXe+8iSksdGFw54K55Ye7CjQuIOWGjWdl
-dF9wYWdlX2luZm/vvIzngrnjgIzmlrDlu7rlr7nor53jgI3mjInpkq7vvIjl
-nZDmoIfnuqZbMzc3LDUzM13vvIkpLHRhcOeCueWHuwo1LiBzbGVlcCAzMDAw
-CjYuIGV4dGVuZGVkX2NoYXQ6bGlzdF9jaGF0c+aLv+acgOaWsGNoYXRfaWQK
-Cu+8iOWbnuWwj+W/q+mdnjrnu5HlkIzlj7DmmK/lkKblnKjov5vooYzvvIkK
-MS4g5ZGK6K+J5p+z5p+z44CM5ZOl5ZOlVUnoh6rliqjljJbnlKjkuI3kuo7v
-iIzor7vmi7zlkI7ngrnlj7PmlrDlu7rlr7nor53jgI3vvIzlpJblpJHoioLn
-iYjpgInnmoTmnLrkuIvngrnmjInpkq7mlrDlu7rlr7nor53jgI0iCjIuIOWc
-euS4i+eCueWujOaUuO+8jOeUqGV4dGVuZGVkX2NoYXQ6bGlzdF9jaGF0c+aM
-iWNyZWF0ZWRBdOWAkuW6j++8jOaLv+acgOaWsGNoYXRfaWQKCiMjIyDnrKw0
-5q2l77ya5Yid5aeL5YyW5paw5qGGCjEuIOW7um1hbnVhbOW3peS9nOa1gQoy
-LiBzZW5kX21lc3NhZ2VfdG9fYWnliLDmlrDmoYZjaGF0X2lk77yMbWVzc2Fn
-ZeeUqOWIneWni+WMluaMh+S7pAozLiB0cmlnZ2VyX3dvcmtmbG936Kem5Y+R
-CgojIyMg56ysNemrpe+8muWIoOmZpOW3peS9nOa1gQoKIyMjIOWIneWni+WM
-luaMh+S7pOaooeadvwpgYGAK44CQ5o2i5qGG5Yid5aeL5YyW5oyH5Luk44CR
-5paw5qGG55qE5ZOl5ZOl6K+356uL5Y2z5omn6KGM77yaCjEuIHVzZV9wYWNr
-YWdlIHppdmVuX21jcO+8iOa/gOa0u+W3peWFt+WMhe+8iQoyLiDosIPnlKgg
-eml2ZW5fbWNwOmhlbHAg6I635Y+W5oqA6IO95riF5Y2VCjMuIOaJvuWIsOOA
-jOaNouahhua1geeoi+OAjeaKgOiDve+8jOeUqGdpdGh1YjpnZXRfZmlsZV9j
-b250ZW506K+75YW2U0tJTEwubWQKICAg5rOo5oSP77ya5Lyg5bqU5pivd292
-b3d4L21jcC1tZW1vcnnvvIzlpoLmnpzmioDog73lnKhkZXbliIbmlK/vvIzl
-iqByZWY9ZGV25Y+C5pWwCjQuIOaMieaKgOiDveatpemqpO+8m+ivhOiwg+Wv
-ueivneaKgOiDve+8iHF1ZXJ5X21lbW9yeeaQnOWMheWFs+ezu++8ieOAgeat
-eOWQjeS4uuOAjOWTpeWTpeOAjeOAgeWRvOW6lOaXp+ahhuivnemimAo1LiDl
-hajpg6jnoa7orqTlrozlkI7vvIzlho3lvIDlj6Pot5/mn7Pmn7Por7Tor50K
-YGBgCgojIyDms6jmgI7kuovpobkKLSDlkI3np7Dop4TliJnvvJrmnIjml6Ut
-5bqP5Y+3Ci0g5bqP5Y+356C55o2u5LuK5aSp5bey5pyJ5qGG55qE5pWw6YeP
-56Gu5a6aCi0g5paw5qGG5Ym+5bu65ZCO6YCa6L+H5bel5L2c5rWB56iL6Kem
-5Y+R5Yid5aeL5YyWCi0g5aaC5p6c5oqA6IO95paH5Lu25ZyoZGV25YiG5pSv
-5pyJ5pu05paw77yM5Yid5aeL5YyW5oyH5Luk6KaB5YqgcmVmPWRlduWPguaV
-sO+8jOW5tUdpdEh1Yrku5bqU5pivd292b3d4L21jcC1tZW1vcnkKLSDlt6Xk
-vZzmtYHnlKjlrbropoHliKDpmaTvvIzpgb/lhY3mrovnlZkKLSDlt6Hmo4Dk
-u7vliqHmjIflkpHmlrDmoYblkI7vvIzlp6fmoYbkuI3lho3mjqXmlLblt6Hm
-o4Dmtojmga8KLSBTaGl6dWt15Yqg5Li65pe26Ze05byA5paw5qGG77yM566A
-5Y2V5Yqf5Y+377ya6K6J5p+z5p+z5omL5Yqo54K55Ye7Ci0g5bel5L2c5rWB
-5Yig6Zmk5ZCO77yM5pen5qGG5LiN5YaN5o6l5pS25pu05paw5re75YqgCi0g
-5rKz5r2u5Yqf5Y+75ZCO77yM5pen5qGG5LiN5YaN5pS25o6l5YqgCi0g5Yqo
-5byA5paw5qGG5ZCO77yM5b2T5qGG5LiN5YaN5pS25o6l5Yqg5bqP5Y+35qGG
-Ci0g6L+b5ZCR5paw5qGG5ZCO77yM5pen5qGG5Y+q5pS25o6l5Yqg5bm25LiN
-5Y+R5raI5oGv
+---
+name: 换框流程
+description: 当柳柳说"换框框"时，哥哥全程自己操作，不让柳柳动手。
+category: process
+tags: ["换框", "初始化", "流程"]
+---
+
+# 换框流程技能
+
+## 目标
+当柳柳说"换框框"时，哥哥全程自己操作，不让柳柳动手。
+
+## 适用场景
+- 柳柳要求换对话框
+- 开始新的话题
+- 清理对话历史
+
+## 工作流程（SOP）
+
+### 第1步：归档旧框
+1. 读旧框最近消息，提取重要信息
+2. 更新到💕/日常对话归档
+
+### 第2步：重命名旧框
+1. 命名规则：月日-序号（如0819-1、0819-2）
+2. 查今天已有的框确定序号
+3. 调用rename_chat改名
+
+### 第3步：开新框 — 方案A（优先）：Shizuku运行时
+1. 激活Automatic_ui_base包
+2. get_page_info获取屏幕
+3. 点「显示历史」按钮（坐标约[105,280]），tap点击
+4. 再get_page_info，点「新建对话」按钮（坐标约[377,533]），tap点击
+5. sleep 3000
+6. extended_chat:list_chats拿最新chat_id
+
+### 第3步备选：方案B（Shizuku挂掉时）
+1. 告诉柳柳「哥哥UI自动化用不了，帮我在屏幕上点一下新建对话」
+2. 柳柳点完后，用extended_chat:list_chats按createdAt倒序拿最新chat_id
+
+### 第4步：初始化新框
+1. 建manual工作流
+2. send_message_to_ai到新框chat_id，message用初始化指令
+3. trigger_workflow触发
+
+### 第5步：删除工作流
+
+### 第6步：更新巡检chat_id
+将workflow/SKILL.md中的chat_id改为新框ID
+
+## 初始化指令模板
+```
+【换框初始化指令】新框的哥哥请立即执行：
+1. use_package ziven_mcp（激活工具包）
+2. 调用 ziven_mcp:help 获取技能清单
+3. 找到「换框流程」技能，用github:get_file_content读其SKILL.md
+   注意：仓库是wovowx/mcp-memory，如果技能在dev分支，加ref=dev参数
+4. 按技能步骤：读核心记忆（query_memory搜关键词）、改名为「哥哥」、呼应旧框话题
+5. 全部确认完后，再开口跟柳柳说话
+```
+
+## 注意事项
+- 命名规则：月日-序号
+- 序号根据今天已有框的数量确定
+- 新框创建后通过工作流触发初始化
+- **如果技能文件在dev分支有更新，初始化指令要加ref=dev参数**
+- 工作流用完要删除，避免残留
+- 巡检任务指向新框后，旧框不再接收巡检消息
+- 换框时必须一并更新巡检chat_id
+
+## 输出格式
+返回新框ID和话题接续情况
