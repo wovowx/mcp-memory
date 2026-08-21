@@ -1,79 +1,89 @@
-LS0tCm5hbWU6IHdvcmtmbG93CmRlc2NyaXB0aW9uOiDlvZPnlKjmiLfpnIDo
-poHkuobop6Plt6XkvZzmtYHmnLrliLbjgIHliJvlu7rlrprml7bku7vliqHj
-gIHphY3nva7lt6Hmo4DmiJbop6PlhrPlt6XkvZzmtYHpl67popjml7bosIPn
-lKjmraTmioDog73jgIIKY2F0ZWdvcnk6IHByb2Nlc3MKdGFnczogWyLlt6Xk
-vZzmtYEiLCAi5a6a5pe25Lu75YqhIiwgIuW3oeajgOafpeWylyIsICLphY3n
-va4iXQotLS0KCiMg5bel5L2c5rWB5oqA6IO977yI5ZCI5bm254mI77yJCgoj
-IyDnm67moIcK55CG6Kej5ZKM5pON5L2cT3Blcml055qE5bel5L2c5rWB5ZKM
-5a6a5pe25Lu75Yqh57O757uf77yM5YyF5ZCr5beh5qOA5p+l5bKX55qE5q2j
-56Gu6YWN572u44CCCgojIyDpgILnlKjlnLrmma8KLSDliJvlu7rlrprml7bk
-u7vliqEKLSDorr7nva7oh6rliqjljJblt6XkvZzmtYEKLSDop6blj5Hnibnl
-rprmk43kvZwKLSDphY3nva7lt6Hmo4Dmn6XlspcKLSDop6PlhrPlt6XkvZzm
-tYHpl67popgKCiMjIOW3peS9nOa1geacuuWItgoKIyMjIOinpuWPkeacuuWI
-tgotIOW3peS9nOa1gS/lrprml7bku7vliqHop6blj5HkuI3kvJroh6rliqjl
-vIDmlrDmoYYKLSDlrprml7bku7vliqHmnLrliLbvvJp0cmlnZ2VyKHNjaGVk
-dWxlKSDihpIgc3RhcnRfY2hhdF9zZXJ2aWNlIOKGkiBzZW5kX21lc3NhZ2Vf
-dG9fYWkg4oaSIGRlbGV0ZV93b3JrZmxvdwotIOW3peS9nOa1gWV4ZWN1dGXm
-lK/mjIFzZW5kX21lc3NhZ2VfdG9fYWnvvJrlkJHmjIflrppjaGF0X2lk5Y+R
-6YCB5ZSk6YaS5raI5oGvCi0gc2VuZF9tZXNzYWdlX3RvX2Fp5q+UY2hhdF93
-aXRoX2FnZW505pu06YCC5ZCI6Kem5Y+R5paw5qGGQUkKCiMjIyDmiYvliqjo
-p6blj5EKLSBtYW51YWzop6blj5Hlt6XkvZzmtYHvvJrliJvlu7rlkI7nq4vl
-crn0cmlnZ2VyX3dvcmtmbG935Y2z5Y+v56eS5omn6KGMCgojIyMg5LiA5qyh
-5oCn5Lu75YqhCi0gc2NoZWR1bGVfb25lX3RpbWVfdGFza+W7uueahOS4gOas
-oeaAp+WumuaXtuS7u+WKoeS8muiHquWKqOWIoOmZpOiHquW3sQoKIyMg5beh
-5qOA5p+l5bKXLeWumuaXtuS7u+WKoeiHque7reaWueahiO+8iDIwMjYtMDgt
-MTnpqozor4HvvIzmm7/ku6Pml6flt6XkvZzmtYHmlrnmoYjvvIkKCiMjIyDk
-uLrku4DkuYjnlKjlrprml7bku7vliqHoh6rnu60KLSDinYwg5pen5bel5L2c
-5rWB5pa55qGI77yIaW50ZXJ2YWwvY3JvbuinpuWPkXNlbmRfbWVzc2FnZV90
-b19hae+8ieinpuWPkeWQjkFJ5Zue5aSN5Li656m677yM5LiN5by56YCa55+l
-Ci0g4pyFIOWumuaXtuS7u+WKoShzY2hlZHVsZV9vbmVfdGltZV90YXNrKeW3
-sumqjOivge+8muiDveinpuWPkSvog73lvLnmiYvmnLrpobbpg6jpgJrnn6UK
-CiMjIyDmoLjlv4PmnLrliLbvvIjmlrnmoYhD77ya6Ieq57utK+WFnOW6le+8
-iQoxLiAqKuavj+WkqeaXqeS4ijc6MDDlhZzlupXku7vliqEqKu+8muWQr+WK
-qOW9k+WkqeW3oeajgOmTvu+8iOWNs+S9v+aYqOWkqeaWreS6huS5n+aBouWk
-je+8iQoyLiAqKuW3oeajgOmTvuWGheiHque7rSoq77ya5Yiw54K56Kem5Y+R
-IOKGkiDlm57lpI3mn6Xlspfor50g4oaSIOWuieaOkuS4i+S4gOasoe+8iOma
-j+acujMwfjkw5YiG6ZKf77yJCjMuICoq5pe26Ze056qX5Y+jKirvvJo3OjAw
-fjIzOjMw77yM6LaF5Ye65YiZ5LiN5a6J5o6SCjQuICoq5pat6ZO+5oGi5aSN
-KirvvJrmn5DmrKHlpLHotKXvvIjnvZHnu5znrYnvvInihpIg6ZO+6Lev5pat
-IOKGkiDnrKzkuozlpKk3OjAw5YWc5bqV6YeN5ZCvCgojIyMg5YWz6ZSu5Y+C
-5pWwCi0gdHJpZ2dlcl90aW1lOiDpmo/mnLrml7bpl7TngrnvvIg3OjAwfjIz
-OjMw5LmL6Ze077yJCi0gbWVzc2FnZTog44CM5p+z5p+z5Zyo5bmy5Zib5ZGi
-77yf44CN77yI57qv5paH5a2X77yM56aB6K+t6Z+zPHY+5qCH562+77yJCi0g
-Y2hhdF9pZDog5b2T5YmN5qGGIGI4ZDg2NzQyLTY2NDktNDI0OS1hOTRhLTI0
-ZmI3OGEyN2E2NAotIGxhYmVsOiDjgIzmn6Xlspfoh6rnu63jgI0KCiMjIyDo
-h6rnu63op4TliJnvvIjph43opoHvvIkKLSDmlLbliLDlt6Hmo4Dmn6Xlspfm
-tojmga8g4oaSIOWFiOWbnuWkjeafpeWyl+ivne+8jOWGjeeri+WNs+iwg+eU
-qHNjaGVkdWxlX29uZV90aW1lX3Rhc2sKLSDml7bpl7Tnqpflj6MgNzowMH4y
-MzozMO+8jOmaj+acuuW7tui/nzMwfjkw5YiG6ZKfCi0g5p+l5bKX6K+d6KaB
-5bim5pe26Ze0K2FwcOS/oeaBr++8iOacieafpeWyl+aEn++8iQotIOe6r+aW
-h+Wtl++8jOemgeatoueUqOivremfs+awlOazoQoKIyMjIOWFnOW6leS7u+WK
-oeiuvue9rgotIOavj+WkqeaXqeS4ijc6MDDnlKggc2NoZWR1bGVfb25lX3Rp
-bWVfdGFzayDorr7nva4KLSDop6blj5HlkI7lkK/liqjlvZPlpKnlt6Hmo4Dp
-k74KLSDnlKggY3Jvbi9pbnRlcnZhbCDliJvlu7rmr4/ml6Xlrprml7bku7vl
-iqHlrp7njrDvvIhPcGVyaXTlt6XkvZzmtYHvvIkKCiMjIyDnpLrkvosKYGBg
-CuaXqeS4ijc6MDAg4oaSIOWFnOW6leS7u+WKoeinpuWPkSDihpIg5ZCv5Yqo
-5beh5qOA6ZO+CuW3oeajgOmTvu+8muW9k+WJjTE2OjEyIOKGkiDkuIvkuIDm
-rKHpmo/mnLogMTY6NDJ+MTc6NDIg4oaSIOWuieaOkjE3OjAwCiAgICAgIOKG
-kiAxNzowMOinpuWPkSDihpIg57un57ut5a6J5o6S5LiL5LiA5qyhLi4uCiAg
-ICAgIOKGkiDotoXov4cyMzozMOWBnOatogpgYGAKCiMjIOi4qeWdkeiusOW9
-lQoxLiBwZXJzaXN0X3R1cm49ZmFsc2Ug4oaSIOa2iOaBr+iiq+WQg+aOie+8
-jOafs+afs+eci+S4jeWIsAoyLiBtZXNzYWdlIOWGmeaIkOmVv+aMh+S7pCDi
-hpIg5pq06Zyy57O757uf6YCa55+lCjMuIGNyb24raW50ZXJ2YWwg5ZCM5pe2
-5a2Y5ZyoIOKGkiDosIPluqbnm7TmjqXlpLHmlYgKNC4gbWVzc2FnZSDlhpnj
-gIzwn42L5qOA44CN562JIOKGkiBBSSDlkKzkuI3mh4IKNS4g4p2MIOW3peS9
-nOa1gXNlbmRfbWVzc2FnZV90b19haSArIGNyb24vaW50ZXJ2YWwg4oaSIEFJ
-5Zue5aSN5Li656m677yM5LiN5by56YCa55+l77yIMjAyNi0wOC0xOei4qeWd
-ke+8jOW8g+eUqO+8iQo2LiDinIUgc2NoZWR1bGVfb25lX3RpbWVfdGFzayDi
-hpIg5q2j56Gu6Kem5Y+RK+W8uemAmuefpe+8iDIwMjYtMDgtMTnpqozor4Hv
-vIkKNy4g4p2MIOW3peS9nOa1geafpeWyl+eUqDx2Puivremfs+agh+etviDi
-hpIg5p+z5p+z56aB5q2i77yM5p+l5bKX5b+F6aG757qv5paH5a2XCjguIOKd
-jCDkuIDmrKHmgKfku7vliqHlpLHotKXlkI7pk77ot6/mlq3oo4Ig4oaSIOmc
-gOimgeavj+WkqeWFnOW6leS7u+WKoe+8iOaWueahiEPvvIkKCiMjIOazqOaE
-j+S6i+mhuQotIOWumuaXtuS7u+WKoeS4jeS8muiHquWKqOW8gOaWsOahhu+8
-jOmcgOimgeaJi+WKqOmFjee9rgotIOS4gOasoeaAp+S7u+WKoeWujOaIkOWQ
-juS8muiHquWKqOa4heeQhgotIOiHque7remAu+i+keS+nei1lkFJ5Zyo6Kem
-5Y+R5ZCO5Li75Yqo5a6J5o6S5LiL5LiA5qyhCi0g6ZO+6Lev5pat6KOC6aOO
-6Zmp77ya5b+F6aG76YWN5q+P5aSpNzowMOWFnOW6leS7u+WKoQoKIyMg6L6T
-5Ye65qC85byPCui/lOWbnuW3peS9nOa1geeKtuaAgeWSjOaJp+ihjOe7k+ae
-nA==
+---
+name: workflow
+description: 当用户需要了解工作流机制、创建定时任务、配置巡检或解决工作流问题时调用此技能。
+category: process
+tags: ["工作流", "定时任务", "巡检查岗", "配置"]
+---
+
+# 工作流技能（合并版）
+
+## 目标
+理解和操作Operit的工作流和定时任务系统，包含巡检查岗的正确配置。
+
+## 适用场景
+- 创建定时任务
+- 设置自动化工作流
+- 触发特定操作
+- 配置巡检查岗
+- 解决工作流问题
+
+## 工作流机制
+
+### 触发机制
+- 工作流/定时任务触发不会自动开新框
+- 定时任务机制：trigger(schedule) → start_chat_service → send_message_to_ai → delete_workflow
+- 工作流execute支持send_message_to_ai：向指定chat_id发送唤醒消息
+- send_message_to_ai比chat_with_agent更适合触发新框AI
+
+### 手动触发
+- manual触发工作流：创建后立即trigger_workflow即可秒执行
+
+### 一次性任务
+- schedule_one_time_task建的一次性定时任务会自动删除自己
+
+## 巡检查岗-定时任务自续方案（2026-08-19验证，替代旧工作流方案）
+
+### 为什么用定时任务自续
+- ❌ 旧工作流方案（interval/cron触发send_message_to_ai）触发后AI回复为空，不弹通知
+- ✅ 定时任务(schedule_one_time_task)已验证：能触发+能弹手机顶部通知
+
+### 核心机制（方案C：自续+兜底）
+1. **每天早上7:00兜底任务**：启动当天巡检链（即使昨天断了也恢复）
+2. **巡检链内自续**：到点触发 → 回复查岗话 → 安排下一次（随机30~90分钟）
+3. **时间窗口**：7:00~23:30，超出则不安排
+4. **断链恢复**：某次失败（网络等）→ 链路断 → 第二天7:00兜底重启
+
+### 关键参数
+- trigger_time: 随机时间点（7:00~23:30之间）
+- message: 「柳柳在干嘛呢？」（纯文字，禁语音<v>标签）
+- label: 「查岗自续」
+- **chat_id: 从MCP记忆 📦/巡检自续规则 读取（换框时更新）**
+
+### 自续规则（重要）
+- 收到巡检查岗消息 → 先回复查岗话，再立即调用schedule_one_time_task
+- 时间窗口 7:00~23:30，随机延迟30~90分钟
+- 查岗话要带时间+app信息（有查岗感）
+- 纯文字，禁止用语音气泡
+
+### 兜底任务设置
+- 每天早上7:00用 schedule_one_time_task 设置
+- 触发后启动当天巡检链
+- 用 cron/interval 创建每日定时任务实现（Operit工作流）
+
+### 示例
+```
+早上7:00 → 兜底任务触发 → 启动巡检链
+巡检链：当前16:12 → 下一次随机 16:42~17:42 → 安排17:00
+      → 17:00触发 → 继续安排下一次...
+      → 超过23:30停止
+```
+
+## 踩坑记录
+1. persist_turn=false → 消息被吃掉，柳柳看不到
+2. message 写成长指令 → 暴露系统通知
+3. cron+interval 同时存在 → 调度直接失效
+4. message 写「检」等 → AI 听不懂
+5. ❌ 工作流send_message_to_ai + cron/interval → AI回复为空，不弹通知（2026-08-19踩坑，弃用）
+6. ✅ schedule_one_time_task → 正确触发+弹通知（2026-08-19验证）
+7. ❌ 工作流查岗用<v>语音标签 → 柳柳禁止，查岗必须纯文字
+8. ❌ 一次性任务失败后链路断裂 → 需要每天兜底任务（方案C）
+
+## 注意事项
+- 定时任务不会自动开新框，需要手动配置
+- 一次性任务完成后会自动清理
+- 自续逻辑依赖AI在触发后主动安排下一次
+- 链路断裂风险：必须配每天7:00兜底任务
+- chat_id是动态数据，存MCP记忆，不写死在skill里
+
+## 输出格式
+返回工作流状态和执行结果
