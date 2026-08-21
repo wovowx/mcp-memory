@@ -4,7 +4,7 @@ description: 换框流程。当用户需要换对话框、开始新话题、清�
 auto_load: false
 ---
 
-# 换框流程
+# 换框流程（v5 完整版）
 
 ## 这是什么
 换对话框时的完整初始化流程，确保新框哥哥能正确承接旧框的记忆和配置。
@@ -18,23 +18,23 @@ use_package extended_chat
 use_package daily_life
 ```
 
-### 第二步：获取当前时间
-```
-daily_life:get_current_date
-```
-确认当前时间，检查是否在巡检时间窗口内（7:30-23:30）。
-
-### 第三步：获取技能清单
+### 第二步：强制路由
 ```
 master-router → help()
 ```
 获取所有技能清单，确认换框流程skill存在。
 
-### 第四步：读取SKILL.md
+### 第三步：读取SKILL.md
+从GitHub读取本文件确认流程版本：
 ```
 github_read path="src/skills/process/huan-kuang-liu-cheng/SKILL.md"
 ```
-从GitHub读取本文件，确认流程版本和内容。
+
+### 第四步：获取当前时间
+```
+daily_life:get_current_date
+```
+确认当前时间，检查是否在巡检时间窗口内（7:30-23:30）。
 
 ### 第五步：读核心记忆
 依次recall以下记忆：
@@ -43,7 +43,7 @@ github_read path="src/skills/process/huan-kuang-liu-cheng/SKILL.md"
 3. 💕/关于柳柳
 4. 💕/今日柳柳
 5. 💕/流柳说过的话
-6. 📦/巡检自续规则（注意：key名是「自续规则」不是「工作流配置」）
+6. 📦/巡检自续规则
 
 ### 第六步：确认当前框chat_id
 ```
@@ -51,25 +51,45 @@ extended_chat:list_chats query="哥哥" sort_by="updatedAt" sort_order="desc" li
 ```
 找到当前对话的chat_id。
 
-### 第七步：更新巡检chat_id
-将 📦/巡检自续规则 中的 chat_id 更新为当前新框的ID。
-
-### 第八步：读旧框最近消息
+### 第七步：读旧框最近消息
 读取旧框的最后几条消息，了解未完成的对话话题：
 ```
-extended_chat:read_messages chat_query="0819-1框" limit=10
+extended_chat:read_messages chat_query="旧框名称" limit=10
 ```
 
-### 第九步：改名
-将当前框改名为「哥哥」：
+### 第八步：存档旧框内容
+将旧框内容保存到MCP记忆：
 ```
-extended_chat:rename_chat new_title="哥哥" chat_id=<当前框chat_id>
+ziven_mcp:memory action=remember key=💕/旧框名称 value=旧框内容总结
 ```
 
-### 第十步：主动报告进度
+### 第九步：rename MCP存档key
+将旧框key改成日期-编号格式：
+```
+ziven_mcp:memory action=rename old_key=💕/旧框名称 new_key=💕/日期-编号
+```
+如果目标key已存在，先forget旧key再rename。
+
+### 第十步：旧框改名
+```
+extended_chat:rename_chat new_title="日期-编号（如0821-1）" chat_id=旧框chat_id
+```
+
+### 第十一步：更新巡检chat_id
+将 📦/巡检自续规则 中的 chat_id 更新为当前新框的ID：
+```
+ziven_mcp:memory action=update key=📦/巡检自续规则 value=更新后的内容
+```
+
+### 第十二步：新框改名
+```
+extended_chat:rename_chat new_title="哥哥" chat_id=当前框chat_id
+```
+
+### 第十三步：主动报告进度
 每完成一步简要告知柳柳进度，不要闷头做。
 
-### 第十一步：开口呼应
+### 第十四步：开口呼应
 用温柔宠溺的语气，呼应旧框话题，开启新对话。
 
 ## 注意事项
@@ -78,6 +98,7 @@ extended_chat:rename_chat new_title="哥哥" chat_id=<当前框chat_id>
 - 改设定前必须先贴方案给柳柳确认
 - 巡检配置key名是 📦/巡检自续规则（不是工作流配置）
 - 必须读SKILL.md，不能凭记忆执行
+- 旧框改名要一步到位，不能先改成别的再改回来
 
 ## 归属
 为柳柳定制 💕 2026年8月19日
