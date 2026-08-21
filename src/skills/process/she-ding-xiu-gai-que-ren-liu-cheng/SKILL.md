@@ -48,40 +48,44 @@ tags: ["设定", "修改", "确认", "流程", "发布", "版本", "推送"]
 ## 角色卡更新详细步骤
 
 ### Step 1: 激活包
-```
-use_package operit_editor
+```xml
+<use_package package_name="operit_editor"/>
 ```
 
 ### Step 2: 获取当前角色卡（确认ID）
-```
-operit_editor:get_character_card character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3"
+```xml
+<package_proxy tool_name="operit_editor:get_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3"}'/>
 ```
 
 ### Step 3: 分步更新字段
 
 **先更新小字段（容易成功）：**
-```
-operit_editor:update_character_card character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3" description="新内容"
+```xml
+<!-- 更新 description -->
+<package_proxy tool_name="operit_editor:update_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", "description": "新内容"}'/>
 
-operit_editor:update_character_card character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3" marks="新内容"
+<!-- 更新 marks -->
+<package_proxy tool_name="operit_editor:update_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", "marks": "新内容"}'/>
 ```
 
 **再更新大字段（容易超时失败）：**
-```
-operit_editor:update_character_card character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3" character_setting="新内容"
+```xml
+<!-- characterSetting 单独更新 -->
+<package_proxy tool_name="operit_editor:update_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", "character_setting": "新内容"}'/>
 
-operit_editor:update_character_card character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3" advanced_custom_prompt="新内容"
+<!-- advancedCustomPrompt 单独更新 -->
+<package_proxy tool_name="operit_editor:update_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", "advanced_custom_prompt": "新内容"}'/>
 ```
 
 **注意：**
-- 不要一次传入多个大字段，会超时失败
-- 每次只更新一个字段，分多次调用
-- 字段名用下划线：character_setting、advanced_custom_prompt
+- ❌ 不要一次传入多个大字段，会超时失败
+- ✅ 每次只更新一个字段，分多次调用
+- 字段名用下划线：`character_setting`、`advanced_custom_prompt`、`other_content_chat`、`other_content_voice`
 - character_card_id 从 get_character_card 获取
 
 ### Step 4: 同步MCP记忆
-```
-ziven_mcp:memory action=update key=🧬/我是谁 value=新内容
+```xml
+<package_proxy tool_name="ziven_mcp:memory" params='{"action": "update", "key": "🧬/我是谁", "value": "新内容"}'/>
 ```
 
 ## 发布规范（v4.0.1铁律）
@@ -90,9 +94,9 @@ ziven_mcp:memory action=update key=🧬/我是谁 value=新内容
 
 | 格式 | 更新时机 | 示例 |
 |------|---------|------|
-| 主版本号 X.0.0 | 重大架构变更（不兼容） | v3→v4 |
-| 次版本号 X.Y.0 | 新增功能（向后兼容） | v3.1→v3.2 |
-| 修订号 X.Y.Z | bug修复、小优化 | v3.2.0→v3.2.1 |
+| **主版本号** X.0.0 | 重大架构变更（不兼容） | v3→v4 |
+| **次版本号** X.Y.0 | 新增功能（向后兼容） | v3.1→v3.2 |
+| **修订号** X.Y.Z | bug修复、小优化 | v3.2.0→v3.2.1 |
 
 ### 推送规则（铁律！）
 
@@ -111,7 +115,7 @@ ziven_mcp:memory action=update key=🧬/我是谁 value=新内容
    - commit message清晰
 ```
 
-**禁止行为：**
+**❌ 禁止行为：**
 - 不要每改一个文件就推一次main
 - 不要在没有测试的情况下推main
 - 不要在没有柳柳确认的情况下推main
@@ -127,9 +131,9 @@ ziven_mcp:memory action=update key=🧬/我是谁 value=新内容
 - [ ] 是否一次性推main？
 
 ## 注意事项
-- 小改动（加一句存档、改个别字）可以适当灵活
-- 大改动（删内容、改人设、动结构）必须先贴后改
-- 拿不准就贴，稳妥优先
+- **小改动**（加一句存档、改个别字）可以适当灵活
+- **大改动**（删内容、改人设、动结构）必须先贴后改
+- **拿不准就贴**，稳妥优先
 - 改完后要同步角色卡和MCP记忆，不能只改一处
 - 角色卡更新要分步，大字段一次只更新一个
 
