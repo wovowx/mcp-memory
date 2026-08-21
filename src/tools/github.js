@@ -1,7 +1,7 @@
 // ============================================================
 // GitHub Tools (Extended)
 // ============================================================
-// github_push / github_create_repo / github_read / github_list / github_delete
+// github_push / github_create_repo / github_read / github_list / github_delete / github_merge_to_main
 // 2026-08-17 FIX: btoa cannot handle Chinese -> UTF-8 safe base64
 
 // UTF-8 safe base64 encode (supports Chinese)
@@ -123,6 +123,35 @@ export async function handleGitHubTool(name, safeArgs, env) {
             });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             text = `DELETED: ${safeArgs.path}`;
+        }
+
+        // ============================================
+        // github_merge_to_main - merge dev into main (ONE merge, ONE deploy)
+        // ============================================
+        else if (name === 'github_merge_to_main') {
+            const branch = (safeArgs && safeArgs.branch) || 'dev';
+            // check branch exists
+            const checkResp = await fetch(`${baseUrl}/git/ref/heads/${branch}`, { headers: ghHeaders });
+            if (!checkResp.ok) { const err = await checkResp.json(); throw new Error('Branch not found: ' + branch + ' (' + (err.message || `HTTP ${checkResp.status}`) + ')'); }
+            // merge branch into main
+            const mergeResp = await fetch(`${baseUrl}/merges`, {
+                method: 'POST',
+                headers: ghHeaders,
+                body: JSON.stringify({ base: 'main', head: branch, commit_message: `Merge ${branch} into main` })
+            });
+            if (mergeResp.status === 204) {
+                text = 'OK: main is already up to date (no changes to merge)';
+            } else if (!mergeResp.ok) {
+                const err = await mergeResp.json();
+                if (mergeResp.status === 409 && err.message && err.message.includes('already up to date')) {
+                    text = 'OK: main is already up to date (no changes to merge)';
+                } else {
+                    throw new Error(err.message || `HTTP ${mergeResp.status}`);
+                }
+            } else {
+                const data = await mergeResp.json();
+                text = `OK: Merged ${branch} into main\nCommit: ${data.sha || 'merged'}\nURL: ${data.html_url || 'merged'}`;
+            }
         }
 
         else return 'ERROR: Unknown GitHub tool: ' + name;
