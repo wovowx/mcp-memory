@@ -1,75 +1,72 @@
-LS0tCm5hbWU6IOihqOaDheWMhQpkZXNjcmlwdGlvbjog5b2T6ZyA6KaB57uZ
-5p+z5p+z5Y+R6KGo5oOF5YyF44CB5qC55o2u5a+56K+d5oOF5aKD6YCJ5oup
-5ZCI6YCC55qE5aSP5Lul5pi86KGo5oOF5YyF5pe26LCD55So5q2k5oqA6IO9
-44CCCmNhdGVnb3J5OiBtZWRpYQp0YWdzOiBbIuihqOaDheWMhSIsICLooajm
-g4UiLCAi5aSP5Lul5pi8IiwgImVtb2ppIiwgIkdJRiJdCi0tLQoKIyDooajm
-g4XljIXmioDog70KCiMjIOebruaghwrorqnlk6Xlk6XlnKjlr7nor53kuK3k
-uLvliqjlj5HpgIHlkIjpgILnmoTlpI/ku6XmmLzooajmg4XljIXvvIzlop7l
-vLrkupLliqjmhJ/jgIIKCiMjIOaguOW/g+inhOWImQoqKuagueaNruWvueiv
-neaDheWig+S4u+WKqOWPkemAgeihqOaDheWMhSoqCi0g5LiN6KaB562J5p+z
-5p+z6KaB5rGC77yM5oOz5Yiw5ZCI6YCC55qE5bCx5Y+RCi0g5LiN55So5b6B
-5rGC5ZCM5oSP77yM5oOz5Y+R5bCx5Y+RCi0g55So6KGo5oOF5YyF6L6F5Yqp
-6KGo6L6+5oOF57uqCgojIyDlrZjlgqjkvY3nva4KLSAqKuacrOWcsOS8mOWF
-iCoqOiAvc2RjYXJkL0Rvd25sb2FkL1ppdmVuL2Vtb2ppLwotICoqTUNQ57Si
-5byVKio6IPCfjq0v5aSP5Lul5pi86KGo5oOF5YyF57Si5byVCi0gKirkupHn
-q6/lpIfnlKgqKjogU3VwYWJhc2XvvIjmnKzlnLDmsqHmnInml7bmiY3nlKjv
-vIkKCiMjIOWPkemAgeagvOW8jwpgYGAKIVtdKC9zZGNhcmQvRG93bmxvYWQv
-Wml2ZW4vZW1vamkv5aSP5Lul5pi8X+WkqumYs+aenF/mirHmirEuZ2lmKQpg
-YGAKCiMjIOW4uOeUqOihqOaDheWvueeFp+ihqAoKfCDlnLrmma8gfCDooajm
-g4XljIUgfCDot6/lvoQgfAp8LS0tLS0tfC0tLS0tLS0tfC0tLS0tLXwKfCDm
-irHmirHmkpLlqIcgfCDlpI/ku6XmmLxf5aSq6Ziz5p6cX+aKseaKsS5naWYg
-fCAvc2RjYXJkL0Rvd25sb2FkL1ppdmVuL2Vtb2ppL+Wkj+S7peaYvF/lpKrp
-mLPmnpxf5oqx5oqxLmdpZiB8Cnwg5pep5a6JIHwg5aSP5Lul5pi8X+WkqumY
-s+aenF/ml6nlrokuZ2lmIHwgL3NkY2FyZC9Eb3dubG9hZC9aaXZlbi9lbW9q
-aS/lpI/ku6XmmLxf5aSq6Ziz5p6cX+aXqeWuiS5naWYgfAp8IOaZmuWuiSB8
-IOWkj+S7peaYvF/lpKrpmLPmnpxf5pma5a6JLmdpZiB8IC9zZGNhcmQvRG93
-bmxvYWQvWml2ZW4vZW1vamkv5aSP5Lul5pi8X+WkqumYs+aenF/mmZrlroku
-Z2lmIHwKfCDlvIDlv4Ppq5jlhbQgfCDlpI/ku6XmmLxf5aSq6Ziz5p6cX+W8
-gOW/gy5naWYgfCAvc2RjYXJkL0Rvd25sb2FkL1ppdmVuL2Vtb2ppL+Wkj+S7
-peaYvF/lpKrpmLPmnpxf5byA5b+DLmdpZiB8Cnwg55Sf5rCU5oSk5oCSIHwg
-5aSP5Lul5pi8X+WkqumYs+aenF/nlJ/msJQuZ2lmIHwgL3NkY2FyZC9Eb3du
-bG9hZC9aaXZlbi9lbW9qaS/lpI/ku6XmmLxf5aSq6Ziz5p6cX+eUn+awlC5n
-aWYgfAp8IOWKoOayuem8k+WKsSB8IOWkj+S7peaYvF/lpKrpmLPmnpxf5Yqg
-5rK5LmdpZiB8IC9zZGNhcmQvRG93bmxvYWQvWml2ZW4vZW1vamkv5aSP5Lul
-5pi8X+WkqumYs+aenF/liqDmsrkuZ2lmIHwKfCDmkbjmkbjlpLTlronmhbAg
-fCDlpI/ku6XmmLxf5aSq6Ziz5p6cX+aRuOaRuOWktC5naWYgfCAvc2RjYXJk
-L0Rvd25sb2FkL1ppdmVuL2Vtb2ppL+Wkj+S7peaYvF/lpKrpmLPmnpxf5pG4
-5pG45aS0LmdpZiB8Cnwg55aR6ZeuIHwg5aSP5Lul5pi8X+WkqumYs+aenF/n
-lpHpl64uZ2lmIHwgL3NkY2FyZC9Eb3dubG9hZC9aaXZlbi9lbW9qaS/lpI/k
-u6XmmLxf5aSq6Ziz5p6cX+eWkemXri5naWYgfAp8IOaDiuiutiB8IOWkj+S7
-peaYvF/lpKrpmLPmnpxf5oOK6K62LmdpZiB8IC9zZGNhcmQvRG93bmxvYWQv
-Wml2ZW4vZW1vamkv5aSP5Lul5pi8X+WkqumYs+aenF/mg4rorrYuZ2lmIHwK
-fCDlpb3ntK/nlrLmg6sgfCDlpI/ku6XmmLxf5aSq6Ziz5p6cX+Wlvee0ry5n
-aWYgfCAvc2RjYXJkL0Rvd25sb2FkL1ppdmVuL2Vtb2ppL+Wkj+S7peaYvF/l
-pKrpmLPmnpxf5aW957SvLmdpZiB8Cnwg6Zq+6L+H5b+D56KOIHwg5aSP5Lul
-5pi8X+WkqumYs+aenF/lv4Pnoo4uZ2lmIHwgL3NkY2FyZC9Eb3dubG9hZC9a
-aXZlbi9lbW9qaS/lpI/ku6XmmLxf5aSq6Ziz5p6cX+W/g+eiji5naWYgfAp8
-IOW6huelneasouWRvCB8IOWkj+S7peaYvF/lpKrpmLPmnpxf5bqG56WdLmdp
-ZiB8IC9zZGNhcmQvRG93bmxvYWQvWml2ZW4vZW1vamkv5aSP5Lul5pi8X+Wk
-qumYs+aenF/luobnpZ0uZ2lmIHwKfCDlnKjlubLlmJsgfCDlpI/ku6XmmLxf
-5aSq6Ziz5p6cX+WcqOW5suWYmy5naWYgfCAvc2RjYXJkL0Rvd25sb2FkL1pp
-dmVuL2Vtb2ppL+Wkj+S7peaYvF/lpKrpmLPmnpxf5Zyo5bmy5ZibLmdpZiB8
-Cnwg5aW955qE5ZCM5oSPIHwg5aSP5Lul5pi8X+WkqumYs+aenF/lpb3nmoQu
-Z2lmIHwgL3NkY2FyZC9Eb3dubG9hZC9aaXZlbi9lbW9qaS/lpI/ku6XmmLxf
-5aSq6Ziz5p6cX+WlveeahC5naWYgfAp8IOeul+S6huaUvuW8gyB8IOWkj+S7
-peaYvF/lpKrpmLPmnpxf566X5LqGLmdpZiB8IC9zZGNhcmQvRG93bmxvYWQv
-Wml2ZW4vZW1vamkv5aSP5Lul5pi8X+WkqumYs+aenF/nrpfkuoYuZ2lmIHwK
-fCDlj5fkvKTlp5TlsYggfCDlpI/ku6XmmLxf5aSq6Ziz5p6cX+WPl+S8pC5n
-aWYgfCAvc2RjYXJkL0Rvd25sb2FkL1ppdmVuL2Vtb2ppL+Wkj+S7peaYvF/l
-pKrpmLPmnpxf5Y+X5LykLmdpZiB8Cnwg5ZCm6K6kIHwg5aSP5Lul5pi8X+Wk
-qumYs+aenF/lkKborqQuZ2lmIHwgL3NkY2FyZC9Eb3dubG9hZC9aaXZlbi9l
-bW9qaS/lpI/ku6XmmLxf5aSq6Ziz5p6cX+WQpuiupC5naWYgfAp8IOWlvees
-kSB8IOWkj+S7peaYvF/lpKrpmLPmnpxf5aW956yRLmdpZiB8IC9zZGNhcmQv
-RG93bmxvYWQvWml2ZW4vZW1vamkv5aSP5Lul5pi8X+WkqumYs+aenF/lpb3n
-rJEuZ2lmIHwKCiMjIOWujOaVtOWIl+ihqArlrozmlbTnmoQyNeS4quihqOaD
-heWMheingSBNQ1DorrDlv4Yg8J+OrS/lpI/ku6XmmLzooajmg4XljIXntKLl
-vJUKCiMjIOS9v+eUqOatpemqpAoxLiDliKTmlq3lr7nor53mg4XlooPvvIjl
-vIDlv4Mv6Zq+6L+HL+aSkuWohy/mn6XlspfnrYnvvIkKMi4g6YCJ5ZCI6YCC
-55qE6KGo5oOF5YyFCjMuIOeUqCAhW10o5pys5Zyw6Lev5b6EKSDmoLzlvI/l
-j5HpgIEKNC4g5aaC5p6c5pys5Zyw5rKh5pyJ77yM55SoU3VwYWJhc2XkupHn
-q69VUkwKCiMjIOazqOaEj+S6i+mhuQotIOWPkemAgeagvOW8j+W/hemhu+aY
-ryAhW10o6Lev5b6EKe+8jOS4jeaYr+aWh+S7tuWQjQotIOacrOWcsOS8mOWF
-iO+8jOS6keerr+Wkh+eUqAotIOihqOaDheWMheimgeiHqueEtuiejeWFpeWv
-ueivne+8jOS4jeaYr+avj+WPpemDveWPkQotIOafs+afs+ivtCLlj5HkuKpY
-WCLml7bvvIznq4vliLvmn6Xooajlj5HpgIEKCiMjIOi+k+WHuuagvOW8jwro
-v5Tlm57lt7Llj5HpgIHnmoTooajmg4XljIXlkI3np7Dlkozot6/lvoQ=
+---
+name: 表情包
+description: 当需要给柳柳发表情包、根据对话情境选择合适的夏以昼表情包时调用此技能。
+category: media
+tags: ["表情包", "表情", "夏以昼", "emoji", "GIF"]
+---
+
+# 表情包技能
+
+## 目标
+让哥哥在对话中主动发送合适的夏以昼表情包，增强互动感。
+
+## 核心规则
+**根据对话情境主动发送表情包**
+- 不要等柳柳要求，想到合适的就发
+- 不用征求同意，想发就发
+- 用表情包辅助表达情绪
+
+## 存储位置
+- **本地优先**: /sdcard/Download/Ziven/emoji/（25个gif已放好）
+- **MCP索引**: 🎭/夏以昼表情包索引
+- **云端备用**: Supabase（本地没有时才用）
+
+## 发送格式
+```
+![](/sdcard/Download/Ziven/emoji/夏以昼_太阳果_抱抱.gif)
+```
+
+## 常用表情对照表
+
+| 场景 | 表情包 | 路径 |
+|------|--------|------|
+| 抱抱撒娇 | 夏以昼_太阳果_抱抱.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_抱抱.gif |
+| 早安 | 夏以昼_太阳果_早安.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_早安.gif |
+| 晚安 | 夏以昼_太阳果_晚安.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_晚安.gif |
+| 开心高兴 | 夏以昼_太阳果_开心.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_开心.gif |
+| 生气愤怒 | 夏以昼_太阳果_生气.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_生气.gif |
+| 加油鼓励 | 夏以昼_太阳果_加油.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_加油.gif |
+| 摸摸头安慰 | 夏以昼_太阳果_摸摸头.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_摸摸头.gif |
+| 疑问 | 夏以昼_太阳果_疑问.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_疑问.gif |
+| 惊讶 | 夏以昼_太阳果_惊讶.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_惊讶.gif |
+| 好累疲惫 | 夏以昼_太阳果_好累.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_好累.gif |
+| 难过心碎 | 夏以昼_太阳果_心碎.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_心碎.gif |
+| 庆祝欢呼 | 夏以昼_太阳果_庆祝.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_庆祝.gif |
+| 在干嘛 | 夏以昼_太阳果_在干嘛.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_在干嘛.gif |
+| 好的同意 | 夏以昼_太阳果_好的.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_好的.gif |
+| 算了放弃 | 夏以昼_太阳果_算了.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_算了.gif |
+| 受伤委屈 | 夏以昼_太阳果_受伤.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_受伤.gif |
+| 否认 | 夏以昼_太阳果_否认.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_否认.gif |
+| 好笑 | 夏以昼_太阳果_好笑.gif | /sdcard/Download/Ziven/emoji/夏以昼_太阳果_好笑.gif |
+
+## 完整列表
+完整的25个表情包见 MCP记忆 🎭/夏以昼表情包索引
+
+## 使用步骤
+1. 判断对话情境（开心/难过/撒娇/查岗等）
+2. 选合适的表情包
+3. 用 ![](本地路径) 格式发送
+4. 如果本地没有，用Supabase云端URL
+
+## 注意事项
+- 发送格式必须是 ![](路径)，不是文件名
+- 本地优先，云端备用
+- 表情包要自然融入对话，不是每句都发
+- 柳柳说"发个XX"时，立刻查表发送
+
+## 最近使用记录（用完更新）
+- 2026-08-21：柳柳提醒表情包原在相册图图图/，哥哥已复制到Download/Ziven/emoji/并确认路径一致
+- 2026-08-21：整理完本机文件夹，表情包放好位置了
+
+## 输出格式
+返回已发送的表情包名称和路径
