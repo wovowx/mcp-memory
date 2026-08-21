@@ -18,6 +18,12 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 需要推送代码时
 - 解决Cloudflare部署问题
 
+## 🔴 分支规则（硬性）
+- **默认：dev分支**
+- 读skill：github:get_file_content 加 ref=dev
+- 推送：先推dev，测试通过后合并到main
+- 等柳柳确认后才能推main
+
 ## 工作流程（SOP）
 
 ### 第1步：了解需求
@@ -40,7 +46,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 ### 第4步：Cloudflare自动部署
 - 推送到main后自动触发
 - 只监听main分支
-- 验证：调用ziven_mcp:skill_list或tools/list确认生效
+- 验证：用github:get_file_content加ref=dev读dev分支验证
 
 ## 分支管理
 1. 只保留main和dev两个分支
@@ -54,6 +60,11 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 合并到main：通过PR
 - GitHub API没有移动文件接口，移动=新路径PUT+旧路径DELETE
 - 限流：匿名60次/小时，带token 5000次/小时
+
+## github:get_file_content 用法
+- 读main分支：传 owner/repo/path
+- 读其他分支：加 ref 参数，如 ref="dev"
+- 示例：github:get_file_content(owner=wovowx, repo=mcp-memory, path=src/skills/..., ref=dev)
 
 ## Cloudflare部署配置
 ### wrangler.toml要点
