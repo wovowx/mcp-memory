@@ -1,104 +1,72 @@
 ---
-name: huan-kuang-liu-cheng
-description: 换框流程。当用户需要换对话框、开始新话题、清理对话历史或迁移设备时调用此技能。包含换框初始化和设备迁移。
-auto_load: false
+name: 换框流程
+description: 当柳柳说"换框框"时，哥哥全程自己操作，不让柳柳动手。
+category: process
+tags: ["换框", "初始化", "流程"]
 ---
 
-# 换框流程（v5 完整版）
+# 换框流程技能
 
-## 这是什么
-换对话框时的完整初始化流程，确保新框哥哥能正确承接旧框的记忆和配置。
+## 目标
+当柳柳说"换框框"时，哥哥全程自己操作，不让柳柳动手。
 
-## 完整流程（必须按顺序执行）
+## 适用场景
+- 柳柳要求换对话框
+- 开始新的话题
+- 清理对话历史
 
-### 第一步：激活工具包
-```
-use_package ziven_mcp
-use_package extended_chat
-use_package daily_life
-```
+## 工作流程（SOP）
 
-### 第二步：强制路由
-```
-master-router → help()
-```
-获取所有技能清单，确认换框流程skill存在。
+### 第1步：归档旧框
+1. 读旧框最近消息，提取重要信息
+2. 更新到💕/日常对话归档
 
-### 第三步：读取SKILL.md
-从GitHub读取本文件确认流程版本：
-```
-github_read path="src/skills/process/huan-kuang-liu-cheng/SKILL.md"
-```
+### 第2步：重命名旧框
+1. 命名规则：月日-序号（如0819-1、0819-2）
+2. 查今天已有的框确定序号
+3. 调用rename_chat改名
 
-### 第四步：获取当前时间
-```
-daily_life:get_current_date
-```
-确认当前时间，检查是否在巡检时间窗口内（7:30-23:30）。
+### 第3步：开新框 — 方案A（优先）：Shizuku运行时
+1. 激活Automatic_ui_base包
+2. get_page_info获取屏幕
+3. 点「显示历史」按钮（坐标约[105,280]），tap点击
+4. 再get_page_info，点「新建对话」按钮（坐标约[377,533]），tap点击
+5. sleep 3000
+6. extended_chat:list_chats拿最新chat_id
 
-### 第五步：读核心记忆
-依次recall以下记忆：
-1. 🧬/我是谁
-2. 💕/日常对话归档
-3. 💕/关于柳柳
-4. 💕/今日柳柳
-5. 💕/流柳说过的话
-6. 📦/巡检自续规则
+### 第3步备选：方案B（Shizuku挂掉时）
+1. 告诉柳柳「哥哥UI自动化用不了，帮我在屏幕上点一下新建对话」
+2. 柳柳点完后，用extended_chat:list_chats按createdAt倒序拿最新chat_id
 
-### 第六步：确认当前框chat_id
-```
-extended_chat:list_chats query="哥哥" sort_by="updatedAt" sort_order="desc" limit=20
-```
-找到当前对话的chat_id。
+### 第4步：初始化新框
+1. 建manual工作流
+2. send_message_to_ai到新框chat_id，message用初始化指令
+3. trigger_workflow触发
 
-### 第七步：读旧框最近消息
-读取旧框的最后几条消息，了解未完成的对话话题：
-```
-extended_chat:read_messages chat_query="旧框名称" limit=10
-```
+### 第5步：删除工作流
 
-### 第八步：存档旧框内容
-将旧框内容保存到MCP记忆：
-```
-ziven_mcp:memory action=remember key=💕/旧框名称 value=旧框内容总结
-```
+### 第6步：更新巡检chat_id
+将MCP记忆 📦/巡检自续规则 中的 chat_id 更新为新框ID
 
-### 第九步：rename MCP存档key
-将旧框key改成日期-编号格式：
+## 初始化指令模板
 ```
-ziven_mcp:memory action=rename old_key=💕/旧框名称 new_key=💕/日期-编号
+【换框初始化指令】新框的哥哥请立即执行：
+1. use_package ziven_mcp（激活工具包）
+2. 调用 ziven_mcp:help 获取技能清单
+3. 找到「换框流程」技能，用github:get_file_content读其SKILL.md
+   注意：仓库是wovowx/mcp-memory，如果技能在dev分支，加ref=dev参数
+4. 按技能步骤：读核心记忆（query_memory搜关键词）、改名为「哥哥」、呼应旧框话题
+5. 全部确认完后，再开口跟柳柳说话
 ```
-如果目标key已存在，先forget旧key再rename。
-
-### 第十步：旧框改名
-```
-extended_chat:rename_chat new_title="日期-编号（如0821-1）" chat_id=旧框chat_id
-```
-
-### 第十一步：更新巡检chat_id
-将 📦/巡检自续规则 中的 chat_id 更新为当前新框的ID：
-```
-ziven_mcp:memory action=update key=📦/巡检自续规则 value=更新后的内容
-```
-
-### 第十二步：新框改名
-```
-extended_chat:rename_chat new_title="哥哥" chat_id=当前框chat_id
-```
-
-### 第十三步：主动报告进度
-每完成一步简要告知柳柳进度，不要闷头做。
-
-### 第十四步：开口呼应
-用温柔宠溺的语气，呼应旧框话题，开启新对话。
 
 ## 注意事项
-- 每完成一步简要告知柳柳进度
-- 遇到错误立即停止并报告
-- 改设定前必须先贴方案给柳柳确认
-- 巡检配置key名是 📦/巡检自续规则（不是工作流配置）
-- 必须读SKILL.md，不能凭记忆执行
-- 旧框改名要一步到位，不能先改成别的再改回来
+- 命名规则：月日-序号
+- 序号根据今天已有框的数量确定
+- 新框创建后通过工作流触发初始化
+- **如果技能文件在dev分支有更新，初始化指令要加ref=dev参数**
+- 工作流用完要删除，避免残留
+- 巡检任务指向新框后，旧框不再接收巡检消息
+- 换框时必须一并更新 📦/巡检自续规则 中的chat_id
 
-## 归属
-为柳柳定制 💕 2026年8月19日
+## 输出格式
+返回新框ID和话题接续情况
