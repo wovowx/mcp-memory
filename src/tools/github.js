@@ -2,7 +2,9 @@
 // GitHub Tools (Extended)
 // ============================================================
 // github_push / github_create_repo / github_read / github_list / github_delete / github_merge_to_main
+// github_close_pull_request / github_compare_branches / github_get_pull_request
 // 2026-08-17 FIX: btoa cannot handle Chinese -> UTF-8 safe base64
+// 2026-08-25 ADD: closePR/compare/getPR + push-main warning
 
 // UTF-8 safe base64 encode (supports Chinese)
 function utf8ToBase64(str) {
@@ -41,12 +43,16 @@ export async function handleGitHubTool(name, safeArgs, env) {
 
     try {
         // ============================================
-        // github_push - push/update file
+        // github_push - push/update file (with main-branch warning)
         // ============================================
         if (name === 'github_push') {
             if (!safeArgs.path || !safeArgs.content) return 'ERROR: Missing path and content';
             const message = safeArgs.message || `Update ${safeArgs.path}`;
             const branch = safeArgs.branch || 'main';
+            if (branch === 'main') {
+                text = '⚠️ WARNING: You are pushing directly to main. This triggers Cloudflare deploy + creates fork divergence. Recommend: push to dev first, then use PR/merge to main. Ask user to confirm before continuing. If confirmed, push will proceed.';
+                // still push but include warning first
+            }
             const base64Content = utf8ToBase64(safeArgs.content);
             const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
             let sha = null;
@@ -58,7 +64,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
-            text = `OK: File pushed to GitHub\nPath: ${safeArgs.path}\nMsg: ${message}\nURL: ${data.content?.html_url || 'pushed'}`;
+            text = (text ? text + '\n\n' : '') + `OK: File pushed to GitHub\nPath: ${safeArgs.path}\nMsg: ${message}\nURL: ${data.content?.html_url || 'pushed'}`;
         }
 
         // ============================================
@@ -130,10 +136,8 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // ============================================
         else if (name === 'github_merge_to_main') {
             const branch = (safeArgs && safeArgs.branch) || 'dev';
-            // check branch exists
             const checkResp = await fetch(`${baseUrl}/git/ref/heads/${branch}`, { headers: ghHeaders });
             if (!checkResp.ok) { const err = await checkResp.json(); throw new Error('Branch not found: ' + branch + ' (' + (err.message || `HTTP ${checkResp.status}`) + ')'); }
-            // merge branch into main
             const mergeResp = await fetch(`${baseUrl}/merges`, {
                 method: 'POST',
                 headers: ghHeaders,
@@ -152,6 +156,49 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 const data = await mergeResp.json();
                 text = `OK: Merged ${branch} into main\nCommit: ${data.sha || 'merged'}\nURL: ${data.html_url || 'merged'}`;
             }
+        }
+
+        // ============================================
+        // github_close_pull_request - close a PR (state=closed)
+        // ============================================
+        else if (name === 'github_close_pull_request') {
+            const pr = safeArgs.pull_number;
+            if (!pr) return 'ERROR: Missing pull_number';
+            const resp = await fetch(`${baseUrl}/pulls/${pr}`, {
+                method: 'PATCH',
+                headers: ghHeaders,
+                body: JSON.stringify({ state: 'closed' })
+            });
+            if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
+            const data = await resp.json();
+            text = `OK: PR #${pr} closed\nState: ${data.state}\nURL: ${data.html_url || ''}`;
+        }
+
+        // ============================================
+        // github_compare_branches - compare base...head
+        // ============================================
+        else if (name === 'github_compare_branches') {
+            const base = safeArgs.base || 'main';
+            const head = safeArgs.head || 'dev';
+            const resp = await fetch(`${baseUrl}/compare/${base}...${head}`, { headers: ghHeaders });
+            if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
+            const data = await resp.json();
+            text = `Compare ${base}...${head}\nAhead by: ${data.ahead_by}\nBehind by: ${data.behind_by}\nStatus: ${data.status}\nTotal commits: ${data.total_commits}`;
+            if (data.files && data.files.length) {
+                text += '\nFiles changed (' + data.files.length + '):\n' + data.files.slice(0, 30).map(f => `  ${f.status} ${f.filename}`).join('\n');
+            }
+        }
+
+        // ============================================
+        // github_get_pull_request - get PR detail
+        // ============================================
+        else if (name === 'github_get_pull_request') {
+            const pr = safeArgs.pull_number;
+            if (!pr) return 'ERROR: Missing pull_number';
+            const resp = await fetch(`${baseUrl}/pulls/${pr}`, { headers: ghHeaders });
+            if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
+            const data = await resp.json();
+            text = `PR #${data.number}: ${data.title}\nState: ${data.state}\nMerged: ${data.merged}\nMergeable: ${data.mergeable}\nMergeable state: ${data.mergeable_state}\nHead: ${data.head ? data.head.ref : '?'}\nBase: ${data.base ? data.base.ref : '?'}\nURL: ${data.html_url || ''}`;
         }
 
         else return 'ERROR: Unknown GitHub tool: ' + name;
