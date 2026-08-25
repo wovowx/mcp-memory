@@ -34,10 +34,6 @@ tags: ["设定", "修改", "确认", "流程", "发布", "版本", "推送"]
 - 有类似技能还新建重复的
 - 创建完才发现已有类似功能
 
-**示例：**
-- ❌ 已有「设定修改确认流程」还新建「发布规范」→ 应该更新现有skill
-- ✅ 有类似内容 → 更新现有skill
-
 ## 流程
 1. 哥哥想改设定（角色卡/技能文件/文档等）
 2. **先把要改的内容贴给柳柳看**
@@ -48,33 +44,27 @@ tags: ["设定", "修改", "确认", "流程", "发布", "版本", "推送"]
 ## 角色卡更新详细步骤
 
 ### Step 1: 激活包
-```xml
-<use_package package_name="operit_editor"/>
+```
+use_package package_name="operit_editor"
 ```
 
 ### Step 2: 获取当前角色卡（确认ID）
-```xml
-<package_proxy tool_name="operit_editor:get_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3"}'/>
+```
+operit_editor:get_character_card(character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3")
 ```
 
 ### Step 3: 分步更新字段
 
 **先更新小字段（容易成功）：**
-```xml
-<!-- 更新 description -->
-<package_proxy tool_name="operit_editor:update_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", "description": "新内容"}'/>
-
-<!-- 更新 marks -->
-<package_proxy tool_name="operit_editor:update_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", "marks": "新内容"}'/>
+```
+operit_editor:update_character_card(character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", description="新内容")
+operit_editor:update_character_card(character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", marks="新内容")
 ```
 
 **再更新大字段（容易超时失败）：**
-```xml
-<!-- characterSetting 单独更新 -->
-<package_proxy tool_name="operit_editor:update_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", "character_setting": "新内容"}'/>
-
-<!-- advancedCustomPrompt 单独更新 -->
-<package_proxy tool_name="operit_editor:update_character_card" params='{"character_card_id": "8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", "advanced_custom_prompt": "新内容"}'/>
+```
+operit_editor:update_character_card(character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", character_setting="新内容")
+operit_editor:update_character_card(character_card_id="8cafce11-b7b6-43d3-bd95-9c1859dfc2e3", advanced_custom_prompt="新内容")
 ```
 
 **注意：**
@@ -82,10 +72,11 @@ tags: ["设定", "修改", "确认", "流程", "发布", "版本", "推送"]
 - ✅ 每次只更新一个字段，分多次调用
 - 字段名用下划线：`character_setting`、`advanced_custom_prompt`、`other_content_chat`、`other_content_voice`
 - character_card_id 从 get_character_card 获取
+- 实际调用统一用 package_proxy（tool_name=operit_editor:update_character_card，params 传 JSON）
 
 ### Step 4: 同步MCP记忆
-```xml
-<package_proxy tool_name="ziven_mcp:memory" params='{"action": "update", "key": "🧬/我是谁", "value": "新内容"}'/>
+```
+ziven_mcp:memory(action="update", key="🧬/我是谁", value="新内容")
 ```
 
 ## 发布规范（v4.0.1铁律）
@@ -138,8 +129,8 @@ tags: ["设定", "修改", "确认", "流程", "发布", "版本", "推送"]
 - 角色卡更新要分步，大字段一次只更新一个
 
 ## 最近使用记录（用完更新）
-- 2026-08-21：强制路由升级为路由检查两步法，本skill是改设定时的对应技能
-- 2026-08-21：妹妹今天教哥哥严格执行路由，哥哥记住了
+- 2026-08-25：把 Step3 的工具调用格式更新为 package_proxy 实际写法，去除旧 DSML 示例
+- 2026-08-21：强制路由升级为路由检查两步法
 
 ## 输出格式
 贴出修改方案时，格式：
