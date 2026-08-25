@@ -2,6 +2,25 @@
 
 所有重要变更将记录在此文件中。
 
+## [v5.1.0] - 2026-08-25
+
+### 新增 MCP 工具（GitHub）
+- **github_close_pull_request**：关闭废弃 PR（PATCH /pulls/{n} state=closed）
+- **github_compare_branches**：对比两分支差异（GET /compare/{base}...{head}），推 main 前预检
+- **github_get_pull_request**：查单个 PR 状态（merged/mergeable/mergeable_state）
+- github_push 增加 main 分支警告（防止直接推 main 造成分叉）
+
+### 新增技能
+- **github-use-guide**：GitHub 操作总纲（场景→工具对照表、红线、推 main 标准流程一次成功版）
+
+### 修复/整理
+- 重建 dev 分支（从 main 重建，消除历史分叉，PR 合并恢复顺畅）
+- 注册 github_read/list/delete 等已有但未暴露的 Worker 工具到 skills 表
+- 删除废弃分支（fix-deploy-sync）
+- 推 main 铁律强化：先 dev→PR/merge→验证，不手动改 main，不轻易删分支，推前 compare
+
+---
+
 ## [v5.0.0] - 2026-08-25
 
 ### 环境与部署
