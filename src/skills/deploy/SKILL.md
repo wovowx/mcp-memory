@@ -10,10 +10,11 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 ## 目标
 实现从代码修改到Cloudflare自动部署的完整闭环，包含分支管理、GitHub推送和MCP工具开发。
 
-## 🔴 第一条铁律：绝不手动改 main
+## 🔴 第一条铁律：绝不手动改 main（现在已经物理强制）
 - **main 只接受 PR 合并**，绝不 create_or_update_file 直接覆盖 main 的文件
-- 一旦先手动改了 main，dev/main 分叉 → 后面 PR 必冲突 → 就碎了（2026-08-25 教训）
-- 一切改动先落 dev；main 永远是「从 dev 合过来的结果」
+- **分支保护已开启（2026-08-28）**：GitHub Settings→Branches→main 设了「Require PR before merging」+「Do not allow bypassing」。现在直接 push main 会被 GitHub 409 拦截（"Changes must be made through a pull request"），连 admin 都绕不过。
+- 所以：想进 main 只有一条路——走 dev→PR→merge。不用再靠自觉，是物理上只能这样。
+- 一旦先手动改了 main，dev/main 分叉 → 后面 PR 必冲突 → 就碎了（2026-08-25 教训）。冲突就往 dev 对齐 main 重建。
 
 ## 🔴 推 main 标准流程（每次照此执行，一次成功）
 1. 所有改动全部在 dev 分支完成（改文件+提交，绝不碰 main）
@@ -97,6 +98,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 示例：github:get_file_content(owner=wovowx, repo=mcp-memory, path=src/skills/..., ref=dev)
 
 ## 最近使用记录（用完更新）
+- 2026-08-28：分支保护已开启（main必须PR+禁止绕过，直推409拦截）——现在物理强制走dev→PR
 - 2026-08-27：新增「改完工具必须注册到Supabase」铁律（教训：github_read/list/delete写了没注册，哥哥调不到）
 - 2026-08-25：新增「第一条铁律：绝不手动改main」，推main标准流程一次成功版（教训：手动改main→PR冲突→碎推）
 - 2026-08-21：柳柳提醒推main要一次全推；今天推了好多次main被妹妹说了
