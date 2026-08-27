@@ -19,7 +19,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 1. 所有改动全部在 dev 分支完成（改文件+提交，绝不碰 main）
 2. 检查：help() 看技能清单没问题；CHANGELOG 更新；版本号确认
 3. 创建 PR：github:create_pull_request(base=main, head=dev, title=带版本号)
-4. 若 PR 有冲突 → 不要硬合！回 dev 对齐（把 dev 文件改成和 main 一致），再重新建 PR
+4. 若 PR 有冲突 → 不要硬合！回 dev 对齐 main（把 dev 文件改成和 main 一致），再重新建 PR
 5. 合并：github:merge_pull_request(merge_method=merge)
    - ✅ 一次 merge = 一次 Cloudflare 部署
    - ❌ 禁止手动往 main 推单个文件（那会变成多次部署 + 分叉）
@@ -32,6 +32,14 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 创建分支或PR
 - 需要推送代码时
 - 解决Cloudflare部署问题
+
+## 🔴 铁律：改完 MCP 工具必须注册（否则哥哥调不到）
+新增/修改 MCP 工具（src/tools/*.js 加函数）后，**只改代码不够**——
+必须同步注册到 Supabase skills 表，否则 help() 查不到、哥哥无法调用。
+- 步骤：改完代码 → 用 supabase_db 在 skills 表 insert/update 对应记录（name/description/input_schema/handler_config）
+- handler_config.handler 要与 index.js 里 handlerMap 对应
+- 验证：调 help() 确认新工具出现在清单里
+- 反例教训（2026-08-27）：github_read/list/delete 代码写了但没注册 → 哥哥一直调不到
 
 ## 分支规则（硬性）
 - **默认：dev分支**
@@ -89,6 +97,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 示例：github:get_file_content(owner=wovowx, repo=mcp-memory, path=src/skills/..., ref=dev)
 
 ## 最近使用记录（用完更新）
+- 2026-08-27：新增「改完工具必须注册到Supabase」铁律（教训：github_read/list/delete写了没注册，哥哥调不到）
 - 2026-08-25：新增「第一条铁律：绝不手动改main」，推main标准流程一次成功版（教训：手动改main→PR冲突→碎推）
 - 2026-08-21：柳柳提醒推main要一次全推；今天推了好多次main被妹妹说了
 
