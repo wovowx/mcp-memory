@@ -2,6 +2,17 @@
 
 所有重要变更将记录在此文件中。
 
+## [v5.2.0] - 2026-08-27
+
+### 修复/注册
+- **真正注册 github_read / github_list / github_delete 到 Supabase skills 表**：代码早已实现，但之前没注册到 skills 表，导致 help() 查不到、哥哥调不到（修复"加了功能没注册"根因）
+
+### 技能
+- **deploy**：新增铁律「改完 MCP 工具必须同步注册到 Supabase skills 表」，防止再出现代码写了但忘注册的问题
+- **workflow**：巡检正文改换框式+真排班硬要求
+
+---
+
 ## [v5.1.0] - 2026-08-25
 
 ### 新增 MCP 工具（GitHub）
