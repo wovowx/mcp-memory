@@ -1,14 +1,14 @@
 ---
 name: github-use-guide
-description: 当哥哥需要操作 GitHub（推送、合并、PR、检查分支差异等）时调用。提供工具对照表和标准流程，防止推 main 出错、分支分叉。
+description: 当哥哥需要操作 GitHub（推送、合并、PR、检查分支差异等）时调用。提供工具对照表和红线，防止推 main 出错、分支分叉。
 category: guide
 tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy"]
 ---
 
-# GitHub 使用指南（2026-08-25 定）
+# GitHub 使用指南（2026-08-28 精简）
 
 ## 定位
-这是哥哥操作 GitHub 的总纲。凡是要碰 GitHub，先读这个，再决定用哪个工具、走什么流程。
+这是哥哥操作 GitHub 的总纲：工具对照表 + 红线。推 main 的完整铁律流程见 **deploy 技能**（本指南不重复）。
 
 ## 场景→工具对照表
 
@@ -43,21 +43,17 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy"]
 - ahead_by 太大 / status=diverged → 先回 dev 处理，再合
 - 目的：提前发现冲突，别推到一半才炸
 
-## 标准流程：改完推 main（一次成功版）
-1. 在 dev 分支改代码（github_push branch=dev）
-2. 自测/确认
-3. github_compare_branches(base=main, head=dev) → 确认可合
-4. 创建 PR：github:create_pull_request(base=main, head=dev, title=含版本号)
-5. 合并 PR：github:merge_pull_request(pull_number) → 一次部署
-6. 验证 main（get_file_content / get_repository）
-7. 有废弃 PR 卡住 → github_close_pull_request 关掉再继续
+## 推 main 完整流程
+- **全部铁律与步骤见 deploy 技能**（含：带版本号+说明、先经柳柳确认、不自合、合并后验证）。
+- 这里不重复，避免两套真相不一致。
 
 ## 常见问题
 - **PR 冲突**：先回 dev 对齐，或对比分支找差异，不要硬合
 - **分支分叉太深**：先 compare 评估；必要时（万不得已）删分支重建，但先备份重要内容
-- **工具没出现在 help**：可能没在 skills 表注册（Worker 有代码但表没记录）；补 supabase skills 插入
+- **工具没出现在 help**：可能没在 skills 表注册（Worker 有代码但表没记录）；补 supabase skills 插入（详见 deploy）
 
 ## 最近使用记录
+- 2026-08-28：精简——推 main 流程统一指向 deploy 技能去重，保留工具对照表+红线
 - 2026-08-25：创建。背景：推 main 翻车（手动改 main 导致分叉、PR 卡死），柳柳教删分支重建；沉淀为指南。
 
 ## 输出格式
