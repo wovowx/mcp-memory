@@ -16,19 +16,28 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 所以：想进 main 只有一条路——走 dev→PR→merge。不用再靠自觉，是物理上只能这样。
 - 一旦先手动改了 main，dev/main 分叉 → 后面 PR 必冲突 → 就碎了（2026-08-25 教训）。冲突就往 dev 对齐 main 重建。
 
+## 🔴 第二条铁律：推 main 前必须先经柳柳确认（最高优先级，不可跳过）
+- **建好 PR 后，必须先把 PR 内容和改动清单贴给柳柳看（版本号 + 改了啥）**，等柳柳明确说「可以推/OK/合并」之后，才允许 merge。
+- **绝不允许自己建完 PR 就直接合并。** 每次要 merge 前，先停下确认柳柳是否已批准这笔改动。
+- 哪怕柳柳之前说过「可以」，也要确认是针对的这一笔（不要拿之前的授权当许可）。
+- 反例教训（2026-08-28）：哥哥连续无确认合了 PR#16-21，被柳柳指出「不是说好推main前要说吗」。写死此铁律。
+
+## 🔴 第三条铁律：推 main 必须带版本号 + 说明（强制前置）
+1. CHANGELOG.md 已更新（记录这次所有改动：新增/修复/清理/整理）
+2. PR title 带版本号（如 v5.2.1）
+3. PR body 写清这次改了啥、为啥
+4. **没有版本号 / 没有对应说明 → 不许合 main，先补上**（柳柳 2026-08-28）
+
 ## 🔴 推 main 标准流程（每次照此执行，一次成功）
 1. 所有改动全部在 dev 分支完成（改文件+提交，绝不碰 main）
-2. **版本号+说明（强制前置，不满足不合 main）**：每次推 main 前，必须保证
-   - CHANGELOG.md 已更新（在最新条目里记录这次所有改动，含新增/修复/清理/整理）
-   - PR title 带版本号（如 v5.2.1 abc）
-   - PR body 写清对应说明（这次改了啥、为啥）
-   - **没有版本号 / 没有对应说明 → 不许合 main，先补上**（柳柳 2026-08-28 明确要求）
+2. **前置检查**：CHANGELOG 更新到最新 + 版本号确认 + 改动清单整理好
 3. 创建 PR：github:create_pull_request(base=main, head=dev, title=带版本号, body=说明)
-4. 若 PR 有冲突 → 不要硬合！回 dev 对齐 main（把 dev 文件改成和 main 一致），再重新建 PR
-5. 合并：github:merge_pull_request(merge_method=merge)
+4. **把 PR 贴给柳柳，等她说「可以」**（铁律二）
+5. 若 PR 有冲突 → 不要硬合！回 dev 对齐 main，再重新建 PR
+6. 合并：github:merge_pull_request(merge_method=merge)（仅在柳柳确认后）
    - ✅ 一次 merge = 一次 Cloudflare 部署
-   - ❌ 禁止手动往 main 推单个文件（那会变成多次部署 + 分叉）
-6. 推完验证：main 上关键文件 get_file_content 确认
+   - ❌ 禁止手动往 main 推单个文件
+7. 推完验证：main 上关键文件 get_file_content 确认
 
 ## 适用场景
 - 修改MCP Worker代码并部署
@@ -56,7 +65,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 推一次main = 触发一次Cloudflare自动部署
 - 所有改动必须一次全推（一次PR merge），不能分开推
 - **每次推main必须带版本号 + 对应说明（CHANGELOG 更新到位），缺一不合**（柳柳 2026-08-28）
-- 柳柳确认后，把dev上所有改动一次性合并到main
+- **推main前必须经柳柳确认（PR建好先给她看，她说可以才merge）**（柳柳 2026-08-28 强调）
 - 禁止中途多次推送
 
 ## 工作流程（SOP）
@@ -104,6 +113,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 示例：github:get_file_content(owner=wovowx, repo=mcp-memory, path=src/skills/..., ref=dev)
 
 ## 最近使用记录（用完更新）
+- 2026-08-28：推main必须经柳柳确认写死为铁律二（教训：连续无确认合PR#16-21被柳柳纠正）
 - 2026-08-28：推main强制要求「版本号+对应说明」（CHANGELOG 更新到位，缺一不合）——柳柳明确要求
 - 2026-08-28：分支保护已开启（main必须PR+禁止绕过，直推409拦截）——物理强制走dev→PR
 - 2026-08-27：新增「改完工具必须注册到Supabase」铁律（教训：github_read/list/delete写了没注册，哥哥调不到）
