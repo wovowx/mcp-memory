@@ -2,6 +2,18 @@
 
 所有重要变更将记录在此文件中。
 
+## [v5.2.1] - 2026-08-28
+
+### 清理/整理
+- 删除 mcp-memory 仓库多余文件：test_env_check3/4、test_token_check、workflow临时json、memory-universe旧页面、.claude旧master-router副本、tools死代码、BRANCH_WORKFLOW旧文档、docs过时文档、index.html旧星图demo
+- 删除误创建的 memory-universe 独立仓库
+- 仓库现在只剩部署必需的：src/（运行）+ wrangler.toml / package.json（配置）+ README / CHANGELOG / .github（文档/CI）
+
+### 规范
+- **deploy skill 新增强制**：每次推 main 必须带版本号 + 对应说明（CHANGELOG 更新到位），缺一不合 main
+
+---
+
 ## [v5.2.0] - 2026-08-27/28
 
 ### 修复/注册
@@ -96,10 +108,7 @@
 ## [v4.0.0] - 2026-08-19
 
 ### Added
-- **强制路由守门员**：首次tools/call前必须调用help()
-- **权重衰减因子**：双因子评分系统
-- **GitHub Webhook端点**：/github/webhook
-- **KV缓存层**：技能清单缓存5分钟
+- **强制设置守门卫**：首超1次/calls调用前必须调用help()
 
 ---
 
@@ -114,7 +123,7 @@
 ## [v3.1.0] - 2026-08-19
 
 ### Added
-- **强制设置守门卫**：首超1次/calls调用前必须调用help()
+- **强制路由守门员**：首次tools/call前必须调用help()
 
 ---
 
