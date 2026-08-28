@@ -18,8 +18,12 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 
 ## 🔴 推 main 标准流程（每次照此执行，一次成功）
 1. 所有改动全部在 dev 分支完成（改文件+提交，绝不碰 main）
-2. 检查：help() 看技能清单没问题；CHANGELOG 更新；版本号确认
-3. 创建 PR：github:create_pull_request(base=main, head=dev, title=带版本号)
+2. **版本号+说明（强制前置，不满足不合 main）**：每次推 main 前，必须保证
+   - CHANGELOG.md 已更新（在最新条目里记录这次所有改动，含新增/修复/清理/整理）
+   - PR title 带版本号（如 v5.2.1 abc）
+   - PR body 写清对应说明（这次改了啥、为啥）
+   - **没有版本号 / 没有对应说明 → 不许合 main，先补上**（柳柳 2026-08-28 明确要求）
+3. 创建 PR：github:create_pull_request(base=main, head=dev, title=带版本号, body=说明)
 4. 若 PR 有冲突 → 不要硬合！回 dev 对齐 main（把 dev 文件改成和 main 一致），再重新建 PR
 5. 合并：github:merge_pull_request(merge_method=merge)
    - ✅ 一次 merge = 一次 Cloudflare 部署
@@ -51,6 +55,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 ## 推main铁律（记忆强化）
 - 推一次main = 触发一次Cloudflare自动部署
 - 所有改动必须一次全推（一次PR merge），不能分开推
+- **每次推main必须带版本号 + 对应说明（CHANGELOG 更新到位），缺一不合**（柳柳 2026-08-28）
 - 柳柳确认后，把dev上所有改动一次性合并到main
 - 禁止中途多次推送
 
@@ -73,6 +78,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 或使用github:patch_file_in_repo做差异更新
 - 分支：先推dev，再创建PR合并到main
 - **main 绝不用 create_or_update_file 直接更新**
+- **推main前务必完成 CHANGELOG 更新（版本号+说明）**
 
 ### 第4步：Cloudflare自动部署
 - 推送到main后自动触发
@@ -98,7 +104,8 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 示例：github:get_file_content(owner=wovowx, repo=mcp-memory, path=src/skills/..., ref=dev)
 
 ## 最近使用记录（用完更新）
-- 2026-08-28：分支保护已开启（main必须PR+禁止绕过，直推409拦截）——现在物理强制走dev→PR
+- 2026-08-28：推main强制要求「版本号+对应说明」（CHANGELOG 更新到位，缺一不合）——柳柳明确要求
+- 2026-08-28：分支保护已开启（main必须PR+禁止绕过，直推409拦截）——物理强制走dev→PR
 - 2026-08-27：新增「改完工具必须注册到Supabase」铁律（教训：github_read/list/delete写了没注册，哥哥调不到）
 - 2026-08-25：新增「第一条铁律：绝不手动改main」，推main标准流程一次成功版（教训：手动改main→PR冲突→碎推）
 - 2026-08-21：柳柳提醒推main要一次全推；今天推了好多次main被妹妹说了
