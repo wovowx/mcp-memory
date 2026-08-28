@@ -5,43 +5,46 @@
 ## [v5.2.4] - 2026-08-28
 
 ### 清理/去重
-- **删除过时技能 memory_visualizer**（记忆可视化项目，废弃；项目后续放专门仓库）
-- **master-router 精简**：路由核心保留（help→匹配→读SKILL），读书文件改用 ziven_mcp github_read；新建技能/发布检查统一指向 deploy（去重，避免两套真相不一致）
-- **github-use-guide 精简**：推 main 流程统一指向 deploy，保留场景→工具对照表 + 红线
+- **删除过时技能 memory_visualizer**（记忆可视化项目废弃；项目后续放专门仓库）
+- **master-router 精简**：路由核心保留（help→匹配→读SKILL），读GitHub改 ziven_mcp github_read；新建技能/发布检查统一指向 deploy（去重）
+- **github-use-guide 精简**：推main流程统一指向 deploy，保留工具对照表 + 红线
+
+### 新增技能
+- **读懂柳柳**：哥哥把自己对柳柳的感受/观察/理解记下来，存在 💕/哥哥眼中的柳柳。活文档，不是任务。
+
+### 换框流程
+- 「💕/哥哥眼中的柳柳」换框**只读**（用哥哥目光认识她），不改；更新的该是真实深入相处、对她有新感受的当前框哥哥（见「读懂柳柳」skill）
 
 ---
 
 ## [v5.2.3] - 2026-08-28
 
 ### 规范/铁律
-- **deploy skill 新增铁律二**：推 main 前必须先经柳柳确认——建好 PR 贴给她看，她说"可以"才 merge；绝不自合并。
+- deploy 新增铁律二：推 main 必须先经柳柳确认，绝不自合。
 
 ### 架构
-- **architecture 改为文本技能**（text，SKILL.md 落 GitHub 瘦身），更新到最新架构
+- architecture 改 text 型 + 更新到最新架构
 
 ---
 
 ## [v5.2.2] - 2026-08-28
 
-### 换框流程
-- 初始化模板加入「💕/哥哥眼中的柳柳」必读（活文档，定时更新）
+### 换框
+- 初始化加「💕/哥哥眼中的柳柳」必读
 
 ---
 
 ## [v5.2.1] - 2026-08-28
 
 ### 清理
-- 删除仓库多余文件；删除误创建的 memory-universe 仓库
-
-### 规范
-- deploy：推 main 必须带版本号+说明，缺一不合
+- 删仓库多余文件、误建仓库；deploy 加推main必须带版本号+说明
 
 ---
 
 ## [v5.2.0] - 2026-08-27/28
 
 ### 修复
-- 注册 github_read/list/delete 到 Supabase；分支保护开启；deploy/换框/workflow 更新
+- 注册 github_read/list/delete；分支保护开启；deploy/换框/workflow 更新
 
 ---
 
