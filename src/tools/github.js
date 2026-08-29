@@ -3,6 +3,7 @@
 // ============================================================
 // github_push / github_create_repo / github_read / github_list / github_delete / github_merge_to_main
 // github_close_pull_request / github_compare_branches / github_get_pull_request
+// github_create_pull_request / github_merge_pull_request (2026-08-29 ADD: PR工具适配分支保护)
 // 2026-08-17 FIX: btoa cannot handle Chinese -> UTF-8 safe base64
 // 2026-08-25 ADD: closePR/compare/getPR + push-main warning
 
@@ -132,29 +133,116 @@ export async function handleGitHubTool(name, safeArgs, env) {
         }
 
         // ============================================
-        // github_merge_to_main - merge dev into main (ONE merge, ONE deploy)
+        // github_merge_to_main - 智能三步：建PR→查可合并→合并（适配分支保护）
         // ============================================
         else if (name === 'github_merge_to_main') {
             const branch = (safeArgs && safeArgs.branch) || 'dev';
-            const checkResp = await fetch(`${baseUrl}/git/ref/heads/${branch}`, { headers: ghHeaders });
-            if (!checkResp.ok) { const err = await checkResp.json(); throw new Error('Branch not found: ' + branch + ' (' + (err.message || `HTTP ${checkResp.status}`) + ')'); }
-            const mergeResp = await fetch(`${baseUrl}/merges`, {
+            const title = (safeArgs && safeArgs.title) || `Merge ${branch} into main`;
+            const prBody = (safeArgs && safeArgs.body) || '';
+            const mergeMethod = (safeArgs && safeArgs.merge_method) || 'merge';
+            const steps = [];  // 记录每步结果
+
+            try {
+                // 第1步：创建 PR（base=main, head=branch）
+                const creatResp = await fetch(`${baseUrl}/pulls`, {
+                    method: 'POST',
+                    headers: ghHeaders,
+                    body: JSON.stringify({ title, head: branch, base: 'main', body: prBody })
+                });
+                const prData = await creatResp.json();
+                if (!creatResp.ok) {
+                    // 已经存在同源PR？不报错，读取现有PR继续
+                    const existingResp = await fetch(`${baseUrl}/pulls?state=open&head=${repo.split('/')[0]}:${branch}&base=main`, { headers: ghHeaders });
+                    const existing = await existingResp.json();
+                    if (Array.isArray(existing) && existing.length > 0) {
+                        const prNum = existing[0].number;
+                        steps.push(`步骤1（建PR）：已存在 PR #${prNum}，直接沿用 ${existing[0].html_url}`);
+                        prData.number = prNum;
+                        prData.mergeable = existing[0].mergeable;
+                        prData.mergeable_state = existing[0].mergeable_state;
+                    } else {
+                        throw new Error('建PR失败：' + (prData.message || `HTTP ${creatResp.status}`));
+                    }
+                } else {
+                    steps.push(`步骤1（建PR）：创建成功 PR #${prData.number} ${prData.html_url}`);
+                    prData.mergeable = prData.mergeable;
+                    prData.mergeable_state = prData.mergeable_state;
+                }
+
+                // 第2步：检查可合并（mergeable=true 才继续）
+                const prNum = prData.number;
+                let mergeable = prData.mergeable;
+                let mergeableState = prData.mergeable_state;
+                if (mergeable === null) {  // GitHub 可能返回 null（还在计算）
+                    const waitResp = await fetch(`${baseUrl}/pulls/${prNum}`, { headers: ghHeaders });
+                    const waitData = await waitResp.json();
+                    mergeable = waitData.mergeable;
+                    mergeableState = waitData.mergeable_state;
+                }
+                if (mergeable === false) {
+                    steps.push(`步骤2（查可合并）：❌ 不可合并（mergeable_state=${mergeableState}）——有冲突，请先回 dev 对齐 main`);
+                    return steps.join('\n') + '\n\n⛔ 停止：PR 存在冲突，未合并。请先解决冲突再重试。';
+                }
+                steps.push(`步骤2（查可合并）：✅ 可合并（mergeable_state=${mergeableState || 'clean'}）`);
+
+                // 第3步：合并 PR
+                const mergeResp = await fetch(`${baseUrl}/pulls/${prNum}/merge`, {
+                    method: 'PUT',
+                    headers: ghHeaders,
+                    body: JSON.stringify({ merge_method: mergeMethod })
+                });
+                const mergeData = await mergeResp.json();
+                if (mergeResp.ok || mergeResp.status === 405) {
+                    // 405 = already merged
+                    steps.push('步骤3（合并）：✅ 已合并' + (mergeData.html_url ? ' ' + mergeData.html_url : ''));
+                    text = steps.join('\n');
+                } else {
+                    throw new Error('合并失败：' + (mergeData.message || `HTTP ${mergeResp.status}`));
+                }
+            } catch (e) {
+                if (steps.length > 0) {
+                    return 'ERROR: ' + steps.join('\n') + '\n\n❌ ' + e.message;
+                }
+                throw new Error(e.message);
+            }
+        }
+
+        // ============================================
+        // github_create_pull_request - 新建 PR（独立工具）
+        // ============================================
+        else if (name === 'github_create_pull_request') {
+            const head = safeArgs.head || 'dev';
+            const base = safeArgs.base || 'main';
+            const title = safeArgs.title || `Merge ${head} into ${base}`;
+            const body = safeArgs.body || '';
+            const resp = await fetch(`${baseUrl}/pulls`, {
                 method: 'POST',
                 headers: ghHeaders,
-                body: JSON.stringify({ base: 'main', head: branch, commit_message: `Merge ${branch} into main` })
+                body: JSON.stringify({ title, head, base, body })
             });
-            if (mergeResp.status === 204) {
-                text = 'OK: main is already up to date (no changes to merge)';
-            } else if (!mergeResp.ok) {
-                const err = await mergeResp.json();
-                if (mergeResp.status === 409 && err.message && err.message.includes('already up to date')) {
-                    text = 'OK: main is already up to date (no changes to merge)';
-                } else {
-                    throw new Error(err.message || `HTTP ${mergeResp.status}`);
-                }
+            const data = await resp.json();
+            if (!resp.ok) { throw new Error('建PR失败：' + (data.message || `HTTP ${resp.status}`)); }
+            text = `OK: PR #${data.number} created\nTitle: ${data.title}\nURL: ${data.html_url}\nMergeable: ${data.mergeable}`;
+        }
+
+        // ============================================
+        // github_merge_pull_request - 合并指定 PR（独立工具）
+        // ============================================
+        else if (name === 'github_merge_pull_request') {
+            const pr = safeArgs.pull_number;
+            if (!pr) return 'ERROR: Missing pull_number';
+            const method = safeArgs.merge_method || 'merge';
+            const resp = await fetch(`${baseUrl}/pulls/${pr}/merge`, {
+                method: 'PUT',
+                headers: ghHeaders,
+                body: JSON.stringify({ merge_method: method })
+            });
+            const data = await resp.json();
+            if (resp.ok || resp.status === 405) {
+                const merged = resp.ok ? (data.merged ? '✅ 已合并' : '⚠️ 未合并') : 'ℹ️ 已经合并过（405）';
+                text = `OK: PR #${pr} ${merged}\n` + (data.html_url ? `URL: ${data.html_url}` : '');
             } else {
-                const data = await mergeResp.json();
-                text = `OK: Merged ${branch} into main\nCommit: ${data.sha || 'merged'}\nURL: ${data.html_url || 'merged'}`;
+                throw new Error('合并失败：' + (data.message || `HTTP ${resp.status}`));
             }
         }
 
