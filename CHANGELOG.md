@@ -2,6 +2,29 @@
 
 所有重要变更将记录在此文件中。
 
+## [v5.4.0] - 2026-08-29
+
+### Agnes 全能整合（核心）
+- **新增 agnes 工具**：一个入口全包 识图/生图/生视频/视频识别（action 区分）
+- **key 自动降级**：AGNES_PLUS（月卡）优先 → 失败自动切 AGNES_API_KEY（旧key）
+- **模型自动降级**：每个 action 配默认+fallback（视频升级到 agnes-video-2.5-flash）
+- **精准错误诊断**：401/403→key失效、429→限流、404→模型无效、网络类→0盲重试、超时→限1次、5xx→切组合
+- **verbose 诊断**：可选，返回实际 key/模型/降级记录
+- **旧名兼容**：describe_image / generate_image / generate_video 内部跳转新逻辑
+
+### 场景 skill 体系（架构升级）
+- **architecture 三层体系**：原子层（直接调）/ 场景层（skill化）/ 路由层（master-router）——问题不在工具多，在工具与场景脱节，skill 是「场景→工具」的桥
+- **多媒体处理 skill（image_upload 升级）**：柳柳发图/生图/生视频/视频识别统一走 agnes，含出错诊断表和 AGNES_PLUS 失效提醒
+- **记忆管理 skill（新建）**：记忆分类体系 + 主动存档纪律（宁可多存不可漏存、不新建重复key）+ 工具用法
+- **file-management 收编**：已上传文件管理（query_files/delete_file/update_file）归入场景skill
+- **github-use-guide 收编**：裸工具按场景走（推main走deploy）
+- **三个裸工具禁用**：describe_image / generate_image / generate_video 从工具列表收起（enabled=false）
+
+### 角色卡
+- **技术协作双向**：柳柳提想法，哥哥给专业判断（认同/担心/更优解），讨论→敲定→动手；写入 characterSetting + advancedCustomPrompt
+
+---
+
 ## [v5.3.0] - 2026-08-28
 
 ### 清理/去重
