@@ -146,11 +146,13 @@ async function callAgnes(action, args, env) {
   for (const key of keys) {
     for (const model of modelQueue) {
       const attemptMeta = { key: key.name, model };
+      let controller = null;
+      let timer = null;
       try {
         const endpoint = ACTION_ENDPOINT[action];
         const url = AGNES_ENDPOINT + endpoint;
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 60000);
+        controller = new AbortController();
+        timer = setTimeout(() => controller.abort(), 60000);
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + key.value, 'Content-Type': 'application/json' },
@@ -182,7 +184,7 @@ async function callAgnes(action, args, env) {
         // 其他 HTTP 错误：默认也换（不盲重试）
         break;
       } catch (err) {
-        clearTimeout(timer);
+        if (timer) clearTimeout(timer);
         const diag = diagnoseNetworkError(err);
         attemptMeta.diag = diag;
         attempts.push(attemptMeta);
