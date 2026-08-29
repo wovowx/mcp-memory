@@ -2,7 +2,7 @@
 // AI 能力工具 v2 —— Agnes 全能整合版（2026-08-29）
 // 整合：describe_image / generate_image / generate_video / describe_video
 // 功能：① 一个 agnes 入口全包 ② key 自动降级 ③ 模型自动降级
-//       ④ 精准错误分析（不盲重试） ⑤ verbose 诊断信息
+//       ④ 精准错误分析（不盲重试） ⑤ verbose 诊断信息 ⑥ help场景置顶
 // ============================================================
 import { getEnabledSkills } from '../utils/skills.js';
 
@@ -205,6 +205,50 @@ async function callAgnes(action, args, env) {
 
 // ---------- 工具入口 ----------
 export async function handleAITool(name, safeArgs, env) {
+  // ---- help：能力总览（场景 skill 置顶 + 完整工具兜底）----
+  if (name === 'help') {
+    const toolName = safeArgs.tool_name;
+    const skills = await getEnabledSkills(env);
+    const toolHelp = {};
+    for (const s of skills) toolHelp[s.name] = s.description;
+
+    if (toolName && toolHelp[toolName]) {
+      const extraHelp = {
+        'agnes': '\n用法：agnes(action, prompt, image_url, size, mode, ...)\n- action: describe_image/generate_image/generate_video/describe_video\n- 例：agnes(action="describe_image", image_url="...")，verbose=true 返回诊断',
+        '记忆管理': '\n用法：按场景速查表——柳柳流露话要存→当场存；查记忆→query_memory。详见 SKILL.md',
+        'image_upload': '\n用法：柳柳发图/生图/生视频→走本skill，内部用 agnes。详见 SKILL.md',
+        'github_create_pull_request': '\n用法：github_create_pull_request(head="dev", base="main", title, body)',
+        'github_merge_pull_request': '\n用法：github_merge_pull_request(pull_number, merge_method="merge")',
+        'github_merge_to_main': '\n用法：github_merge_to_main(branch="dev", title, body)——自动建PR→查可合并→合并（适配分支保护）'
+      };
+      return `💡 **${toolName}**\n${toolHelp[toolName]}${extraHelp[toolName] || ''}`;
+    } else if (toolName) {
+      return `❌ 未找到工具 "${toolName}"\n\n可用工具：${Object.keys(toolHelp).join('、')}`;
+    }
+
+    // 场景 skill 置顶列表
+    const sceneSkills = ['image_upload', '记忆管理', '设定修改确认流程', '换框流程', 'file-management', 'deploy', 'github-use-guide', 'workflow', 'voice_bubble', '表情包', 'avatar_hotswap', 'wechat_bridge', '读懂柳柳', 'dev-protection', 'master-router', 'architecture'];
+    let lines = '🎬 **遇到场景先查这里**（场景 → skill）：\n';
+    for (const s of skills) {
+      if (sceneSkills.includes(s.name)) {
+        lines += `- \`${s.name}\`: ${(s.description || '').substring(0, 80)}\n`;
+      }
+    }
+
+    lines += '\n⚡ **完整工具列表**（兜底，含所有能力）：\n';
+    const shown = new Set(sceneSkills);
+    let count = 0;
+    for (const s of skills) {
+      if (shown.has(s.name)) continue;
+      count++;
+      const desc = (s.description || '').substring(0, 50);
+      lines += `- \`${s.name}\`: ${desc}${desc.length >= 50 ? '...' : ''}\n`;
+    }
+    lines += `\n📊 共 ${skills.length} 个技能（场景skill ${sceneSkills.filter(x => skills.some(s => s.name === x)).length} 个 + 工具 ${count} 个）`;
+    lines += '\n💡 查看某个工具的详细用法：help(工具名)';
+    return lines;
+  }
+
   // ---- DeepSeek 官方余额（保持原样，不并入 agnes）----
   if (name === 'ds_quota') {
     const apiKey = env.DEEPSEEK_API_KEY;
