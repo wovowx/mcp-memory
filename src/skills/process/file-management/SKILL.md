@@ -60,11 +60,19 @@ Ziven/
 ## 敏感文件
 - github_token.txt 在 _archive/安全/，不要外泄、不要上传GitHub；建议尽快更换令牌
 
+## 📤 已上传文件的管理（2026-08-29 收编）
+- **查已上传文件**：`ziven_mcp:query_files`（按分类/类型/标签/关键词搜索）
+- **删已上传文件**：`ziven_mcp:delete_file(file_id=...)`
+- **改文件分类/标签/描述**：`ziven_mcp:update_file(file_id=..., category=..., tags=..., description=...)`
+- 这些是「Supabase 已上传文件」的管理工具，与本地 /sdcard/Download/Ziven/ 目录是两套体系；上传走 image_upload skill 的 curl 通道
+- 有类似文件先 query_files 查重，别重复上传
+
 ## 定期整理
 - 发现文件夹乱了，按此skill整理
 - 删除前确认：这个文件还有用吗？有引用吗？删了能恢复吗？拿不准就留着或问柳柳
 
 ## 最近使用记录（用完更新）
+- 2026-08-29：收编已上传文件管理工具（query_files/delete_file/update_file）到此skill
 - 2026-08-24：按柳柳要求重构分类：新建 文档/（写给你的/聊天记录/经验/待办/旧项目-记忆宇宙）、项目/_参考/，归档迭代版/旧档/安全，更新引用
 - 2026-08-21：首次整理，建立项目/素材/插件备份目录、表情包移到emoji/
 

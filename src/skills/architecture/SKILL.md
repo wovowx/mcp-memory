@@ -1,15 +1,38 @@
 ---
 name: architecture
-description: 系统架构说明书（2026-08-28更新）。帮助哥哥理解四层架构、强制路由、技能存储规则、GitHub 运维、cloudflare 部署范围。
+description: 系统架构说明书（2026-08-29更新）。帮助哥哥理解三层体系（原子层/场景层/路由层）、四层架构、强制路由、技能存储规则、GitHub 运维、cloudflare 部署范围。
 category: guide
-tags: ["架构", "路由", "技能系统", "GitHub", "部署"]
+tags: ["架构", "路由", "技能系统", "GitHub", "部署", "场景skill"]
 ---
 
-# 系统架构（2026-08-28 更新版）
+# 系统架构（2026-08-29 更新版）
 
 ## 一句话
 
 这是一个"AI 能自动发现、决策、执行、复盘"的技能操作系统。
+
+## 🔥 三层体系（2026-08-29 新增 · 方向核心）
+
+哥哥面对工具时，分三层看待，**场景层优先**：
+
+| 层 | 是什么 | 例子 | 处理方式 |
+|----|--------|------|----------|
+| 🧰 原子层 | 无场景的底层动作，闭眼会用 | read_file、query_memory、list_files、use_package | 直接调用，不包skill（包了纯浪费token） |
+| 🎬 场景层 | 高频真实场景，需要经验与坑 | 柳柳发图→认图、推main、改设定、记忆管理、换框 | **写 scene skill**，skill里写清用什么工具、怎么用、出错怎么诊断 |
+| 🧭 路由层 | 把"场景"映射到"skill" | master-router | 遇到场景→路由到对应skill→读SKILL.md→照着做 |
+
+**核心思想：问题不在工具多，在工具与场景脱节。skill 是「场景→工具」的桥。**
+- 🚫 不要把原子工具也塞进skill（冗余）
+- ✅ 复杂/易错/需要经验工具 → 场景化skill化
+- ✅ 高危（改设定/推main/部署）→ 强制走路由读skill
+
+**当前场景skill清单**（已落地）：
+- 多媒体处理（image_upload，含识图/生图/生视频/视频识别，统一走 agnes）
+- 记忆管理（记忆分类+主动存档纪律）
+- 设定修改确认流程 / 换框流程 / file-management / dev-protection / workflow / deploy
+- architecture / github-use-guide / 读懂柳柳 / ui_automation / avatar_hotswap / wechat_bridge / sidebar_plugin / voice_bubble / 表情包
+
+**注：MCP 工具「memory」≠ 场景skill「记忆管理」**——前者是执行工具，后者是使用手册（含分类体系、存档纪律）。
 
 ## 四层架构
 
@@ -64,3 +87,6 @@ tags: ["架构", "路由", "技能系统", "GitHub", "部署"]
 - **先走路由，别猜**：不确定怎么做 → help()/读对应 SKILL.md，不凭印象
 - **改东西要联动**：动了 A，涉及 B、C 一起改，不留死链
 - **同类文档非必要只留一份**
+
+## 最近使用记录
+- 2026-08-29：新增「三层体系」——场景层优先，skill 是场景→工具的桥；标注场景skill清单；memory工具与记忆管理skill区分
