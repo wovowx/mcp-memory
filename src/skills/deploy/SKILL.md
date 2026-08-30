@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: 当用户需要修改代码、推送GitHub、创建PR、Cloudflare部署或开发MCP工具时调用此技能。
+description: 当用户需要修改代码、推送GitHub、创建PR、Cloudflare部署或开发MCP工具时调用此技能。含发布前自检清单。
 category: deploy
 tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 ---
@@ -34,13 +34,26 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 3. PR body 写清改了啥、为啥
 4. 缺一不合
 
+## 🔴 发布前自检清单（2026-08-30 新增 · 像起飞前检查单）
+**每次推 main 前，逐项自检，全绿才推。缺一项就停下补。**
+
+- [ ] **1. 语法检查过了吗？** 改了 ai.js/github.js 等 → node/本地跑一遍语法，确保没低级错误（教训：help 分支丢失）
+- [ ] **2. help 分支在吗？** 改了 ai.js → 确认 name==='help' 分支还在（教训：v5.4.0 丢 help 分支）
+- [ ] **3. Supabase 注册表同步了吗？** 新增/改工具 → skills 表 insert/update 到位，help() 能查到（教训：github_read 写了没注册）
+- [ ] **4. 分支对齐了吗？** github_compare_branches(main, dev) 看 diverge；dev 落后 main → 先回 dev 对齐（教训：历史分叉）
+- [ ] **5. 有冲突吗？** 同上 compare；有冲突先解决再推（never 硬合）
+- [ ] **6. CHANGELOG 更新了吗？** 带版本号 + 说明，缺一不合
+- [ ] **7. 柳柳批准了吗？** 问过柳柳且她说"可以"？没批准绝不推
+- [ ] **8. 推完验证了吗？** merge 后读 main 关键文件 + help 验证工具在
+
 ## 🔴 推 main 正确流程
 1. 在 dev 攒完这一批所有改动（不碰 main）
-2. 哥哥想推时，先问柳柳：「这批可以推到 main 吗？」
-3. 柳柳说"可以" → 定一个版本号、更新 CHANGELOG、整理清单
-4. 建一次 PR （base=main,head=dev,title=版本号,body=说明）→ **直接 merge**（柳柳已批准）＝一次部署
-5. 有冲突 → 回 dev 对齐 main，再重建 PR推
-6. 推完验证 main 关键文件
+2. 跑一遍**发布前自检清单**（上表），全绿才继续
+3. 哥哥想推时，先问柳柳：「这批可以推到 main 吗？」
+4. 柳柳说"可以" → 定版本号、更新 CHANGELOG（第3条铁律）
+5. 建一次 PR（base=main,head=dev,title=版本号,body=说明）→ 用 github_create_pull_request → **直接 merge**（柳柳已批准）＝一次部署
+6. 有冲突 → 回 dev 对齐 main，再重建 PR推
+7. 推完跑第8项：读 main 关键文件 + help 验证
 
 ## 适用场景
 - 修改MCP Worker代码并部署 / 更新技能或配置 / 新增或修改MCP工具 / 创建PR / 解决部署问题
@@ -71,7 +84,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 所有改动落在 dev 分支；改完自查；绝不自接推 main
 
 ### 第3步：推送到GitHub
-用 create_or_update_file 或 patch_file_in_repo 推送，分支=dev；main 绝不用它直接更新
+用 github_push 推送，分支=dev；main 绝不用它直接更新
 
 ### 第4步：Cloudflare自动部署
 推到 main 后自动触发，只监听 main；验证读 main 确认
@@ -88,7 +101,8 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 读 main 传 owner/repo/path；读其他分支加 ref 参数
 
 ## 最近使用记录
-- 2026-08-28：推main流程改最简——先问柳柳「这批可以推吗」，她说"可以"就建PR+直接merge（建PR只是推main前置，不二次确认）
+- 2026-08-30：新增「发布前自检清单」——8项全绿才推，像起飞前检查单
+- 2026-08-28：推main流程改最简——先问柳柳「这批可以推吗」，她说"可以"就建PR+直接merge
 - 2026-08-28：加「版本与PR正确认知」——dev攒批、main发布、一个版本一次PR
 - 2026-08-28：推main必须经柳柳确认、带版本号+说明、分支保护开启
 - 2026-08-27：注册工具铁律；2026-08-25：绝不手动改main；2026-08-21：推main一次全推
