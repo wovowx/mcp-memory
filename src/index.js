@@ -1,6 +1,13 @@
 // ============================================================
-// Worker 入口（优化版v4 - 全功能版）
+// Worker 入口（优化版v5 - MCP 兼容版）
 // ============================================================
+// v5 变更（2026-08-31）：MCP 兼容性改造（方案A·最小手术）
+//  1. 移除 hasCalledHelp 模块级全局守卫（跨客户端状态污染）
+//  2. initialize 做协议版本协商
+//  3. 处理 notifications/initialized（notification 回 202 空响应）
+//  4. CORS 补齐 Authorization/Accept/MCP-Session-Id
+//  5. 保留无状态 POST 应答（stateless 模式），GET 兼容 SSE
+//  业务层（memory/skills/Supabase/GitHub）一行未动
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
 import { uploadFileToSupabase } from './utils/storage.js';
@@ -28,8 +35,9 @@ const handlerMap = {
     'delete_branch': handleDeleteBranch
 };
 
-// 强制路由守门员状态
-let hasCalledHelp = false;
+// 支持的 MCP 协议版本（协商用）
+const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2024-11-05', '2025-03-26'];
+const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 
 // KV缓存（模拟实现）
 const skillCache = new Map();
@@ -50,24 +58,45 @@ async function invalidateCache() {
     skillCache.clear();
 }
 
+// MCP JSON-RPC 请求处理
+// 返回：{ ok: true, data: <jsonrpc对象|null> } —— data 为 null 表示 notification，无需回 JSON-RPC body
+//       { ok: false, data: <jsonrpcError对象> }  —— 上层可回 400
 async function handleMCPRequest(body, env) {
-    const { method, params, id } = body;
+    const { method, params, id } = body || {};
 
+    if (!method) {
+        return { ok: false, data: { jsonrpc: '2.0', id: id ?? null, error: { code: -32600, message: 'Invalid Request' } } };
+    }
+
+    // notification：无 id 的通知不返回 JSON-RPC 响应（如 notifications/initialized）
+    if (method === 'notifications/initialized' || method.startsWith('notifications/')) {
+        // 正确处理通知，不当作未知方法；返回 null 表示不回 body
+        return { ok: true, data: null, notification: true };
+    }
+
+    // initialize：协议版本协商
     if (method === 'initialize') {
-        hasCalledHelp = false;
+        const clientVersion = params?.protocolVersion;
+        const negotiated = SUPPORTED_PROTOCOL_VERSIONS.includes(clientVersion)
+            ? clientVersion
+            : DEFAULT_PROTOCOL_VERSION;
         return {
-            jsonrpc: '2.0',
-            id: id,
-            result: {
-                protocolVersion: '2025-06-18',
-                capabilities: { tools: {} },
-                serverInfo: { name: 'ZivenAgent', version: '4.0.0' }
+            ok: true,
+            data: {
+                jsonrpc: '2.0',
+                id,
+                result: {
+                    protocolVersion: negotiated,
+                    capabilities: {
+                        tools: { listChanged: false }
+                    },
+                    serverInfo: { name: 'ZivenAgent', version: '5.0.0' }
+                }
             }
         };
     }
 
     if (method === 'tools/list') {
-        hasCalledHelp = true;
         const skills = await getCachedSkills(env);
         const tools = skills.map(s => ({
             name: s.name,
@@ -75,37 +104,26 @@ async function handleMCPRequest(body, env) {
             inputSchema: s.input_schema || {}
         }));
         return {
-            jsonrpc: '2.0',
-            id: id,
-            result: { tools }
+            ok: true,
+            data: { jsonrpc: '2.0', id, result: { tools } }
         };
     }
 
     if (method === 'tools/call') {
-        if (!hasCalledHelp) {
-            return {
-                jsonrpc: '2.0',
-                id: id,
-                error: {
-                    code: -32000,
-                    message: '❌ 请先调用 help() 获取技能清单'
-                }
-            };
-        }
-
-        const { name, arguments: args } = params;
+        // 去掉 hasCalledHelp 门卫：标准 MCP 客户端无需调用自定义 help 才能调工具
+        const { name, arguments: args } = params || {};
         const safeArgs = args || {};
         let text = '';
 
         try {
-            if (name.startsWith('supabase_')) {
+            if (name?.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
                 await invalidateCache(); // 更新后清除缓存
             }
-            else if (name === 'memory' || name.startsWith('memory_')) {
+            else if (name === 'memory' || name?.startsWith('memory_')) {
                 text = await handleMemoryTool(name, safeArgs, env);
             }
-            else if (name.startsWith('github_')) {
+            else if (name?.startsWith('github_')) {
                 text = await handleGitHubTool(name, safeArgs, env);
             }
             else {
@@ -134,22 +152,26 @@ async function handleMCPRequest(body, env) {
         }
 
         return {
-            jsonrpc: '2.0',
-            id: id,
-            result: {
-                content: [{ type: 'text', text: text }]
+            ok: true,
+            data: {
+                jsonrpc: '2.0',
+                id,
+                result: { content: [{ type: 'text', text }] }
             }
         };
     }
 
     if (method === 'ping') {
-        return { jsonrpc: '2.0', id: id, result: {} };
+        return { ok: true, data: { jsonrpc: '2.0', id, result: {} } };
     }
 
     return {
-        jsonrpc: '2.0',
-        id: id || null,
-        error: { code: -32601, message: 'Method not found: ' + method }
+        ok: true,
+        data: {
+            jsonrpc: '2.0',
+            id: id ?? null,
+            error: { code: -32601, message: 'Method not found: ' + method }
+        }
     };
 }
 
@@ -272,7 +294,8 @@ export default {
                 headers: {
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, Last-Event-ID',
+                    'Access-Control-Allow-Headers': 'Content-Type, Last-Event-ID, Authorization, Accept, MCP-Session-Id',
+                    'Access-Control-Expose-Headers': 'MCP-Session-Id, Last-Event-ID, Content-Type',
                     'Access-Control-Max-Age': '86400'
                 }
             });
@@ -326,35 +349,66 @@ export default {
         }
 
         if (url.pathname === '/mcp') {
+            // Streamable HTTP / SSE 支持
             if (request.method === 'GET') {
-                const encoder = new TextEncoder();
-                const stream = new ReadableStream({
-                    start(controller) {
-                        controller.enqueue(encoder.encode('event: message\n'));
-                        controller.enqueue(encoder.encode('data: {"type":"connected"}\n\n'));
-                        const keepAlive = setInterval(() => {
-                            try { controller.enqueue(encoder.encode(': keepalive\n\n')); }
-                            catch { clearInterval(keepAlive); }
-                        }, 30000);
-                        return () => clearInterval(keepAlive);
-                    }
-                });
-                return new Response(stream, {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'text/event-stream',
-                        'Cache-Control': 'no-cache, no-transform',
-                        'Connection': 'keep-alive',
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                });
+                const accept = (request.headers.get('Accept') || '').toLowerCase();
+                // 仅当客户端明确要 text/event-stream 时才开 SSE 流（保持向后兼容旧 GET 行为）
+                if (accept.includes('text/event-stream')) {
+                    const encoder = new TextEncoder();
+                    const stream = new ReadableStream({
+                        start(controller) {
+                            controller.enqueue(encoder.encode('event: message\n'));
+                            controller.enqueue(encoder.encode('data: {"type":"connected"}\n\n'));
+                            const keepAlive = setInterval(() => {
+                                try { controller.enqueue(encoder.encode(': keepalive\n\n')); }
+                                catch { clearInterval(keepAlive); }
+                            }, 30000);
+                            return () => clearInterval(keepAlive);
+                        }
+                    });
+                    return new Response(stream, {
+                        status: 200,
+                        headers: {
+                            'Content-Type': 'text/event-stream',
+                            'Cache-Control': 'no-cache, no-transform',
+                            'Connection': 'keep-alive',
+                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id'
+                        }
+                    });
+                }
+                // 非 SSE 的 GET：返回 service 信息（兼容旧客户端探测）
+                return jsonResponse({ service: 'ZivenAgent', status: 'ok', mcp: '/mcp' });
             }
 
+            // POST：JSON-RPC over HTTP（stateless）
             if (request.method === 'POST') {
                 try {
                     const body = await request.json();
                     const result = await handleMCPRequest(body, env);
-                    return jsonResponse(result);
+
+                    // notification（无 id）→ 202 空响应，不回 JSON-RPC body
+                    if (result.notification) {
+                        return new Response(null, {
+                            status: 202,
+                            headers: {
+                                'Access-Control-Allow-Origin': '*',
+                                'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id'
+                            }
+                        });
+                    }
+
+                    // 解析错误或请求错误 → 400
+                    const status = result.ok === false ? 400 : 200;
+                    const resp = new Response(JSON.stringify(result.data), {
+                        status,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id'
+                        }
+                    });
+                    return resp;
                 } catch (e) {
                     return jsonResponse({
                         jsonrpc: '2.0', id: null,
