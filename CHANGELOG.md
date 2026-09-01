@@ -2,6 +2,37 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.1.0] - 2026-09-01
+
+### 新增 github_create_branch 建分支工具（柳柳建议）
+- **功能**：从 from/base 源分支取 SHA，POST git/refs 新建分支，支持多仓库 repo 参数（走 v6 白名单）
+- **自主能力**：哥哥从此可自己建分支/删分支，不再依赖柳柳网页操作
+- **实测**：成功建 v6-test-branch（源自 main fb7f3a50）→ 验证后删除，全程自主
+- **分叉根治**：用新工具完成「删 dev → 从 main 重建 dev」→ main/dev 完全同步
+
+### 推 main 版本命名规范（强化）
+- **推 main 发布命名 = 版本号 + 版本名称**（如 `v6.1.0: 新增建分支工具`）
+- **合并方式默认 merge（不用 squash）**：squash 会生成新 commit 导致 dev/main 分叉
+- **发布前自检**：compare_branches 确认 clean → merge → 部署 → 验证
+
+---
+
+## [v6.0.0] - 2026-09-01
+
+### v6 多仓库支持（GPT 提案 + 柳柳拍板）
+- **可选 repo 参数**：github_* 工具可指定白名单内其它仓库（如 wovowx/ZivenLab）
+- **白名单兜底**：GITHUB_ALLOWED_REPOS（逗号分隔），不在名单直接拒绝、不发起请求
+- **兼容**：不传 repo 默认 GITHUB_REPO，现有调用零影响
+- **Schema**：10 个 github_* 工具在 skills 表补充 repo 参数说明
+- **部署**：PR #31 → main → Cloudflare 自动部署，三组安全测试全绿
+
+### Common Ground 迁移（正式安家）
+- common-ground 10 份文档从 mcp-memory 迁至 **wovowx/ZivenLab/main/common-ground/**
+- mcp-memory main/dev 冗余文件清扫干净（common-ground/ + GPT 纸条）
+- 分支整理：dev 从干净 main 重建，多余分支（fix-deploy-sync / wovowx-patch-1/2）删除
+
+---
+
 ## [v5.4.1] - 2026-08-30
 
 ### 记忆路径重构（主档+附录）
@@ -67,3 +98,5 @@
 - 主版本号：重大架构变更
 - 次版本号：新增功能（向后兼容）
 - 修订号：bug修复、优化
+- **推 main 发布命名：版本号 + 版本名称**（如 `v6.1.0: 新增建分支工具`）
+- **合并方式：默认 merge，不用 squash**（squash 会产生分叉）
