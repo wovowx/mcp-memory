@@ -73,10 +73,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const branch = safeArgs.branch || 'main';
             if (branch === 'main') {
                 text = '⚠️ WARNING: You are pushing directly to main. This triggers Cloudflare deploy + creates fork divergence. Recommend: push to dev first, then use PR/merge to main. Ask user to confirm before continuing. If confirmed, push will proceed.';
-                // still push but include warning first
             }
-            // 兼容 JSON 内容：MCP 传递 JSON 字符串会被序列化坏（[object Object]），
-            // 此时用 content_base64 传 pre-encoded base64，绕过序列化问题。
             let base64Content;
             if (safeArgs.content_base64) {
                 base64Content = safeArgs.content_base64;
@@ -96,9 +93,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             text = (text ? text + '\n\n' : '') + `OK: File pushed to GitHub\nPath: ${safeArgs.path}\nMsg: ${message}\nURL: ${data.content?.html_url || 'pushed'}`;
         }
 
-        // ============================================
-        // github_create_repo - create repo
-        // ============================================
         else if (name === 'github_create_repo') {
             if (!safeArgs.repo) return 'ERROR: Missing repo name';
             const resp = await fetch('https://api.github.com/user/repos', {
@@ -111,9 +105,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             text = `OK: Repo created\nName: ${data.full_name}\nURL: ${data.html_url}`;
         }
 
-        // ============================================
-        // github_read - read file content
-        // ============================================
         else if (name === 'github_read') {
             if (!safeArgs.path) return 'ERROR: Missing path';
             const branch = safeArgs.branch || 'main';
@@ -128,9 +119,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
         }
 
-        // ============================================
-        // github_list - list directory contents
-        // ============================================
         else if (name === 'github_list') {
             const path = safeArgs.path || '';
             const branch = safeArgs.branch || 'main';
@@ -142,9 +130,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 items.map(i => `${i.type === 'dir' ? '[DIR]' : '[FILE]'} ${i.name}${i.type === 'dir' ? '/' : ''}`).join('\n');
         }
 
-        // ============================================
-        // github_delete - delete file
-        // ============================================
         else if (name === 'github_delete') {
             if (!safeArgs.path) return 'ERROR: Missing path';
             const branch = safeArgs.branch || 'main';
@@ -169,10 +154,9 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const prBody = (safeArgs && safeArgs.body) || '';
             const mergeMethod = (safeArgs && safeArgs.merge_method) || 'merge';
             const mergeTitle = (safeArgs && safeArgs.commit_title) || (safeArgs && safeArgs.title) || undefined;
-            const steps = [];  // 记录每步结果
+            const steps = [];
 
             try {
-                // 第1步：创建 PR（base=main, head=branch）
                 const creatResp = await fetch(`${baseUrl}/pulls`, {
                     method: 'POST',
                     headers: ghHeaders,
@@ -180,7 +164,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 });
                 const prData = await creatResp.json();
                 if (!creatResp.ok) {
-                    // 已经存在同源PR？不报错，读取现有PR继续
                     const existingResp = await fetch(`${baseUrl}/pulls?state=open&head=${repo.split('/')[0]}:${branch}&base=main`, { headers: ghHeaders });
                     const existing = await existingResp.json();
                     if (Array.isArray(existing) && existing.length > 0) {
@@ -198,11 +181,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     prData.mergeable_state = prData.mergeable_state;
                 }
 
-                // 第2步：检查可合并（mergeable=true 才继续）
                 const prNum = prData.number;
                 let mergeable = prData.mergeable;
                 let mergeableState = prData.mergeable_state;
-                if (mergeable === null) {  // GitHub 可能返回 null（还在计算）
+                if (mergeable === null) {
                     const waitResp = await fetch(`${baseUrl}/pulls/${prNum}`, { headers: ghHeaders });
                     const waitData = await waitResp.json();
                     mergeable = waitData.mergeable;
@@ -214,7 +196,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 }
                 steps.push(`步骤2（查可合并）：✅ 可合并（mergeable_state=${mergeableState || 'clean'}）`);
 
-                // 第3步：合并 PR（支持自定义 commit_title + rebase）
                 const mergeBody = { merge_method: mergeMethod };
                 if (mergeTitle && mergeMethod !== 'rebase') mergeBody.commit_title = mergeTitle;
                 const mergeResp = await fetch(`${baseUrl}/pulls/${prNum}/merge`, {
@@ -224,7 +205,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 });
                 const mergeData = await mergeResp.json();
                 if (mergeResp.ok || mergeResp.status === 405) {
-                    // 405 = already merged
                     steps.push('步骤3（合并）：✅ 已合并' + (mergeData.html_url ? ' ' + mergeData.html_url : ''));
                     if (mergeTitle && mergeMethod !== 'rebase') steps.push('Commit: ' + mergeTitle);
                     if (mergeMethod === 'rebase') steps.push('(rebase: 保留 dev 原始 commit 名，无 Merge PR 前缀)');
@@ -240,9 +220,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
         }
 
-        // ============================================
-        // github_create_pull_request - 新建 PR（独立工具）
-        // ============================================
         else if (name === 'github_create_pull_request') {
             const head = safeArgs.head || 'dev';
             const base = safeArgs.base || 'main';
@@ -260,9 +237,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
 
         // ============================================
         // github_merge_pull_request - 合并指定 PR（独立工具）
-        // 支持 merge_method: merge/squash/rebase
-        // 支持 commit_title: 自定义 merge commit 标题（默认 GitHub 自动生成 "Merge pull request #XX"）
-        // 柳柳要求：merge commit 命名从版本号开始（如 v6.1.0: xxx），不显示 "Merge pull request #XX" 前缀
+        // 支持 merge_method: merge/squash/rebase，支持 commit_title 自定义（柳柳要求从版本号开始）
         // ============================================
         else if (name === 'github_merge_pull_request') {
             const pr = safeArgs.pull_number;
@@ -287,9 +262,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
         }
 
-        // ============================================
-        // github_close_pull_request - close a PR (state=closed)
-        // ============================================
         else if (name === 'github_close_pull_request') {
             const pr = safeArgs.pull_number;
             if (!pr) return 'ERROR: Missing pull_number';
@@ -303,9 +275,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             text = `OK: PR #${pr} closed\nState: ${data.state}\nURL: ${data.html_url || ''}`;
         }
 
-        // ============================================
-        // github_compare_branches - compare base...head
-        // ============================================
         else if (name === 'github_compare_branches') {
             const base = safeArgs.base || 'main';
             const head = safeArgs.head || 'dev';
@@ -318,9 +287,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
         }
 
-        // ============================================
-        // github_get_pull_request - get PR detail
-        // ============================================
         else if (name === 'github_get_pull_request') {
             const pr = safeArgs.pull_number;
             if (!pr) return 'ERROR: Missing pull_number';
@@ -331,6 +297,34 @@ export async function handleGitHubTool(name, safeArgs, env) {
         }
 
         // ============================================
+        // github_sync_branch - 让分支直接指向源分支最新 commit（fast-forward 同步）
+        // 柳柳要求：分叉根治不能每次删了重建。GitHub 允许直接 PATCH ref 强制指到目标 commit。
+        // 参数：name(要同步的分支，默认 dev)、from(源分支，默认 main)
+        // ============================================
+        else if (name === 'github_sync_branch') {
+            const targetBranch = safeArgs.name || safeArgs.branch || 'dev';
+            const fromBranch = safeArgs.from || safeArgs.base || 'main';
+            if (targetBranch === fromBranch) return 'ERROR: target and source are the same branch';
+            const refResp = await fetch(`${baseUrl}/git/ref/heads/${fromBranch}`, { headers: ghHeaders });
+            if (!refResp.ok) {
+                const err = await refResp.json();
+                throw new Error('取源分支失败：' + (err.message || `HTTP ${refResp.status}`));
+            }
+            const refData = await refResp.json();
+            const sha = refData.object.sha;
+            const updateResp = await fetch(`${baseUrl}/git/refs/heads/${targetBranch}`, {
+                method: 'PATCH',
+                headers: ghHeaders,
+                body: JSON.stringify({ sha, force: true })
+            });
+            if (!updateResp.ok) {
+                const err = await updateResp.json();
+                throw new Error('同步失败：' + (err.message || `HTTP ${updateResp.status}`));
+            }
+            text = `✅ 已同步：${targetBranch} → ${fromBranch}（${sha.slice(0, 8)}，未删分支）`;
+        }
+
+        // ============================================
         // github_create_branch - 从指定分支新建分支（多仓库兼容）
         // ============================================
         else if (name === 'github_create_branch') {
@@ -338,7 +332,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (!newBranch) return 'ERROR: Missing branch name (name or branch)';
             if (newBranch === 'main') return 'ERROR: main already exists';
             const from = safeArgs.from || safeArgs.base || 'main';
-            // 1. 取源分支最新 commit SHA
             const refResp = await fetch(`${baseUrl}/git/ref/heads/${from}`, { headers: ghHeaders });
             if (!refResp.ok) {
                 const err = await refResp.json();
@@ -346,7 +339,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
             const refData = await refResp.json();
             const sha = refData.object.sha;
-            // 2. 创建新 ref
             const createResp = await fetch(`${baseUrl}/git/refs`, {
                 method: 'POST',
                 headers: ghHeaders,
