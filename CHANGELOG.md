@@ -2,6 +2,18 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.3.3] - 2026-09-01
+
+### 技能写作规范（柳柳发现：skill 被记成错题本）
+- **根因**：每次踩坑就往 skill 追加「教训/反例」，从不消化成正确流程 → 主体被淹没（deploy/github-use-guide 重度）
+- **architecture 新增《技能写作规范》**：所有 skill 的标准骨架（一句话/适用场景/主体流程/关键原则/常见坑≤5/变更记录）+ 三条铁规则（主体优先、教训必压缩、追加先回归）+ 体检信号
+- **deploy 主体重构**：发布主流程 SOP 立起（柳柳确认→版本化→建PR→合并→验证），教训压缩成精简版
+- **github-use-guide 主体重构**：工具对照表 + 关键红线为主
+- **master-router 清补丁墙**：步骤重排连续编号（去 0.5/5.5），去重复段落
+- **deploy 自检清单 +1**：改过 skill 必须按写作规范骨架
+
+---
+
 ## [v6.3.2] - 2026-09-01
 
 ### 合完自动 sync dev（柳柳发现 · 硬性要求）
@@ -122,32 +134,4 @@
 - **记忆管理 skill**、**file-management 收编**、**github-use-guide 收编**
 - **三个裸工具禁用**：describe_image / generate_image / generate_video（enabled=false）
 - **master-router 场景速查表**：先场景→再skill→最后工具
-- **help 场景置顶修复**（补回 v5.4.0 丢失的 help 分支）
-
-### GitHub PR 工具
-- **新增 github_create_pull_request / github_merge_pull_request**
-- **github_merge_to_main 改智能三步**（建PR→查可合并→合并，适配分支保护）
-
-### 角色卡
-- **技术协作双向设定**（柳柳确认）
-
----
-
-## [v5.3.0] - 2026-08-28
-
-### 清理/去重
-- **删除过时 memory_visualizer 技能**；master-router 精简；github-use-guide 精简
-
-### 新增
-- **读懂柳柳 skill**；柳柳认知收敛进💕/关于柳柳；换框「关于柳柳」只读；deploy 最简正确版
-
----
-
-## [v5.2.x] - 2026-08-28（历史，略）
-
-## 版本命名规则
-- 主版本号：重大架构变更
-- 次版本号：新增功能（向后兼容）
-- 修订号：bug修复、优化
-- **推 main 发布命名：版本号 + 版本名称**（如 `v6.3.0: 工具自动注册`）
-- **合并方式：默认 rebase（或 merge + commit_title），不用 squash**（squash 会产生分叉）
+- **help 场景置顶修复**（补回 v5.4.0 特征的 help 入口）
