@@ -1,9 +1,1 @@
-{
-  "name": "mcp-memory",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "deploy": "npx wrangler deploy",
-    "dev": "npx wrangler dev"
-  }
-}
+[object Object]
