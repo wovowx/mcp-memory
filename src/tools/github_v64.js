@@ -613,18 +613,21 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
             const putData = await putResp.json();
 
-            // v6.4: copy 后完整性校验——「API 成功 ≠ 文件成功」
+            // v6.4: copy 后完整性校验——「API 成功 ≠ 文件成功」（ISSUE-4 fix: retry up to 3 times to avoid consistency window）
             // 必须验证 target 最终 size 与 source size 一致，否则判定 copy 失败
             let verified = false;
             let targetFinalSize = 0;
-            try {
-                const verifyResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
-                if (verifyResp.ok) {
-                    const vData = await verifyResp.json();
-                    targetFinalSize = vData.size || 0;
-                    verified = targetFinalSize === (srcData.size || 0) && targetFinalSize > 0;
-                }
-            } catch (e) { /* 校验失败时 verified 保持 false */ }
+            for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
+                try {
+                    const verifyResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
+                    if (verifyResp.ok) {
+                        const vData = await verifyResp.json();
+                        targetFinalSize = vData.size || 0;
+                        verified = targetFinalSize === (srcData.size || 0) && targetFinalSize > 0;
+                    } else { targetFinalSize = 0; }
+                } catch (e) { targetFinalSize = 0; }
+                if (!verified && attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
+            }
             if (!verified) {
                 return (warn ? warn + '\n\n' : '') + `ERROR: COPY_VERIFY_FAILED - target written but size mismatched (source ${srcData.size || 0}, target ${targetFinalSize}). The copy may be truncated or corrupt. This is NOT a success.`;
             }
