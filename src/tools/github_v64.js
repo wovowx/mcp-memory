@@ -183,6 +183,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 base64Content = utf8ToBase64(String(safeArgs.content));
             }
             // 计算预期 UTF-8 字节长度（解码 base64 后），用于写入后校验
+            // BUG-2 fix: strict content_base64 validation, block truncated/polluted input
+            if (typeof base64Content !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64Content) || base64Content.length % 4 !== 0) {
+                return (text ? text + '\n\n' : '') + `ERROR: INPUT_CORRUPT - content_base64 is not valid base64 (possibly truncated). Length=${(base64Content || '').length}, mod4=${(base64Content || '').length % 4}. Refusing to push.`;
+            }
             const expectedBytes = atob(base64Content).length;
             const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
             let sha = null;
@@ -194,17 +198,20 @@ export async function handleGitHubTool(name, safeArgs, env) {
             });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
-            // v6.4: 写入后完整性校验——「API 成功 ≠ 文件成功」
+            // v6.4: 写入后完整性校验——「API 成功 ≠ 文件成功」（ISSUE-3 fix: retry up to 3 times to avoid consistency window）
             let verified = false;
             let finalSize = 0;
-            try {
-                const verifyResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
-                if (verifyResp.ok) {
-                    const vData = await verifyResp.json();
-                    finalSize = vData.size || 0;
-                    verified = finalSize === expectedBytes && finalSize > 0;
-                }
-            } catch (e) { /* 校验失败时 verified 保持 false */ }
+            for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
+                try {
+                    const verifyResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+                    if (verifyResp.ok) {
+                        const vData = await verifyResp.json();
+                        finalSize = vData.size || 0;
+                        verified = finalSize === expectedBytes && finalSize > 0;
+                    } else { finalSize = 0; }
+                } catch (e) { finalSize = 0; }
+                if (!verified && attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
+            }
             if (!verified) {
                 return (text ? text + '\n\n' : '') + `ERROR: WRITE_VERIFY_FAILED - file written but size verification failed (expected ${expectedBytes}, got ${finalSize}). The file may be truncated or corrupt. This is NOT a success.`;
             }
@@ -239,29 +246,36 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 const totalLines = fullContent.split('\n').length;
                 const startLine = safeArgs.start_line !== undefined ? parseInt(safeArgs.start_line, 10) : 1;
                 const endLine = safeArgs.end_line !== undefined ? parseInt(safeArgs.end_line, 10) : (startLine + DEFAULT_MAX_LINES - 1);
-                const safeStart = Math.max(1, startLine);
-                let safeEnd = Math.min(totalLines, Math.max(safeStart, endLine));
                 const allLines = fullContent.split('\n');
-                let selected = allLines.slice(safeStart - 1, safeEnd);
-                let truncated = false;
-                let hasMore = false;
-                let responseText = selected.join('\n');
-                // 单次响应字节上限保护
-                if (responseText.length > MAX_RESPONSE_CHARS) {
-                    selected = allLines.slice(safeStart - 1);
-                    let buf = '';
-                    let cutAt = selected.length;
-                    for (let i = 0; i < selected.length; i++) {
-                        if ((buf + '\n' + selected[i]).length > MAX_RESPONSE_CHARS) { cutAt = i; break; }
-                        buf += (i === 0 ? '' : '\n') + selected[i];
+                // BUG-1 fix: out-of-range returns explicit empty result, no negative line counts
+                if (startLine > totalLines || endLine < 1) {
+                    const clampedStart = Math.max(1, Math.min(startLine, totalLines));
+                    const clampedEnd = Math.min(totalLines, Math.max(1, endLine));
+                    text = `Path: ${data.path}\nSize: ${data.size} bytes\nTotal lines: ${totalLines}\nReturned lines: 0\nTruncated: false\nHas more: false\nRange: ${clampedStart}-${clampedEnd}\n\n(empty range: start_line=${startLine} end_line=${endLine} is out of bounds for ${totalLines} lines)`;
+                } else {
+                    const safeStart = Math.max(1, startLine);
+                    let safeEnd = Math.min(totalLines, Math.max(safeStart, endLine));
+                    let selected = allLines.slice(safeStart - 1, safeEnd);
+                    let truncated = false;
+                    let hasMore = false;
+                    let responseText = selected.join('\n');
+                    // 单次响应字节上限保护
+                    if (responseText.length > MAX_RESPONSE_CHARS) {
+                        selected = allLines.slice(safeStart - 1);
+                        let buf = '';
+                        let cutAt = selected.length;
+                        for (let i = 0; i < selected.length; i++) {
+                            if ((buf + '\n' + selected[i]).length > MAX_RESPONSE_CHARS) { cutAt = i; break; }
+                            buf += (i === 0 ? '' : '\n') + selected[i];
+                        }
+                        responseText = buf;
+                        safeEnd = safeStart + cutAt;
+                        truncated = true;
+                        hasMore = true;
                     }
-                    responseText = buf;
-                    safeEnd = safeStart + cutAt;
-                    truncated = true;
-                    hasMore = true;
+                    if (safeEnd < totalLines) hasMore = true;
+                    text = `Path: ${data.path}\nSize: ${data.size} bytes\nTotal lines: ${totalLines}\nReturned lines: ${safeEnd - safeStart + 1}\nTruncated: ${truncated}\nHas more: ${hasMore}\nRange: ${safeStart}-${safeEnd}\n\n${responseText}`;
                 }
-                if (safeEnd < totalLines) hasMore = true;
-                text = `Path: ${data.path}\nSize: ${data.size} bytes\nTotal lines: ${totalLines}\nReturned lines: ${safeEnd - safeStart + 1}\nTruncated: ${truncated}\nHas more: ${hasMore}\nRange: ${safeStart}-${safeEnd}\n\n${responseText}`;
             } else {
                 text = `Path: ${data.path} is a directory`;
             }
