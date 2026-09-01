@@ -7,7 +7,7 @@
 // 2026-08-17 FIX: btoa cannot handle Chinese -> UTF-8 safe base64
 // 2026-08-25 ADD: closePR/compare/getPR + push-main warning
 // 2026-09-01 ADD v6.3: GITHUB_TOOL_DEFS 元数据（自动注册真相源）+ github_auto_sync 自动同步
-// 2026-09-01 ADD v6.3.2: 合完自动 sync dev（硬性要求，防止下一轮 PR dirty）
+// 2026-09-01 ADD v6.4: 基础工具第一阶段——github_read 范围读取+截断标记 / github_push 写入后 size 校验 / github_copy copy 后 size 校验（「API 成功 ≠ 文件成功」）
 import { getEnabledSkills, addSkill } from '../utils/skills.js';
 
 // ============================================================
@@ -16,9 +16,9 @@ import { getEnabledSkills, addSkill } from '../utils/skills.js';
 // 原则：代码是权威，Supabase skills 表只是缓存
 // ============================================================
 export const GITHUB_TOOL_DEFS = [
-    { name: 'github_push', description: '推送文件到 GitHub 仓库（支持多仓库 repo 参数，白名单兜底）。JSON 内容请用 content_base64 传 pre-encoded base64（普通 content 传 JSON 会被序列化成 [object Object]）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content: { type: 'string', description: '文件内容（JSON 请用 content_base64）' }, content_base64: { type: 'string', description: '可选，pre-encoded base64 内容（推 JSON 用这个）' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
+    { name: 'github_push', description: '推送文件到 GitHub 仓库（支持多仓库 repo 参数，白名单兜底）。JSON 内容请用 content_base64 传 pre-encoded base64（普通 content 传 JSON 会被序列化成 [object Object]）。写入后自动做 size 校验，校验失败返回 WRITE_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content: { type: 'string', description: '文件内容（JSON 请用 content_base64）' }, content_base64: { type: 'string', description: '可选，pre-encoded base64 内容（推 JSON 用这个）' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
     { name: 'github_create_repo', description: '在 GitHub 创建新仓库。', input_schema: { type: 'object', properties: { repo: { type: 'string', description: '仓库名称' }, private: { type: 'boolean', description: '是否私有（默认false）' }, description: { type: 'string', description: '仓库描述' } }, required: ['repo'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '仓库'] },
-    { name: 'github_read', description: '读取 GitHub 仓库文件内容（UTF-8 安全，支持中文）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '读取'] },
+    { name: 'github_read', description: '读取 GitHub 仓库文件内容（UTF-8 安全，支持中文）。支持 start_line/end_line 范围读取；默认最多返回前200行；返回 total_lines/returned_lines/truncated/has_more，明确是否截断。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' }, start_line: { type: 'number', description: '起始行（1-based，可选）' }, end_line: { type: 'number', description: '结束行（包含，可选）' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '读取'] },
     { name: 'github_list', description: '列出 GitHub 仓库目录内容（文件/子目录）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '目录路径（默认根）' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '目录'] },
     { name: 'github_delete', description: '删除 GitHub 仓库文件。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '删除'] },
     { name: 'github_merge_to_main', description: '智能三步合并 dev 到 main：建PR→查可合并→合并。支持 commit_title（版本号+名称）和 merge_method（merge/rebase，不用squash）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { branch: { type: 'string', description: '源分支（默认dev）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式（推荐rebase或merge）' }, commit_title: { type: 'string', description: '自定义合并 commit 标题（版本号+名称）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
@@ -29,7 +29,7 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_get_pull_request', description: '查询单个 Pull Request 详情（state/merged/mergeable）。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
     { name: 'github_create_branch', description: '从指定分支新建分支（多仓库兼容）。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '新分支名' }, branch: { type: 'string', description: '新分支名（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支'] },
     { name: 'github_sync_branch', description: '让分支直接指向源分支最新 commit（fast-forward 同步，不删分支）。分叉根治专用。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '要同步的分支（默认dev）' }, branch: { type: 'string', description: '要同步的分支（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '同步'] },
-    { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
+    { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，source/target 大小不一致返回 COPY_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
     { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] }
 ];
 
@@ -182,6 +182,8 @@ export async function handleGitHubTool(name, safeArgs, env) {
             } else {
                 base64Content = utf8ToBase64(String(safeArgs.content));
             }
+            // 计算预期 UTF-8 字节长度（解码 base64 后），用于写入后校验
+            const expectedBytes = atob(base64Content).length;
             const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
             let sha = null;
             if (checkResp.ok) { const data = await checkResp.json(); sha = data.sha; }
@@ -192,7 +194,21 @@ export async function handleGitHubTool(name, safeArgs, env) {
             });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
-            text = (text ? text + '\n\n' : '') + `OK: File pushed to GitHub\nPath: ${safeArgs.path}\nMsg: ${message}\nURL: ${data.content?.html_url || 'pushed'}`;
+            // v6.4: 写入后完整性校验——「API 成功 ≠ 文件成功」
+            let verified = false;
+            let finalSize = 0;
+            try {
+                const verifyResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+                if (verifyResp.ok) {
+                    const vData = await verifyResp.json();
+                    finalSize = vData.size || 0;
+                    verified = finalSize === expectedBytes && finalSize > 0;
+                }
+            } catch (e) { /* 校验失败时 verified 保持 false */ }
+            if (!verified) {
+                return (text ? text + '\n\n' : '') + `ERROR: WRITE_VERIFY_FAILED - file written but size verification failed (expected ${expectedBytes}, got ${finalSize}). The file may be truncated or corrupt. This is NOT a success.`;
+            }
+            text = (text ? text + '\n\n' : '') + `OK: File pushed to GitHub\nPath: ${safeArgs.path}\nMsg: ${message}\nURL: ${data.content?.html_url || 'pushed'}\nVerified: true\nFile size: ${finalSize} bytes`;
         }
 
         // github_create_repo
@@ -216,8 +232,36 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
             if (data.type === 'file') {
-                const content = base64ToUtf8(data.content);
-                text = `Path: ${data.path}\nSize: ${data.size} bytes\n\n${content.substring(0, 4000)}`;
+                // v6.4: 范围读取 + 默认上限 + 明确截断标记
+                const DEFAULT_MAX_LINES = 200;
+                const MAX_RESPONSE_CHARS = 12000;
+                const fullContent = base64ToUtf8(data.content);
+                const totalLines = fullContent.split('\n').length;
+                const startLine = safeArgs.start_line !== undefined ? parseInt(safeArgs.start_line, 10) : 1;
+                const endLine = safeArgs.end_line !== undefined ? parseInt(safeArgs.end_line, 10) : (startLine + DEFAULT_MAX_LINES - 1);
+                const safeStart = Math.max(1, startLine);
+                let safeEnd = Math.min(totalLines, Math.max(safeStart, endLine));
+                const allLines = fullContent.split('\n');
+                let selected = allLines.slice(safeStart - 1, safeEnd);
+                let truncated = false;
+                let hasMore = false;
+                let responseText = selected.join('\n');
+                // 单次响应字节上限保护
+                if (responseText.length > MAX_RESPONSE_CHARS) {
+                    selected = allLines.slice(safeStart - 1);
+                    let buf = '';
+                    let cutAt = selected.length;
+                    for (let i = 0; i < selected.length; i++) {
+                        if ((buf + '\n' + selected[i]).length > MAX_RESPONSE_CHARS) { cutAt = i; break; }
+                        buf += (i === 0 ? '' : '\n') + selected[i];
+                    }
+                    responseText = buf;
+                    safeEnd = safeStart + cutAt;
+                    truncated = true;
+                    hasMore = true;
+                }
+                if (safeEnd < totalLines) hasMore = true;
+                text = `Path: ${data.path}\nSize: ${data.size} bytes\nTotal lines: ${totalLines}\nReturned lines: ${safeEnd - safeStart + 1}\nTruncated: ${truncated}\nHas more: ${hasMore}\nRange: ${safeStart}-${safeEnd}\n\n${responseText}`;
             } else {
                 text = `Path: ${data.path} is a directory`;
             }
@@ -555,14 +599,33 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
             const putData = await putResp.json();
 
+            // v6.4: copy 后完整性校验——「API 成功 ≠ 文件成功」
+            // 必须验证 target 最终 size 与 source size 一致，否则判定 copy 失败
+            let verified = false;
+            let targetFinalSize = 0;
+            try {
+                const verifyResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
+                if (verifyResp.ok) {
+                    const vData = await verifyResp.json();
+                    targetFinalSize = vData.size || 0;
+                    verified = targetFinalSize === (srcData.size || 0) && targetFinalSize > 0;
+                }
+            } catch (e) { /* 校验失败时 verified 保持 false */ }
+            if (!verified) {
+                return (warn ? warn + '\n\n' : '') + `ERROR: COPY_VERIFY_FAILED - target written but size mismatched (source ${srcData.size || 0}, target ${targetFinalSize}). The copy may be truncated or corrupt. This is NOT a success.`;
+            }
+
             text = (warn ? warn + '\n\n' : '') + JSON.stringify({
                 success: true,
+                verified: true,
                 source_repo: sourceRepo,
                 source_branch: sourceBranch,
                 source_path: sourcePath,
+                source_size: srcData.size || 0,
                 target_repo: targetRepo,
                 target_branch: targetBranch,
                 target_path: targetPath,
+                target_size: targetFinalSize,
                 file_sha: fileSha,
                 commit_sha: putData.commit?.sha || '',
                 overwritten
@@ -574,4 +637,5 @@ export async function handleGitHubTool(name, safeArgs, env) {
         return 'ERROR: ' + e.message;
     }
     return text;
+}
 }
