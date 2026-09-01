@@ -7,6 +7,7 @@
 // 2026-08-17 FIX: btoa cannot handle Chinese -> UTF-8 safe base64
 // 2026-08-25 ADD: closePR/compare/getPR + push-main warning
 // 2026-09-01 ADD v6.3: GITHUB_TOOL_DEFS 元数据（自动注册真相源）+ github_auto_sync 自动同步
+// 2026-09-01 ADD v6.3.2: 合完自动 sync dev（硬性要求，防止下一轮 PR dirty）
 import { getEnabledSkills, addSkill } from '../utils/skills.js';
 
 // ============================================================
@@ -20,9 +21,9 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_read', description: '读取 GitHub 仓库文件内容（UTF-8 安全，支持中文）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '读取'] },
     { name: 'github_list', description: '列出 GitHub 仓库目录内容（文件/子目录）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '目录路径（默认根）' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '目录'] },
     { name: 'github_delete', description: '删除 GitHub 仓库文件。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '删除'] },
-    { name: 'github_merge_to_main', description: '智能三步合并 dev 到 main：建PR→查可合并→合并。支持 commit_title（版本号+名称）和 merge_method（merge/rebase，不用squash）。', input_schema: { type: 'object', properties: { branch: { type: 'string', description: '源分支（默认dev）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式（推荐rebase或merge）' }, commit_title: { type: 'string', description: '自定义合并 commit 标题（版本号+名称）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
+    { name: 'github_merge_to_main', description: '智能三步合并 dev 到 main：建PR→查可合并→合并。支持 commit_title（版本号+名称）和 merge_method（merge/rebase，不用squash）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { branch: { type: 'string', description: '源分支（默认dev）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式（推荐rebase或merge）' }, commit_title: { type: 'string', description: '自定义合并 commit 标题（版本号+名称）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
     { name: 'github_create_pull_request', description: '新建 Pull Request。', input_schema: { type: 'object', properties: { head: { type: 'string', description: '源分支（默认dev）' }, base: { type: 'string', description: '目标分支（默认main）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['title'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
-    { name: 'github_merge_pull_request', description: '合并指定 Pull Request。支持 merge_method（merge/squash/rebase）和 commit_title（自定义 commit 标题，从版本号开始）。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式' }, commit_title: { type: 'string', description: '自定义 commit 标题（版本号+名称）' }, title: { type: 'string', description: '自定义 commit 标题（别名）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
+    { name: 'github_merge_pull_request', description: '合并指定 Pull Request。支持 merge_method（merge/squash/rebase）和 commit_title（自定义 commit 标题，从版本号开始）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式' }, commit_title: { type: 'string', description: '自定义 commit 标题（版本号+名称）' }, title: { type: 'string', description: '自定义 commit 标题（别名）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
     { name: 'github_close_pull_request', description: '关闭废弃的 Pull Request。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
     { name: 'github_compare_branches', description: '对比两个分支差异（base...head），返回值：ahead/behind/status/files。', input_schema: { type: 'object', properties: { base: { type: 'string', description: '基础分支（默认main）' }, head: { type: 'string', description: '对比分支（默认dev）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '对比'] },
     { name: 'github_get_pull_request', description: '查询单个 Pull Request 详情（state/merged/mergeable）。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
@@ -44,6 +45,36 @@ function normalize(value) {
         return sorted;
     }
     return value;
+}
+
+// ============================================================
+// tryAutoSyncDev - 合完 main 后自动把 dev 同步到最新（硬性要求）
+// 只有 dev 不领先 main（无未合入独立 commit）时才自动 fast-forward，
+// 否则跳过并提示——避免 force 覆盖把 dev 未合入的改动冲掉。
+// 这是解决「合完不 sync → 下一轮 PR 必 dirty」的根本手段。
+// ============================================================
+async function tryAutoSyncDev(baseUrl, ghHeaders) {
+    try {
+        const cmpResp = await fetch(`${baseUrl}/compare/main...dev`, { headers: ghHeaders });
+        if (!cmpResp.ok) return '⚠️ 自动同步 dev 失败：无法对比分支';
+        const cmp = await cmpResp.json();
+        if (cmp.ahead_by > 0) {
+            return '⚠️ 检测到 dev 仍有未合入 main 的改动（ahead_by=' + cmp.ahead_by + '），未自动同步，请先处理。';
+        }
+        const refResp = await fetch(`${baseUrl}/git/ref/heads/main`, { headers: ghHeaders });
+        if (!refResp.ok) return '⚠️ 自动同步 dev 失败：取 main SHA 出错';
+        const refData = await refResp.json();
+        const sha = refData.object.sha;
+        const updResp = await fetch(`${baseUrl}/git/refs/heads/dev`, {
+            method: 'PATCH',
+            headers: ghHeaders,
+            body: JSON.stringify({ sha, force: true })
+        });
+        if (!updResp.ok) return '⚠️ 自动同步 dev 失败：' + (await updResp.json()).message;
+        return '✅ 合并后已自动同步 dev → main（' + sha.slice(0, 8) + '），下次 PR 不再冲突';
+    } catch (e) {
+        return '⚠️ 自动同步 dev 出错：' + e.message;
+    }
 }
 
 // ============================================================
@@ -280,6 +311,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     steps.push('步骤3（合并）：✅ 已合并' + (mergeData.html_url ? ' ' + mergeData.html_url : ''));
                     if (mergeTitle && mergeMethod !== 'rebase') steps.push('Commit: ' + mergeTitle);
                     if (mergeMethod === 'rebase') steps.push('(rebase: 保留 dev 原始 commit 名，无 Merge PR 前缀)');
+                    if (mergeData.merged || mergeResp.status === 405) {
+                        const syncNote = await tryAutoSyncDev(baseUrl, ghHeaders);
+                        steps.push(syncNote);
+                    }
                     text = steps.join('\n');
                 } else {
                     throw new Error('合并失败：' + (mergeData.message || `HTTP ${mergeResp.status}`));
@@ -327,6 +362,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 text = `OK: PR #${pr} ${merged}\n` + (data.html_url ? `URL: ${data.html_url}` : '');
                 if (commitTitle && method !== 'rebase') text += `\nCommit: ${commitTitle}`;
                 if (method === 'rebase') text += '\n(rebase: 保留 dev 原始 commit 名，无 Merge PR 前缀)';
+                if (data.merged || resp.status === 405) {
+                    const syncNote = await tryAutoSyncDev(baseUrl, ghHeaders);
+                    text += '\n\n' + syncNote;
+                }
             } else {
                 throw new Error('合并失败：' + (data.message || `HTTP ${resp.status}`));
             }
