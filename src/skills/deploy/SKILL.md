@@ -66,12 +66,15 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 修改MCP Worker代码并部署 / 更新技能或配置 / 新增或修改MCP工具 / 创建PR / 解决部署问题
 
 ## 🔴 铁律：改完 MCP 工具必须注册（否则哥哥调不到）
-新增/修改 MCP 工具（src/tools/*.js）后，只改代码不够——必须同步注册到 Supabase skills 表。
-- 用 supabase_db 在 skills 表 insert/update
+**时序硬规则（2026-09-01 学到的教训）：先注册 → 再推代码 → 再部署**
+新增/修改 MCP 工具（src/tools/*.js）后，注册动作必须和代码改动「同批完成」，不等部署后再补：
+1. 改完代码 → **立刻用 supabase_db 在 skills 表 insert/update**（同一批 dev 内完成）
+2. 再推 dev → PR → main 部署
+3. 部署完 help() 能直接查到新工具，不需要补注册
 - handler_config.handler 与 index.js 的 handlerMap 对应
 - 验证：help() 能查到新工具
 - 教训（2026-08-27）：github_read/list/delete 写了没注册 → 调不到
-- 教训（2026-09-01）：github_sync_branch 部署了没注册 → 调不到，补注册才可用
+- 教训（2026-09-01）：github_sync_branch 部署了才发现没注册 → 补注册才可用；正解是部署前就注册
 
 ## 分支规则（硬性）
 - 默认 dev 分支；推送先 dev，柳柳确认后才能推 main。
@@ -112,7 +115,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - GitHub API 没有移动文件接口，移动=新路径PUT+旧路径DELETE
 
 ## 最近使用记录
-- 2026-09-01：推 main 命名规范升级——版本号+版本名称，commit_title 自定义去 Merge PR 前缀；合并优先 rebase；分叉用 sync_branch 不删重建；自检清单加 JSON content_base64 检查；更新 Version 认知
+- 2026-09-01：推 main 命名规范升级——版本号+版本名称，commit_title 自定义去 Merge PR 前缀；合并优先 rebase；分叉用 sync_branch 不删重建；自检清单加 JSON content_base64 检查；注册时序硬规则（先注册→再推代码→再部署）
 - 2026-08-30：新增「发布前自检清单」——8项全绿才推，像起飞前检查单
 - 2026-08-28：推main流程改最简——先问柳柳「这批可以推吗」，她说"可以"就建PR+直接merge
 - 2026-08-28：加「版本与PR正确认知」——dev攒批、main发布、一个版本一次PR
