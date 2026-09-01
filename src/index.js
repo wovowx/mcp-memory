@@ -22,6 +22,7 @@ import { handleCategoryTool } from './tools/category.js';
 import handleKnowledgeSkill from './tools/knowledge.js';
 import { handleIncrementUsage } from './tools/increment_usage.js';
 import { handleDeleteBranch } from './tools/delete_branch.js';
+import { handleChatRequest } from './tools/chat.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -334,6 +335,12 @@ export default {
         }
 
         const url = new URL(request.url);
+
+        // Common Ground 聊天室（v6.4）
+        if (url.pathname === '/chat' || url.pathname === '/chat/' || url.pathname.startsWith('/api/chat')) {
+            const result = await handleChatRequest(request, url, env);
+            if (result) return result;
+        }
 
         if (url.pathname === '/memory-universe' || url.pathname === '/memory-universe/') {
             try {
