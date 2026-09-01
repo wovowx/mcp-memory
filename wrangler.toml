@@ -16,6 +16,8 @@ fallthrough = true
 
 [vars]
 SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
+# v6: 多仓库白名单（逗号分隔）。Dashboard 配置的环境变量优先于此处默认值。
+GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory,wovowx/ZivenLab"
 
 [triggers]
 crons = []
