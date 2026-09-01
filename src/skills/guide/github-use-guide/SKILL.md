@@ -5,7 +5,7 @@ category: guide
 tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy"]
 ---
 
-# GitHub 使用指南（2026-09-01 v6.2 同步）
+# GitHub 使用指南（2026-09-01 v6.3 同步）
 
 ## 定位
 这是哥哥操作 GitHub 的总纲：工具对照表 + 红线。推 main 的完整铁律流程见 **deploy 技能**（本指南不重复）。
@@ -22,9 +22,10 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy"]
 | 创建仓库 | github_create_repo(repo) |
 | 建分支（从源分支新建） | github_create_branch(name, from=main) |
 | 同步分支（fast-forward，不删重建） | github_sync_branch(name=dev, from=main) |
-| 把 dev 一次性合并进 main | github_merge_to_main(branch=dev, commit_title=vX.Y.Z: 名称) |
+| 自动同步注册表（代码 vs Supabase） | github_auto_sync(dry_run=true 先看报告) |
+| 把 dev 一次性合并进 main | github_merge_to_main(branch=dev, commit_title=vX.Y.Z: 名称) —— 合完自动 sync dev |
 | 创建 PR | github_create_pull_request(base=main, head=dev) |
-| 合并 PR（支持 commit_title） | github_merge_pull_request(pull_number, merge_method=merge/rebase, commit_title=vX.Y.Z: 名称) |
+| 合并 PR（支持 commit_title） | github_merge_pull_request(pull_number, merge_method=merge/rebase, commit_title=vX.Y.Z: 名称) —— 合完自动 sync dev |
 | 关废弃 PR | github_close_pull_request(pull_number) |
 | 查单个 PR 状态 | github_get_pull_request(pull_number) |
 | 对比两个分支差异 | github_compare_branches(base=main, head=dev) |
@@ -40,14 +41,24 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy"]
 - 不用再删 dev 重建（旧做法已废弃）
 - github_create_branch 只在「需要新建分支」时用（如从 main 建 dev）
 
-### 3. 推 main 前先 compare
+### 3. 合完 main 必 sync dev（2026-09-01 硬性）
+- **v6.3.2 起合并工具自动 sync**：github_merge_pull_request / github_merge_to_main 合完自动把 dev 拉到最新 main
+- 若用旧工具/手动流程，合完立刻 github_sync_branch(name='dev', from='main')
+- 不 sync 的代价：下一轮 PR 必 dirty（教训：PR#41）
+
+### 4. 推 main 前先 compare
 - 任何「要合 main」前先 github_compare_branches(base=main, head=dev)
 - 分叉/落后 → 先 sync_branch 对齐 main 再推
 
-### 4. JSON 内容必须用 content_base64（2026-09-01 新增）
+### 5. JSON 内容必须用 content_base64（2026-09-01 新增）
 - github_push 的 content 参数传 JSON 字符串会被序列化成 [object Object]（构建失败的元凶）
 - 推 package.json 等 JSON 文件：先 base64 编码，用 content_base64 参数推送
 - 普通 md/js 文件不受影响，用 content 正常推
+
+### 6. 注册表以代码为真相源（v6.3 新增）
+- github.js 的 GITHUB_TOOL_DEFS 是工具元数据唯一真相源，Supabase skills 表只是缓存
+- 新工具部署后自动注册（passive 同步），调用会提醒哥哥复核
+- github_auto_sync 可主动看差异报告（dry_run=true 预览）
 
 ## 🧭 裸工具按场景走（2026-08-29 收编说明）
 - github_* 工具是**原子操作**，对应**真实场景**应优先读场景 skill：
@@ -56,16 +67,17 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy"]
 - 哥哥不要凭裸工具描述就动手，先判定场景再走对应 skill
 
 ## 推 main 完整流程
-- **全部铁律与步骤见 deploy 技能**（先问柳柳、带版本号+说明、她OK后建PR+merge）。
+- **全部铁律与步骤见 deploy 技能**（先问柳柳、带版本号+说明、她OK后建PR+merge、合完sync dev）。
 - 这里不重复，避免两套真相不一致。
 
 ## 常见问题
 - **PR 冲突**：先 sync_branch 对齐 main（或对比分支找差异），不要硬合
 - **分支分叉**：用 github_sync_branch 直接 fast-forward，不删重建
-- **工具没出现在 help**：可能没在 skills 表注册；补 supabase skills 插入（详见 deploy）
+- **工具没出现在 help**：v6.3 起会自动注册，若还没出现跑一下 github_auto_sync（或检查 GITHUB_TOOL_DEFS 有没有定义）
 - **包名带 github: 前缀**：早期记录用 github:xxx，实际工具名是 github_xxx（下划线）
 
 ## 最近使用记录
+- 2026-09-01：补 github_auto_sync 工具；红线新增「合完必sync dev」「注册表代码真相源」；版本标注 v6.3
 - 2026-09-01：新增 content_base64 / create_branch / sync_branch / commit_title / rebase 工具对照；分叉红线改为 sync_branch 不删重建
 - 2026-08-29：加「裸工具按场景走」收编说明
 - 2026-08-28：精简——推 main 流程统一指向 deploy 去重，保留工具对照表+红线
