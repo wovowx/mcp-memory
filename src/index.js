@@ -16,7 +16,7 @@ import { getEnabledSkills, getSkillByName, addSkill, updateSkill, deleteSkill } 
 import { handleMemoryTool } from './tools/memory_unified.js';
 import { handleDataTool } from './tools/data.js';
 import { handleAITool } from './tools/ai.js';
-import { handleGitHubTool, GITHUB_TOOL_DEFS } from './tools/github.js';
+import { handleGitHubTool, GITHUB_TOOL_DEFS } from './tools/github_v64.js';
 import { handleDatabaseTool } from './tools/database.js';
 import { handleCategoryTool } from './tools/category.js';
 import handleKnowledgeSkill from './tools/knowledge.js';
