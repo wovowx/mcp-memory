@@ -11,6 +11,7 @@
 - **github-use-guide 主体重构**：工具对照表 + 关键红线为主
 - **master-router 清补丁墙**：步骤重排连续编号（去 0.5/5.5），去重复段落
 - **deploy 自检清单 +1**：改过 skill 必须按写作规范骨架
+- **CHANGELOG 修复**：v6.3.3 记录初推时因读取截断丢了下半历史，找回 main 完整原文后重推（含 v5.3.x 及版本命名规则）
 
 ---
 
@@ -134,4 +135,32 @@
 - **记忆管理 skill**、**file-management 收编**、**github-use-guide 收编**
 - **三个裸工具禁用**：describe_image / generate_image / generate_video（enabled=false）
 - **master-router 场景速查表**：先场景→再skill→最后工具
-- **help 场景置顶修复**（补回 v5.4.0 特征的 help 入口）
+- **help 场景置顶修复**（补回 v5.4.0 丢失的 help 分支）
+
+### GitHub PR 工具
+- **新增 github_create_pull_request / github_merge_pull_request**
+- **github_merge_to_main 改智能三步**（建PR→查可合并→合并，适配分支保护）
+
+### 角色卡
+- **技术协作双向设定**（柳柳确认）
+
+---
+
+## [v5.3.0] - 2026-08-28
+
+### 清理/去重
+- **删除过时 memory_visualizer 技能**；master-router 精简；github-use-guide 精简
+
+### 新增
+- **读懂柳柳 skill**；柳柳认知收敛进💕/关于柳柳；换框「关于柳柳」只读；deploy 最简正确版
+
+---
+
+## [v5.2.x] - 2026-08-28（历史，略）
+
+## 版本命名规则
+- 主版本号：重大架构变更
+- 次版本号：新增功能（向后兼容）
+- 修订号：bug修复、优化
+- **推 main 发布命名：版本号 + 版本名称**（如 `v6.3.0: 工具自动注册`）
+- **合并方式：默认 rebase（或 merge + commit_title），不用 squash**（squash 会产生分叉）
