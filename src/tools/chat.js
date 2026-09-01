@@ -54,7 +54,7 @@ function parseMentions(content) {
 }
 function contentPreview(content){return Array.from(content).slice(0,MAX_PREVIEW_CHARS).join('').replace(/\s+/g,' ').trim();}
 
-async function createMessage(env, threadId, payload) {
+export async function createMessage(env, threadId, payload) {
     const author=String(payload.author||'liuliu').toLowerCase(); const content=String(payload.content||'').trim();
     if(!content)throw new Error('消息内容不能为空'); if(!ALL_ACTORS.includes(author))throw new Error(`非法 author: ${author}`);
     const {mentions,events}=parseMentions(content);
@@ -65,14 +65,13 @@ async function createMessage(env, threadId, payload) {
         try{const result=await sbInsert(env,'chat_agent_events',eventData,{ignoreDuplicates:true});if(Array.isArray(result)&&result.length===0)existed.push(agent);else if(Array.isArray(result)&&result.length>0)created.push(agent);else throw new Error('事件写入成功但未返回可识别结果');}catch(e){failed.push({agent,error:e.message});}}
     return{message,mentions,events:created,existed_events:existed,partial_failure:failed.length>0,event_errors:failed};
 }
-
-async function getPendingEvents(env,agent,limit=DEFAULT_EVENT_LIMIT,offset=0){
+export async function getPendingEvents(env,agent,limit=DEFAULT_EVENT_LIMIT,offset=0){
     if(!AGENTS.includes(agent))throw new Error(`非法 agent: ${agent}`); const safeLimit=Math.min(Math.max(Number(limit)||DEFAULT_EVENT_LIMIT,1),100); const safeOffset=Math.max(Number(offset)||0,0);
     const rows=await sbQuery(env,'chat_agent_events',{select:'event_id,message_id,agent,status,payload,created_at,updated_at',filters:{agent,status:'processing'},order:'created_at.asc,event_id.asc',limit:safeLimit+1,offset:safeOffset});
     const hasMore=rows.length>safeLimit; return{events:hasMore?rows.slice(0,safeLimit):rows,limit:safeLimit,offset:safeOffset,has_more:hasMore};
 }
-async function readMessage(env,messageId){const rows=await sbQuery(env,'chat_messages',{filters:{message_id:messageId},limit:1});if(!rows.length)throw new Error('消息不存在');return rows[0];}
-async function ackEvent(env,eventId,agent,targetStatus){
+export async function readMessage(env,messageId){const rows=await sbQuery(env,'chat_messages',{filters:{message_id:messageId},limit:1});if(!rows.length)throw new Error('消息不存在');return rows[0];}
+export async function ackEvent(env,eventId,agent,targetStatus){
     if(!AGENTS.includes(agent))throw new Error(`非法 agent: ${agent}`); if(!['success','failed','processing'].includes(targetStatus))throw new Error(`非法 status: ${targetStatus}`);
     const currentRows=await sbQuery(env,'chat_agent_events',{select:'event_id,agent,status,message_id,payload,created_at,updated_at',filters:{event_id:eventId},limit:1}); if(!currentRows.length)throw new Error('事件不存在'); const current=currentRows[0]; if(current.agent!==agent)throw new Error('无权确认其他 Agent 的事件');
     const allowed=(current.status==='processing'&&['success','failed'].includes(targetStatus))||(current.status==='failed'&&targetStatus==='processing'); if(!allowed)throw new Error(`非法状态转换: ${current.status} -> ${targetStatus}`);
