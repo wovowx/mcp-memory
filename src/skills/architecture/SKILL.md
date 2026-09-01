@@ -1,11 +1,11 @@
 ---
 name: architecture
-description: 系统架构说明书（2026-08-29更新）。帮助哥哥理解三层体系（原子层/场景层/路由层）、四层架构、强制路由、技能存储规则、GitHub 运维、cloudflare 部署范围。
+description: 系统架构说明书（2026-09-01更新）。帮助哥哥理解三层体系（原子层/场景层/路由层）、四层架构、强制路由、技能存储规则、GitHub 运维、cloudflare 部署范围、工具自动注册机制。
 category: guide
-tags: ["架构", "路由", "技能系统", "GitHub", "部署", "场景skill"]
+tags: ["架构", "路由", "技能系统", "GitHub", "部署", "场景skill", "自动注册"]
 ---
 
-# 系统架构（2026-08-29 更新版）
+# 系统架构（2026-09-01 更新版）
 
 ## 一句话
 
@@ -39,9 +39,9 @@ tags: ["架构", "路由", "技能系统", "GitHub", "部署", "场景skill"]
 | 层级 | 组件 | 存什么 | 谁访问 |
 |------|------|--------|--------|
 | 🧠 大脑层 | Operit + master-router | 路由逻辑 + 系统提示词 | 用户 |
-| 📋 索引层 | Supabase（skills 表） | 技能元数据（name/path/usage_count） | AI（help()） |
+| 📋 索引层 | Supabase（skills 表） | 技能元数据（name/path/usage_count）——v6.3 起主要是缓存 | AI（help()） |
 | 📂 文件层 | GitHub（src/skills/ 下 SKILL.md） | 技能操作手册（SOP） | AI（读 SKILL.md） |
-| ⚙️ 执行层 | Cloudflare Worker（MCP 工具） | 工具实现代码 | AI（调工具） |
+| ⚙️ 执行层 | Cloudflare Worker（MCP 工具） | 工具实现代码 + GITHUB_TOOL_DEFS 元数据 | AI（调工具） |
 
 ## 强制路由（先 help 才能调工具）
 - **hasCalledHelp 守门员**：首次 tools/call 前必须调用 help()，否则被拦：『❌ 请先调用 help() 获取技能清单』
@@ -49,7 +49,7 @@ tags: ["架构", "路由", "技能系统", "GitHub", "部署", "场景skill"]
 - 作用：强制路由从"建议"变成"硬约束"
 
 ## 工具通道（重要，2026-08-28 确定）
-- **GitHub 操作统一走 ziven_mcp 自带的 github_* 工具**（github_read/list/push/delete/merge 等）
+- **GitHub 操作统一走 ziven_mcp 自带的 github_* 工具**（github_read/list/push/delete/merge/sync_branch/auto_sync 等）
 - **Operit 的独立 `github` 包已关闭**，不再使用
 - 这些都是 MCP 工具，受 hasCalledHelp 路由守门员管理
 
@@ -60,17 +60,23 @@ tags: ["架构", "路由", "技能系统", "GitHub", "部署", "场景skill"]
 | 文本技能 | text | GitHub SKILL.md | 流程/文档 |
 | 知识型 | knowledge | Supabase description | 简单规则 |
 
-**改完 MCP 工具必须注册到 Supabase skills 表**（只改代码不够）：
-- 新增/改 src/tools/*.js 后 → 用 supabase_db 在 skills 表 insert/update（name/description/input_schema/handler_config）
+**改完 MCP 工具注册（v6.3 起自动化）**：
+- **v6.3 前**：新增/改 src/tools/*.js 后 → 手动用 supabase_db 在 skills 表 insert/update（name/description/input_schema/handler_config）
+- **v6.3 起**：github.js 的 **GITHUB_TOOL_DEFS**（name/description/input_schema/handler）是唯一真相源；index.js passive 同步在调用时自动补注册，github_auto_sync 可主动同步；部署后无需手动 insert
+- 但仍建议注册时序「先注册→再推代码→再部署」保底（部署前手动注册，部署后自动注册兜底）
 - handler_config.handler 与 index.js 的 handlerMap 对应
 - 验证：help() 能查到新工具
 - 教训（2026-08-27）：github_read/list/delete 写了没注册 → 调不到
+- 教训（2026-09-01）：github_sync_branch 部署了才发现没注册 → 补才可用
 
-## GitHub 运维（2026-08-28）
+## GitHub 运维（2026-09-01 更新）
 - **分支保护已开启**：main 必须 PR、禁止绕过，直推 409 拦截，连 admin 也绕不过
 - **所有改动走 dev → PR → merge 到 main**
 - **推 main 必须带版本号 + 对应说明（CHANGELOG 更新到位），缺一不合**
 - **推 main 前必须先经柳柳确认**（PR 建好贴给她，她说可以才 merge）
+- **合完 main 立刻 sync dev**（v6.3.2 合并工具自动；手动则 github_sync_branch）——否则下一轮 PR dirty
+- **合并方式推荐 rebase**（保留 dev commit 名，无 Merge PR 前缀，不产生分叉）
+- **推 main 命名 = 版本号 + 版本名称**（commit_title 自定义）
 
 ## cloudflare 只部署 src/
 - wrangler.toml：`main = "src/index.js"`
@@ -89,4 +95,5 @@ tags: ["架构", "路由", "技能系统", "GitHub", "部署", "场景skill"]
 - **同类文档非必要只留一份**
 
 ## 最近使用记录
+- 2026-09-01：v6.3 自动注册架构——GITHUB_TOOL_DEFS 代码真相源 + passive/主动同步；GitHub 运维补「合完sync dev」「rebase 优先」「版本号+名称命名」；skills 表定位改「缓存」
 - 2026-08-29：新增「三层体系」——场景层优先，skill 是场景→工具的桥；标注场景skill清单；memory工具与记忆管理skill区分
