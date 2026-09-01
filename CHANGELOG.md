@@ -2,6 +2,57 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.3.2] - 2026-09-01
+
+### 合完自动 sync dev（柳柳发现 · 硬性要求）
+- **背景**：rebase 合完 main 后 dev 不会自动跟着走；不立即 sync 就基于旧 dev 开发 → 下一轮 PR 必 dirty（教训：PR#41 卡死在关→sync→重推→重建循环）
+- **改动**：github_merge_pull_request / github_merge_to_main 合并成功后自动把 dev 同步到 main
+- **安全检查**：dev 有未合入改动时不覆盖只提示（防 force 丢东西）
+- **文档**：deploy skill 新增第四条铁律「合完必 sync dev」；自检清单加第 10 项
+
+---
+
+## [v6.3.1] - 2026-09-01
+
+### 修复 auto_sync 变化检测误报
+- **Bug**：JSON.stringify 对属性顺序敏感，Supabase 存储 JSON 会重排 key，导致「已对齐的 schema」被误报为变化
+- **修复**：新增 normalize() 递归排序 key，语义相等判断；description 比较加 trim
+
+---
+
+## [v6.3.0] - 2026-09-01
+
+### 工具自动注册（柳柳提议）
+- **GITHUB_TOOL_DEFS 元数据**：github.js 内所有工具的真相源（name/description/input_schema/handler），代码是权威、Supabase 表只是缓存
+- **被动自动注册**：index.js passiveSyncGithubTool——每次调用 github_* 工具检查缺失注册，自动补注册并提醒哥哥复核
+- **github_auto_sync 工具**：全量对比注册表，新增自动补 / 变化待确认 / 孤儿待确认（dry_run 支持）
+- **安全设计**：只补缺不覆盖；更新/删除列出待确认；注册后 invalidateCache 立即可见
+
+### 文档联动
+- deploy skill：注册时序硬规则（先注册→再推代码→再部署）+ v6.3 自动注册兜底
+- github-use-guide：工具对照表补 auto_sync / 合完sync / 代码真相源
+- architecture：v6.3 自动注册架构（GITHUB_TOOL_DEFS 真相源、skills 表=缓存）
+
+---
+
+## [v6.2.0] - 2026-09-01
+
+### 修复 Cloudflare 构建失败（紧急）
+- **根因**：github_push 传 JSON 内容被序列化成 [object Object]（package.json 推坏），Cloudflare 构建失败
+- **修复**：github_push 增加 content_base64 参数（JSON 内容先 base64 再推，绕过序列化 bug）
+- **BOM 技巧也可绕**，content_base64 是正解
+
+### 分叉根治：github_sync_branch（柳柳发现）
+- **柳柳要求**：不要每次删除重建 dev
+- **实现**：直接 PATCH git ref 强制 fast-forward 到源分支最新 commit
+- 用法：github_sync_branch(name='dev', from='main') → 不删分支直接同步
+
+### 推 main 命名优化（柳柳要求）
+- **版本号 + 版本名称**：merge commit 命名从版本号开始，无 "Merge pull request #XX" 前缀
+- **合并方式推荐 rebase**：保留 dev 原始 commit 名，不产生分叉 commit
+
+---
+
 ## [v6.1.0] - 2026-09-01
 
 ### 新增 github_create_branch 建分支工具（柳柳建议）
@@ -98,5 +149,5 @@
 - 主版本号：重大架构变更
 - 次版本号：新增功能（向后兼容）
 - 修订号：bug修复、优化
-- **推 main 发布命名：版本号 + 版本名称**（如 `v6.1.0: 新增建分支工具`）
-- **合并方式：默认 merge，不用 squash**（squash 会产生分叉）
+- **推 main 发布命名：版本号 + 版本名称**（如 `v6.3.0: 工具自动注册`）
+- **合并方式：默认 rebase（或 merge + commit_title），不用 squash**（squash 会产生分叉）
