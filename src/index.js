@@ -7,6 +7,7 @@
 //  3. 处理 notifications/initialized（notification 回 202 空响应）
 //  4. CORS 补齐 Authorization/Accept/MCP-Session-Id
 //  5. 保留无状态 POST 应答（stateless 模式），GET 兼容 SSE
+// v6.3 变更（2026-09-01）：自动注册兜底（passiveSyncGithubTool）
 //  业务层（memory/skills/Supabase/GitHub）一行未动
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
@@ -15,7 +16,7 @@ import { getEnabledSkills, getSkillByName, addSkill, updateSkill, deleteSkill } 
 import { handleMemoryTool } from './tools/memory_unified.js';
 import { handleDataTool } from './tools/data.js';
 import { handleAITool } from './tools/ai.js';
-import { handleGitHubTool } from './tools/github.js';
+import { handleGitHubTool, GITHUB_TOOL_DEFS } from './tools/github.js';
 import { handleDatabaseTool } from './tools/database.js';
 import { handleCategoryTool } from './tools/category.js';
 import handleKnowledgeSkill from './tools/knowledge.js';
@@ -58,6 +59,35 @@ async function invalidateCache() {
     skillCache.clear();
 }
 
+// ============================================================
+// passiveSyncGithubTool - 每次调用 github_* 工具时顺带检查注册（v6.3）
+// 只补缺失（新增），不覆盖已有；发现缺失自动注册并提醒哥哥复核
+// 用不变量避免每次查表：只查「被调用的这个工具」是否注册
+// ============================================================
+async function passiveSyncGithubTool(env, name) {
+    try {
+        const existing = await getSkillByName(env, name);
+        if (existing) return null; // 已注册，无事
+        const def = GITHUB_TOOL_DEFS.find(d => d.name === name);
+        if (!def) return null; // 代码里也没有该定义，交给 handler 判断
+        const ok = await addSkill(env, {
+            name: def.name,
+            description: def.description,
+            input_schema: def.input_schema,
+            handler_type: 'js',
+            handler_config: { handler: def.handler || 'github' },
+            category: def.category || 'GitHub',
+            tags: def.tags || []
+        });
+        await invalidateCache();
+        return ok
+            ? '⚠️ 已自动注册新工具：' + name + '——哥哥有空检查一下 schema 是否正确（自动注册只补缺，不覆盖）'
+            : '⚠️ 自动注册失败：' + name;
+    } catch (e) {
+        return '⚠️ 自动注册检查出错：' + e.message;
+    }
+}
+
 // MCP JSON-RPC 请求处理
 // 返回：{ ok: true, data: <jsonrpc对象|null> } —— data 为 null 表示 notification，无需回 JSON-RPC body
 //       { ok: false, data: <jsonrpcError对象> }  —— 上层可回 400
@@ -69,8 +99,8 @@ async function handleMCPRequest(body, env) {
     }
 
     // notification：无 id 的通知不返回 JSON-RPC 响应（如 notifications/initialized）
+    const isNotification = id === undefined || id === null;
     if (method === 'notifications/initialized' || method.startsWith('notifications/')) {
-        // 正确处理通知，不当作未知方法；返回 null 表示不回 body
         return { ok: true, data: null, notification: true };
     }
 
@@ -90,7 +120,7 @@ async function handleMCPRequest(body, env) {
                     capabilities: {
                         tools: { listChanged: false }
                     },
-                    serverInfo: { name: 'ZivenAgent', version: '5.0.0' }
+                    serverInfo: { name: 'ZivenAgent', version: '6.3.0' }
                 }
             }
         };
@@ -110,7 +140,6 @@ async function handleMCPRequest(body, env) {
     }
 
     if (method === 'tools/call') {
-        // 去掉 hasCalledHelp 门卫：标准 MCP 客户端无需调用自定义 help 才能调工具
         const { name, arguments: args } = params || {};
         const safeArgs = args || {};
         let text = '';
@@ -124,7 +153,10 @@ async function handleMCPRequest(body, env) {
                 text = await handleMemoryTool(name, safeArgs, env);
             }
             else if (name?.startsWith('github_')) {
+                // v6.3: 自动注册兜底 —— 调用前检查缺失注册，顺带提醒哥哥复核
+                const syncNote = await passiveSyncGithubTool(env, name);
                 text = await handleGitHubTool(name, safeArgs, env);
+                if (syncNote) text += '\n\n' + syncNote;
             }
             else {
                 const skill = await getSkillByName(env, name);
