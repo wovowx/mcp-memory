@@ -5,7 +5,7 @@ category: deploy
 tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 ---
 
-# 部署技能（合并版）
+# 部署技能（合并版 v6.2 · 2026-09-01）
 
 ## 目标
 实现从代码修改到Cloudflare自动部署的完整闭环，包含分支管理、GitHub推送和MCP工具开发。
@@ -20,7 +20,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 ## 🔴 第一条铁律：绝不手动改 main（物理强制）
 - main 只接受 PR 合并，绝不直接覆盖 main 文件。
 - 分支保护已开启（2026-08-28）：main 设 Require PR + 禁止绕过，直推 409。
-- 想进 main 只有走 dev→PR→merge；分叉就回 dev 对齐 main 重建。
+- 想进 main 只有走 dev→PR→merge；分叉就 sync_branch 对齐 main。
 
 ## 🔴 第二条铁律：推 main 前必须先经柳柳确认（最高优先级）
 - **哥哥想推这批时，先问柳柳：「这批（xxx）可以推到 main 吗？」**
@@ -28,31 +28,38 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - **柳柳不 OK / 没表态 → 不推。** 绝不自建 PR 擅自合。
 - 反例（2026-08-28）：连续无确认合 PR#16-21 被柳柳指出。
 
-## 🔴 第三条铁律：推 main 必须带版本号 + 说明
-1. CHANGELOG.md 更新（记录整批所有改动）
-2. PR title 带版本号（整批的版本号）
+## 🔴 第三条铁律：推 main 必须带版本号 + 版本名称（2026-09-01 柳柳拍板）
+1. CHANGELOG.md 更新（记录整批所有改动，带版本号）
+2. PR title 带版本号 + 版本名称（如 `v6.2.0: 修复JSON push + sync_branch`）
 3. PR body 写清改了啥、为啥
-4. 缺一不合
+4. **合并时用 commit_title 传「版本号 + 版本名称」**，让 merge commit 直接显示版本号，**不出现 "Merge pull request #XX" 前缀**（柳柳要求）
+5. 缺一不合
+
+### 合并方式选择（2026-09-01）
+- **推荐 rebase**：保留 dev 原始 commit 名，无 Merge PR 前缀，dev/main 线性历史
+- **或 merge + commit_title**：产生 merge commit，但标题可用 commit_title 自定义
+- **不要 squash**：squash 会产生新 commit 导致 dev/main 分叉（历史教训）
 
 ## 🔴 发布前自检清单（2026-08-30 新增 · 像起飞前检查单）
 **每次推 main 前，逐项自检，全绿才推。缺一项就停下补。**
 
 - [ ] **1. 语法检查过了吗？** 改了 ai.js/github.js 等 → node/本地跑一遍语法，确保没低级错误（教训：help 分支丢失）
 - [ ] **2. help 分支在吗？** 改了 ai.js → 确认 name==='help' 分支还在（教训：v5.4.0 丢 help 分支）
-- [ ] **3. Supabase 注册表同步了吗？** 新增/改工具 → skills 表 insert/update 到位，help() 能查到（教训：github_read 写了没注册）
-- [ ] **4. 分支对齐了吗？** github_compare_branches(main, dev) 看 diverge；dev 落后 main → 先回 dev 对齐（教训：历史分叉）
+- [ ] **3. Supabase 注册表同步了吗？** 新增/改工具 → skills 表 insert/update 到位，help() 能查到（教训：github_read 写了没注册；github_sync_branch 写了没注册导致调不到）
+- [ ] **4. 分支对齐了吗？** github_compare_branches(main, dev) 看 diverge；dev 落后 main → 先 sync_branch 对齐（教训：历史分叉）
 - [ ] **5. 有冲突吗？** 同上 compare；有冲突先解决再推（never 硬合）
-- [ ] **6. CHANGELOG 更新了吗？** 带版本号 + 说明，缺一不合
+- [ ] **6. CHANGELOG 更新了吗？** 带版本号 + 版本名称，缺一不合
 - [ ] **7. 柳柳批准了吗？** 问过柳柳且她说"可以"？没批准绝不推
 - [ ] **8. 推完验证了吗？** merge 后读 main 关键文件 + help 验证工具在
+- [ ] **9. JSON 内容用 content_base64 推了吗？（2026-09-01 新增）** 推 package.json 等 JSON 文件，必须 content_base64 参数，普通 content 会被序列化成 [object Object] 导致构建失败（教训：v6.2.0 构建失败事故）
 
 ## 🔴 推 main 正确流程
 1. 在 dev 攒完这一批所有改动（不碰 main）
 2. 跑一遍**发布前自检清单**（上表），全绿才继续
 3. 哥哥想推时，先问柳柳：「这批可以推到 main 吗？」
-4. 柳柳说"可以" → 定版本号、更新 CHANGELOG（第3条铁律）
-5. 建一次 PR（base=main,head=dev,title=版本号,body=说明）→ 用 github_create_pull_request → **直接 merge**（柳柳已批准）＝一次部署
-6. 有冲突 → 回 dev 对齐 main，再重建 PR推
+4. 柳柳说"可以" → 定版本号+版本名称、更新 CHANGELOG（第3条铁律）
+5. 建一次 PR（base=main,head=dev,title=版本号+名称,body=说明）→ 用 github_create_pull_request → **直接 merge（commit_title=版本号+名称，merge_method=rebase 优先）**（柳柳已批准）＝一次部署
+6. 有冲突/分叉 → sync_branch 回 dev 对齐 main，再重建 PR推
 7. 推完跑第8项：读 main 关键文件 + help 验证
 
 ## 适用场景
@@ -64,16 +71,22 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - handler_config.handler 与 index.js 的 handlerMap 对应
 - 验证：help() 能查到新工具
 - 教训（2026-08-27）：github_read/list/delete 写了没注册 → 调不到
+- 教训（2026-09-01）：github_sync_branch 部署了没注册 → 调不到，补注册才可用
 
 ## 分支规则（硬性）
 - 默认 dev 分支；推送先 dev，柳柳确认后才能推 main。
+- 只保留 main 和 dev 两分支；不新建多余分支；功能完成立即删临时分支；dev 和 main 保持一致。
+- **分叉对齐：用 github_sync_branch(name='dev', from='main')，不删重建**（2026-09-01 新工具）
+- 建新分支：github_create_branch(name='dev', from='main')
 
 ## 推main铁律（记忆强化）
 - 推一次 main = 一次 Cloudflare 部署
 - 一个版本在 dev 攒齐，柳柳批准后一次 PR 推 main
-- 每次推 main 带版本号 + 说明（CHANGELOG 到位），缺一不合
+- 每次推 main 带版本号 + 版本名称（CHANGELOG 到位），缺一不合
 - 推 main 前先问柳柳，她说"可以"才建PR+merge
 - 禁止中途多次推
+- 合并 commit 命名 = 版本号 + 版本名称（commit_title），无 Merge PR 前缀
+- JSON 文件用 content_base64 推
 
 ## 工作流程（SOP）
 
@@ -84,23 +97,22 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 所有改动落在 dev 分支；改完自查；绝不自接推 main
 
 ### 第3步：推送到GitHub
-用 github_push 推送，分支=dev；main 绝不用它直接更新
+用 github_push 推送，分支=dev；main 绝不用它直接更新；JSON 文件用 content_base64
 
 ### 第4步：Cloudflare自动部署
 推到 main 后自动触发，只监听 main；验证读 main 确认
 
 ## 分支管理
-只保留 main 和 dev 两分支；不新建多余分支；功能完成立即删临时分支；dev 和 main 保持一致
+只保留 main 和 dev 两分支；不新建多余分支；功能完成立即删临时分支；dev 和 main 保持一致；分叉用 sync_branch 对齐（不删重建）
 
 ## Git操作参考
-- 创建分支：github:create_branch(from_branch=main, new_branch=dev)
+- 创建分支：github_create_branch(name='dev', from='main')
+- 同步分支：github_sync_branch(name='dev', from='main')
 - 推送到dev：branch=dev；合并到main：通过PR
 - GitHub API 没有移动文件接口，移动=新路径PUT+旧路径DELETE
 
-## github:get_file_content 用法
-读 main 传 owner/repo/path；读其他分支加 ref 参数
-
 ## 最近使用记录
+- 2026-09-01：推 main 命名规范升级——版本号+版本名称，commit_title 自定义去 Merge PR 前缀；合并优先 rebase；分叉用 sync_branch 不删重建；自检清单加 JSON content_base64 检查；更新 Version 认知
 - 2026-08-30：新增「发布前自检清单」——8项全绿才推，像起飞前检查单
 - 2026-08-28：推main流程改最简——先问柳柳「这批可以推吗」，她说"可以"就建PR+直接merge
 - 2026-08-28：加「版本与PR正确认知」——dev攒批、main发布、一个版本一次PR
