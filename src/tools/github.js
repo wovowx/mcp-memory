@@ -479,6 +479,97 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
         }
 
+
+        // github_copy - 跨仓库/跨分支文件复制（内容不经过 Agent 上下文）
+        else if (name === 'github_copy') {
+            if (!safeArgs.source_repo || !safeArgs.source_path || !safeArgs.target_repo || !safeArgs.target_path) {
+                return 'ERROR: github_copy requires source_repo, source_path, target_repo, target_path';
+            }
+            const sourceRepo = String(safeArgs.source_repo).trim();
+            const sourceBranch = safeArgs.source_branch || 'main';
+            const sourcePath = String(safeArgs.source_path).trim();
+            const targetRepo = String(safeArgs.target_repo).trim();
+            const targetBranch = safeArgs.target_branch || 'main';
+            const targetPath = String(safeArgs.target_path).trim();
+            const overwrite = safeArgs.overwrite === true;
+            const message = safeArgs.message || `Copy ${sourcePath} → ${targetPath}`;
+
+            // 安全1：source 和 target 都必须过白名单
+            const allowedRaw = env.GITHUB_ALLOWED_REPOS || '';
+            const allowed = allowedRaw.split(',').map(s => s.trim()).filter(Boolean);
+            const checkRepo = (r) => r === env.GITHUB_REPO || (allowed.length > 0 && allowed.includes(r));
+            if (!checkRepo(sourceRepo)) return `ERROR: Repository not allowed: ${sourceRepo}`;
+            if (!checkRepo(targetRepo)) return `ERROR: Repository not allowed: ${targetRepo}`;
+
+            // 安全2：source 与 target 相同则拒绝
+            if (sourceRepo === targetRepo && sourceBranch === targetBranch && sourcePath === targetPath) {
+                return 'ERROR: SOURCE_IS_TARGET - source and target are the same file';
+            }
+
+            const srcBase = `https://api.github.com/repos/${sourceRepo}`;
+            const tgtBase = `https://api.github.com/repos/${targetRepo}`;
+
+            // 读 source 文件（服务端内部，内容不进 Agent 上下文）
+            const srcResp = await fetch(`${srcBase}/contents/${encodeURIComponent(sourcePath)}?ref=${sourceBranch}`, { headers: ghHeaders });
+            if (!srcResp.ok) {
+                if (srcResp.status === 404) return 'ERROR: SOURCE_NOT_FOUND - ' + sourcePath + ' not found in ' + sourceRepo + '@' + sourceBranch;
+                const err = await srcResp.json();
+                return `ERROR: GITHUB_API_ERROR - source read failed: ${err.message || srcResp.status}`;
+            }
+            const srcData = await srcResp.json();
+            if (!srcData.content) return 'ERROR: SOURCE_NOT_FOUND - no content at ' + sourcePath;
+            const fileSha = srcData.sha;
+
+            // 检查 target 是否存在
+            const tgtCheck = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
+            let targetSha = null;
+            let overwritten = false;
+            if (tgtCheck.ok) {
+                const tgtData = await tgtCheck.json();
+                targetSha = tgtData.sha;
+                if (!overwrite) {
+                    return `ERROR: TARGET_EXISTS - ${targetPath} already exists in ${targetRepo}@${targetBranch}. Set overwrite=true to overwrite.`;
+                }
+                overwritten = true;
+            } else if (tgtCheck.status !== 404) {
+                const err = await tgtCheck.json();
+                return `ERROR: GITHUB_API_ERROR - target check failed: ${err.message || tgtCheck.status}`;
+            }
+
+            // target=main 时走 push-main 警示逻辑
+            let warn = '';
+            if (targetBranch === 'main') {
+                warn = '⚠️ WARNING: Copying directly to main. This triggers Cloudflare deploy. Confirm before continuing.';
+            }
+
+            // PUT 到 target（用 source 的 base64 内容，服务端内部传递）
+            const body = { message, content: srcData.content, branch: targetBranch };
+            if (targetSha) body.sha = targetSha;
+            const putResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}`, {
+                method: 'PUT', headers: ghHeaders, body: JSON.stringify(body)
+            });
+            if (!putResp.ok) {
+                const err = await putResp.json();
+                return `ERROR: GITHUB_API_ERROR - target write failed: ${err.message || putResp.status}`;
+            }
+            const putData = await putResp.json();
+
+            text = (warn ? warn + '
+
+' : '') + JSON.stringify({
+                success: true,
+                source_repo: sourceRepo,
+                source_branch: sourceBranch,
+                source_path: sourcePath,
+                target_repo: targetRepo,
+                target_branch: targetBranch,
+                target_path: targetPath,
+                file_sha: fileSha,
+                commit_sha: putData.commit?.sha || '',
+                overwritten
+            }, null, 2);
+        }
+
         else return 'ERROR: Unknown GitHub tool: ' + name;
     } catch (e) {
         return 'ERROR: ' + e.message;
