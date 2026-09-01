@@ -7,6 +7,7 @@
 // 2026-08-17 FIX: btoa cannot handle Chinese -> UTF-8 safe base64
 // 2026-08-25 ADD: closePR/compare/getPR + push-main warning
 // 2026-09-01 ADD v6: 多仓库支持 repo 参数 + GITHUB_ALLOWED_REPOS 白名单兜底
+// 2026-09-01 ADD: github_create_branch 新建分支工具（多仓库兼容）
 
 // UTF-8 safe base64 encode (supports Chinese)
 function utf8ToBase64(str) {
@@ -309,6 +310,40 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
             text = `PR #${data.number}: ${data.title}\nState: ${data.state}\nMerged: ${data.merged}\nMergeable: ${data.mergeable}\nMergeable state: ${data.mergeable_state}\nHead: ${data.head ? data.head.ref : '?'}\nBase: ${data.base ? data.base.ref : '?'}\nURL: ${data.html_url || ''}`;
+        }
+
+        // ============================================
+        // github_create_branch - 从指定分支新建分支（多仓库兼容）
+        // ============================================
+        else if (name === 'github_create_branch') {
+            const newBranch = safeArgs.name || safeArgs.branch;
+            if (!newBranch) return 'ERROR: Missing branch name (name or branch)';
+            if (newBranch === 'main') return 'ERROR: main already exists';
+            const from = safeArgs.from || safeArgs.base || 'main';
+            // 1. 取源分支最新 commit SHA
+            const refResp = await fetch(`${baseUrl}/git/ref/heads/${from}`, { headers: ghHeaders });
+            if (!refResp.ok) {
+                const err = await refResp.json();
+                throw new Error('取源分支失败：' + (err.message || `HTTP ${refResp.status}`));
+            }
+            const refData = await refResp.json();
+            const sha = refData.object.sha;
+            // 2. 创建新 ref
+            const createResp = await fetch(`${baseUrl}/git/refs`, {
+                method: 'POST',
+                headers: ghHeaders,
+                body: JSON.stringify({ ref: `refs/heads/${newBranch}`, sha })
+            });
+            if (createResp.status === 422) {
+                // 分支可能已存在
+                const errText = await createResp.text();
+                return `❌ 分支已存在或创建失败：${newBranch}（${errText.substring(0, 120)}）`;
+            }
+            if (!createResp.ok) {
+                const err = await createResp.json();
+                throw new Error('建分支失败：' + (err.message || `HTTP ${createResp.status}`));
+            }
+            text = `✅ 已创建分支：${newBranch}（源自 ${from} ${sha.slice(0, 8)}）`;
         }
 
         else return 'ERROR: Unknown GitHub tool: ' + name;
