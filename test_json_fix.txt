@@ -1,0 +1,4 @@
+{
+  "test": "json-fix-ok",
+  "n": 1
+}
