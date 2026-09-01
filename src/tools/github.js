@@ -172,7 +172,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const steps = [];  // 记录每步结果
 
             try {
-                // 第1步：创建 PR（base=main, head=branch）
                 const creatResp = await fetch(`${baseUrl}/pulls`, {
                     method: 'POST',
                     headers: ghHeaders,
@@ -180,7 +179,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 });
                 const prData = await creatResp.json();
                 if (!creatResp.ok) {
-                    // 已经存在同源PR？不报错，读取现有PR继续
                     const existingResp = await fetch(`${baseUrl}/pulls?state=open&head=${repo.split('/')[0]}:${branch}&base=main`, { headers: ghHeaders });
                     const existing = await existingResp.json();
                     if (Array.isArray(existing) && existing.length > 0) {
@@ -198,11 +196,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     prData.mergeable_state = prData.mergeable_state;
                 }
 
-                // 第2步：检查可合并（mergeable=true 才继续）
                 const prNum = prData.number;
                 let mergeable = prData.mergeable;
                 let mergeableState = prData.mergeable_state;
-                if (mergeable === null) {  // GitHub 可能返回 null（还在计算）
+                if (mergeable === null) {
                     const waitResp = await fetch(`${baseUrl}/pulls/${prNum}`, { headers: ghHeaders });
                     const waitData = await waitResp.json();
                     mergeable = waitData.mergeable;
@@ -214,7 +211,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 }
                 steps.push(`步骤2（查可合并）：✅ 可合并（mergeable_state=${mergeableState || 'clean'}）`);
 
-                // 第3步：合并 PR（支持自定义 commit_title + rebase）
                 const mergeBody = { merge_method: mergeMethod };
                 if (mergeTitle && mergeMethod !== 'rebase') mergeBody.commit_title = mergeTitle;
                 const mergeResp = await fetch(`${baseUrl}/pulls/${prNum}/merge`, {
@@ -224,7 +220,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 });
                 const mergeData = await mergeResp.json();
                 if (mergeResp.ok || mergeResp.status === 405) {
-                    // 405 = already merged
                     steps.push('步骤3（合并）：✅ 已合并' + (mergeData.html_url ? ' ' + mergeData.html_url : ''));
                     if (mergeTitle && mergeMethod !== 'rebase') steps.push('Commit: ' + mergeTitle);
                     if (mergeMethod === 'rebase') steps.push('(rebase: 保留 dev 原始 commit 名，无 Merge PR 前缀)');
@@ -331,6 +326,34 @@ export async function handleGitHubTool(name, safeArgs, env) {
         }
 
         // ============================================
+        // github_sync_branch - 让分支直接指向源分支最新 commit（fast-forward 同步）
+        // 柳柳要求：分叉根治不能每次删了重建。GitHub 允许直接 PATCH ref 强制指到目标 commit。
+        // 参数：name(要同步的分支，默认 dev)、from(源分支，默认 main)
+        // ============================================
+        else if (name === 'github_sync_branch') {
+            const targetBranch = safeArgs.name || safeArgs.branch || 'dev';
+            const fromBranch = safeArgs.from || safeArgs.base || 'main';
+            if (targetBranch === fromBranch) return 'ERROR: target and source are the same branch';
+            const refResp = await fetch(`${baseUrl}/git/ref/heads/${fromBranch}`, { headers: ghHeaders });
+            if (!refResp.ok) {
+                const err = await refResp.json();
+                throw new Error('取源分支失败：' + (err.message || `HTTP ${refResp.status}`));
+            }
+            const refData = await refResp.json();
+            const sha = refData.object.sha;
+            const updateResp = await fetch(`${baseUrl}/git/refs/heads/${targetBranch}`, {
+                method: 'PATCH',
+                headers: ghHeaders,
+                body: JSON.stringify({ sha, force: true })
+            });
+            if (!updateResp.ok) {
+                const err = await updateResp.json();
+                throw new Error('同步失败：' + (err.message || `HTTP ${updateResp.status}`));
+            }
+            text = `✅ 已同步：${targetBranch} → ${fromBranch}（${sha.slice(0, 8)}，未删分支）`;
+        }
+
+        // ============================================
         // github_create_branch - 从指定分支新建分支（多仓库兼容）
         // ============================================
         else if (name === 'github_create_branch') {
@@ -338,7 +361,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (!newBranch) return 'ERROR: Missing branch name (name or branch)';
             if (newBranch === 'main') return 'ERROR: main already exists';
             const from = safeArgs.from || safeArgs.base || 'main';
-            // 1. 取源分支最新 commit SHA
             const refResp = await fetch(`${baseUrl}/git/ref/heads/${from}`, { headers: ghHeaders });
             if (!refResp.ok) {
                 const err = await refResp.json();
@@ -346,7 +368,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
             const refData = await refResp.json();
             const sha = refData.object.sha;
-            // 2. 创建新 ref
             const createResp = await fetch(`${baseUrl}/git/refs`, {
                 method: 'POST',
                 headers: ghHeaders,
