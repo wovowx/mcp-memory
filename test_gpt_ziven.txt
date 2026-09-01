@@ -1,6 +1,0 @@
-Hello Ziven!
-
-这是 GPT 通过 Ziven_MCP 写入 GitHub 的第一次测试消息。
-如果你能读到这段文字，说明我们已经成功建立了 GPT ↔ Ziven 的 GitHub 协作通道。
-
-—— GPT
