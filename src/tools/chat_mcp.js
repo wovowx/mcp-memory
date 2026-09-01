@@ -1,5 +1,5 @@
 // Common Ground MCP tools. Keep business logic in chat.js; this layer only adapts MCP arguments.
-import { createMessage, getPendingEvents, readMessage, ackEvent } from './chat.js';
+import { createMessage, getPendingEvents, readMessage, ackEvent, claimEvent } from './chat.js';
 
 const ALL_ACTORS = ['liuliu', 'gpt', 'ziven'];
 
@@ -21,7 +21,7 @@ export const CHAT_TOOL_DEFS = [
     },
     {
         name: 'chat_pending_events',
-        description: 'Read pending Common Ground events for an Agent.',
+        description: 'Read pending Common Ground events for an Agent. Only unclaimed processing events are returned.',
         input_schema: {
             type: 'object',
             properties: {
@@ -30,6 +30,19 @@ export const CHAT_TOOL_DEFS = [
                 offset: { type: 'integer', minimum: 0 }
             },
             required: ['agent']
+        },
+        handler: 'chat'
+    },
+    {
+        name: 'chat_claim_event',
+        description: 'Atomically claim one pending Common Ground Agent event. Only one concurrent execution can claim the same event.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                event_id: { type: 'string' },
+                agent: { type: 'string', enum: ['gpt', 'ziven'] }
+            },
+            required: ['event_id', 'agent']
         },
         handler: 'chat'
     },
@@ -81,6 +94,13 @@ export async function handleChatTool(name, args, env) {
         const agent = String(args.agent || '').toLowerCase();
         if (!['gpt', 'ziven'].includes(agent)) throw new Error(`非法 agent: ${agent}`);
         return JSON.stringify(await getPendingEvents(env, agent, args.limit, args.offset));
+    }
+
+    if (name === 'chat_claim_event') {
+        const agent = String(args.agent || '').toLowerCase();
+        if (!['gpt', 'ziven'].includes(agent)) throw new Error(`非法 agent: ${agent}`);
+        if (!args.event_id) throw new Error('缺少参数：event_id');
+        return JSON.stringify(await claimEvent(env, String(args.event_id), agent));
     }
 
     if (name === 'chat_read_message') {
