@@ -6,6 +6,7 @@
 // github_create_pull_request / github_merge_pull_request (2026-08-29 ADD: PR工具适配分支保护)
 // 2026-08-17 FIX: btoa cannot handle Chinese -> UTF-8 safe base64
 // 2026-08-25 ADD: closePR/compare/getPR + push-main warning
+// 2026-09-01 ADD v6: 多仓库支持 repo 参数 + GITHUB_ALLOWED_REPOS 白名单兜底
 
 // UTF-8 safe base64 encode (supports Chinese)
 function utf8ToBase64(str) {
@@ -29,9 +30,30 @@ function base64ToUtf8(base64) {
 export async function handleGitHubTool(name, safeArgs, env) {
     let text = '';
     const token = env.GITHUB_TOKEN;
-    const repo = env.GITHUB_REPO;
     if (!token) return 'ERROR: GitHub Token not configured. Set GITHUB_TOKEN in Cloudflare env vars';
-    if (!repo) return 'ERROR: GitHub Repo not configured. Set GITHUB_REPO in Cloudflare env vars';
+    if (!env.GITHUB_REPO) return 'ERROR: GitHub Repo not configured. Set GITHUB_REPO in Cloudflare env vars';
+
+    // ============================================================
+    // v6 多仓库支持：repo 参数 + GITHUB_ALLOWED_REPOS 白名单兜底
+    // ------------------------------------------------------------
+    // - 默认仓库：env.GITHUB_REPO（不传 repo 时使用，向后兼容）
+    // - 可选 repo 参数：safeArgs.repo，可指定其它已授权仓库（如 wovowx/ZivenLab）
+    // - 白名单：env.GITHUB_ALLOWED_REPOS（逗号分隔），不在白名单直接拒绝、不发起请求
+    // - github_create_repo 语义不同（safeArgs.repo 是要新建的仓库名），不走仓库白名单
+    // ============================================================
+    let repo = env.GITHUB_REPO;
+    if (name !== 'github_create_repo' && safeArgs.repo) {
+        const target = String(safeArgs.repo).trim();
+        const allowedRaw = env.GITHUB_ALLOWED_REPOS || '';
+        const allowed = allowedRaw.split(',').map(s => s.trim()).filter(Boolean);
+        if (target === env.GITHUB_REPO) {
+            repo = target;
+        } else if (allowed.length > 0 && allowed.includes(target)) {
+            repo = target;
+        } else {
+            return `ERROR: Repository not allowed: ${target}. Allowed repos: ${[env.GITHUB_REPO, ...allowed].join(', ')}`;
+        }
+    }
 
     const baseUrl = `https://api.github.com/repos/${repo}`;
     const ghHeaders = {
