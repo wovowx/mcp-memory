@@ -6,8 +6,6 @@
 // github_create_pull_request / github_merge_pull_request (2026-08-29 ADD: PR工具适配分支保护)
 // 2026-08-17 FIX: btoa cannot handle Chinese -> UTF-8 safe base64
 // 2026-08-25 ADD: closePR/compare/getPR + push-main warning
-// 2026-09-01 ADD v6: 多仓库支持 repo 参数 + GITHUB_ALLOWED_REPOS 白名单兜底
-// 2026-09-01 ADD: github_create_branch 新建分支工具（多仓库兼容）
 
 // UTF-8 safe base64 encode (supports Chinese)
 function utf8ToBase64(str) {
@@ -70,14 +68,21 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // github_push - push/update file (with main-branch warning)
         // ============================================
         if (name === 'github_push') {
-            if (!safeArgs.path || !safeArgs.content) return 'ERROR: Missing path and content';
+            if (!safeArgs.path || (!safeArgs.content && !safeArgs.content_base64)) return 'ERROR: Missing path and content (or content_base64)';
             const message = safeArgs.message || `Update ${safeArgs.path}`;
             const branch = safeArgs.branch || 'main';
             if (branch === 'main') {
                 text = '⚠️ WARNING: You are pushing directly to main. This triggers Cloudflare deploy + creates fork divergence. Recommend: push to dev first, then use PR/merge to main. Ask user to confirm before continuing. If confirmed, push will proceed.';
                 // still push but include warning first
             }
-            const base64Content = utf8ToBase64(safeArgs.content);
+            // 兼容 JSON 内容：MCP 传递 JSON 字符串会被序列化坏（[object Object]），
+            // 此时用 content_base64 传 pre-encoded base64，绕过序列化问题。
+            let base64Content;
+            if (safeArgs.content_base64) {
+                base64Content = safeArgs.content_base64;
+            } else {
+                base64Content = utf8ToBase64(String(safeArgs.content));
+            }
             const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
             let sha = null;
             if (checkResp.ok) { const data = await checkResp.json(); sha = data.sha; }
@@ -163,6 +168,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const title = (safeArgs && safeArgs.title) || `Merge ${branch} into main`;
             const prBody = (safeArgs && safeArgs.body) || '';
             const mergeMethod = (safeArgs && safeArgs.merge_method) || 'merge';
+            const mergeTitle = (safeArgs && safeArgs.commit_title) || (safeArgs && safeArgs.title) || undefined;
             const steps = [];  // 记录每步结果
 
             try {
@@ -170,7 +176,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 const creatResp = await fetch(`${baseUrl}/pulls`, {
                     method: 'POST',
                     headers: ghHeaders,
-                    body: JSON.stringify({ title, head: branch, base: 'main', body: prBody })
+                    body: JSON.stringify({ title: mergeTitle || title, head: branch, base: 'main', body: prBody })
                 });
                 const prData = await creatResp.json();
                 if (!creatResp.ok) {
@@ -208,16 +214,20 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 }
                 steps.push(`步骤2（查可合并）：✅ 可合并（mergeable_state=${mergeableState || 'clean'}）`);
 
-                // 第3步：合并 PR
+                // 第3步：合并 PR（支持自定义 commit_title + rebase）
+                const mergeBody = { merge_method: mergeMethod };
+                if (mergeTitle && mergeMethod !== 'rebase') mergeBody.commit_title = mergeTitle;
                 const mergeResp = await fetch(`${baseUrl}/pulls/${prNum}/merge`, {
                     method: 'PUT',
                     headers: ghHeaders,
-                    body: JSON.stringify({ merge_method: mergeMethod })
+                    body: JSON.stringify(mergeBody)
                 });
                 const mergeData = await mergeResp.json();
                 if (mergeResp.ok || mergeResp.status === 405) {
                     // 405 = already merged
                     steps.push('步骤3（合并）：✅ 已合并' + (mergeData.html_url ? ' ' + mergeData.html_url : ''));
+                    if (mergeTitle && mergeMethod !== 'rebase') steps.push('Commit: ' + mergeTitle);
+                    if (mergeMethod === 'rebase') steps.push('(rebase: 保留 dev 原始 commit 名，无 Merge PR 前缀)');
                     text = steps.join('\n');
                 } else {
                     throw new Error('合并失败：' + (mergeData.message || `HTTP ${mergeResp.status}`));
@@ -250,20 +260,28 @@ export async function handleGitHubTool(name, safeArgs, env) {
 
         // ============================================
         // github_merge_pull_request - 合并指定 PR（独立工具）
+        // 支持 merge_method: merge/squash/rebase
+        // 支持 commit_title: 自定义 merge commit 标题（默认 GitHub 自动生成 "Merge pull request #XX"）
+        // 柳柳要求：merge commit 命名从版本号开始（如 v6.1.0: xxx），不显示 "Merge pull request #XX" 前缀
         // ============================================
         else if (name === 'github_merge_pull_request') {
             const pr = safeArgs.pull_number;
             if (!pr) return 'ERROR: Missing pull_number';
             const method = safeArgs.merge_method || 'merge';
+            const commitTitle = safeArgs.commit_title || safeArgs.title || undefined;
+            const mergeBody = { merge_method: method };
+            if (commitTitle) mergeBody.commit_title = commitTitle;
             const resp = await fetch(`${baseUrl}/pulls/${pr}/merge`, {
                 method: 'PUT',
                 headers: ghHeaders,
-                body: JSON.stringify({ merge_method: method })
+                body: JSON.stringify(mergeBody)
             });
             const data = await resp.json();
             if (resp.ok || resp.status === 405) {
                 const merged = resp.ok ? (data.merged ? '✅ 已合并' : '⚠️ 未合并') : 'ℹ️ 已经合并过（405）';
                 text = `OK: PR #${pr} ${merged}\n` + (data.html_url ? `URL: ${data.html_url}` : '');
+                if (commitTitle && method !== 'rebase') text += `\nCommit: ${commitTitle}`;
+                if (method === 'rebase') text += '\n(rebase: 保留 dev 原始 commit 名，无 Merge PR 前缀)';
             } else {
                 throw new Error('合并失败：' + (data.message || `HTTP ${resp.status}`));
             }
@@ -335,7 +353,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 body: JSON.stringify({ ref: `refs/heads/${newBranch}`, sha })
             });
             if (createResp.status === 422) {
-                // 分支可能已存在
                 const errText = await createResp.text();
                 return `❌ 分支已存在或创建失败：${newBranch}（${errText.substring(0, 120)}）`;
             }
