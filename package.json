@@ -1,6 +1,6 @@
 {
   "name": "mcp-memory",
-  "version": "6.3.3",
+  "version": "6.3.4",
   "type": "module",
   "scripts": {
     "deploy": "npx wrangler deploy",
