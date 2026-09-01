@@ -554,9 +554,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
             const putData = await putResp.json();
 
-            text = (warn ? warn + '
-
-' : '') + JSON.stringify({
+            text = (warn ? warn + '\n\n' : '') + JSON.stringify({
                 success: true,
                 source_repo: sourceRepo,
                 source_branch: sourceBranch,
