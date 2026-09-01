@@ -92,7 +92,11 @@ function parseMentions(content) {
 
 function contentPreview(content) {
     // Array.from 按 Unicode code point 截断，避免把 emoji 拆成半个 code point。
-    return Array.from(content).slice(0, MAX_PREVIEW_CHARS).join('');
+    return Array.from(content)
+        .slice(0, MAX_PREVIEW_CHARS)
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 async function createMessage(env, threadId, payload) {
@@ -116,6 +120,7 @@ async function createMessage(env, threadId, payload) {
     if (!messageId) throw new Error('消息写入成功但未返回 message_id');
 
     const created = [];
+    const existed = [];
     const failed = [];
     for (const agent of events) {
         const eventData = {
@@ -132,12 +137,12 @@ async function createMessage(env, threadId, payload) {
         };
         try {
             const result = await sbInsert(env, 'chat_agent_events', eventData, { ignoreDuplicates: true });
-            // ignore-duplicates may return [] when the unique row already exists.
-            // It is still a successful idempotent outcome.
             if (Array.isArray(result) && result.length === 0) {
+                existed.push(agent);
+            } else if (Array.isArray(result) && result.length > 0) {
                 created.push(agent);
             } else {
-                created.push(agent);
+                throw new Error('事件写入成功但未返回可识别结果');
             }
         } catch (e) {
             failed.push({ agent, error: e.message });
@@ -148,6 +153,7 @@ async function createMessage(env, threadId, payload) {
         message,
         mentions,
         events: created,
+        existed_events: existed,
         partial_failure: failed.length > 0,
         event_errors: failed
     };
@@ -243,6 +249,9 @@ export async function handleChatRequest(request, url, env) {
     const segments = path.split('/').filter(Boolean);
 
     try {
+        // MVP note: chat reads are intentionally open for the current manual test environment.
+        // They are NOT an authentication/authorization boundary; add agent/user auth before production use.
+
         // GET /api/chat/threads
         if (segments.length === 3 && method === 'GET') {
             const data = await sbQuery(env, 'chat_threads', { order: 'created_at.desc', limit: 100 });
@@ -290,12 +299,20 @@ export async function handleChatRequest(request, url, env) {
             }
             if (!EVENT_STATUSES.includes(status)) throw new Error(`非法 status: ${status}`);
             const safeLimit = Math.min(Math.max(Number(limit) || DEFAULT_EVENT_LIMIT, 1), 100);
+            const safeOffset = Math.max(Number(offset) || 0, 0);
             const data = await sbQuery(env, 'chat_agent_events', {
                 filters: agent ? { agent, status } : { status },
                 order: 'created_at.asc,event_id.asc',
-                limit: safeLimit
+                limit: safeLimit + 1,
+                offset: safeOffset
             });
-            return jsonResponse({ events: data, limit: safeLimit, offset: Number(offset) || 0, has_more: data.length === safeLimit });
+            const hasMore = data.length > safeLimit;
+            return jsonResponse({
+                events: hasMore ? data.slice(0, safeLimit) : data,
+                limit: safeLimit,
+                offset: safeOffset,
+                has_more: hasMore
+            });
         }
 
         // GET /api/chat/events/:id/message
