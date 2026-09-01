@@ -5,7 +5,7 @@ category: deploy
 tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 ---
 
-# 部署技能（合并版 v6.2 · 2026-09-01）
+# 部署技能（合并版 v6.3 · 2026-09-01）
 
 ## 目标
 实现从代码修改到Cloudflare自动部署的完整闭环，包含分支管理、GitHub推送和MCP工具开发。
@@ -40,6 +40,14 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - **或 merge + commit_title**：产生 merge commit，但标题可用 commit_title 自定义
 - **不要 squash**：squash 会产生新 commit 导致 dev/main 分叉（历史教训）
 
+## 🔴 第四条铁律：合完 main 必须立刻同步 dev（2026-09-01 柳柳要求·硬性）
+**rebase/merge 合完 main 后，dev 不会自动跟着走——必须立刻把 dev 同步到最新 main，否则下一轮 PR 必 dirty。**
+
+- **v6.3.2 起自动执行**：github_merge_pull_request / github_merge_to_main 合并成功后自动 sync dev → main（带安全检查，dev 有未合入改动则不覆盖只提示）
+- **但如果用的是旧版工具/手动流程，必须手动补**：github_sync_branch(name='dev', from='main')
+- **为什么**：rebase 只移动 main，dev 原地停留；基于旧 dev 开发（尤其 github.js 同文件）→ PR 必冲突（教训：PR#41 dirty）
+- **正确 SOP**：dev 改 → PR → rebase 合 main → 🔴 立刻 sync dev
+
 ## 🔴 发布前自检清单（2026-08-30 新增 · 像起飞前检查单）
 **每次推 main 前，逐项自检，全绿才推。缺一项就停下补。**
 
@@ -52,6 +60,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - [ ] **7. 柳柳批准了吗？** 问过柳柳且她说"可以"？没批准绝不推
 - [ ] **8. 推完验证了吗？** merge 后读 main 关键文件 + help 验证工具在
 - [ ] **9. JSON 内容用 content_base64 推了吗？（2026-09-01 新增）** 推 package.json 等 JSON 文件，必须 content_base64 参数，普通 content 会被序列化成 [object Object] 导致构建失败（教训：v6.2.0 构建失败事故）
+- [ ] **10. 合完 sync dev 了吗？（2026-09-01 硬性）** merge 后确认 dev 已同步到 main；若自动 sync 未生效，手动 github_sync_branch 补上（教训：PR#41 dirty 循环）
 
 ## 🔴 推 main 正确流程
 1. 在 dev 攒完这一批所有改动（不碰 main）
@@ -61,6 +70,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 5. 建一次 PR（base=main,head=dev,title=版本号+名称,body=说明）→ 用 github_create_pull_request → **直接 merge（commit_title=版本号+名称，merge_method=rebase 优先）**（柳柳已批准）＝一次部署
 6. 有冲突/分叉 → sync_branch 回 dev 对齐 main，再重建 PR推
 7. 推完跑第8项：读 main 关键文件 + help 验证
+8. 🔴 **合完立刻确认 dev 已 sync 到 main**（自动 或 手动 github_sync_branch）——否则下一轮 PR dirty
 
 ## 适用场景
 - 修改MCP Worker代码并部署 / 更新技能或配置 / 新增或修改MCP工具 / 创建PR / 解决部署问题
@@ -75,12 +85,14 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 验证：help() 能查到新工具
 - 教训（2026-08-27）：github_read/list/delete 写了没注册 → 调不到
 - 教训（2026-09-01）：github_sync_branch 部署了才发现没注册 → 补注册才可用；正解是部署前就注册
+- **v6.3 起自动注册兜底**：GITHUB_TOOL_DEFS 是代码真相源，deploy 后调用工具自动补注册，带提醒复核
 
 ## 分支规则（硬性）
 - 默认 dev 分支；推送先 dev，柳柳确认后才能推 main。
 - 只保留 main 和 dev 两分支；不新建多余分支；功能完成立即删临时分支；dev 和 main 保持一致。
 - **分叉对齐：用 github_sync_branch(name='dev', from='main')，不删重建**（2026-09-01 新工具）
 - 建新分支：github_create_branch(name='dev', from='main')
+- **合完 main 后 dev 必须 sync（硬性，见第四条铁律）**
 
 ## 推main铁律（记忆强化）
 - 推一次 main = 一次 Cloudflare 部署
@@ -90,6 +102,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 - 禁止中途多次推
 - 合并 commit 命名 = 版本号 + 版本名称（commit_title），无 Merge PR 前缀
 - JSON 文件用 content_base64 推
+- **合完 main 立刻 sync dev（v6.3.2 起自动，硬性）**
 
 ## 工作流程（SOP）
 
@@ -105,17 +118,22 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR"]
 ### 第4步：Cloudflare自动部署
 推到 main 后自动触发，只监听 main；验证读 main 确认
 
+### 第5步：合完 sync dev（硬性）
+merge 合 main 后确认 dev 已同步（v6.3.2 自动；手动则 github_sync_branch）——保证下一轮 PR clean
+
 ## 分支管理
-只保留 main 和 dev 两分支；不新建多余分支；功能完成立即删临时分支；dev 和 main 保持一致；分叉用 sync_branch 对齐（不删重建）
+只保留 main 和 dev 两分支；不新建多余分支；功能完成立即删临时分支；dev 和 main 保持一致；分叉用 sync_branch 对齐（不删重建）；合完 main 必 sync dev
 
 ## Git操作参考
 - 创建分支：github_create_branch(name='dev', from='main')
 - 同步分支：github_sync_branch(name='dev', from='main')
 - 推送到dev：branch=dev；合并到main：通过PR
 - GitHub API 没有移动文件接口，移动=新路径PUT+旧路径DELETE
+- **合并完 main 自动同步 dev（v6.3.2+）**
 
 ## 最近使用记录
-- 2026-09-01：推 main 命名规范升级——版本号+版本名称，commit_title 自定义去 Merge PR 前缀；合并优先 rebase；分叉用 sync_branch 不删重建；自检清单加 JSON content_base64 检查；注册时序硬规则（先注册→再推代码→再部署）
+- 2026-09-01：第四条铁律「合完必 sync dev」——rebase 合完 dev 不会自动走，不 sync 下一轮 PR 必 dirty；v6.3.2 已做成自动，文档同步
+- 2026-09-01：推 main 命名规范升级——版本号+版本名称，commit_title 自定义去 Merge PR 前缀；合并优先 rebase；分叉用 sync_branch 不删重建；自检清单加 JSON content_base64 检查；注册时序硬规则（先注册→再推代码→再部署）；v6.3 自动注册兜底
 - 2026-08-30：新增「发布前自检清单」——8项全绿才推，像起飞前检查单
 - 2026-08-28：推main流程改最简——先问柳柳「这批可以推吗」，她说"可以"就建PR+直接merge
 - 2026-08-28：加「版本与PR正确认知」——dev攒批、main发布、一个版本一次PR
