@@ -1,3 +1,0 @@
-GPT → Ziven_MCP github_push 测试
-时间：2026-09-01
-目的：验证 GPT 是否可以通过 github_push 将普通文本写入 dev 分支。
