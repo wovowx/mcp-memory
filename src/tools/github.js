@@ -32,6 +32,21 @@ export const GITHUB_TOOL_DEFS = [
 ];
 
 // ============================================================
+// normalize - 递归排序对象 key，实现「语义相等」比较
+// 原因：JSON.stringify 对属性顺序敏感，而 Supabase 存储 JSON 会重排 key 顺序，
+//       导致同样的 schema 被误判为「变化」。排序 key 后再比较才是真正的语义差异。
+// ============================================================
+function normalize(value) {
+    if (Array.isArray(value)) return value.map(normalize);
+    if (value && typeof value === 'object') {
+        const sorted = {};
+        for (const k of Object.keys(value).sort()) sorted[k] = normalize(value[k]);
+        return sorted;
+    }
+    return value;
+}
+
+// ============================================================
 // autoSyncGithubTools - 全量对比 + 自动补新增
 // 四态：新增(自动注册) / 变化(报告待确认) / 孤儿(报告待确认) / 无变化
 // ============================================================
@@ -59,8 +74,8 @@ export async function autoSyncGithubTools(env, dryRun = false) {
             }
             added.push(def.name);
         } else {
-            const schemaSame = JSON.stringify(existing.input_schema || {}) === JSON.stringify(def.input_schema || {});
-            const descSame = (existing.description || '') === (def.description || '');
+            const schemaSame = JSON.stringify(normalize(existing.input_schema || {})) === JSON.stringify(normalize(def.input_schema || {}));
+            const descSame = (existing.description || '').trim() === (def.description || '').trim();
             if (!schemaSame || !descSame) changed.push(def.name);
         }
     }
@@ -97,9 +112,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
     if (!token) return 'ERROR: GitHub Token not configured. Set GITHUB_TOKEN in Cloudflare env vars';
     if (!env.GITHUB_REPO) return 'ERROR: GitHub Repo not configured. Set GITHUB_REPO in Cloudflare env vars';
 
-    // ============================================================
-    // v6 多仓库支持：repo 参数 + GITHUB_ALLOWED_REPOS 白名单兜底
-    // ============================================================
     let repo = env.GITHUB_REPO;
     if (name !== 'github_create_repo' && safeArgs.repo) {
         const target = String(safeArgs.repo).trim();
@@ -124,9 +136,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
     };
 
     try {
-        // ============================================
-        // github_push - push/update file (with main-branch warning)
-        // ============================================
+        // github_push
         if (name === 'github_push') {
             if (!safeArgs.path || (!safeArgs.content && !safeArgs.content_base64)) return 'ERROR: Missing path and content (or content_base64)';
             const message = safeArgs.message || `Update ${safeArgs.path}`;
@@ -298,7 +308,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             text = `OK: PR #${data.number} created\nTitle: ${data.title}\nURL: ${data.html_url}\nMergeable: ${data.mergeable}`;
         }
 
-        // github_merge_pull_request (with commit_title/rebase)
+        // github_merge_pull_request
         else if (name === 'github_merge_pull_request') {
             const pr = safeArgs.pull_number;
             if (!pr) return 'ERROR: Missing pull_number';
@@ -412,7 +422,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             text = `✅ 已创建分支：${newBranch}（源自 ${from} ${sha.slice(0, 8)}）`;
         }
 
-        // github_auto_sync (v6.3 NEW)
+        // github_auto_sync
         else if (name === 'github_auto_sync') {
             const dryRun = safeArgs.dry_run === true;
             const report = await autoSyncGithubTools(env, dryRun);
