@@ -10,6 +10,7 @@
 // v6.3 变更（2026-09-01）：自动注册兜底（passiveSyncGithubTool）
 // v6.5 变更（2026-09-01）：Common Ground chat MCP tools
 // v6.6 变更（2026-09-02）：触发链 PoC webhook 端点（/api/chat/webhook）
+// v6.7 变更（2026-09-02）：Phase 1.5 @GPT 最小闭环（scheduled cron + webhook 触发）
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
 import { uploadFileToSupabase } from './utils/storage.js';
@@ -26,6 +27,7 @@ import { handleDeleteBranch } from './tools/delete_branch.js';
 import { handleChatRequest } from './tools/chat.js';
 import { handleChatTool, CHAT_TOOL_DEFS } from './tools/chat_mcp.js';
 import { handleChatWebhook } from './tools/chat_webhook.js';
+import { processPendingEvents } from './modules/agent_runtime/event_processor.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -199,12 +201,14 @@ async function handleGitHubWebhook(payload, env) {
 }
 
 export default {
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
         if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return buildErrorResponse('Supabase 未配置：请在环境变量中设置 SUPABASE_URL 和 SUPABASE_ANON_KEY', 500);
         if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Last-Event-ID, Authorization, Accept, MCP-Session-Id', 'Access-Control-Expose-Headers': 'MCP-Session-Id, Last-Event-ID, Content-Type', 'Access-Control-Max-Age': '86400' } });
         const url = new URL(request.url);
         // 触发链 PoC：webhook 路由必须在 /api/chat 前缀判断之前（否则被 handleChatRequest 抢先拦截）
         if (url.pathname === '/api/chat/webhook' && request.method === 'POST') {
+            // Phase 1.5: webhook 收到事件后异步触发 @GPT 处理（不阻塞响应），cron 做兜底
+            ctx.waitUntil(processPendingEvents(env).catch(e => console.error('webhook proc err: ' + e.message)));
             return await handleChatWebhook(request, env);
         }
         if (url.pathname === '/chat' || url.pathname === '/chat/' || url.pathname.startsWith('/api/chat')) { const result = await handleChatRequest(request, url, env); if (result) return result; }
@@ -243,5 +247,14 @@ export default {
             const skills = await getEnabledSkills(env); return new Response('💚 Ziven MCP Server running (' + skills.length + ' skills | Supabase OK)', { status: 200, headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' } });
         }
         return new Response('Not found', { status: 404 });
+    }
+
+    async scheduled(event, env, ctx) {
+        try {
+            const result = await processPendingEvents(env);
+            console.log('scheduled processed:', JSON.stringify(result));
+        } catch (e) {
+            console.error('scheduled error:', e.message);
+        }
     }
 };
