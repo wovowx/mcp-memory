@@ -1,8 +1,11 @@
 // ============================================================
-// 通用 Supabase 数据库工具（统一版）
+// 通用 Supabase 数据库工具（统一版 v2）
 // ============================================================
 // 用法：supabase_db(action, table, data, filters, ...)
 // action: query/insert/update/delete/tables/exec
+// v2 新增：create_table / drop_table（自动建表/删表，走 exec_sql RPC）
+
+import { buildErrorResponse, jsonResponse } from '../utils/response.js';
 
 export async function handleDatabaseTool(name, safeArgs, env) {
     const supabaseUrl = env.SUPABASE_URL;
@@ -141,7 +144,7 @@ export async function handleDatabaseTool(name, safeArgs, env) {
         }
 
         // ============================================
-        // exec - 执行 SQL（需要 service_role 权限）
+        // exec - 执行 SQL（需要 exec_sql RPC，v2 支持空响应）
         // ============================================
         if (action === 'exec') {
             if (!safeArgs.sql) return '❌ 缺少参数：需要 sql';
@@ -154,11 +157,62 @@ export async function handleDatabaseTool(name, safeArgs, env) {
                 const errText = await resp.text();
                 return `❌ SQL执行失败 (${resp.status}): ${errText}`;
             }
-            const data = await resp.json();
-            return '✅ SQL执行结果：\n```json\n' + JSON.stringify(data, null, 2).substring(0, 4000) + '\n```';
+            // exec_sql 返回 void（204 空体）时不再 JSON.parse，直接返回成功
+            const raw = await resp.text();
+            if (!raw) return '✅ SQL执行成功（无返回体，DDL 已完成）';
+            try {
+                const data = JSON.parse(raw);
+                return '✅ SQL执行结果：\n```json\n' + JSON.stringify(data, null, 2).substring(0, 4000) + '\n```';
+            } catch {
+                return '✅ SQL执行成功：\n' + raw;
+            }
         }
 
-        return '❌ 未知操作：' + action + '（支持 query/insert/update/delete/tables/exec）';
+        // ============================================
+        // create_table - 创建表（v2 新增，走 exec_sql RPC）
+        // 用法：{ action:'create_table', table:'my_table', columns:'id uuid primary key, name text not null', rls:false }
+        // ============================================
+        if (action === 'create_table' || action === 'createTable' || name === 'supabase_schema_create') {
+            if (!safeArgs.table) return '❌ 缺少参数：需要 table（表名）';
+            if (!safeArgs.columns) return '❌ 缺少参数：需要 columns（逗号分隔的列定义）';
+            let sql = `CREATE TABLE IF NOT EXISTS public.${safeArgs.table} (${safeArgs.columns})`;
+            if (safeArgs.rls !== false) {
+                sql += `;\nALTER TABLE public.${safeArgs.table} ENABLE ROW LEVEL SECURITY`;
+            }
+            const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ sql })
+            });
+            if (!resp.ok) {
+                const errText = await resp.text();
+                return `❌ 建表失败 (${resp.status}): ${errText}`;
+            }
+            const raw = await resp.text();
+            return raw ? `✅ 建表成功：${safeArgs.table}（${raw}）` : `✅ 建表成功：${safeArgs.table}`;
+        }
+
+        // ============================================
+        // drop_table - 删除表（v2 新增，走 exec_sql RPC）
+        // 用法：{ action:'drop_table', table:'my_table' }
+        // ============================================
+        if (action === 'drop_table' || action === 'dropTable') {
+            if (!safeArgs.table) return '❌ 缺少参数：需要 table（表名）';
+            const sql = `DROP TABLE IF EXISTS public.${safeArgs.table} CASCADE`;
+            const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ sql })
+            });
+            if (!resp.ok) {
+                const errText = await resp.text();
+                return `❌ 删表失败 (${resp.status}): ${errText}`;
+            }
+            const raw = await resp.text();
+            return raw ? `✅ 删表成功：${safeArgs.table}（${raw}）` : `✅ 删表成功：${safeArgs.table}`;
+        }
+
+        return '❌ 未知操作：' + action + '（支持 query/insert/update/delete/tables/exec/create_table/drop_table）';
     } catch (e) {
         return '❌ 执行出错：' + e.message;
     }
