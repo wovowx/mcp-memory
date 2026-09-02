@@ -20,4 +20,4 @@ SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
 GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory,wovowx/ZivenLab"
 
 [triggers]
-crons = []
+crons = ["* * * * *"]
