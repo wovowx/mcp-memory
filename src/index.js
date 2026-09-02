@@ -203,6 +203,10 @@ export default {
         if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return buildErrorResponse('Supabase 未配置：请在环境变量中设置 SUPABASE_URL 和 SUPABASE_ANON_KEY', 500);
         if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Last-Event-ID, Authorization, Accept, MCP-Session-Id', 'Access-Control-Expose-Headers': 'MCP-Session-Id, Last-Event-ID, Content-Type', 'Access-Control-Max-Age': '86400' } });
         const url = new URL(request.url);
+        // 触发链 PoC：webhook 路由必须在 /api/chat 前缀判断之前（否则被 handleChatRequest 抢先拦截）
+        if (url.pathname === '/api/chat/webhook' && request.method === 'POST') {
+            return await handleChatWebhook(request, env);
+        }
         if (url.pathname === '/chat' || url.pathname === '/chat/' || url.pathname.startsWith('/api/chat')) { const result = await handleChatRequest(request, url, env); if (result) return result; }
         if (url.pathname === '/memory-universe' || url.pathname === '/memory-universe/') {
             try { const resp = await fetch('https://raw.githubusercontent.com/wovowx/mcp-memory/main/src/public/memory-universe.html'); const html = await resp.text(); return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*' } }); }
@@ -215,9 +219,6 @@ export default {
         if (url.pathname === '/github/webhook' && request.method === 'POST') {
             try { const payload = await request.json(); const result = await handleGitHubWebhook(payload, env); return jsonResponse(result); }
             catch (e) { return buildErrorResponse('Webhook处理失败: ' + e.message, 500); }
-        }
-        if (url.pathname === '/api/chat/webhook' && request.method === 'POST') {
-            return await handleChatWebhook(request, env);
         }
         if (url.pathname === '/mcp') {
             if (request.method === 'GET') {
