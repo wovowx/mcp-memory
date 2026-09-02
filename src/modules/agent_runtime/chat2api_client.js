@@ -1,13 +1,15 @@
 // ============================================================
 // chat2api_client.js — chat2api 调用封装（OpenAI 兼容格式）
 // Phase 1.5 @GPT 最小闭环
+// 兼容读取：CHATGPT_ACCESS_TOKEN（已配）→ CHAT2API_TOKEN（备选）
 // ============================================================
 
 export async function callChat2Api(env, prompt) {
+    const token = env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || '';
     const response = await fetch(env.CHAT2API_URL, {
         method: 'POST',
         headers: {
-            'Authorization': 'Bearer ' + (env.CHAT2API_TOKEN || ''),
+            'Authorization': 'Bearer ' + token,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
