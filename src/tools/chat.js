@@ -1,6 +1,7 @@
 // ============================================================
-// Chatroom MVP - 页面 + 通信 API 路由（v2）
+// Chatroom MVP - 页面 + 通信 API 路由（v2.1）
 // 2026-09-02 Phase 1: atomic event claim + claimed_at
+// v2.1 (2026-09-02): actor_id 双写 + message_number 计数器 + time_context
 // ============================================================
 import { jsonResponse, buildErrorResponse } from '../utils/response.js';
 
@@ -11,6 +12,14 @@ const EVENT_STATUSES = ['processing', 'success', 'failed'];
 const PRECIPITATE_KEYWORD = '@沉淀';
 const MAX_PREVIEW_CHARS = 200;
 const DEFAULT_EVENT_LIMIT = 50;
+
+const ACTOR_IDS = {
+    legacy_import: "00000000-0000-0000-0000-000000000001",
+    ziven: "00000000-0000-0000-0000-000000000002",
+    gpt: "00000000-0000-0000-0000-000000000003",
+    liuliu: "00000000-0000-0000-0000-000000000004",
+    context_worker: "00000000-0000-0000-0000-000000000005",
+};
 
 function supabaseHeaders(env) {
     const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
@@ -48,6 +57,46 @@ async function sbUpdate(env, table, filters, data) {
     return resp.json();
 }
 
+async function sbRpc(env, fnName, params={}) {
+    const headers = supabaseHeaders(env);
+    headers['Content-Type'] = 'application/json';
+    const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${fnName}`, {method:'POST', headers, body:JSON.stringify(params)});
+    if (!resp.ok) throw new Error(`RPC失败 ${resp.status}: ${await resp.text()}`);
+    return resp.json();
+}
+
+function buildTimeContext(createdAt, now=new Date()) {
+    const date = new Date(createdAt);
+    const diff = Math.max(0, now.getTime() - date.getTime());
+    const seconds = Math.floor(diff / 1000);
+    let relative;
+    if (seconds < 60) relative = "刚刚";
+    else if (seconds < 3600) relative = `${Math.floor(seconds/60)}分钟前`;
+    else if (seconds < 86400) relative = `${Math.floor(seconds/3600)}小时前`;
+    else if (seconds < 172800) relative = "昨天";
+    else if (seconds < 604800) relative = `${Math.floor(seconds/86400)}天前`;
+    else relative = new Intl.DateTimeFormat("zh-CN", {month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"}).format(date);
+    return {
+        relative,
+        absolute: new Intl.DateTimeFormat("zh-CN", {year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false}).format(date),
+        timezone: "Asia/Shanghai"
+    };
+}
+
+async function getNextMessageNumber(env, threadId) {
+    const result = await sbRpc(env, "increment_thread_message_counter", { p_thread_id: threadId });
+    if (Array.isArray(result)) return Number(result[0]);
+    if (typeof result === "number") return result;
+    if (typeof result === "string") return Number(result);
+    throw new Error(`无法解析 message_number RPC 结果: ${JSON.stringify(result)}`);
+}
+
+async function getMessagesWithTime(env, threadId) {
+    const messages = await sbQuery(env, "chat_messages", { filters: { thread_id: threadId }, order: "created_at.asc" });
+    const now = new Date();
+    return messages.map(m => ({ ...m, time_context: buildTimeContext(m.created_at, now) }));
+}
+
 function parseMentions(content) {
     const mentions=[]; const events=[]; if(!content)return{mentions,events}; const lower=content.toLowerCase();
     if(lower.includes('@all')){for(const actor of ALL_ACTORS)mentions.push(actor);for(const agent of AGENTS)events.push(agent);}
@@ -61,7 +110,9 @@ export async function createMessage(env, threadId, payload) {
     const author=String(payload.author||'liuliu').toLowerCase(); const content=String(payload.content||'').trim();
     if(!content)throw new Error('消息内容不能为空'); if(!ALL_ACTORS.includes(author))throw new Error(`非法 author: ${author}`);
     const {mentions,events}=parseMentions(content);
-    const inserted=await sbInsert(env,'chat_messages',{thread_id:threadId,author,content,mentions:mentions.length?mentions:[],reply_to:payload.reply_to||null});
+    const actor_id = ACTOR_IDS[author] || ACTOR_IDS.legacy_import;
+    const message_number = await getNextMessageNumber(env, threadId);
+    const inserted=await sbInsert(env,'chat_messages',{thread_id:threadId,author,actor_id,message_number,content,mentions:mentions.length?mentions:[],reply_to:payload.reply_to||null});
     const message=Array.isArray(inserted)?inserted[0]:inserted; const messageId=message?.message_id; if(!messageId)throw new Error('消息写入成功但未返回 message_id');
     const created=[];const existed=[];const failed=[];
     for(const agent of events){const eventData={message_id:messageId,agent,status:'processing',claimed_at:null,payload:{event_type:'message_created',thread_id:threadId,author,content_preview:contentPreview(content),mentions}};
@@ -97,7 +148,7 @@ export async function handleChatRequest(request,url,env){
     try{
         if(segments.length===3&&segments[2]==='threads'&&method==='GET'){return jsonResponse(await sbQuery(env,'chat_threads',{order:'created_at.desc',limit:100}));}
         if(segments.length===3&&segments[2]==='threads'&&method==='POST'){const body=await request.json();const title=String(body.title||'未命名话题').trim();const creator=String(body.creator||'liuliu').toLowerCase();if(!ALL_ACTORS.includes(creator))throw new Error(`非法 creator: ${creator}`);const data=await sbInsert(env,'chat_threads',{title,creator,status:'active'});return jsonResponse(Array.isArray(data)?data[0]:data,201);}
-        if(segments.length===5&&segments[2]==='threads'&&segments[4]==='messages'&&method==='GET'){const id=decodeURIComponent(segments[3]);return jsonResponse(await sbQuery(env,'chat_messages',{filters:{thread_id:id},order:'created_at.asc'}));}
+        if(segments.length===5&&segments[2]==='threads'&&segments[4]==='messages'&&method==='GET'){const id=decodeURIComponent(segments[3]);return jsonResponse(await getMessagesWithTime(env,id));}
         if(segments.length===5&&segments[2]==='threads'&&segments[4]==='messages'&&method==='POST'){const id=decodeURIComponent(segments[3]);const payload=await request.json();const result=await createMessage(env,id,payload);return jsonResponse(result,result.partial_failure?207:201);}
         if(segments.length===3&&segments[2]==='events'&&method==='GET'){const agent=url.searchParams.get('agent');const status=url.searchParams.get('status')||'processing';const limit=url.searchParams.get('limit')||DEFAULT_EVENT_LIMIT;const offset=url.searchParams.get('offset')||0;if(status==='processing'&&agent)return jsonResponse(await getPendingEvents(env,agent,limit,offset));if(!EVENT_STATUSES.includes(status))throw new Error(`非法 status: ${status}`);const safeLimit=Math.min(Math.max(Number(limit)||DEFAULT_EVENT_LIMIT,1),100);const safeOffset=Math.max(Number(offset)||0,0);const data=await sbQuery(env,'chat_agent_events',{filters:agent?{agent,status}:{status},order:'created_at.asc,event_id.asc',limit:safeLimit+1,offset:safeOffset});const hasMore=data.length>safeLimit;return jsonResponse({events:hasMore?data.slice(0,safeLimit):data,limit:safeLimit,offset:safeOffset,has_more:hasMore});}
         if(segments.length===5&&segments[2]==='events'&&segments[4]==='message'&&method==='GET'){const eventId=decodeURIComponent(segments[3]);const eventRows=await sbQuery(env,'chat_agent_events',{select:'event_id,message_id,agent,status,claimed_at,payload,created_at,updated_at',filters:{event_id:eventId},limit:1});if(!eventRows.length)throw new Error('事件不存在');return jsonResponse(await readMessage(env,eventRows[0].message_id));}
