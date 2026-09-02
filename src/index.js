@@ -9,6 +9,7 @@
 //  5. 保留无状态 POST 应答（stateless 模式），GET 兼容 SSE
 // v6.3 变更（2026-09-01）：自动注册兜底（passiveSyncGithubTool）
 // v6.5 变更（2026-09-01）：Common Ground chat MCP tools
+// v6.6 变更（2026-09-02）：触发链 PoC webhook 端点（/api/chat/webhook）
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
 import { uploadFileToSupabase } from './utils/storage.js';
@@ -24,6 +25,7 @@ import { handleIncrementUsage } from './tools/increment_usage.js';
 import { handleDeleteBranch } from './tools/delete_branch.js';
 import { handleChatRequest } from './tools/chat.js';
 import { handleChatTool, CHAT_TOOL_DEFS } from './tools/chat_mcp.js';
+import { handleChatWebhook } from './tools/chat_webhook.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -213,6 +215,9 @@ export default {
         if (url.pathname === '/github/webhook' && request.method === 'POST') {
             try { const payload = await request.json(); const result = await handleGitHubWebhook(payload, env); return jsonResponse(result); }
             catch (e) { return buildErrorResponse('Webhook处理失败: ' + e.message, 500); }
+        }
+        if (url.pathname === '/api/chat/webhook' && request.method === 'POST') {
+            return await handleChatWebhook(request, env);
         }
         if (url.pathname === '/mcp') {
             if (request.method === 'GET') {
