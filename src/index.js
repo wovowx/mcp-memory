@@ -71,12 +71,10 @@ async function passiveSyncGithubTool(env, name) {
             category: def.category || 'GitHub', tags: def.tags || []
         });
         await invalidateCache();
-        return ok ? '⚠️ 已自动注册新工具：' + name + '——哥哥有空检查一下 schema 是否正确（自动注册只补缺，不覆盖）' : '⚠️ 自动注册失败：' + name;
-    } catch (e) { return '⚠️ 自动注册检查出错：' + e.message; }
+        return ok ? 'auto registered: ' + name : 'auto register fail: ' + name;
+    } catch (e) { return 'auto register err: ' + e.message; }
 }
 
-// Common Ground chat tools use the same skills registry as other MCP tools.
-// Missing chat definitions are inserted once; existing rows are never overwritten.
 async function syncChatTools(env) {
     let changed = false;
     for (const def of CHAT_TOOL_DEFS) {
@@ -133,14 +131,14 @@ async function handleMCPRequest(body, env) {
                         await invalidateCache();
                     } else if (name === 'increment_usage') {
                         text = await handleIncrementUsage(name, safeArgs, env);
-                    } else text = '❌ 未知工具：' + name;
+                    } else text = 'unknown tool: ' + name;
                 } else {
                     const handler = handlerMap[skill.handler_config?.handler];
                     if (handler) text = await handler(name, safeArgs, env);
-                    else text = '❌ 技能类型未实现：' + skill.handler_type;
+                    else text = 'handler type not implemented: ' + skill.handler_type;
                 }
             }
-        } catch (e) { text = '❌ 执行出错：' + e.message; }
+        } catch (e) { text = 'err: ' + e.message; }
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
     if (method === 'ping') return { ok: true, data: { jsonrpc: '2.0', id, result: {} } };
@@ -151,28 +149,28 @@ async function handleSkillManagement(name, safeArgs, env) {
     let text = '';
     if (name === 'skill_list') {
         const skills = await getEnabledSkills(env);
-        if (skills.length === 0) text = '💡 暂无技能';
+        if (skills.length === 0) text = 'no skills';
         else {
-            let lines = '💡 **技能列表**（共 ' + skills.length + ' 个）：\n\n';
+            let lines = 'skills (' + skills.length + '):\n\n';
             for (const s of skills) {
-                const status = s.enabled ? '✅' : '⛔';
-                lines += `${status} **${s.name}**\n`;
-                lines += `   📝 ${s.description?.substring(0, 80) || ''}${s.description?.length > 80 ? '...' : ''}\n`;
-                lines += `   📂 ${s.category || '默认'}\n\n`;
+                const status = s.enabled ? 'ok' : 'off';
+                lines += status + ' ' + s.name + '\n';
+                lines += '   ' + (s.description?.substring(0, 80) || '') + '\n';
+                lines += '   ' + (s.category || 'default') + '\n\n';
             }
             text = lines;
         }
     } else if (name === 'skill_add') {
-        if (!safeArgs.name || !safeArgs.description || !safeArgs.input_schema) text = '❌ 缺少参数：需要 name, description, input_schema';
+        if (!safeArgs.name || !safeArgs.description || !safeArgs.input_schema) text = 'need name, description, input_schema';
         else {
             try {
                 const inputSchema = typeof safeArgs.input_schema === 'string' ? JSON.parse(safeArgs.input_schema) : safeArgs.input_schema;
-                await addSkill(env, { name: safeArgs.name, description: safeArgs.description, input_schema: inputSchema, handler_type: safeArgs.handler_type || 'js', handler_config: safeArgs.handler_config || { handler: 'ai' }, category: safeArgs.category || '自定义', tags: safeArgs.tags || [] });
-                text = '✅ 技能已添加：' + safeArgs.name + '\n' + '📝 描述：' + safeArgs.description.substring(0, 100) + '\n' + '📂 分类：' + (safeArgs.category || '自定义');
-            } catch (e) { text = '❌ 添加失败：' + e.message; }
+                await addSkill(env, { name: safeArgs.name, description: safeArgs.description, input_schema: inputSchema, handler_type: safeArgs.handler_type || 'js', handler_config: safeArgs.handler_config || { handler: 'ai' }, category: safeArgs.category || 'default', tags: safeArgs.tags || [] });
+                text = 'added: ' + safeArgs.name;
+            } catch (e) { text = 'add fail: ' + e.message; }
         }
     } else if (name === 'skill_update') {
-        if (!safeArgs.name) text = '❌ 缺少参数：需要 name';
+        if (!safeArgs.name) text = 'need name';
         else {
             try {
                 const updates = {};
@@ -182,12 +180,12 @@ async function handleSkillManagement(name, safeArgs, env) {
                 if (safeArgs.enabled !== undefined) updates.enabled = safeArgs.enabled;
                 if (safeArgs.handler_config) updates.handler_config = safeArgs.handler_config;
                 if (safeArgs.handler_type) updates.handler_type = safeArgs.handler_type;
-                await updateSkill(env, safeArgs.name, updates); text = '✅ 技能已更新：' + safeArgs.name;
-            } catch (e) { text = '❌ 更新失败：' + e.message; }
+                await updateSkill(env, safeArgs.name, updates); text = 'updated: ' + safeArgs.name;
+            } catch (e) { text = 'update fail: ' + e.message; }
         }
     } else if (name === 'skill_delete') {
-        if (!safeArgs.name) text = '❌ 缺少参数：需要 name';
-        else { await deleteSkill(env, safeArgs.name); text = '🗑️ 已删除技能：' + safeArgs.name; }
+        if (!safeArgs.name) text = 'need name';
+        else { await deleteSkill(env, safeArgs.name); text = 'deleted: ' + safeArgs.name; }
     }
     return text;
 }
@@ -195,34 +193,32 @@ async function handleSkillManagement(name, safeArgs, env) {
 async function handleGitHubWebhook(payload, env) {
     try {
         const event = payload.action || 'push'; const ref = payload.ref || 'refs/heads/main';
-        if (ref !== 'refs/heads/main') return { status: 'ignored', reason: '非main分支' };
-        await invalidateCache(); return { status: 'success', message: '技能缓存已清除，等待下次help()调用刷新', event };
+        if (ref !== 'refs/heads/main') return { status: 'ignored', reason: 'non-main' };
+        await invalidateCache(); return { status: 'success', message: 'cache cleared', event };
     } catch (e) { return { status: 'error', message: e.message }; }
 }
 
 export default {
     async fetch(request, env, ctx) {
-        if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return buildErrorResponse('Supabase 未配置：请在环境变量中设置 SUPABASE_URL 和 SUPABASE_ANON_KEY', 500);
+        if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return buildErrorResponse('Supabase not configured', 500);
         if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Last-Event-ID, Authorization, Accept, MCP-Session-Id', 'Access-Control-Expose-Headers': 'MCP-Session-Id, Last-Event-ID, Content-Type', 'Access-Control-Max-Age': '86400' } });
         const url = new URL(request.url);
-        // 触发链 PoC：webhook 路由必须在 /api/chat 前缀判断之前（否则被 handleChatRequest 抢先拦截）
         if (url.pathname === '/api/chat/webhook' && request.method === 'POST') {
-            // Phase 1.5: webhook 收到事件后异步触发 @GPT 处理（不阻塞响应），cron 做兜底
             ctx.waitUntil(processPendingEvents(env).catch(e => console.error('webhook proc err: ' + e.message)));
             return await handleChatWebhook(request, env);
         }
         if (url.pathname === '/chat' || url.pathname === '/chat/' || url.pathname.startsWith('/api/chat')) { const result = await handleChatRequest(request, url, env); if (result) return result; }
         if (url.pathname === '/memory-universe' || url.pathname === '/memory-universe/') {
             try { const resp = await fetch('https://raw.githubusercontent.com/wovowx/mcp-memory/main/src/public/memory-universe.html'); const html = await resp.text(); return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*' } }); }
-            catch (e) { return buildErrorResponse('加载记忆宇宙失败: ' + e.message, 500); }
+            catch (e) { return buildErrorResponse('load memory universe fail: ' + e.message, 500); }
         }
         if (url.pathname === '/upload' && request.method === 'POST') {
-            try { const formData = await request.formData(); const file = formData.get('file'); if (!file) return buildErrorResponse('没有文件'); if (file.size > 50 * 1024 * 1024) return buildErrorResponse('文件太大，最大 50MB'); const blockedTypes = ['application/x-executable', 'application/x-msdownload', 'text/html', 'application/javascript']; if (blockedTypes.includes(file.type)) return buildErrorResponse('不支持该文件类型'); const result = await uploadFileToSupabase(file, env); return jsonResponse(result); }
+            try { const formData = await request.formData(); const file = formData.get('file'); if (!file) return buildErrorResponse('no file'); if (file.size > 50 * 1024 * 1024) return buildErrorResponse('too large'); const blockedTypes = ['application/x-executable', 'application/x-msdownload', 'text/html', 'application/javascript']; if (blockedTypes.includes(file.type)) return buildErrorResponse('blocked type'); const result = await uploadFileToSupabase(file, env); return jsonResponse(result); }
             catch (e) { return buildErrorResponse(e.message, 500); }
         }
         if (url.pathname === '/github/webhook' && request.method === 'POST') {
             try { const payload = await request.json(); const result = await handleGitHubWebhook(payload, env); return jsonResponse(result); }
-            catch (e) { return buildErrorResponse('Webhook处理失败: ' + e.message, 500); }
+            catch (e) { return buildErrorResponse('Webhook fail: ' + e.message, 500); }
         }
         if (url.pathname === '/mcp') {
             if (request.method === 'GET') {
@@ -244,10 +240,10 @@ export default {
             return new Response('Method not allowed', { status: 405 });
         }
         if (url.pathname === '/' || url.pathname === '/health') {
-            const skills = await getEnabledSkills(env); return new Response('💚 Ziven MCP Server running (' + skills.length + ' skills | Supabase OK)', { status: 200, headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' } });
+            const skills = await getEnabledSkills(env); return new Response('Ziven MCP Server running (' + skills.length + ' skills | Supabase OK)', { status: 200, headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' } });
         }
         return new Response('Not found', { status: 404 });
-    }
+    },
 
     async scheduled(event, env, ctx) {
         try {
