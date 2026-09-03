@@ -2,6 +2,7 @@
 // Chatroom MVP - 页面 + 通信 API 路由（v2.1）
 // 2026-09-02 Phase 1: atomic event claim + claimed_at
 // v2.1 (2026-09-02): actor_id 双写 + message_number 计数器 + time_context
+// v2.2 (2026-09-03): /chat 路由 cache-busting（raw CDN 缓存导致页面不更新）
 // ============================================================
 import { jsonResponse, buildErrorResponse } from '../utils/response.js';
 
@@ -143,7 +144,7 @@ export async function ackEvent(env,eventId,agent,targetStatus){
 
 export async function handleChatRequest(request,url,env){
     const path=url.pathname; const method=request.method;
-    if(path==='/chat'||path==='/chat/'){if(method!=='GET')return new Response('Method not allowed',{status:405});try{const resp=await fetch('https://raw.githubusercontent.com/wovowx/mcp-memory/main/src/public/chat.html');const html=await resp.text();return new Response(html,{status:200,headers:{'Content-Type':'text/html; charset=utf-8','Access-Control-Allow-Origin':'*'}});}catch(e){return buildErrorResponse('加载聊天室失败: '+e.message,500);}}
+    if(path==='/chat'||path==='/chat/'){if(method!=='GET')return new Response('Method not allowed',{status:405});try{const rawUrl='https://raw.githubusercontent.com/wovowx/mcp-memory/main/src/public/chat.html?cb='+Date.now();const resp=await fetch(rawUrl);const html=await resp.text();return new Response(html,{status:200,headers:{'Content-Type':'text/html; charset=utf-8','Access-Control-Allow-Origin':'*','Cache-Control':'no-cache, no-store, must-revalidate'}});}catch(e){return buildErrorResponse('加载聊天室失败: '+e.message,500);}}
     if(!path.startsWith('/api/chat'))return null; const segments=path.split('/').filter(Boolean);
     try{
         if(segments.length===3&&segments[2]==='threads'&&method==='GET'){return jsonResponse(await sbQuery(env,'chat_threads',{order:'created_at.desc',limit:100}));}
