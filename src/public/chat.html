@@ -6,11 +6,16 @@
 <title>Common Ground</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1020;--panel:#121a2d;--panel2:#18223a;--line:#2a3654;--text:#edf2ff;--muted:#8f9bb5;--accent:#8fa8ff;--user:#263657;--agent:#1a2940}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0%,#17213c 0,#0b1020 42%);color:var(--text);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;height:100vh;overflow:hidden}.app{height:100%;display:grid;grid-template-columns:280px 1fr}.sidebar{border-right:1px solid var(--line);background:rgba(10,15,29,.82);padding:18px;display:flex;flex-direction:column;min-width:0}.brand{font-size:20px;font-weight:700;margin-bottom:16px}.new{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer}.new:hover{background:var(--panel2)}.threads{margin-top:14px;overflow:auto}.thread{padding:11px 12px;border-radius:9px;margin-bottom:5px;cursor:pointer;color:#cbd4ea}.thread:hover{background:rgba(24,34,58,.7)}.thread.active{background:var(--panel2);color:#fff}.thread small{display:block;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.main{min-width:0;display:grid;grid-template-rows:auto 1fr auto auto;background:rgba(11,16,32,.5)}.header{padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.title{font-weight:650}.status{font-size:12px;color:var(--muted)}.messages{padding:22px;overflow:auto;display:flex;flex-direction:column;gap:14px}.empty{margin:auto;color:var(--muted);text-align:center}.msg{max-width:min(760px,88%);padding:12px 14px;border:1px solid var(--line);border-radius:13px;background:var(--agent)}.msg.user{align-self:flex-end;background:var(--user)}.meta{font-size:12px;color:var(--muted);margin-bottom:5px}.content{white-space:pre-wrap;overflow-wrap:anywhere}.reply{font-size:11px;color:var(--muted);border-left:2px solid var(--line);padding-left:8px;margin-bottom:7px}.composer{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;background:rgba(10,15,29,.9)}textarea{flex:1;resize:none;min-height:46px;max-height:140px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:11px 12px;font:inherit;outline:none}textarea:focus{border-color:var(--accent)}button.send{border:0;border-radius:10px;background:var(--accent);color:#081022;padding:0 18px;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.notice{padding:10px 18px;color:#f0c98a;font-size:12px;display:none;border-top:1px solid var(--line)}
-@media(max-width:720px){.app{grid-template-columns:1fr}.sidebar{display:none}.messages{padding:14px}.header{padding:14px}.composer{padding:10px}}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:radial-gradient(circle at 20% 0%,#17213c 0,#0b1020 42%);color:var(--text);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;height:100dvh;overflow:hidden}.app{height:100%;display:grid;grid-template-columns:280px 1fr}.sidebar{border-right:1px solid var(--line);background:rgba(10,15,29,.82);padding:18px;display:flex;flex-direction:column;min-width:0}.brand{font-size:20px;font-weight:700;margin-bottom:16px}.new{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer}.new:hover{background:var(--panel2)}.threads{margin-top:14px;overflow:auto}.thread{padding:11px 12px;border-radius:9px;margin-bottom:5px;cursor:pointer;color:#cbd4ea}.thread:hover{background:rgba(24,34,58,.7)}.thread.active{background:var(--panel2);color:#fff}.thread small{display:block;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.main{min-width:0;min-height:0;display:grid;grid-template-rows:auto 1fr auto auto;background:rgba(11,16,32,.5)}.header{padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.title{font-weight:650}.status{font-size:12px;color:var(--muted)}.messages{padding:22px;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:14px}.empty{margin:auto;color:var(--muted);text-align:center}.msg{max-width:min(760px,88%);padding:12px 14px;border:1px solid var(--line);border-radius:13px;background:var(--agent)}.msg.user{align-self:flex-end;background:var(--user)}.meta{font-size:12px;color:var(--muted);margin-bottom:5px}.content{white-space:pre-wrap;overflow-wrap:anywhere}.reply{font-size:11px;color:var(--muted);border-left:2px solid var(--line);padding-left:8px;margin-bottom:7px}.composer{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;background:rgba(10,15,29,.9)}textarea{flex:1;resize:none;min-height:46px;max-height:140px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:11px 12px;font:inherit;outline:none}textarea:focus{border-color:var(--accent)}button.send{border:0;border-radius:10px;background:var(--accent);color:#081022;padding:0 18px;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.notice{padding:10px 18px;color:#f0c98a;font-size:12px;display:none;border-top:1px solid var(--line)}
+.mobile-header{display:none;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:rgba(10,15,29,.9)}.mobile-header .burger{background:none;border:0;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1}.mobile-header .m-title{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.overlay{display:none}
+@media(max-width:720px){
+.app{grid-template-columns:1fr}.sidebar{position:fixed;top:0;bottom:0;left:-280px;width:280px;z-index:20;transition:left .2s}.sidebar.open{left:0}.mobile-header{display:flex}.overlay.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:10}.messages{padding:14px}.header{padding:14px}.composer{padding:10px}
+}
 </style>
 </head>
 <body>
+<div class="mobile-header"><button class="burger" id="threadToggle" type="button" aria-label="打开讨论列表">☰</button><span class="m-title" id="mobileTitle">Common Ground</span></div>
+<div class="overlay" id="overlay"></div>
 <div class="app">
 <aside class="sidebar">
 <div class="brand">Common Ground</div>
@@ -58,6 +63,8 @@ function normalizeMessages(data){
   return [];
 }
 function threadId(t){return t.thread_id||t.id}
+function isMobile(){return window.innerWidth<=720}
+function afterThreadNavigate(){if(isMobile())closeThreads()}
 function renderThreads(items){
   const box=$('threads');box.innerHTML='';
   if(!items.length){box.innerHTML='<div class="empty">还没有讨论</div>';return}
@@ -66,7 +73,7 @@ function renderThreads(items){
     const el=document.createElement('div');el.className='thread'+(String(id)===String(currentThread)?' active':'');el.dataset.id=id;
     const title=document.createElement('div');title.textContent=t.title||'未命名话题';
     const small=document.createElement('small');small.textContent=t.status||'active';
-    el.append(title,small);el.addEventListener('click',()=>selectThread(id,t));box.appendChild(el);
+    el.append(title,small);el.addEventListener('click',()=>{selectThread(id,t);afterThreadNavigate()});box.appendChild(el);
   }
 }
 async function loadThreads(selectFirst=true){
@@ -75,7 +82,7 @@ async function loadThreads(selectFirst=true){
   }catch(e){console.error(e);notice('加载 Thread 失败：'+e.message)}
 }
 async function selectThread(id,thread){
-  currentThread=id;requireElement('threadTitle').textContent=thread?.title||'未命名话题';requireElement('input').disabled=false;const sendBtn=document.querySelector('#composer .send');if(sendBtn)sendBtn.disabled=false;
+  currentThread=id;requireElement('threadTitle').textContent=thread?.title||'未命名话题';requireElement('mobileTitle').textContent=thread?.title||'未命名话题';requireElement('input').disabled=false;const sendBtn=document.querySelector('#composer .send');if(sendBtn)sendBtn.disabled=false;
   renderThreads(normalizeListFromDom());
   requireElement('messages').innerHTML='<div class="empty">加载消息中…</div>';
   try{const data=await api(API.messages(id));renderMessages(normalizeMessages(data))}catch(e){console.error(e);requireElement('messages').innerHTML='<div class="empty">加载消息失败</div>';notice('加载消息失败：'+e.message)}
@@ -111,7 +118,7 @@ async function createThread(){
     const data=await api(API.threads,{method:'POST',body:JSON.stringify({title:clean,creator:'liuliu'})});
     const t=data?.thread||data?.data||data;const id=threadId(t);
     if(!id)throw new Error('服务端没有返回 thread_id');
-    currentThread=null;await loadThreads(false);await selectThread(id,t);
+    currentThread=null;await loadThreads(false);await selectThread(id,t);afterThreadNavigate();
   }catch(e){console.error(e);notice('创建 Thread 失败：'+e.message)}
 }
 async function sendMessage(){
@@ -125,6 +132,10 @@ async function sendMessage(){
   }catch(e){console.error(e);notice('发送失败：'+e.message)}
   finally{input.disabled=false;if(send)send.disabled=false;input.focus()}
 }
+function openThreads(){requireElement('sidebar').classList.add('open');requireElement('overlay').classList.add('show')}
+function closeThreads(){const s=document.querySelector('.sidebar');if(s)s.classList.remove('open');const o=document.getElementById('overlay');if(o)o.classList.remove('show')}
+requireElement('threadToggle').addEventListener('click',openThreads);
+requireElement('overlay').addEventListener('click',closeThreads);
 requireElement('newThread').addEventListener('click',createThread);
 requireElement('composer').addEventListener('submit',e=>{e.preventDefault();sendMessage()});
 requireElement('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
