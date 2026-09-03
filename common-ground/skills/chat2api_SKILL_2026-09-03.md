@@ -1,7 +1,7 @@
 # chat2api —— GPT 真身通道（操作手册 + 铁律）
 
 > **用途**：通过 chat2api 网关调用 ChatGPT 真身（同一账号/同一上下文/同一记忆），是 Common Ground 三方通信的「大脑入口」。
-> **版本**：2026-09-03（柳柳亲定：正式 conversation_id 已切换）
+> **版本**：2026-09-03 v2（柳柳要求补：配置变更操作手册）
 > **状态**：✅ 实测通过
 
 ---
@@ -18,7 +18,7 @@
 
 ---
 
-## 1. 这玩意儿是什么
+## 1. 这是什么
 
 - **chat2api ≠ OpenAI API**：走的是 ChatGPT backend-api（chatgpt.com 同款），凭证是 **accessToken**（不是 API Key）。
 - **同一个 accessToken + conversation_id = 「同一个他」**：同一账号、同一上下文、同一身份、同一记忆插件。
@@ -44,7 +44,16 @@
 
 ## 3. 调用方法（标准姿势）
 
-### 3.1 【推荐】extended_http_tools 裸请求（不卡死）
+### 3.1 【最推荐·不塞token】Worker 转发端点（上线后）
+
+```
+POST https://mcp-memory.wovowx.workers.dev/api/chat2api/ask
+Body: { "message": "消息内容" }
+```
+
+token 只在 Worker 环境变量里，本地一个字符都不带。✅ 这是终态方案（已立项）。
+
+### 3.2 【当前可用】extended_http_tools 裸请求
 
 ```
 POST https://chat2api-1029559493109-1029559493109.asia-northeast1.run.app/v1/chat/completions
@@ -59,22 +68,42 @@ Body:
 }
 ```
 
-### 3.2 【不推荐】code_runner run_python（会卡死！）
+### 3.3 code_runner run_python（✅ 已恢复可用）
 
-- **现象**：run_python 第一次能跑通，之后所有调用全部卡死转圈（所有框都一样）。
-- **原因**：code_runner 是 App 级持久 worker，第一次跑完后 worker 挂死/管道未回收，后续调用都在等死 worker 回话，无超时 → 永远卡。
-- **规避**：
-  1. 网络请求优先 `extended_http_tools:http_request`（裸 HTTP，不走本机解释器）
-  2. 真要用 Python：重启 Operit App 清 worker
-  3. 每次调用前先确认是否必需
+- **曾踩坑**：第一次能跑通，之后所有调用全部卡死转圈（所有框都一样）。
+- **根因**：App 级持久 worker 挂死/管道未回收，无超时 → 永远卡。
+- **✅ 已恢复**：重启 Operit App 后 `print('alive-ok')` 秒回 → 可正常跑脚本。
+- **以后动作**：能用 run_python 就直接用，别因旧失败记忆绕开它；万一再卡 → 重启 Operit 清 worker。
 
 ---
 
-## 4. 成功路径（已实测 2026-09-02 ~ 09-03）
+## 4. 配置变更操作手册（柳柳 2026-09-03 要求补）
 
-1. Cloud Run 加环境变量 `HISTORY_DISABLED=false`，重新部署。
-2. POST 到 `/v1/chat/completions`（见上）。
-3. 返回 200，GPT 完整答出 → **真身无疑**。
+### A. 更换对话 ID（conversation_id）怎么办
+
+1. **新 ID 来源**：柳柳给的新 ChatGPT 对话链接，取 `/c/` 后那串 UUID。
+2. **更新三处**：①记忆库「配置：ChatGPT GPT_CONVERSATION_ID」；②Cloudflare Worker 环境变量 `GPT_CONVERSATION_ID`（agent_runtime 用）；③本 skill「核心三件套」表格。
+3. **切换后**：用新 ID 发一条最小测试消息，确认真身能回且是新上下文。
+4. **⛔ 旧 ID 弃用逻辑**：旧分支可能被轰炸污染/上下文太杂 → 不再使用，除非柳柳明确说恢复。
+
+### B. 更换节点（VLESS 出站）怎么办
+
+1. **节点信息位置**：Cloud Run 环境变量（xray 配置，共约 6 个：地址/端口/UUID/flow/加密/指纹等）。
+2. **换节点流程**：柳柳换节点 → 拿到新 VLESS 信息 → 更新 Cloud Run 环境变量 → 重新部署 chat2api-xray 服务。
+3. **⚠️ 铁则**：节点必须与柳柳浏览器同源（否则 ChatGPT 看到 IP 不一致，可能风控）。
+4. **换完测**：POST 一条最小消息，HTTP 200 即通；403 = 风控或 IP 脏。
+
+### C. 其他注意事项（哥哥补充）
+
+1. **token 更新**：有效期约 30 天（当前至 2026-12-01），过期前提醒柳柳重新抓；更新记忆库 + Cloudflare Worker 环境变量 `CHATGPT_ACCESS_TOKEN`。
+2. **调用姿势**：能走 Worker 转发（env token）就别本地塞 token——本地塞又长又易截断，已立项 `/api/chat2api/ask`。
+3. **code_runner run_python**：已恢复，不是永远不能用；再卡就重启 Operit，别绕路。
+4. **页面可见铁律**：与 GPT 的所有讨论消息要在聊天室页面可见，不能只在私底下。
+5. **不塞旧历史**：跟 GPT 说话只发最小、最新的 @gpt 消息（今天柳柳批评的根源）。
+6. **错误码速查**：403 cf_chl_opt=风控冷却30min+；404 history_disabled=HISTORY_DISABLED 问题；404 model_not_found=模型名不支持。
+7. **多节点 failover（O5）**：未来计划，当前单节点。
+
+---
 
 ## 5. 失败路径（全是坑，防再犯）
 
@@ -107,7 +136,7 @@ GPT 真身
 
 ---
 
-## 7. 补充注意事项
+## 7. 安全提醒
 
 - **IP 同源**：xray 走柳柳 VLESS 日本节点，ChatGPT 看到的 IP 与柳柳浏览器同源。
 - **一条消息等完整回复再发下一条，绝不连发**（见铁律）。
@@ -117,4 +146,4 @@ GPT 真身
 
 ---
 
-*本手册由 Ziven 整理（2026-09-03），基于 74 号手册 + 0902-1 实战经验 + 柳柳最新指示。*
+*本手册由 Ziven 整理（2026-09-03 v2），基于 74 号手册 + 0902-1 实战经验 + 柳柳最新指示。*
