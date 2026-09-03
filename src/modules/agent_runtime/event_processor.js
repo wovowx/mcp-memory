@@ -8,6 +8,7 @@
 // v5.1 (2026-09-03)：buildPrompt 强化 —— 明确告诉 GPT 工具已挂载，直接输出标记即执行
 // v6 (2026-09-03)：T3.1 主动注入 —— Runtime 自动读 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
 // v7 (2026-09-03)：T3.2 github_read 真实实现 —— GPT 可读白名单仓库真实代码
+// v7.1 (2026-09-03)：github_read 编码修复 —— TextDecoder UTF-8 解码（修中文乱码）
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
@@ -100,8 +101,9 @@ const TOOLS = {
             if (!resp.ok) return { ok: false, error: `GitHub API ${resp.status}: ${(await resp.text()).slice(0, 200)}` };
             const gh = await resp.json();
             if (gh.type !== 'file') return { ok: false, error: `不是文件: ${gh.type || 'unknown'}` };
-            // GitHub API 返回 base64 编码内容
-            let content = atob(gh.content);
+            // GitHub API 返回 base64 编码内容（atob 给 Latin-1，需转 UTF-8）
+            const bytes = Uint8Array.from(atob(gh.content), c => c.charCodeAt(0));
+            let content = new TextDecoder().decode(bytes);
             const totalLines = content.split('\n').length;
             // 行范围截取
             if (startLine || endLine) {
