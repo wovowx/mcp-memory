@@ -4,6 +4,7 @@
 // v2 (2026-09-03)：源头清洗 reaction 元数据
 // v3 (2026-09-03)：Runtime Tool Loop —— GPT 可请求工具，Worker 执行并回填结果
 // v4 (2026-09-03)：T2.5 审计链 —— 每次工具调用写 agent_tool_calls（运行事实源）
+// v5 (2026-09-03)：T3.1 context_read/context_update 真实实现（治失忆）
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
@@ -11,12 +12,66 @@ import { callChat2Api } from "./chat2api_client.js";
 const MAX_TOOL_ROUNDS = 5;
 
 // ============ 工具注册表（T2 先放只读/安全工具） ============
-// 每个工具：async (env, args) => 返回结果对象
+// 每个工具：async (env, args, ctx) => 返回结果对象，ctx 携带当前消息上下文（如 thread_id）
 const TOOLS = {
     echo: async (env, args) => ({ ok: true, result: args }),
-    context_read: async (env, args) => {
-        // 读取 thread 上下文（治失忆）—— MVP：返回最近 N 条消息
-        return { ok: true, note: 'context_read 工具待 T3 接入真实实现，当前返回占位' };
+    context_read: async (env, args, ctx) => {
+        // 读取 thread 上下文（治失忆）—— T3.1 真实实现
+        // 返回：thread 元信息 + 最近 N 条消息 + thread_contexts 最新摘要（版本化）
+        const threadId = args?.thread_id || ctx?.thread_id;
+        const limit = Math.min(parseInt(args?.limit) || 20, 50);
+        if (!threadId) return { ok: false, error: '缺少 thread_id' };
+        const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+        const h = { 'Authorization': 'Bearer ' + key, 'apikey': key };
+        try {
+            // 1) thread 元信息
+            const tr = await fetch(`${env.SUPABASE_URL}/rest/v1/chat_threads?thread_id=eq.${threadId}&select=thread_id,title,status,created_at,creator`, { headers: h });
+            const threads = tr.ok ? await tr.json() : [];
+            // 2) 最近 N 条消息（按时间倒序取再反转为正序）
+            const mr = await fetch(`${env.SUPABASE_URL}/rest/v1/chat_messages?thread_id=eq.${threadId}&select=author,content,created_at&order=created_at.desc&limit=${limit}`, { headers: h });
+            const msgs = mr.ok ? await mr.json() : [];
+            msgs.reverse();
+            // 3) thread_contexts 最新版本摘要（不覆盖历史，取 version 最大）
+            const cr = await fetch(`${env.SUPABASE_URL}/rest/v1/thread_contexts?thread_id=eq.${threadId}&select=summary,decisions,open_questions,recent_context,version,created_at&order=version.desc&limit=1`, { headers: h });
+            const contexts = cr.ok ? await cr.json() : [];
+            return {
+                ok: true,
+                thread: threads[0] || { thread_id: threadId },
+                recent_messages: msgs.map(m => ({ author: m.author, content: m.content, created_at: m.created_at })),
+                context: contexts[0] || null,
+                note: '返回消息上限 ' + limit + '，需要更多用 limit 参数'
+            };
+        } catch (e) {
+            return { ok: false, error: 'context_read 失败: ' + e.message };
+        }
+    },
+    context_update: async (env, args, ctx) => {
+        // 维护 thread 摘要（T3.1）—— version 递增新插入，不覆盖历史（75号设计）
+        const threadId = args?.thread_id || ctx?.thread_id;
+        if (!threadId) return { ok: false, error: '缺少 thread_id' };
+        const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+        const h = { 'Authorization': 'Bearer ' + key, 'apikey': key, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+        try {
+            // 查当前最大 version
+            const vr = await fetch(`${env.SUPABASE_URL}/rest/v1/thread_contexts?thread_id=eq.${threadId}&select=version&order=version.desc&limit=1`, { headers: h });
+            const rows = vr.ok ? await vr.json() : [];
+            const nextVersion = (rows[0]?.version || 0) + 1;
+            const row = {
+                thread_id: threadId,
+                summary: args?.summary || null,
+                decisions: args?.decisions ?? [],
+                open_questions: args?.open_questions ?? [],
+                recent_context: args?.next_actions ? { next_actions: args.next_actions } : (args?.recent_context || null),
+                version: nextVersion
+            };
+            const pr = await fetch(`${env.SUPABASE_URL}/rest/v1/thread_contexts`, {
+                method: 'POST', headers: h, body: JSON.stringify(row)
+            });
+            if (!pr.ok) return { ok: false, error: 'context_update 写入失败: ' + pr.status + ' ' + (await pr.text()).slice(0, 200) };
+            return { ok: true, version: nextVersion, saved: row };
+        } catch (e) {
+            return { ok: false, error: 'context_update 失败: ' + e.message };
+        }
     },
     github_read: async (env, args) => {
         // 读 GitHub 文件（T3 接真实）
@@ -86,13 +141,13 @@ function parseToolCalls(content) {
     return calls;
 }
 
-async function executeTool(env, call) {
+async function executeTool(env, call, ctx) {
     const name = call?.tool || call?.name || '';
     const args = call?.arguments || call?.args || {};
     const fn = TOOLS[name];
     if (!fn) return { ok: false, error: `未知工具: ${name}` };
     try {
-        const res = await fn(env, args);
+        const res = await fn(env, args, ctx);
         return { ok: true, ...res };
     } catch (e) {
         return { ok: false, error: e.message };
@@ -122,9 +177,12 @@ ${message.content}
 
 可用工具：
 - echo：回显参数（测试用）
-- context_read：读取 Thread 上下文
+- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）
+- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）
 - github_read：读取 GitHub 文件
 - supabase_query：查询 Supabase 数据
+
+你每次被 @ 时建议先调 context_read 恢复上下文再回答。若讨论中有重要决定/结论，用 context_update 记入 Thread 摘要。
 
 工具结果会回传给你，你基于结果继续回复。如果不需要工具就直接回复用户。`;
 }
@@ -164,7 +222,7 @@ async function runToolLoop(env, message, event) {
         messages.push({ role: 'assistant', content });
         for (const call of calls) {
             // 执行工具
-            const result = await executeTool(env, call);
+            const result = await executeTool(env, call, { thread_id: message?.thread_id });
 
             // T2.5 审计链：写 agent_tool_calls（运行事实源）
             const name = call?.tool || call?.name || 'unknown';
