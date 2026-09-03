@@ -3,6 +3,7 @@
 // pending → claim → read → chat2api → (tool loop?) → send → ack
 // v2 (2026-09-03)：源头清洗 reaction 元数据
 // v3 (2026-09-03)：Runtime Tool Loop —— GPT 可请求工具，Worker 执行并回填结果
+// v4 (2026-09-03)：T2.5 审计链 —— 每次工具调用写 agent_tool_calls（运行事实源）
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
@@ -26,6 +27,47 @@ const TOOLS = {
         return { ok: true, note: 'supabase_query 工具待 T3 接入真实实现，当前返回占位' };
     }
 };
+
+// ============ 审计写入（agent_tool_calls） ============
+async function insertAgentToolCall(env, { event_id, message_id, agent, call, round }) {
+    const name = call?.tool || call?.name || 'unknown';
+    const args = call?.arguments || call?.args || {};
+    const row = {
+        event_id: event_id || null,
+        message_id: message_id || null,
+        agent: agent || 'gpt',
+        tool_name: name,
+        arguments: args,
+        status: 'running',
+        round: round ?? null
+    };
+    const url = `${env.SUPABASE_URL}/rest/v1/agent_tool_calls`;
+    const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + key, 'apikey': key, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+            body: JSON.stringify(row)
+        });
+        if (!resp.ok) { console.error('[tool-audit] insert fail: ' + resp.status + ' ' + await resp.text()); return null; }
+        const data = await resp.json();
+        return Array.isArray(data) ? data[0] : data;
+    } catch (e) { console.error('[tool-audit] insert err: ' + e.message); return null; }
+}
+
+async function updateAgentToolCall(env, toolCallId, patch) {
+    if (!toolCallId) return;
+    const url = `${env.SUPABASE_URL}/rest/v1/agent_tool_calls?id=eq.${toolCallId}`;
+    const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+    try {
+        const resp = await fetch(url, {
+            method: 'PATCH',
+            headers: { 'Authorization': 'Bearer ' + key, 'apikey': key, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+            body: JSON.stringify(patch)
+        });
+        if (!resp.ok) console.error('[tool-audit] update fail: ' + resp.status + ' ' + await resp.text());
+    } catch (e) { console.error('[tool-audit] update err: ' + e.message); }
+}
 
 // 从 GPT 回复里解析工具调用请求
 // 约定格式：GPT 在回复里输出一行【工具调用】json【/工具调用】
@@ -100,7 +142,7 @@ function cleanReplyContent(text) {
         .trim();
 }
 
-async function runToolLoop(env, message) {
+async function runToolLoop(env, message, event) {
     // 维护多轮消息上下文
     const messages = [{ role: 'user', content: buildPrompt(message) }];
     const toolCalls = [];
@@ -121,17 +163,39 @@ async function runToolLoop(env, message) {
         // 有工具调用：执行每个工具，把结果追加到消息上下文
         messages.push({ role: 'assistant', content });
         for (const call of calls) {
+            // 执行工具
             const result = await executeTool(env, call);
+
+            // T2.5 审计链：写 agent_tool_calls（运行事实源）
+            const name = call?.tool || call?.name || 'unknown';
+            const auditRow = await insertAgentToolCall(env, {
+                event_id: event?.event_id,
+                message_id: message?.message_id,
+                agent: 'gpt',
+                call,
+                round
+            });
+            if (auditRow?.id) {
+                await updateAgentToolCall(env, auditRow.id, {
+                    status: result.ok ? 'success' : 'failed',
+                    result: result.ok ? result : null,
+                    error: result.ok ? null : (result.error || null),
+                    finished_at: new Date().toISOString()
+                });
+            }
+
+            // 前端展示快照（chat_messages.tool_calls 简化）
             toolCalls.push({
-                tool_name: call?.tool || call?.name || 'unknown',
+                tool_name: name,
                 arguments: call?.arguments || call?.args || {},
                 result,
                 status: result.ok ? 'success' : 'failed',
-                error: result.ok ? null : result.error
+                error: result.ok ? null : result.error,
+                audit_id: auditRow?.id || null
             });
             messages.push({
                 role: 'user',
-                content: `【工具结果】{"tool":"${call?.tool || call?.name || 'unknown'}","result":${JSON.stringify(result)}}【/工具结果】`
+                content: `【工具结果】{"tool":"${name}","result":${JSON.stringify(result)}}【/工具结果】`
             });
         }
         // 下一轮继续让 GPT 基于工具结果回复
@@ -156,8 +220,8 @@ export async function processPendingEvents(env) {
             const message = await loadMessage(env, event.message_id);
             if (!message) throw new Error('无法读取消息');
 
-            // Runtime Tool Loop：GPT 可请求工具，Worker 执行并回填
-            const { content, toolCalls } = await runToolLoop(env, message);
+            // Runtime Tool Loop：GPT 可请求工具，Worker 执行并回填（带审计）
+            const { content, toolCalls } = await runToolLoop(env, message, event);
 
             // 把工具调用记录随消息一起发送（前端 tool_calls 字段渲染成卡片）
             const sent = await sendMessage(env, message.thread_id, content, toolCalls.length ? { tool_calls: toolCalls } : {});
