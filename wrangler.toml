@@ -20,7 +20,7 @@ SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
 GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory,wovowx/ZivenLab"
 # Phase 1.5 @GPT 闭环：chat2api 通道配置（Dashboard 覆盖优先）
 CHAT2API_URL = "https://chat2api-1029559493109-1029559493109.asia-northeast1.run.app/v1/chat/completions"
-GPT_CONVERSATION_ID = "6a96fcf8-b5c4-83ec-a012-8466a68b0376"
+GPT_CONVERSATION_ID = "6a98cb19-3b88-83ee-a7be-314d60f0aa64"
 
 [triggers]
 crons = ["* * * * *"]
