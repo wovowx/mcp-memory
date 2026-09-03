@@ -213,7 +213,7 @@ export default {
                 const body = await request.json();
                 const prompt = body?.message || '';
                 if (!prompt) return jsonResponse({ ok: false, error: 'missing message' }, 400);
-                const result = await callChat2Api(env, prompt, env.GPT_CONVERSATION_ID || '6a98cb19-3b88-83ee-a7be-314d60f0aa64');
+                const result = await callChat2Api(env, prompt, '6a98cb19-3b88-83ee-a7be-314d60f0aa64');
                 return jsonResponse({ ok: true, reply: result.content, conversation_id: result.conversation_id }, 200);
             } catch (e) {
                 return jsonResponse({ ok: false, error: e.message }, 500);
