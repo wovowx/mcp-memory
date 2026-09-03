@@ -35,6 +35,7 @@ const API={
 };
 let currentThread=null;
 const $=id=>document.getElementById(id);
+function requireElement(id){const el=document.getElementById(id);if(!el)throw new Error('Missing element: '+id);return el}
 function notice(text){const n=$('notice');n.textContent=text;n.style.display=text?'block':'none'}
 async function api(url,options={}){
   const r=await fetch(url,{headers:{'Content-Type':'application/json',...(options.headers||{})},...options});
@@ -74,10 +75,10 @@ async function loadThreads(selectFirst=true){
   }catch(e){console.error(e);notice('加载 Thread 失败：'+e.message)}
 }
 async function selectThread(id,thread){
-  currentThread=id;$('threadTitle').textContent=thread?.title||'未命名话题';$('input').disabled=false;$('composer .send').disabled=false;
+  currentThread=id;requireElement('threadTitle').textContent=thread?.title||'未命名话题';requireElement('input').disabled=false;const sendBtn=document.querySelector('#composer .send');if(sendBtn)sendBtn.disabled=false;
   renderThreads(normalizeListFromDom());
-  $('messages').innerHTML='<div class="empty">加载消息中…</div>';
-  try{const data=await api(API.messages(id));renderMessages(normalizeMessages(data))}catch(e){console.error(e);$('messages').innerHTML='<div class="empty">加载消息失败</div>';notice('加载消息失败：'+e.message)}
+  requireElement('messages').innerHTML='<div class="empty">加载消息中…</div>';
+  try{const data=await api(API.messages(id));renderMessages(normalizeMessages(data))}catch(e){console.error(e);requireElement('messages').innerHTML='<div class="empty">加载消息失败</div>';notice('加载消息失败：'+e.message)}
 }
 function normalizeListFromDom(){
   return [...document.querySelectorAll('.thread')].map(el=>({thread_id:el.dataset.id,title:el.querySelector('div')?.textContent,status:el.querySelector('small')?.textContent}));
@@ -115,18 +116,18 @@ async function createThread(){
 }
 async function sendMessage(){
   if(!currentThread)return;
-  const input=$('input');const content=input.value.trim();if(!content)return;
-  const send=$('composer .send');send.disabled=true;input.disabled=true;notice('');
+  const input=requireElement('input');const content=input.value.trim();if(!content)return;
+  const send=document.querySelector('#composer .send');if(!send)throw new Error('Missing element: composer .send');send.disabled=true;input.disabled=true;notice('');
   try{
     const body={author:'liuliu',content,mentions:parseMentions(content)};
     await api(API.messages(currentThread),{method:'POST',body:JSON.stringify(body)});
     input.value='';await selectThread(currentThread,{title:$('threadTitle').textContent});
   }catch(e){console.error(e);notice('发送失败：'+e.message)}
-  finally{input.disabled=false;send.disabled=false;input.focus()}
+  finally{input.disabled=false;if(send)send.disabled=false;input.focus()}
 }
-$('newThread').addEventListener('click',createThread);
-$('composer').addEventListener('submit',e=>{e.preventDefault();sendMessage()});
-$('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
+requireElement('newThread').addEventListener('click',createThread);
+requireElement('composer').addEventListener('submit',e=>{e.preventDefault();sendMessage()});
+requireElement('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
 loadThreads();
 </script>
 </body>
