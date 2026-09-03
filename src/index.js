@@ -28,6 +28,7 @@ import { handleChatRequest } from './tools/chat.js';
 import { handleChatTool, CHAT_TOOL_DEFS } from './tools/chat_mcp.js';
 import { handleChatWebhook } from './tools/chat_webhook.js';
 import { processPendingEvents } from './modules/agent_runtime/event_processor.js';
+import { callChat2Api } from './modules/agent_runtime/chat2api_client.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -206,6 +207,17 @@ export default {
         if (url.pathname === '/api/chat/webhook' && request.method === 'POST') {
             ctx.waitUntil(processPendingEvents(env).catch(e => console.error('webhook proc err: ' + e.message)));
             return await handleChatWebhook(request, env);
+        }
+        if (url.pathname === '/api/chat2api/ask' && request.method === 'POST') {
+            try {
+                const body = await request.json();
+                const prompt = body?.message || '';
+                if (!prompt) return jsonResponse({ ok: false, error: 'missing message' }, 400);
+                const result = await callChat2Api(env, prompt);
+                return jsonResponse({ ok: true, reply: result.content, conversation_id: result.conversation_id }, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
         }
         if (url.pathname === '/chat' || url.pathname === '/chat/' || url.pathname.startsWith('/api/chat')) { const result = await handleChatRequest(request, url, env); if (result) return result; }
         if (url.pathname === '/memory-universe' || url.pathname === '/memory-universe/') {
