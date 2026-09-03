@@ -4,7 +4,7 @@
 // 兼容读取：CHATGPT_ACCESS_TOKEN（已配）→ CHAT2API_TOKEN（备选）
 // ============================================================
 
-export async function callChat2Api(env, prompt, conversationId) {
+export async function callChat2Api(env, prompt) {
     const token = env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || '';
     const response = await fetch(env.CHAT2API_URL, {
         method: 'POST',
@@ -15,7 +15,7 @@ export async function callChat2Api(env, prompt, conversationId) {
         body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [{ role: 'user', content: prompt }],
-            conversation_id: conversationId || env.GPT_CONVERSATION_ID || null,
+            conversation_id: env.GPT_CONVERSATION_ID || null,
             HISTORY_DISABLED: false,
             stream: false
         })
