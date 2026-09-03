@@ -2,6 +2,7 @@
 // chat_adapter.js — Runtime 与 chat.js 的适配层
 // Phase 1.5 @GPT 最小闭环
 // 说明：按 chat.js 真实签名适配
+// v2 (2026-09-03)：sendMessage 支持额外字段（tool_calls 随消息写入）
 // ============================================================
 import {
     createMessage,
@@ -26,11 +27,10 @@ export async function loadMessage(env, messageId) {
     return await readMessage(env, messageId);
 }
 
-export async function sendMessage(env, threadId, content) {
-    return await createMessage(env, threadId, {
-        author: "gpt",
-        content
-    });
+export async function sendMessage(env, threadId, content, extra = {}) {
+    // extra.tool_calls 会作为消息的额外字段（前端渲染工具卡片用）
+    const payload = { author: "gpt", content, ...extra };
+    return await createMessage(env, threadId, payload);
 }
 
 export async function acknowledge(env, eventId, status) {
