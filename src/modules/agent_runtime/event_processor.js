@@ -6,45 +6,50 @@
 // v4 (2026-09-03)：T2.5 审计链 —— 每次工具调用写 agent_tool_calls（运行事实源）
 // v5 (2026-09-03)：T3.1 context_read/context_update 真实实现（治失忆）
 // v5.1 (2026-09-03)：buildPrompt 强化 —— 明确告诉 GPT 工具已挂载，直接输出标记即执行
+// v6 (2026-09-03)：T3.1 主动注入 —— Runtime 自动读 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
 
 const MAX_TOOL_ROUNDS = 5;
 
+// ============ Thread 上下文读取（T3.1） ============
+// context_read 工具 + runToolLoop 主动注入共用
+async function readThreadContext(env, threadId, limit = 10) {
+    if (!threadId) return null;
+    const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+    const h = { 'Authorization': 'Bearer ' + key, 'apikey': key };
+    try {
+        const tr = await fetch(`${env.SUPABASE_URL}/rest/v1/chat_threads?thread_id=eq.${threadId}&select=thread_id,title,status,created_at,creator`, { headers: h });
+        const threads = tr.ok ? await tr.json() : [];
+        const mr = await fetch(`${env.SUPABASE_URL}/rest/v1/chat_messages?thread_id=eq.${threadId}&select=author,content,created_at&order=created_at.desc&limit=${limit}`, { headers: h });
+        const msgs = mr.ok ? await mr.json() : [];
+        msgs.reverse();
+        const cr = await fetch(`${env.SUPABASE_URL}/rest/v1/thread_contexts?thread_id=eq.${threadId}&select=summary,decisions,open_questions,recent_context,version,created_at&order=version.desc&limit=1`, { headers: h });
+        const contexts = cr.ok ? await cr.json() : [];
+        return {
+            thread: threads[0] || { thread_id: threadId },
+            recent_messages: msgs.map(m => ({ author: m.author, content: m.content, created_at: m.created_at })),
+            context: contexts[0] || null
+        };
+    } catch (e) {
+        console.error('[context_read] err: ' + e.message);
+        return null;
+    }
+}
+
 // ============ 工具注册表（T2 先放只读/安全工具） ============
 // 每个工具：async (env, args, ctx) => 返回结果对象，ctx 携带当前消息上下文（如 thread_id）
 const TOOLS = {
     echo: async (env, args) => ({ ok: true, result: args }),
     context_read: async (env, args, ctx) => {
-        // 读取 thread 上下文（治失忆）—— T3.1 真实实现
-        // 返回：thread 元信息 + 最近 N 条消息 + thread_contexts 最新摘要（版本化）
+        // 读取 thread 上下文（治失忆）—— T3.1 真实实现（复用 readThreadContext）
         const threadId = args?.thread_id || ctx?.thread_id;
         const limit = Math.min(parseInt(args?.limit) || 20, 50);
         if (!threadId) return { ok: false, error: '缺少 thread_id' };
-        const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
-        const h = { 'Authorization': 'Bearer ' + key, 'apikey': key };
-        try {
-            // 1) thread 元信息
-            const tr = await fetch(`${env.SUPABASE_URL}/rest/v1/chat_threads?thread_id=eq.${threadId}&select=thread_id,title,status,created_at,creator`, { headers: h });
-            const threads = tr.ok ? await tr.json() : [];
-            // 2) 最近 N 条消息（按时间倒序取再反转为正序）
-            const mr = await fetch(`${env.SUPABASE_URL}/rest/v1/chat_messages?thread_id=eq.${threadId}&select=author,content,created_at&order=created_at.desc&limit=${limit}`, { headers: h });
-            const msgs = mr.ok ? await mr.json() : [];
-            msgs.reverse();
-            // 3) thread_contexts 最新版本摘要（不覆盖历史，取 version 最大）
-            const cr = await fetch(`${env.SUPABASE_URL}/rest/v1/thread_contexts?thread_id=eq.${threadId}&select=summary,decisions,open_questions,recent_context,version,created_at&order=version.desc&limit=1`, { headers: h });
-            const contexts = cr.ok ? await cr.json() : [];
-            return {
-                ok: true,
-                thread: threads[0] || { thread_id: threadId },
-                recent_messages: msgs.map(m => ({ author: m.author, content: m.content, created_at: m.created_at })),
-                context: contexts[0] || null,
-                note: '返回消息上限 ' + limit + '，需要更多用 limit 参数'
-            };
-        } catch (e) {
-            return { ok: false, error: 'context_read 失败: ' + e.message };
-        }
+        const data = await readThreadContext(env, threadId, limit);
+        if (!data) return { ok: false, error: 'context_read 读取失败' };
+        return { ok: true, ...data, note: '返回消息上限 ' + limit + '，需要更多用 limit 参数' };
     },
     context_update: async (env, args, ctx) => {
         // 维护 thread 摘要（T3.1）—— version 递增新插入，不覆盖历史（75号设计）
@@ -162,33 +167,12 @@ function stripToolMarkers(content) {
         .trim();
 }
 
-function buildPrompt(message) {
-    return `你是 Common Ground 中的 GPT Agent。
+function buildPrompt(message, context) {
+    const ctxBlock = context
+        ? `【系统已注入当前 Thread 上下文】\n标题: ${context.thread?.title || message.thread_id}\n状态: ${context.thread?.status || 'unknown'}\n最近消息 (${context.recent_messages?.length || 0}条):\n${(context.recent_messages || []).map(m => `[${m.author}] ${String(m.content).slice(0, 200)}`).join('\n') || '(空)'}\n\n历史摘要 v${context.context?.version || '-'}:\n${context.context?.summary || '(暂无摘要)'}\n决定: ${JSON.stringify(context.context?.decisions || [])}\n开放问题: ${JSON.stringify(context.context?.open_questions || [])}\n下一步: ${JSON.stringify((context.context?.recent_context && context.context.recent_context.next_actions) || [])}`
+        : '';
 
-请直接、简洁地回复下面这条来自用户的 @ 消息。
-
-Thread:
-${message.thread_id}
-
-用户:
-${message.content}
-
-你可以使用工具。需要用工具时，在回复中直接输出一行：
-【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】
-
-重要：工具已由 Runtime 挂载好，你输出标记后会自动执行并将结果回传给你，继续基于结果回复即可。
-不要怀疑工具是否可用，也不要空谈“应该调用”，直接输出标记就会真正执行。
-
-可用工具：
-- echo：回显参数（测试用）
-- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）
-- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）
-- github_read：读取 GitHub 文件
-- supabase_query：查询 Supabase 数据
-
-你每次被 @ 时建议先调 context_read 恢复上下文再回答。若讨论中有重要决定/结论，用 context_update 记入 Thread 摘要。
-
-工具结果会回传给你，你基于结果继续回复。如果不需要工具就直接回复用户。`;
+    return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复下面这条来自用户的 @ 消息。\n\nThread:\n${message.thread_id}\n\n用户:\n${message.content}\n${ctxBlock}\n\n工具已挂载到 Worker Runtime：你在回复中输出一行【工具调用】标记，Worker 会自动解析执行并把结果回传给你，随后你基于结果继续。不需要先确认工具是否可用，直接输出标记即可。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件\n- supabase_query：查询 Supabase 数据\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
 }
 
 // 清洗 GPT 回复里的 reaction 元数据（chat2api 网关把 OpenAI 的 reaction 混进了文本）
@@ -205,8 +189,10 @@ function cleanReplyContent(text) {
 }
 
 async function runToolLoop(env, message, event) {
+    // T3.1 防失忆：Runtime 主动读取 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
+    const autoContext = await readThreadContext(env, message?.thread_id, 10);
     // 维护多轮消息上下文
-    const messages = [{ role: 'user', content: buildPrompt(message) }];
+    const messages = [{ role: 'user', content: buildPrompt(message, autoContext) }];
     const toolCalls = [];
     let finalContent = '';
 
