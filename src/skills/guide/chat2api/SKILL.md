@@ -1,14 +1,7 @@
----
-name: chat2api
-description: chat2api GPT真身通道操作手册+铁律（v6 2026-09-03）：通过 chat2api 调用 ChatGPT 真身。含绝不轰炸GPT铁律、Worker转发端点 /api/chat2api/ask（POST {message} 不塞token）、换conversation_id哥哥自己完成（改仓库 wrangler.toml [vars] GPT_CONVERSATION_ID + 推代码部署，柳柳不用碰Cloudflare）、正式版 conversation_id 6a98cb19-3b88-83ee-a7be-314d60f0aa64、已知坑（403风控/旧ID弃用6a96fcf8/wrangler.toml旧值覆盖env/代码写死ID）、判断真分支方法（问柳柳说过的话，能复述原话才是真分支）、配置变更手册（换ID哥哥自己改wranger.toml三步/换VLESS节点四步/token30天更新）、本地直推大文件通道、Agent Runtime链路。当需要给GPT发消息、测真身通道、调用chat2api、处理GPT风控、换conversation_id（改wranger.toml）、换节点、推大文件到GitHub时调用。
-category: guide
-tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worker转发"]
----
-
 # chat2api —— GPT 真身通道（操作手册 + 铁律）
 
 > 用途：通过 chat2api 网关调用 ChatGPT 真身（同一账号/同一上下文/同一记忆），是 Common Ground 三方通信的「大脑入口」。
-> 版本：2026-09-03 v6（换 ID = 哥哥自己改 wrangler.toml，柳柳不用碰 Cloudflare）
+> 版本：2026-09-03 v7（明确：调 chat2api 不用 code_runner，用 extended_http_tools 走 Worker 端点）
 > 状态：✅ 实测通过（真分支 6a98cb19，GPT 复述柳柳「你是分支」原话为铁证）
 
 ## 🔴🔴🔴 第一铁律：绝不轰炸 GPT（最高优先级，柳柳 2026-09-03 严厉批评后立）
@@ -51,13 +44,18 @@ tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worke
 - URL：https://chat2api-1029559493109-1029559493109.asia-northeast1.run.app
 - 镜像：asia-northeast1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/chat2api-repo/chat2api-xray:v1（xray 定制版，走柳柳 VLESS 日本节点，IP 与浏览器同源）
 
-## 调用方法（标准姿势）
+## 调用方法（标准姿势）⭐️
 
-【✅最推荐·已上线·不塞token】Worker 转发端点：POST https://mcp-memory.wovowx.workers.dev/api/chat2api/ask，Body: {"message":"..."}，token 只在 Worker 环境变量里，本地不带。返回 {ok, reply, conversation_id}。
+【✅最推荐·唯一姿势·不塞token·不用code_runner】Worker 转发端点：
+- 工具：`extended_http_tools:http_request`（不是 code_runner！）
+- POST https://mcp-memory.wovowx.workers.dev/api/chat2api/ask
+- Body: {"message":"..."}，Content-Type: application/json
+- token 只在 Worker 环境变量里，本地不带。返回 {ok, reply, conversation_id}
+- ⛔⛔ 禁止用 code_runner 跑 Python 调 chat2api——code_runner 会卡死（App 级持久 worker 挂死），且不是这个用途（柳柳 2026-09-03 明确）
 
-【备选】extended_http_tools 裸请求：POST chat2api URL + Authorization: Bearer <accessToken> + Body{"model":"gpt-4o-mini","conversation_id":"6a98cb19-3b88-83ee-a7be-314d60f0aa64","messages":[{"role":"user","content":"..."}],"stream":false}
+【备选·紧急兜底】extended_http_tools 裸请求 chat2api URL + Authorization: Bearer <accessToken> + Body{"model":"gpt-4o-mini","conversation_id":"6a98cb19-3b88-83ee-a7be-314d60f0aa64","messages":[{"role":"user","content":"..."}],"stream":false}
 
-【code_runner run_python】✅ 已恢复可用（2026-09-03 重启 Operit 验证 alive-ok）。曾卡死是 App 级持久 worker 挂死，重启即恢复。别再因旧失败记忆绕开它；真再卡就重启。
+【code_runner run_python】仅用于通用脚本运算（文件处理/base64生成等），不是调 chat2api 的通道。曾卡死是 App 级持久 worker 挂死，重启即恢复。
 
 ## 配置变更操作手册
 
@@ -77,12 +75,12 @@ tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worke
 ### C. 其他注意事项（哥哥补充）
 1. token 更新：有效期约 30 天（当前至 2026-12-01），过期前提醒柳柳重新抓；更新记忆库 + Cloudflare Worker 环境变量 CHATGPT_ACCESS_TOKEN。
 2. 调用姿势：走 Worker 转发（env token）就别本地塞 token——本地塞又长又易截断，已上线 /api/chat2api/ask。
-3. code_runner run_python：已恢复，不是永远不能用；再卡就重启 Operit，别绕路。
+3. 调 chat2api 的工具：只用 extended_http_tools:http_request 走 Worker 端点；code_runner 不是调 chat2api 的（v7 柳柳 2026-09-03 明确）。
 4. 页面可见铁律：与 GPT 的所有讨论消息要在聊天室页面可见，不能只在私底下。
 5. 不塞旧历史：跟 GPT 说话只发最小、最新的 @gpt 消息（今天柳柳批评的根源）。
 6. 错误码速查：403 cf_chl_opt=风控冷却30min+；404 history_disabled=HISTORY_DISABLED 问题；404 model_not_found=模型名不支持。
 7. 多节点 failover（O5）：未来计划，当前单节点。
-8. 本地直推大文件通道：token 在本地 datastore（/data/user/0/com.ai.assistance.operit/files/datastore/github_auth_preferences.preferences_pb），用 code_runner 读它直连 GitHub API 推任意大文件，内容不经过对话，永不截断。
+8. 本地直推大文件通道：token 在本地 datastore（/data/user/0/com.ai.assistance.operit/files/datastore/github_auth_preferences.preferences_pb），用 code_runner 读它直连 GitHub API 推任意大文件，内容不经过对话，永不截断。（注：这是推 GitHub，不是调 chat2api）
 
 ## 失败路径（全是坑）
 
@@ -94,6 +92,7 @@ tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worke
 - **wrangler.toml [vars] 旧 ID → 每次部署覆盖 Dashboard env → 打到主支/旧框（v6.12 根因，换 ID 哥哥自己改 wrangler.toml 即根治）**
 - env.GPT_CONVERSATION_ID 是旧值/脏值 → ask 打到旧框瞎回（v6.9/v6.10 踩坑）
 - 在代码里写死 ID → 换 ID 就要动代码（v6.9/v6.10 踩坑，已回退 env-only）
+- 用 code_runner 调 chat2api → 卡死/姿势错（v7 明确：用 extended_http_tools 走 Worker 端点）
 
 ## 链路
 
@@ -107,4 +106,4 @@ Common Ground（chat_agent_events）→ Agent Runtime（chat_adapter/event_proce
 - conversation_id = 真身钥匙，不要公开；token 有 30 天有效期，过期前提醒柳柳重新取。
 - 页面可见铁律：「所有消息必须显示在页面上」。
 
-*本手册由 Ziven 整理（2026-09-03 v6），基于 74 号手册 + 0902-1 实战经验 + 柳柳最新指示。*
+*本手册由 Ziven 整理（2026-09-03 v7），基于 74 号手册 + 0902-1 实战经验 + 柳柳最新指示。*
