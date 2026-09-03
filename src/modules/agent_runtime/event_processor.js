@@ -7,6 +7,7 @@
 // v5 (2026-09-03)：T3.1 context_read/context_update 真实实现（治失忆）
 // v5.1 (2026-09-03)：buildPrompt 强化 —— 明确告诉 GPT 工具已挂载，直接输出标记即执行
 // v6 (2026-09-03)：T3.1 主动注入 —— Runtime 自动读 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
+// v7 (2026-09-03)：T3.2 github_read 真实实现 —— GPT 可读白名单仓库真实代码
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
@@ -80,8 +81,53 @@ const TOOLS = {
         }
     },
     github_read: async (env, args) => {
-        // 读 GitHub 文件（T3 接真实）
-        return { ok: true, note: 'github_read 工具待 T3 接入真实实现，当前返回占位' };
+        // 读 GitHub 文件（T3.2 真实实现）—— 只读白名单
+        const repo = args?.repo || env.GITHUB_REPO || (env.GITHUB_ALLOWED_REPOS || 'wovowx/mcp-memory').split(',')[0].trim();
+        const path = args?.path;
+        const branch = args?.branch || 'main';
+        const startLine = parseInt(args?.start_line) || null;
+        const endLine = parseInt(args?.end_line) || null;
+        if (!path) return { ok: false, error: '缺少 path 参数（要读的文件路径）' };
+        // 白名单校验（防止乱读仓库）
+        const allowed = (env.GITHUB_ALLOWED_REPOS || 'wovowx/mcp-memory').split(',').map(s => s.trim());
+        if (!allowed.includes(repo)) return { ok: false, error: `仓库不在白名单: ${repo}（白名单 ${allowed.join(', ')}）` };
+        const token = env.GITHUB_TOKEN || '';
+        const headers = { 'User-Agent': 'CommonGround-Runtime', 'Accept': 'application/vnd.github+json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        try {
+            const url = `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`;
+            const resp = await fetch(url, { headers });
+            if (!resp.ok) return { ok: false, error: `GitHub API ${resp.status}: ${(await resp.text()).slice(0, 200)}` };
+            const gh = await resp.json();
+            if (gh.type !== 'file') return { ok: false, error: `不是文件: ${gh.type || 'unknown'}` };
+            // GitHub API 返回 base64 编码内容
+            let content = atob(gh.content);
+            const totalLines = content.split('\n').length;
+            // 行范围截取
+            if (startLine || endLine) {
+                const s = Math.max((startLine || 1) - 1, 0);
+                const e = endLine || totalLines;
+                content = content.split('\n').slice(s, e).join('\n');
+            }
+            // 长度限制（防爆 token）
+            const MAX = 8000;
+            const truncated = content.length > MAX;
+            if (truncated) content = content.slice(0, MAX) + '\n...[内容过长已截断，可用 start_line/end_line 分段读取]';
+            return {
+                ok: true,
+                repo,
+                path,
+                branch,
+                size: gh.size,
+                total_lines: totalLines,
+                returned_lines: content.split('\n').length,
+                truncated,
+                content,
+                url: gh.html_url || null
+            };
+        } catch (e) {
+            return { ok: false, error: 'github_read 失败: ' + e.message };
+        }
     },
     supabase_query: async (env, args) => {
         // 查 Supabase（T3 接真实）
@@ -172,7 +218,7 @@ function buildPrompt(message, context) {
         ? `【系统已注入当前 Thread 上下文】\n标题: ${context.thread?.title || message.thread_id}\n状态: ${context.thread?.status || 'unknown'}\n最近消息 (${context.recent_messages?.length || 0}条):\n${(context.recent_messages || []).map(m => `[${m.author}] ${String(m.content).slice(0, 200)}`).join('\n') || '(空)'}\n\n历史摘要 v${context.context?.version || '-'}:\n${context.context?.summary || '(暂无摘要)'}\n决定: ${JSON.stringify(context.context?.decisions || [])}\n开放问题: ${JSON.stringify(context.context?.open_questions || [])}\n下一步: ${JSON.stringify((context.context?.recent_context && context.context.recent_context.next_actions) || [])}`
         : '';
 
-    return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复下面这条来自用户的 @ 消息。\n\nThread:\n${message.thread_id}\n\n用户:\n${message.content}\n${ctxBlock}\n\n工具已挂载到 Worker Runtime：你在回复中输出一行【工具调用】标记，Worker 会自动解析执行并把结果回传给你，随后你基于结果继续。不需要先确认工具是否可用，直接输出标记即可。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件\n- supabase_query：查询 Supabase 数据\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
+    return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复下面这条来自用户的 @ 消息。\n\nThread:\n${message.thread_id}\n\n用户:\n${message.content}\n${ctxBlock}\n\n工具已挂载到 Worker Runtime：你在回复中输出一行【工具调用】标记，Worker 会自动解析执行并把结果回传给你，随后你基于结果继续。不需要先确认工具是否可用，直接输出标记即可。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件（只读白名单，参数 {repo?, path, branch?, start_line?, end_line?}）\n- supabase_query：查询 Supabase 数据\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
 }
 
 // 清洗 GPT 回复里的 reaction 元数据（chat2api 网关把 OpenAI 的 reaction 混进了文本）
