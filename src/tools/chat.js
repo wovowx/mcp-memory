@@ -1,9 +1,10 @@
 // ============================================================
-// Chatroom MVP - 页面 + 通信 API 路由（v2.1）
+// Chatroom MVP - 页面 + 通信 API 路由（v2.4）
 // 2026-09-02 Phase 1: atomic event claim + claimed_at
 // v2.1 (2026-09-02): actor_id 双写 + message_number 计数器 + time_context
 // v2.2 (2026-09-03): /chat 路由 cache-busting（raw CDN 缓存导致页面不更新）
 // v2.3 (2026-09-03): createMessage 支持 tool_calls 字段（Runtime Tool Loop）
+// v2.4 (2026-09-03): 三方对等触发 + 真@结构化 mentions + 事件模型升级（depth/防自循环）
 // ============================================================
 import { jsonResponse, buildErrorResponse } from '../utils/response.js';
 
@@ -14,6 +15,7 @@ const EVENT_STATUSES = ['processing', 'success', 'failed'];
 const PRECIPITATE_KEYWORD = '@沉淀';
 const MAX_PREVIEW_CHARS = 200;
 const DEFAULT_EVENT_LIMIT = 50;
+const MAX_DEPTH = 5; // v2.4 防自循环：Agent 互@往返深度上限
 
 const ACTOR_IDS = {
     legacy_import: "00000000-0000-0000-0000-000000000001",
@@ -107,21 +109,56 @@ function parseMentions(content) {
 }
 function contentPreview(content){return Array.from(content).slice(0,MAX_PREVIEW_CHARS).join('').replace(/\s+/g,' ').trim();}
 
+// v2.4 真@结构化 mentions：合并解析函数（文本扫描兜底 + payload.mentions 结构化优先）
+function parseStructuredMentions(payload, content) {
+    const {mentions: textMentions, events: textEvents} = parseMentions(content);
+    const mentions = [...textMentions];
+    const events = [...textEvents];
+    const structured = Array.isArray(payload.mentions) ? payload.mentions : [];
+    for (const m of structured) {
+        const agentId = String(m && (m.agent_id || m.agent || m) || '').toLowerCase();
+        if (!agentId) continue;
+        if (ALL_ACTORS.includes(agentId) && !mentions.includes(agentId)) mentions.push(agentId);
+        if (AGENTS.includes(agentId) && !events.includes(agentId)) events.push(agentId);
+    }
+    return {mentions, events};
+}
+
+// v2.4 防自循环：沿 reply_to 链计算往返深度（查原消息事件里的最大 depth + 1）
+async function resolveDepth(env, replyTo) {
+    if (!replyTo) return 0;
+    try {
+        const rows = await sbQuery(env, 'chat_agent_events', { select: 'payload', filters: { message_id: replyTo }, limit: 10 });
+        let maxDepth = 0;
+        for (const row of rows) {
+            const d = row.payload && row.payload.depth != null ? Number(row.payload.depth) : 0;
+            if (d > maxDepth) maxDepth = d;
+        }
+        return maxDepth + 1;
+    } catch (e) {
+        return 1;
+    }
+}
+
 export async function createMessage(env, threadId, payload) {
     const author=String(payload.author||'liuliu').toLowerCase(); const content=String(payload.content||'').trim();
     if(!content)throw new Error('消息内容不能为空'); if(!ALL_ACTORS.includes(author))throw new Error(`非法 author: ${author}`);
-    const {mentions,events}=parseMentions(content);
+    // v2.4 真@结构化 mentions：优先 payload.mentions([{agent_id,offset}])，文本扫描兜底，合并去重
+    const {mentions, events} = parseStructuredMentions(payload, content);
     const actor_id = ACTOR_IDS[author] || ACTOR_IDS.legacy_import;
     const message_number = await getNextMessageNumber(env, threadId);
+    const replyTo = payload.reply_to || null;
     const toolCalls = payload.tool_calls && Array.isArray(payload.tool_calls) ? payload.tool_calls : [];
-    const inserted=await sbInsert(env,'chat_messages',{thread_id:threadId,author,actor_id,message_number,content,mentions:mentions.length?mentions:[],reply_to:payload.reply_to||null,tool_calls:toolCalls});
+    const inserted=await sbInsert(env,'chat_messages',{thread_id:threadId,author,actor_id,message_number,content,mentions:mentions.length?mentions:[],reply_to:replyTo,tool_calls:toolCalls});
     const message=Array.isArray(inserted)?inserted[0]:inserted; const messageId=message?.message_id; if(!messageId)throw new Error('消息写入成功但未返回 message_id');
-    // v2.2 防自循环：只有真人（liuliu）的消息才创建 Agent 事件（GPT 回复里出现 @GPT 不再自触发）
-    const eventAgents = author === 'liuliu' ? events : [];
+    // v2.4 三方对等触发：任何 actor @任何 agent 都创建事件（liuliu/gpt/ziven 互@全通）；不再限 liuliu
+    // 防自循环：Agent 未显式 @ 时 events 为空天然不触发；depth 沿 reply_to 递增，MAX_DEPTH 兜底
+    const depth = await resolveDepth(env, replyTo);
+    const eventAgents = depth >= MAX_DEPTH ? [] : events;
     const created=[];const existed=[];const failed=[];
-    for(const agent of eventAgents){const eventData={message_id:messageId,agent,status:'processing',claimed_at:null,payload:{event_type:'message_created',thread_id:threadId,author,content_preview:contentPreview(content),mentions}};
+    for(const agent of eventAgents){const eventData={message_id:messageId,agent,status:'processing',claimed_at:null,payload:{event_type:'message_created',thread_id:threadId,author,content_preview:contentPreview(content),mentions,source_message_id:messageId,trigger_agent:author,depth}};
         try{const result=await sbInsert(env,'chat_agent_events',eventData,{ignoreDuplicates:true});if(Array.isArray(result)&&result.length===0)existed.push(agent);else if(Array.isArray(result)&&result.length>0)created.push(agent);else throw new Error('事件写入成功但未返回可识别结果');}catch(e){failed.push({agent,error:e.message});}}
-    return{message,mentions,events:created,existed_events:existed,partial_failure:failed.length>0,event_errors:failed};
+    return{message,mentions,events:created,existed_events:existed,partial_failure:failed.length>0,event_errors:failed,depth,self_loop_guard:depth>=MAX_DEPTH};
 }
 export async function getPendingEvents(env,agent,limit=DEFAULT_EVENT_LIMIT,offset=0){
     if(!AGENTS.includes(agent))throw new Error(`非法 agent: ${agent}`); const safeLimit=Math.min(Math.max(Number(limit)||DEFAULT_EVENT_LIMIT,1),100); const safeOffset=Math.max(Number(offset)||0,0);
@@ -155,11 +192,5 @@ export async function handleChatRequest(request,url,env){
         if(segments.length===3&&segments[2]==='threads'&&method==='POST'){const body=await request.json();const title=String(body.title||'未命名话题').trim();const creator=String(body.creator||'liuliu').toLowerCase();if(!ALL_ACTORS.includes(creator))throw new Error(`非法 creator: ${creator}`);const data=await sbInsert(env,'chat_threads',{title,creator,status:'active'});return jsonResponse(Array.isArray(data)?data[0]:data,201);}
         if(segments.length===5&&segments[2]==='threads'&&segments[4]==='messages'&&method==='GET'){const id=decodeURIComponent(segments[3]);return jsonResponse(await getMessagesWithTime(env,id));}
         if(segments.length===5&&segments[2]==='threads'&&segments[4]==='messages'&&method==='POST'){const id=decodeURIComponent(segments[3]);const payload=await request.json();const result=await createMessage(env,id,payload);return jsonResponse(result,result.partial_failure?207:201);}
-        if(segments.length===3&&segments[2]==='events'&&method==='GET'){const agent=url.searchParams.get('agent');const status=url.searchParams.get('status')||'processing';const limit=url.searchParams.get('limit')||DEFAULT_EVENT_LIMIT;const offset=url.searchParams.get('offset')||0;if(status==='processing'&&agent)return jsonResponse(await getPendingEvents(env,agent,limit,offset));if(!EVENT_STATUSES.includes(status))throw new Error(`非法 status: ${status}`);const safeLimit=Math.min(Math.max(Number(limit)||DEFAULT_EVENT_LIMIT,1),100);const safeOffset=Math.max(Number(offset)||0,0);const data=await sbQuery(env,'chat_agent_events',{filters:agent?{agent,status}:{status},order:'created_at.asc,event_id.asc',limit:safeLimit+1,offset:safeOffset});const hasMore=data.length>safeLimit;return jsonResponse({events:hasMore?data.slice(0,safeLimit):data,limit:safeLimit,offset:safeOffset,has_more:hasMore});}
-        if(segments.length===5&&segments[2]==='events'&&segments[4]==='message'&&method==='GET'){const eventId=decodeURIComponent(segments[3]);const eventRows=await sbQuery(env,'chat_agent_events',{select:'event_id,message_id,agent,status,claimed_at,payload,created_at,updated_at',filters:{event_id:eventId},limit:1});if(!eventRows.length)throw new Error('事件不存在');return jsonResponse(await readMessage(env,eventRows[0].message_id));}
-        if(segments.length===4&&segments[2]==='messages'&&method==='GET')return jsonResponse(await readMessage(env,decodeURIComponent(segments[3])));
-        if(segments.length===5&&segments[2]==='events'&&segments[4]==='claim'&&method==='POST'){const eventId=decodeURIComponent(segments[3]);const body=await request.json();const agent=String(body.agent||'').toLowerCase();return jsonResponse(await claimEvent(env,eventId,agent));}
-        if(segments.length===5&&segments[2]==='events'&&segments[4]==='update'&&method==='POST'){const eventId=decodeURIComponent(segments[3]);const body=await request.json();const agent=String(body.agent||'').toLowerCase();return jsonResponse(await ackEvent(env,eventId,agent,body.status));}
-        return buildErrorResponse('API 路由不存在: '+path,404);
     }catch(e){return buildErrorResponse(e.message,400);}
 }
