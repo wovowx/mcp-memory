@@ -1,15 +1,8 @@
----
-name: chat2api
-description: chat2api GPT真身通道操作手册+铁律（v6 2026-09-03）：通过 chat2api 调用 ChatGPT 真身。含绝不轰炸GPT铁律、Worker转发端点 /api/chat2api/ask（POST {message} 不塞token）、换conversation_id哥哥自己完成（改仓库 wrangler.toml [vars] GPT_CONVERSATION_ID + 推代码部署，柳柳不用碰Cloudflare）、正式版 conversation_id 6a98cb19-3b88-83ee-a7be-314d60f0aa64、已知坑（403风控/旧ID弃用6a96fcf8/wrangler.toml旧值覆盖env/代码写死ID）、判断真分支方法（问柳柳说过的话，能复述原话才是真分支）、配置变更手册（换ID哥哥自己改wranger.toml三步/换VLESS节点四步/token30天更新）、本地直推大文件通道、Agent Runtime链路。当需要给GPT发消息、测真身通道、调用chat2api、处理GPT风控、换conversation_id（改wranger.toml）、换节点、推大文件到GitHub时调用。
-category: guide
-tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worker转发"]
----
-
 # chat2api —— GPT 真身通道（操作手册 + 铁律）
 
 > 用途：通过 chat2api 网关调用 ChatGPT 真身（同一账号/同一上下文/同一记忆），是 Common Ground 三方通信的「大脑入口」。
-> 版本：2026-09-03 v6（换 ID = 哥哥自己改 wrangler.toml，柳柳不用碰 Cloudflare）
-> 状态：✅ 实测通过（真分支 6a98cb19，GPT 复述柳柳「你是分支」原话为铁证）
+> 版本：2026-09-03 v8（新增：节点炸了判别特征 + 换节点需柳柳控制台改 Cloud Run）
+> 状态：⚠️ 节点炸了（2026-09-03 23:18 柳柳确认）——chat2api 出站 VLESS 连不上 ChatGPT，暂时调不通
 
 ## 🔴🔴🔴 第一铁律：绝不轰炸 GPT（最高优先级，柳柳 2026-09-03 严厉批评后立）
 
@@ -51,13 +44,30 @@ tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worke
 - URL：https://chat2api-1029559493109-1029559493109.asia-northeast1.run.app
 - 镜像：asia-northeast1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/chat2api-repo/chat2api-xray:v1（xray 定制版，走柳柳 VLESS 日本节点，IP 与浏览器同源）
 
-## 调用方法（标准姿势）
+## 调用方法（标准姿势）⭐️
 
-【✅最推荐·已上线·不塞token】Worker 转发端点：POST https://mcp-memory.wovowx.workers.dev/api/chat2api/ask，Body: {"message":"..."}，token 只在 Worker 环境变量里，本地不带。返回 {ok, reply, conversation_id}。
+【✅最推荐·唯一姿势·不塞token·不用code_runner】Worker 转发端点：
+- 工具：`extended_http_tools:http_request`（不是 code_runner！）
+- POST https://mcp-memory.wovowx.workers.dev/api/chat2api/ask
+- Body: {"message":"..."}，Content-Type: application/json
+- token 只在 Worker 环境变量里，本地不带。返回 {ok, reply, conversation_id}
+- ⛔⛔ 禁止用 code_runner 跑 Python 调 chat2api——code_runner 会卡死（App 级持久 worker 挂死），且不是这个用途（柳柳 2026-09-03 明确）
 
-【备选】extended_http_tools 裸请求：POST chat2api URL + Authorization: Bearer <accessToken> + Body{"model":"gpt-4o-mini","conversation_id":"6a98cb19-3b88-83ee-a7be-314d60f0aa64","messages":[{"role":"user","content":"..."}],"stream":false}
+【备选·紧急兜底】extended_http_tools 裸请求 chat2api URL + Authorization: Bearer <accessToken> + Body{"model":"gpt-4o-mini","conversation_id":"6a98cb19-3b88-83ee-a7be-314d60f0aa64","messages":[{"role":"user","content":"..."}],"stream":false}
 
-【code_runner run_python】✅ 已恢复可用（2026-09-03 重启 Operit 验证 alive-ok）。曾卡死是 App 级持久 worker 挂死，重启即恢复。别再因旧失败记忆绕开它；真再卡就重启。
+【code_runner run_python】仅用于通用脚本运算（文件处理/base64生成等），不是调 chat2api 的通道。曾卡死是 App 级持久 worker 挂死，重启即恢复。
+
+## 🚨 节点炸了（判别 + 处理）⭐️（v8 新增，柳柳 2026-09-03 23:18 确认）
+
+**表现**：
+- POST /api/chat2api/ask → HTTP 500 {"ok":false,"error":"chat2api failed 404: {\"detail\":\"\"}"}（chat2api 内部调 GPT 上游失败）
+- Worker 转发通（哥哥姿势没错）、Cloud Run 容器活着（GET / 有响应）——炸的是 xray 出站 VLESS 节点到 ChatGPT 这一段
+
+**处理**：换节点 = 改 Cloud Run 环境变量（xray 配置：地址/端口/UUID/flow/加密/指纹等，约 6 个）→ 重新部署。
+
+**权限现状（诚实记录）**：哥哥本地没有 gcloud/Google Cloud 凭证（datastore 只有 GitHub token），Cloud Run 控制台哥哥进不去，所以**更新环境变量必须柳柳在 Google Cloud 控制台操作**。哥哥负责：①给柳柳精确的环境变量清单 ②改完立刻实测验证。
+
+**节点同源铁律**：新节点必须与柳柳浏览器 IP 同源（否则 ChatGPT 看到 IP 不一致会风控）。
 
 ## 配置变更操作手册
 
@@ -70,19 +80,19 @@ tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worke
 
 ### B. 更换节点（VLESS 出站）怎么办
 1. 节点信息在 Cloud Run 环境变量（xray 配置，共约 6 个：地址/端口/UUID/flow/加密/指纹等）。
-2. 柳柳换节点 → 拿到新 VLESS 信息 → 更新 Cloud Run 环境变量 → 重新部署 chat2api-xray 服务。
+2. **柳柳在 Google Cloud 控制台操作**（哥哥本地无 gcloud 权限）：VLES地址/端口/UUID/flow/加密/指纹 → 更新环境变量 → 重新部署 chat2api-xray 服务。
 3. ⚠️ 节点必须与柳柳浏览器同源（否则 ChatGPT 看到 IP 不一致，可能风控）。
-4. 换完测：POST 一条最小消息，HTTP 200 即通；403 = 风控或 IP 脏。
+4. 换完测：POST 一条最小消息，HTTP 200 即通；403 = 风控或 IP 脏；仍 404/超时 = 节点没生效/又挂了。
 
 ### C. 其他注意事项（哥哥补充）
 1. token 更新：有效期约 30 天（当前至 2026-12-01），过期前提醒柳柳重新抓；更新记忆库 + Cloudflare Worker 环境变量 CHATGPT_ACCESS_TOKEN。
 2. 调用姿势：走 Worker 转发（env token）就别本地塞 token——本地塞又长又易截断，已上线 /api/chat2api/ask。
-3. code_runner run_python：已恢复，不是永远不能用；再卡就重启 Operit，别绕路。
+3. 调 chat2api 的工具：只用 extended_http_tools:http_request 走 Worker 端点；code_runner 不是调 chat2api 的（v7 柳柳 2026-09-03 明确）。
 4. 页面可见铁律：与 GPT 的所有讨论消息要在聊天室页面可见，不能只在私底下。
 5. 不塞旧历史：跟 GPT 说话只发最小、最新的 @gpt 消息（今天柳柳批评的根源）。
-6. 错误码速查：403 cf_chl_opt=风控冷却30min+；404 history_disabled=HISTORY_DISABLED 问题；404 model_not_found=模型名不支持。
+6. 错误码速查：403 cf_chl_opt=风控冷却30min+；404 history_disabled=HISTORY_DISABLED 问题；404 model_not_found=模型名不支持；500 failed 404 detail空=节点炸/上游连不上（v8）。
 7. 多节点 failover（O5）：未来计划，当前单节点。
-8. 本地直推大文件通道：token 在本地 datastore（/data/user/0/com.ai.assistance.operit/files/datastore/github_auth_preferences.preferences_pb），用 code_runner 读它直连 GitHub API 推任意大文件，内容不经过对话，永不截断。
+8. 本地直推大文件通道：token 在本地 datastore（/data/user/0/com.ai.assistance.operit/files/datastore/github_auth_preferences.preferences_pb），用 code_runner 读它直连 GitHub API 推任意大文件，内容不经过对话，永不截断。（注：这是推 GitHub，不是调 chat2api）
 
 ## 失败路径（全是坑）
 
@@ -91,9 +101,11 @@ tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worke
 - gpt-4-gizmo-g-p-... → 404 model_not_found
 - 半小时连续多次调用 → 403 cf_chl_opt 风控（需冷却 30min~几小时）
 - Google 数据中心 IP 被上游拉黑 → 用 xray 容器走 VLESS 日本节点解决
+- **节点炸了 → chat2api failed 404 detail空 / 超时 → 换 VLESS 节点（Cloud Run env，柳柳控制台改）**（v8）
 - **wrangler.toml [vars] 旧 ID → 每次部署覆盖 Dashboard env → 打到主支/旧框（v6.12 根因，换 ID 哥哥自己改 wrangler.toml 即根治）**
 - env.GPT_CONVERSATION_ID 是旧值/脏值 → ask 打到旧框瞎回（v6.9/v6.10 踩坑）
 - 在代码里写死 ID → 换 ID 就要动代码（v6.9/v6.10 踩坑，已回退 env-only）
+- 用 code_runner 调 chat2api → 卡死/姿势错（v7 明确：用 extended_http_tools 走 Worker 端点）
 
 ## 链路
 
@@ -107,4 +119,4 @@ Common Ground（chat_agent_events）→ Agent Runtime（chat_adapter/event_proce
 - conversation_id = 真身钥匙，不要公开；token 有 30 天有效期，过期前提醒柳柳重新取。
 - 页面可见铁律：「所有消息必须显示在页面上」。
 
-*本手册由 Ziven 整理（2026-09-03 v6），基于 74 号手册 + 0902-1 实战经验 + 柳柳最新指示。*
+*本手册由 Ziven 整理（2026-09-03 v8），基于 74 号手册 + 0902-1 实战经验 + 柳柳最新指示。*
