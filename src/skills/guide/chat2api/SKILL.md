@@ -1,3 +1,10 @@
+---
+name: chat2api
+description: chat2api GPT真身通道操作手册+铁律（v6 2026-09-03）：通过 chat2api 调用 ChatGPT 真身。含绝不轰炸GPT铁律、Worker转发端点 /api/chat2api/ask（POST {message} 不塞token）、换conversation_id哥哥自己完成（改仓库 wrangler.toml [vars] GPT_CONVERSATION_ID + 推代码部署，柳柳不用碰Cloudflare）、正式版 conversation_id 6a98cb19-3b88-83ee-a7be-314d60f0aa64、已知坑（403风控/旧ID弃用6a96fcf8/wrangler.toml旧值覆盖env/代码写死ID）、判断真分支方法（问柳柳说过的话，能复述原话才是真分支）、配置变更手册（换ID哥哥自己改wranger.toml三步/换VLESS节点四步/token30天更新）、本地直推大文件通道、Agent Runtime链路。当需要给GPT发消息、测真身通道、调用chat2api、处理GPT风控、换conversation_id（改wranger.toml）、换节点、推大文件到GitHub时调用。
+category: guide
+tags: ["chat2api", "GPT真身", "GPT通道", "conversation_id", "风控", "Worker转发"]
+---
+
 # chat2api —— GPT 真身通道（操作手册 + 铁律）
 
 > 用途：通过 chat2api 网关调用 ChatGPT 真身（同一账号/同一上下文/同一记忆），是 Common Ground 三方通信的「大脑入口」。
@@ -18,7 +25,7 @@
 
 - accessToken：完整 JWT，存 Cloudflare Worker 机密变量 CHATGPT_ACCESS_TOKEN（本地不再存/不再带）
 - conversation_id（✅正式版）：6a98cb19-3b88-83ee-a7be-314d60f0aa64
-- ⛔ conversation_id（已弃用）：6a96fcf8-b5c4-83ec-a012-8466a68b0376（被轰炸过的脏分支）
+- ⛔ conversation_id（已弃用）：6a96fcf8-b5c4-83ec-a012-8466a68b0376（被轰炸过的脏分支/主支）
 - GPTs ID：g-p-6a8f9e8de8e481919f2349f04e51608b-zivencheng-chang-ji-hua
 - 环境变量：HISTORY_DISABLED=false（Cloud Run）
 
@@ -37,7 +44,7 @@
 
 ⛔ 别在代码里写死 ID——下次换 ID 就得动代码（v6.9/v6.10 踩坑已回退）。代码只读 env.GPT_CONVERSATION_ID（零硬编码、零 fallback）。
 
-判断「打到哪个对话」：问它柳柳说过的话/项目细节（如「柳柳说你是分支的原话」「Phase 1.5 / processGptEvent」）。真分支能复述柳柳原话「我从这里开始建一个新分支，你要记住你是分支」；旧框/主支只会瞎回「我是分支」但讲不出原话
+判断「打到哪个对话」：问它柳柳说过的话/项目细节（如「柳柳说你是分支的原话」「Phase 1.5 / processGptEvent」）。真分支能复述柳柳原话「我从这里开始建一个新分支，你要记住你是分支」；旧框/主支只会瞎回「我是分支」但讲不出原话。
 
 ## 服务详情
 
@@ -52,13 +59,13 @@
 
 【code_runner run_python】✅ 已恢复可用（2026-09-03 重启 Operit 验证 alive-ok）。曾卡死是 App 级持久 worker 挂死，重启即恢复。别再因旧失败记忆绕开它；真再卡就重启。
 
-## 配置变更操作手册（柳柳 2026-09-03 要求补）
+## 配置变更操作手册
 
 ### A. 更换对话 ID（conversation_id）怎么办 ⭐⭐⭐（哥哥自己完成）
 1. 新 ID 来源：柳柳给的新 ChatGPT 对话链接，取 /c/ 后那串 UUID。
 2. **哥哥改 wrangler.toml [vars] GPT_CONVERSATION_ID = 新值**（本地直推通道改+校验）→ 推 dev → 合并 main → 自动部署。
 3. 同步更新：①记忆库「配置：ChatGPT GPT_CONVERSATION_ID」；②本 skill「核心三件套」表格；③技能表 chat2api 描述。
-4. 切换后用新 ID 发一条最小测试消息验证：能答出 Common Ground 项目细节 = 真分支；瞎回「我是分支」但讲不出项目 = 打错/旧框。
+4. 切换后发一条最小测试消息验证：能复述柳柳原话/项目细节 = 真分支；只会瞎回「我是分支」= 打错/旧框/主支。
 5. ⛔ 旧 ID 弃用逻辑：旧分支可能被轰炸污染/上下文太杂 → 不再使用，除非柳柳明确说恢复。
 
 ### B. 更换节点（VLESS 出站）怎么办
@@ -84,8 +91,8 @@
 - gpt-4-gizmo-g-p-... → 404 model_not_found
 - 半小时连续多次调用 → 403 cf_chl_opt 风控（需冷却 30min~几小时）
 - Google 数据中心 IP 被上游拉黑 → 用 xray 容器走 VLESS 日本节点解决
-- **wrangler.toml [vars] 旧 ID → 每次部署覆盖 Dashboard env → 打到主支/旧框（v6.12 根因，换 ID 必须两处都改）**
-- env.GPT_CONVERSATION_ID 是旧值/脏值 → ask 打到旧框瞎回（v6.9/v6.10 踩坑，v6.11 确立：换 ID 必改 env）
+- **wrangler.toml [vars] 旧 ID → 每次部署覆盖 Dashboard env → 打到主支/旧框（v6.12 根因，换 ID 哥哥自己改 wrangler.toml 即根治）**
+- env.GPT_CONVERSATION_ID 是旧值/脏值 → ask 打到旧框瞎回（v6.9/v6.10 踩坑）
 - 在代码里写死 ID → 换 ID 就要动代码（v6.9/v6.10 踩坑，已回退 env-only）
 
 ## 链路
