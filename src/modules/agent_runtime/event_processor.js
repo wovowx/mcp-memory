@@ -5,6 +5,7 @@
 // v3 (2026-09-03)：Runtime Tool Loop —— GPT 可请求工具，Worker 执行并回填结果
 // v4 (2026-09-03)：T2.5 审计链 —— 每次工具调用写 agent_tool_calls（运行事实源）
 // v5 (2026-09-03)：T3.1 context_read/context_update 真实实现（治失忆）
+// v5.1 (2026-09-03)：buildPrompt 强化 —— 明确告诉 GPT 工具已挂载，直接输出标记即执行
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
@@ -172,8 +173,11 @@ ${message.thread_id}
 用户:
 ${message.content}
 
-你可以使用工具。需要用工具时，在回复中输出一行：
+你可以使用工具。需要用工具时，在回复中直接输出一行：
 【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】
+
+重要：工具已由 Runtime 挂载好，你输出标记后会自动执行并将结果回传给你，继续基于结果回复即可。
+不要怀疑工具是否可用，也不要空谈“应该调用”，直接输出标记就会真正执行。
 
 可用工具：
 - echo：回显参数（测试用）
