@@ -1,10 +1,11 @@
 // ============================================================
-// Chatroom MVP - 页面 + 通信 API 路由（v2.4）
+// Chatroom MVP - 页面 + 通信 API 路由（v2.4.1）
 // 2026-09-02 Phase 1: atomic event claim + claimed_at
 // v2.1 (2026-09-02): actor_id 双写 + message_number 计数器 + time_context
 // v2.2 (2026-09-03): /chat 路由 cache-busting（raw CDN 缓存导致页面不更新）
 // v2.3 (2026-09-03): createMessage 支持 tool_calls 字段（Runtime Tool Loop）
 // v2.4 (2026-09-03): 三方对等触发 + 真@结构化 mentions + 事件模型升级（depth/防自循环）
+// v2.4.1 (2026-09-04): 自触发修复 —— 事件目标过滤掉作者自身（agent !== author）
 // ============================================================
 import { jsonResponse, buildErrorResponse } from '../utils/response.js';
 
@@ -152,9 +153,10 @@ export async function createMessage(env, threadId, payload) {
     const inserted=await sbInsert(env,'chat_messages',{thread_id:threadId,author,actor_id,message_number,content,mentions:mentions.length?mentions:[],reply_to:replyTo,tool_calls:toolCalls});
     const message=Array.isArray(inserted)?inserted[0]:inserted; const messageId=message?.message_id; if(!messageId)throw new Error('消息写入成功但未返回 message_id');
     // v2.4 三方对等触发：任何 actor @任何 agent 都创建事件（liuliu/gpt/ziven 互@全通）；不再限 liuliu
+    // v2.4.1 自触发修复：事件目标过滤作者自身（自己 @ 自己不建事件）
     // 防自循环：Agent 未显式 @ 时 events 为空天然不触发；depth 沿 reply_to 递增，MAX_DEPTH 兜底
     const depth = await resolveDepth(env, replyTo);
-    const eventAgents = depth >= MAX_DEPTH ? [] : events;
+    const eventAgents = (depth >= MAX_DEPTH ? [] : events).filter(agent => agent !== author);
     const created=[];const existed=[];const failed=[];
     for(const agent of eventAgents){const eventData={message_id:messageId,agent,status:'processing',claimed_at:null,payload:{event_type:'message_created',thread_id:threadId,author,content_preview:contentPreview(content),mentions,source_message_id:messageId,trigger_agent:author,depth}};
         try{const result=await sbInsert(env,'chat_agent_events',eventData,{ignoreDuplicates:true});if(Array.isArray(result)&&result.length===0)existed.push(agent);else if(Array.isArray(result)&&result.length>0)created.push(agent);else throw new Error('事件写入成功但未返回可识别结果');}catch(e){failed.push({agent,error:e.message});}}
