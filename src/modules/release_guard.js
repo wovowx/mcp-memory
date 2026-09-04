@@ -1,11 +1,13 @@
 // ============================================================
-// release_guard.js - 发布闸门（Release Guard）v1
+// release_guard.js - 发布闸门（Release Guard）v1.2.1
 // ============================================================
 // 作用：把「版本化发布纪律」从软约束（靠记忆）变成硬约束（系统拦截）。
 // 柳柳 2026-09-04 点破：角色卡/文档/提示词全是软约束，AI 想不起来等于没有。
 // 真正可靠的系统不是让 Agent 记住，而是让「忘记规则也无法造成错误状态」。
 // 与 watchdog 同思想：watchdog 防事件忘记处理，release_guard 防发布忘记规范。
 //
+// v1.2.1（2026-09-04）：FIX process is not defined —— 自测块加 typeof process 防御，
+//   Cloudflare Worker 无 Node process，直接引用 process.argv 导致构建失败（code 10021）。
 // v1 范围（GPT #514 定稿 + #528/#530 review 修正）：
 //   - repo 类型识别（配置化 RELEASE_POLICY，不硬编码）
 //   - repo normalize（防大小写/URL/ssh 格式误判）
@@ -146,8 +148,9 @@ export function validateRelease({ repo, branch, commitTitle, action = 'merge' })
 
 // ============================================================
 // 自测（dev 分支可直接跑：node src/modules/release_guard.js）
+// v1.2.1: typeof process 防御——Cloudflare Worker 无 process，避免构建失败（code 10021）
 // ============================================================
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (typeof process !== 'undefined' && import.meta.url === `file://${process.argv[1]}`) {
     const cases = [
         // [repo, branch, commitTitle, action, 期望]
         ['wovowx/mcp-memory', 'main', 'v6.9.0: Release Discipline', 'merge', true],
