@@ -5,7 +5,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.4.2 · 本地与大文件操作版 + rebase 发布纪律）
+# 部署技能（v6.4.3 · 命名纪律 + rebase 发布纪律）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
@@ -19,11 +19,13 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 6. **JSON 文件用 content_base64 推**——普通 content 推 JSON 会被序列化坏。
 7. **skill 是菜谱不是账本**——写/改 skill 按《技能写作规范》，主体优先，教训只留一行。
 8. **本地文件读取有逃生通道**——android 读本地失败（Shizuku 挂）时，优先用 `environment=linux` + `/sdcard/...` 直接读；大文件绝不手写整份重推（必漏段）。
+9. **推 dev 的 commit message 也用 `vX.Y.Z: 名称`**——不带 `docs(xxx):` 前缀（rebase 到 main 后显示才干净，柳柳 2026-09-04 要求）。
 
 ## 发布主流程（SOP）
 
 ### 第 1 步：在 dev 攒批（change batch）
 - 所有改动落在 dev，改完自查语法与注册。
+- **commit message 一律 `vX.Y.Z: 名称`**（不带 docs()/feat() 前缀，rebase 后 main 历史干净）。
 - **change batch**：多个相关 commit → 形成一个「可交付主题」→ 才定版本。不一个 PR 一个版，也不无限攒。
 
 ### 第 2 步：对齐与预检
@@ -71,6 +73,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 ### mcp-memory（代码仓）→ 语义化版本 vX.Y.Z
 - 主版本：重大架构变更；次版本：新功能（向后兼容）；修订号：修复/优化。
 - 推 main 命名 = 版本号 + 名称，如 `v6.9.0: Release Discipline`
+- **推 dev 也用同样格式**——不带 docs()/feat() 前缀，rebase 后 main 历史才干净（柳柳 2026-09-04）。
 - CHANGELOG：工程向（Added/Fixed/Changed）
 
 ### ZivenLab（文档/知识仓）→ 知识快照 docs-YYYY.MM
@@ -99,6 +102,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 ## 常见坑（精简版）
 - **忘了问柳柳就推**：第 3 步，最高优先级。
 - **合 main 不传 merge_method**：默认 merge → GitHub 把 commit_title 写两遍 → 标题重复。必须显式 `merge_method=rebase`。
+- **推 dev 带 docs()/feat() 前缀**：rebase 到 main 前缀也带过去，历史显乱。推 dev 直接 `vX.Y.Z: 名称`。
 - **合完不 sync dev**：下一轮 PR dirty；工具已自动处理，手动时别忘。
 - **推 package.json 变 [object Object]**：用 content_base64。
 - **新工具没注册**：v6.3 自动注册兜底（GITHUB_TOOL_DEFS），部署前注册仍最稳。
@@ -106,6 +110,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 - **大文件手写重推**：45KB 必漏段，用 read → 改 → 校验 → 整推。
 
 ## 变更记录
+- 2026-09-04：v6.4.3 命名纪律——推 dev commit message 也用 `vX.Y.Z: 名称`，不带 docs()/feat() 前缀（柳柳要求，rebase 后 main 历史干净）。
 - 2026-09-04：v6.4.2 发布纪律修正——合 main 必须显式 merge_method=rebase（柳柳发现 commit 标题重复）；常见坑加对应条目。
 - 2026-09-04：v6.4.1 加「本地与大文件操作」一节（linux 逃生通道 / 大文件不手写重推 / 卡住先找更优接入点；柳柳「不想再卡在这」）。
 - 2026-09-04：v6.4.0 发布纪律版（双仓版本模型 + change batch + release checklist 硬闸门 + release_owner；柳柳点出瞎命名，GPT #505~508 讨论）。
