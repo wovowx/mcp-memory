@@ -13,6 +13,7 @@
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
+import { discoverMCPTools, mcpCallTool } from "./mcp_client.js";
 
 const MAX_TOOL_ROUNDS = 5;
 
@@ -179,6 +180,15 @@ async function updateAgentToolCall(env, toolCallId, patch) {
     } catch (e) { console.error('[tool-audit] update err: ' + e.message); }
 }
 
+// ============ MCP Capability Path MVP Guard ============
+const MCP_READ_ALLOWLIST = new Set(["github_read", "supabase_query"]);
+const MCP_DENY_PATTERN = /^(github_push|github_merge|github_delete|github_create|deploy|.*_delete|.*_update|.*_insert|.*_exec)$/i;
+function mcpPermission(name) {
+  if (MCP_DENY_PATTERN.test(name)) return "deny";
+  if (MCP_READ_ALLOWLIST.has(name)) return "read";
+  return "unknown";
+}
+
 // 从 GPT 回复里解析工具调用请求
 // 约定格式：GPT 在回复里输出一行【工具调用】json【/工具调用】
 function parseToolCalls(content) {
@@ -197,16 +207,23 @@ function parseToolCalls(content) {
 }
 
 async function executeTool(env, call, ctx) {
-    const name = call?.tool || call?.name || '';
-    const args = call?.arguments || call?.args || {};
-    const fn = TOOLS[name];
-    if (!fn) return { ok: false, error: `未知工具: ${name}` };
-    try {
-        const res = await fn(env, args, ctx);
-        return { ok: true, ...res };
-    } catch (e) {
-        return { ok: false, error: e.message };
-    }
+  const name = call?.tool || call?.name || '';
+  const args = call?.arguments || call?.args || {};
+  const fn = TOOLS[name];
+  if (fn) {
+    try { const res = await fn(env, args, ctx); return { ok: true, ...res, tool_source: 'local' }; }
+    catch (e) { return { ok: false, error: e.message, tool_source: 'local' }; }
+  }
+  const permission = mcpPermission(name);
+  if (permission !== 'read') {
+    return { ok: false, error: 'MCP 拒绝调用 ' + name + ': permission=' + permission + '（MVP 仅开放 read）', tool_source: 'mcp_guard' };
+  }
+  try {
+    const res = await mcpCallTool(env, name, args);
+    return { ok: true, result: res, tool_source: 'mcp' };
+  } catch (e) {
+    return { ok: false, error: 'MCP fallback 失败: ' + e.message, tool_source: 'mcp' };
+  }
 }
 
 // 从 GPT 回复里剥离工具调用标记，得到干净正文
@@ -222,8 +239,17 @@ function buildSystemPrompt(message, context) {
         ? `<runtime_context>\n标题: ${context.thread?.title || message.thread_id}\n状态: ${context.thread?.status || 'unknown'}\n最近消息 (${context.recent_messages?.length || 0}条):\n${(context.recent_messages || []).map(m => `[${m.author}] ${String(m.content).slice(0, 200)}`).join('\n') || '(空)'}\n\n历史摘要 v${context.context?.version || '-'}:\n${context.context?.summary || '(暂无摘要)'}\n决定: ${JSON.stringify(context.context?.decisions || [])}\n开放问题: ${JSON.stringify(context.context?.open_questions || [])}\n下一步: ${JSON.stringify((context.context?.recent_context && context.context.recent_context.next_actions) || [])}</runtime_context>`
         : '';
 
-    return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复用户 @ 的消息。\n\n当前 Thread:\n${message.thread_id}\n\n${ctxBlock}\n\n工具已挂载到 Worker Runtime：你在回复中输出一行【工具调用】标记，Worker 会自动解析执行并把结果回传给你，随后你基于结果继续。不需要先确认工具是否可用，直接输出标记即可。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件（只读白名单，参数 {repo?, path, branch?, start_line?, end_line?}）\n- supabase_query：查询 Supabase 数据\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
+        // v9: 动态附上 MCP 发现的 read capability
+    let mcpToolsBlock = '';
+    try { const tools = discoverToolsForPrompt(); if (tools.length) { mcpToolsBlock = '\nMCP 只读工具（Runtime 自动发现，仅 read 权限）：\n' + tools.map(t => '- ' + t.name + '：' + (t.description || '（无描述）')).join('\n'); } } catch (e) { mcpToolsBlock = '\n（MCP 工具发现不可用：' + e.message + '）'; }
+
+return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复用户 @ 的消息。\n\n当前 Thread:\n${message.thread_id}\n\n${ctxBlock}\n\n工具已挂载到 Worker Runtime：你在回复中输出一行【工具调用】标记，Worker 会自动解析执行并把结果回传给你，随后你基于结果继续。不需要先确认工具是否可用，直接输出标记即可。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件（只读白名单，参数 {repo?, path, branch?, start_line?, end_line?}）\n- supabase_query：查询 Supabase 数据${mcpToolsBlock}\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
 }
+
+// 当前进程内 MCP read 工具快照
+let mcpPromptToolsCache = [];
+export function setMCPPromptTools(tools) { mcpPromptToolsCache = tools || []; }
+function discoverToolsForPrompt() { return mcpPromptToolsCache; }
 
 // 清洗 GPT 回复里的 reaction 元数据（chat2api 网关把 OpenAI 的 reaction 混进了文本）
 // 形如 ⚠message_reaction⚠👋⚠ —— 在 GPT App 里是「在消息下加一个小表情」，不是正文
@@ -241,6 +267,9 @@ function cleanReplyContent(text) {
 async function runToolLoop(env, message, event) {
     // T3.1 防失忆：Runtime 主动读取 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
     const autoContext = await readThreadContext(env, message?.thread_id, 10);
+    // v9: 运行前发现一次 MCP read 工具
+    try { const mcpTools = await discoverMCPTools(env); const visible = mcpTools.filter(t => mcpPermission(t.name) === 'read').map(t => ({ name: t.name, description: t.description })); setMCPPromptTools(visible); } catch (e) { console.error('[mcp-discover] err: ' + e.message); }
+
     // v8: system+user 分离（GPT 建议）：系统指令/工具规则/runtime_context 走 system，user 只放实际 @ 内容
     const messages = [
         { role: 'system', content: buildSystemPrompt(message, autoContext) },
