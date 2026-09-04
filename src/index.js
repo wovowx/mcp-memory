@@ -73,6 +73,26 @@ export default {
                 return jsonResponse({ ok: false, error: e.message }, 500);
             }
         }
+        if (url.pathname === '/api/debug/deploy-status') {
+            try {
+                const cfToken = env.CLOUDFLARE_API_TOKEN;
+                if (!cfToken) return jsonResponse({ ok: false, error: 'CLOUDFLARE_API_TOKEN secret not set', hint: 'set via wrangler secret put' }, 200);
+                const account = env.CLOUDFLARE_ACCOUNT_ID || '';
+                const worker = 'mcp-memory';
+                const base = 'https://api.cloudflare.com/client/v4/accounts/' + account + '/workers/scripts/' + worker;
+                const headers = { 'Authorization': 'Bearer ' + cfToken, 'Content-Type': 'application/json' };
+                const [depRes, verRes] = await Promise.all([
+                    fetch(base + '/deployments', { headers }),
+                    fetch(base + '/versions?per_page=8', { headers })
+                ]);
+                let deployments = [], versions = [];
+                try { const d = await depRes.json(); deployments = (d.result?.deployments || []).slice(0, 5).map(x => ({ id: (x.id || '').slice(0, 8), created_on: x.created_on, source: x.source })); } catch {}
+                try { const v = await verRes.json(); versions = (v.result?.items || []).slice(0, 8).map(x => ({ id: (x.id || '').slice(0, 8), number: x.number, created_on: x.metadata?.created_on, source: x.metadata?.source })); } catch {}
+                return jsonResponse({ ok: true, account, worker, deployments, versions, note: 'deploy-status tool: reads Cloudflare API via worker secret' }, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
         if (url.pathname === '/mcp') {
             if (request.method === 'GET') {
                 const accept = (request.headers.get('Accept') || '').toLowerCase();
