@@ -1,76 +1,75 @@
 // ============================================================
-// mcp_client.js — Agent Runtime 的 MCP Client（纯协议层）
+// mcp_client.js — Agent Runtime 的 MCP Client（协议层 + 双 transport）
 // MVP：Agent Runtime 接入 MCP Capability Path（P2.1）
-// 职责：只做 MCP 协议交互（initialize / tools/list / tools/call）
-//       不做权限判断、不做工具分类、不掺业务逻辑（权限在 Guard 层）
-// v1.1 (2026-09-04)：修复 v1 手写 base64 导致的 URL 错字(folkes.dev)与 jsonrc 错字
+// v1.2 (2026-09-04)：
+//   修复 Worker 自环回 404(1042)——同 Worker 内不走 HTTP 打自己
+//   双模式：env.MCP_URL 存在 → HTTP MCP；否则 → 同进程 handleMCPRequest
+//   注意：Guard 仍在 executeTool 前置，本层只负责 transport
 // ============================================================
+import { handleMCPRequest } from '../index.js';
 
-// Worker MCP endpoint（stateless POST 模式，无 session 维护）
+// Worker MCP endpoint（仅外部/跨服务场景用 HTTP）
 const DEFAULT_MCP_URL = 'https://mcp-memory.wovowx.workers.dev/mcp';
 const REQUEST_TIMEOUT_MS = 15000;
 
-// 通用 JSON-RPC 请求（MCP 协议层）
-async function mcpRequest(env, body) {
-    const url = env.MCP_URL || DEFAULT_MCP_URL;
+// HTTP transport（跨服务真实 MCP Client）
+async function httpPost(url, payload) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
         const resp = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(body),
+            body: JSON.stringify(payload),
             signal: controller.signal
         });
         if (!resp.ok) {
             const text = await resp.text().catch(() => '');
             throw new Error('MCP HTTP ' + resp.status + ': ' + text.slice(0, 200));
         }
-        const data = await resp.json();
-        if (data?.error) throw new Error('MCP error: ' + (data.error.message || JSON.stringify(data.error)).slice(0, 300));
-        return data?.result ?? data;
+        return await resp.json();
     } finally {
         clearTimeout(timer);
     }
 }
 
+// 统一发送：env.MCP_URL 存在走 HTTP，否则同进程 handleMCPRequest（避免 Worker 自环回）
+async function sendMcpRequest(env, payload) {
+    if (env?.MCP_URL) {
+        return await httpPost(env.MCP_URL, payload);
+    }
+    // 同进程调用：不走 HTTP 环回（Cloudflare Worker 禁止自环回）
+    const res = await handleMCPRequest(payload, env);
+    if (res?.ok === false) return { jsonrpc: '2.0', id: payload.id ?? null, error: res.data?.error };
+    return res?.data ?? { jsonrpc: '2.0', id: payload.id ?? null, error: { code: -32603, message: 'no data' } };
+}
+
 // MCP initialize（协议协商）
 export async function mcpInitialize(env) {
-    return await mcpRequest(env, {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {
-            protocolVersion: '2025-06-18',
-            capabilities: {},
-            clientInfo: { name: 'common-ground-agent-runtime', version: '0.1.0' }
-        }
+    return await sendMcpRequest(env, {
+        jsonrpc: '2.0', id: 1, method: 'initialize',
+        params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'common-ground-agent-runtime', version: '0.2.0' } }
     });
 }
 
 // MCP tools/list（发现 Worker skills 表全量工具）
 export async function mcpListTools(env) {
-    const result = await mcpRequest(env, {
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'tools/list',
-        params: {}
-    });
-    return result?.tools || [];
+    const result = await sendMcpRequest(env, { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
+    return result?.result?.tools || [];
 }
 
 // MCP tools/call（执行一个工具）
 export async function mcpCallTool(env, name, args = {}) {
-    const result = await mcpRequest(env, {
-        jsonrpc: '2.0',
-        id: 3,
-        method: 'tools/call',
-        params: { name, arguments: args }
+    const result = await sendMcpRequest(env, {
+        jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name, arguments: args }
     });
-    return result;
+    // tools/call 成功返回 result.content；错误返回 error
+    if (result?.error) throw new Error('MCP error: ' + (result.error.message || JSON.stringify(result.error)).slice(0, 300));
+    const text = result?.result?.content?.[0]?.text ?? '';
+    return text;
 }
 
-// 获取 MCP 工具发现结果（带轻量缓存：单次调用内存缓存，避免每次 GPT 回复都重复走网络）
+// 获取 MCP 工具发现结果（带轻量缓存）
 const toolDiscoveryCache = { time: 0, tools: null };
 const TOOL_CACHE_TTL_MS = 30 * 1000;
 
