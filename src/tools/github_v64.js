@@ -16,7 +16,7 @@ import { getEnabledSkills, addSkill } from '../utils/skills.js';
 // 原则：代码是权威，Supabase skills 表只是缓存
 // ============================================================
 export const GITHUB_TOOL_DEFS = [
-    { name: 'github_push', description: '推送文件到 GitHub 仓库（支持多仓库 repo 参数，白名单兜底）。JSON 内容请用 content_base64 传 pre-encoded base64（普通 content 传 JSON 会被序列化成 [object Object]）。写入后自动做 size 校验，校验失败返回 WRITE_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content: { type: 'string', description: '文件内容（JSON 请用 content_base64）' }, content_base64: { type: 'string', description: '可选，pre-encoded base64 内容（推 JSON 用这个）' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
+    { name: 'github_push', description: '推送文件到 GitHub 仓库（支持多仓库 repo 参数，白名单兜底）。三种传内容方式：content（小文本）/ content_base64（pre-encoded base64 编码）/ content_url（大文件url，服务端从url拉取，不经过对话上下文，推荐大文件用）。JSON 内容请用 content_base64。写入后自动做 size 校验，校验失败返回 WRITE_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content: { type: 'string', description: '文件内容（JSON 请用 content_base64）' }, content_base64: { type: 'string', description: '可选，pre-encoded base64 内容（推 JSON 用这个）' }, content_url: { type: 'string', description: '可选，大文件公开 url（如上传后的 url）。服务端 fetch 拉取内容，不经过对话上下文，永不截断。与 content/content_base64 三选一' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
     { name: 'github_create_repo', description: '在 GitHub 创建新仓库。', input_schema: { type: 'object', properties: { repo: { type: 'string', description: '仓库名称' }, private: { type: 'boolean', description: '是否私有（默认false）' }, description: { type: 'string', description: '仓库描述' } }, required: ['repo'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '仓库'] },
     { name: 'github_read', description: '读取 GitHub 仓库文件内容（UTF-8 安全，支持中文）。支持 start_line/end_line 范围读取；默认最多返回前200行；返回 total_lines/returned_lines/truncated/has_more，明确是否截断。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' }, start_line: { type: 'number', description: '起始行（1-based，可选）' }, end_line: { type: 'number', description: '结束行（包含，可选）' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '读取'] },
     { name: 'github_list', description: '列出 GitHub 仓库目录内容（文件/子目录）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '目录路径（默认根）' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '目录'] },
@@ -170,14 +170,25 @@ export async function handleGitHubTool(name, safeArgs, env) {
     try {
         // github_push
         if (name === 'github_push') {
-            if (!safeArgs.path || (!safeArgs.content && !safeArgs.content_base64)) return 'ERROR: Missing path and content (or content_base64)';
+            if (!safeArgs.path || (!safeArgs.content && !safeArgs.content_base64 && !safeArgs.content_url)) return 'ERROR: Missing path and content (or content_base64, or content_url)';
             const message = safeArgs.message || `Update ${safeArgs.path}`;
             const branch = safeArgs.branch || 'main';
             if (branch === 'main') {
                 text = '⚠️ WARNING: You are pushing directly to main. This triggers Cloudflare deploy + creates fork divergence. Recommend: push to dev first, then use PR/merge to main. Ask user to confirm before continuing. If confirmed, push will proceed.';
             }
             let base64Content;
-            if (safeArgs.content_base64) {
+            if (safeArgs.content_url) {
+                // v6.4.1: 大文件 url 通道——服务端从 url 拉取，不经过 Agent 上下文（类比 上传图片→拿url）
+                const urlResp = await fetch(safeArgs.content_url, { headers: { 'User-Agent': 'ziven-mcp' } });
+                if (!urlResp.ok) return (text ? text + '\n\n' : '') + 'ERROR: content_url fetch failed - HTTP ' + urlResp.status;
+                const buf = await urlResp.arrayBuffer();
+                const bytes = new Uint8Array(buf);
+                let bin = '';
+                for (let i = 0; i < bytes.length; i += 0x8000) {
+                    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+                }
+                base64Content = btoa(bin);
+            } else if (safeArgs.content_base64) {
                 base64Content = safeArgs.content_base64;
             } else {
                 base64Content = utf8ToBase64(String(safeArgs.content));
