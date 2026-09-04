@@ -122,9 +122,7 @@ export async function handleMCPRequest(body, env) {
                 } else {
                     text = await handleGitHubTool(name, safeArgs, env);
                 }
-                if (syncNote) text += '
-
-' + syncNote;
+                if (syncNote) text += '\n\n' + syncNote;
             } else if (CHAT_TOOL_DEFS.some(d => d.name === name)) {
                 await syncChatTools(env);
                 text = await handleChatTool(name, safeArgs, env);
