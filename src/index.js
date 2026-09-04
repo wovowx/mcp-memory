@@ -23,6 +23,7 @@ import { processPendingEvents } from './modules/agent_runtime/event_processor.js
 import { callChat2Api } from './modules/agent_runtime/chat2api_client.js';
 import { watchdogSweep } from './modules/agent_runtime/watchdog.js';
 import { handleMCPRequest } from './modules/mcp_router.js';
+import { discoverMCPTools } from './modules/agent_runtime/mcp_client.js';
 
 export default {
     async fetch(request, env, ctx) {
@@ -56,6 +57,21 @@ export default {
         if (url.pathname === '/github/webhook' && request.method === 'POST') {
             try { const payload = await request.json(); const result = await handleGitHubWebhook(payload, env); return jsonResponse(result); }
             catch (e) { return buildErrorResponse('Webhook fail: ' + e.message, 500); }
+        }
+        if (url.pathname === '/api/debug/mcp-inspect') {
+            try {
+                const tools = await discoverMCPTools(env);
+                const readTools = tools.filter(t => ['github_read','supabase_query','ds_quota'].includes(t.name)).map(t => ({ name: t.name, desc: (t.description||'').slice(0,60) }));
+                return jsonResponse({
+                    ok: true,
+                    total_tools: tools.length,
+                    has_ds_quota: tools.some(t => t.name === 'ds_quota'),
+                    read_sample: readTools,
+                    note: 'mcp-inspect debug endpoint: Worker internal discover result'
+                }, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
         }
         if (url.pathname === '/mcp') {
             if (request.method === 'GET') {
