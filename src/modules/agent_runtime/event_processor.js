@@ -243,6 +243,9 @@ function buildSystemPrompt(message, context) {
     let mcpToolsBlock = '';
     try { const tools = discoverToolsForPrompt(); if (tools.length) { mcpToolsBlock = '\nMCP 只读工具（Runtime 自动发现，仅 read 权限）：\n' + tools.map(t => '- ' + t.name + '：' + (t.description || '（无描述）')).join('\n'); } } catch (e) { mcpToolsBlock = '\n（MCP 工具发现不可用：' + e.message + '）'; }
 
+    console.log('
+[mcp-prompt] mcpToolsBlock=' + JSON.stringify(mcpToolsBlock.slice(0, 200)));
+
 return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复用户 @ 的消息。\n\n当前 Thread:\n${message.thread_id}\n\n${ctxBlock}\n\n工具已挂载到 Worker Runtime：你在回复中输出一行【工具调用】标记，Worker 会自动解析执行并把结果回传给你，随后你基于结果继续。不需要先确认工具是否可用，直接输出标记即可。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件（只读白名单，参数 {repo?, path, branch?, start_line?, end_line?}）\n- supabase_query：查询 Supabase 数据${mcpToolsBlock}\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
 }
 
@@ -268,7 +271,7 @@ async function runToolLoop(env, message, event) {
     // T3.1 防失忆：Runtime 主动读取 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
     const autoContext = await readThreadContext(env, message?.thread_id, 10);
     // v9: 运行前发现一次 MCP read 工具
-    try { const mcpTools = await discoverMCPTools(env); const visible = mcpTools.filter(t => mcpPermission(t.name) === 'read').map(t => ({ name: t.name, description: t.description })); setMCPPromptTools(visible); } catch (e) { console.error('[mcp-discover] err: ' + e.message); }
+    try { const mcpTools = await discoverMCPTools(env); const visible = mcpTools.filter(t => mcpPermission(t.name) === 'read').map(t => ({ name: t.name, description: t.description })); setMCPPromptTools(visible); console.log('[mcp-discover] total=' + mcpTools.length + ' read=' + visible.length + ' names=' + visible.map(v=>v.name).join(',') + ' has_ds=' + visible.some(v=>v.name==='ds_quota')); } catch (e) { console.error('[mcp-discover] err: ' + e.message); }
 
     // v8: system+user 分离（GPT 建议）：系统指令/工具规则/runtime_context 走 system，user 只放实际 @ 内容
     const messages = [
