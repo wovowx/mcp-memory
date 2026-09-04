@@ -2,9 +2,22 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.10.2] - 2026-09-04
+
+### Fixed（发布纪律修正 · 柳柳发现标题重复）
+- 修正发布流程：合 main 必须 `merge_method=rebase`（不用默认 merge，否则 GitHub 把 commit_title 写两遍 → 标题重复）
+- deploy skill v6.4.2：自检清单加「合并用 rebase + commit_title」，常见坑加「merge 不用 rebase → 标题×2」
+- CHANGELOG 与线上对齐：v6.10.0（构建失败）→ v6.10.1（线上）→ v6.10.2（本次文档修正）
+
+## [v6.10.1] - 2026-09-04
+
+### Fixed（Release Guard 构建修复 · 已上线）
+- release_guard.js v1.2.1：自测块 `typeof process` 防御（Cloudflare Worker 无 Node process，直接引用 process.argv 导致构建失败 code 10021）
+- 线上当前运行版本（已验证 RELEASE_GUARD 真实拦截未版本化 push main）
+
 ## [v6.10.0] - 2026-09-04
 
-### Added（Release Guard 入口接入 · Runtime 硬闸门）
+### Added（Release Guard 入口接入 · Runtime 硬闸门）※ 本版构建失败，已由 v6.10.1 取代
 - release_guard.js v1.2 落地为入口层硬闸门：src/index.js github_ 分支前置校验（不动 45KB github_v64.js）
   - github_push / github_merge_to_main / github_merge_pull_request 到 main 全部硬拦截
   - 未版本化发布 → ⛔ RELEASE_GUARD 阻断，不依赖记性（柳柳「放在角色卡也没用」→ 系统强制）
