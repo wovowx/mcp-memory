@@ -8,7 +8,9 @@
 // 2026-08-25 ADD: closePR/compare/getPR + push-main warning
 // 2026-09-01 ADD v6.3: GITHUB_TOOL_DEFS 元数据（自动注册真相源）+ github_auto_sync 自动同步
 // 2026-09-01 ADD v6.4: 基础工具第一阶段——github_read 范围读取+截断标记 / github_push 写入后 size 校验 / github_copy copy 后 size 校验（「API 成功 ≠ 文件成功」）
+// 2026-09-04 ADD v6.5: release_guard 发布闸门接入（merge/push main 强制版本化，柳柳点破软约束必失效）
 import { getEnabledSkills, addSkill } from '../utils/skills.js';
+import { validateRelease } from '../modules/release_guard.js';
 
 // ============================================================
 // GITHUB_TOOL_DEFS - 所有 github_* 工具的元数据（唯一真相源）
@@ -35,8 +37,6 @@ export const GITHUB_TOOL_DEFS = [
 
 // ============================================================
 // normalize - 递归排序对象 key，实现「语义相等」比较
-// 原因：JSON.stringify 对属性顺序敏感，而 Supabase 存储 JSON 会重排 key 顺序，
-//       导致同样的 schema 被误判为「变化」。排序 key 后再比较才是真正的语义差异。
 // ============================================================
 function normalize(value) {
     if (Array.isArray(value)) return value.map(normalize);
@@ -50,9 +50,6 @@ function normalize(value) {
 
 // ============================================================
 // tryAutoSyncDev - 合完 main 后自动把 dev 同步到最新（硬性要求）
-// 只有 dev 不领先 main（无未合入独立 commit）时才自动 fast-forward，
-// 否则跳过并提示——避免 force 覆盖把 dev 未合入的改动冲掉。
-// 这是解决「合完不 sync → 下一轮 PR 必 dirty」的根本手段。
 // ============================================================
 async function tryAutoSyncDev(baseUrl, ghHeaders) {
     try {
@@ -80,7 +77,6 @@ async function tryAutoSyncDev(baseUrl, ghHeaders) {
 
 // ============================================================
 // autoSyncGithubTools - 全量对比 + 自动补新增
-// 四态：新增(自动注册) / 变化(报告待确认) / 孤儿(报告待确认) / 无变化
 // ============================================================
 export async function autoSyncGithubTools(env, dryRun = false) {
     const added = [];
@@ -173,8 +169,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (!safeArgs.path || (!safeArgs.content && !safeArgs.content_base64)) return 'ERROR: Missing path and content (or content_base64)';
             const message = safeArgs.message || `Update ${safeArgs.path}`;
             const branch = safeArgs.branch || 'main';
-            if (branch === 'main') {
-                text = '⚠️ WARNING: You are pushing directly to main. This triggers Cloudflare deploy + creates fork divergence. Recommend: push to dev first, then use PR/merge to main. Ask user to confirm before continuing. If confirmed, push will proceed.';
+            // release_guard v1（柳柳 2026-09-04）：push 到 main 硬阻断，不再只警告
+            const guardPush = validateRelease({ repo, branch, commitTitle: safeArgs.message || '', action: 'push' });
+            if (!guardPush.allowed) {
+                return `⛔ RELEASE_GUARD: ${guardPush.reason}\n  Expected: ${guardPush.expected}\n  禁止直接推 main。请推 dev 走 PR/merge 发布。`;
             }
             let base64Content;
             if (safeArgs.content_base64) {
@@ -182,8 +180,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             } else {
                 base64Content = utf8ToBase64(String(safeArgs.content));
             }
-            // 计算预期 UTF-8 字节长度（解码 base64 后），用于写入后校验
-            // BUG-2 fix: strict content_base64 validation, block truncated/polluted input
             if (typeof base64Content !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64Content) || base64Content.length % 4 !== 0) {
                 return (text ? text + '\n\n' : '') + `ERROR: INPUT_CORRUPT - content_base64 is not valid base64 (possibly truncated). Length=${(base64Content || '').length}, mod4=${(base64Content || '').length % 4}. Refusing to push.`;
             }
@@ -198,7 +194,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
-            // v6.4: 写入后完整性校验——「API 成功 ≠ 文件成功」（ISSUE-3 fix: retry up to 3 times to avoid consistency window）
             let verified = false;
             let finalSize = 0;
             for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
@@ -239,7 +234,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
             if (data.type === 'file') {
-                // v6.4: 范围读取 + 默认上限 + 明确截断标记
                 const DEFAULT_MAX_LINES = 200;
                 const MAX_RESPONSE_CHARS = 12000;
                 const fullContent = base64ToUtf8(data.content);
@@ -247,7 +241,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 const startLine = safeArgs.start_line !== undefined ? parseInt(safeArgs.start_line, 10) : 1;
                 const endLine = safeArgs.end_line !== undefined ? parseInt(safeArgs.end_line, 10) : (startLine + DEFAULT_MAX_LINES - 1);
                 const allLines = fullContent.split('\n');
-                // BUG-1 fix: out-of-range returns explicit empty result, no negative line counts
                 if (startLine > totalLines || endLine < 1) {
                     const clampedStart = Math.max(1, Math.min(startLine, totalLines));
                     const clampedEnd = Math.min(totalLines, Math.max(1, endLine));
@@ -259,7 +252,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     let truncated = false;
                     let hasMore = false;
                     let responseText = selected.join('\n');
-                    // 单次响应字节上限保护
                     if (responseText.length > MAX_RESPONSE_CHARS) {
                         selected = allLines.slice(safeStart - 1);
                         let buf = '';
@@ -317,6 +309,12 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const mergeMethod = (safeArgs && safeArgs.merge_method) || 'merge';
             const mergeTitle = (safeArgs && safeArgs.commit_title) || (safeArgs && safeArgs.title) || undefined;
             const steps = [];
+
+            // release_guard v1（柳柳 2026-09-04）：merge 到 main 必须版本化 commit_title
+            const guardMerge = validateRelease({ repo, branch: 'main', commitTitle: mergeTitle, action: 'merge' });
+            if (!guardMerge.allowed) {
+                return `⛔ RELEASE_GUARD: ${guardMerge.reason}\n  Expected: ${guardMerge.expected}\n  未版本化不允许发布。请先定版本号+名称（见 deploy skill），再合并。`;
+            }
 
             try {
                 const creatResp = await fetch(`${baseUrl}/pulls`, {
@@ -409,6 +407,11 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const method = safeArgs.merge_method || 'merge';
             const commitTitle = safeArgs.commit_title || safeArgs.title || undefined;
             const mergeBody = { merge_method: method };
+            // release_guard v1（柳柳 2026-09-04）：merge PR 到 main 也必须版本化
+            const guardPR = validateRelease({ repo, branch: 'main', commitTitle, action: 'merge' });
+            if (!guardPR.allowed) {
+                return `⛔ RELEASE_GUARD: ${guardPR.reason}\n  Expected: ${guardPR.expected}\n  合并 PR 到 main 必须版本化 commit_title（见 deploy skill）。`;
+            }
             if (commitTitle) mergeBody.commit_title = commitTitle;
             const resp = await fetch(`${baseUrl}/pulls/${pr}/merge`, {
                 method: 'PUT',
@@ -538,120 +541,53 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
         }
 
-
         // github_copy - 跨仓库/跨分支文件复制（内容不经过 Agent 上下文）
         else if (name === 'github_copy') {
-            if (!safeArgs.source_repo || !safeArgs.source_path || !safeArgs.target_repo || !safeArgs.target_path) {
-                return 'ERROR: github_copy requires source_repo, source_path, target_repo, target_path';
-            }
-            const sourceRepo = String(safeArgs.source_repo).trim();
+            if (!safeArgs.source_repo || !safeArgs.source_path || !safeArgs.target_repo || !safeArgs.target_path) return 'ERROR: Missing source_repo/source_path/target_repo/target_path';
+            const sourceRepo = safeArgs.source_repo;
+            const targetRepo = safeArgs.target_repo;
             const sourceBranch = safeArgs.source_branch || 'main';
-            const sourcePath = String(safeArgs.source_path).trim();
-            const targetRepo = String(safeArgs.target_repo).trim();
             const targetBranch = safeArgs.target_branch || 'main';
-            const targetPath = String(safeArgs.target_path).trim();
-            const overwrite = safeArgs.overwrite === true;
-            const message = safeArgs.message || `Copy ${sourcePath} → ${targetPath}`;
-
-            // 安全1：source 和 target 都必须过白名单
-            const allowedRaw = env.GITHUB_ALLOWED_REPOS || '';
-            const allowed = allowedRaw.split(',').map(s => s.trim()).filter(Boolean);
-            const checkRepo = (r) => r === env.GITHUB_REPO || (allowed.length > 0 && allowed.includes(r));
-            if (!checkRepo(sourceRepo)) return `ERROR: Repository not allowed: ${sourceRepo}`;
-            if (!checkRepo(targetRepo)) return `ERROR: Repository not allowed: ${targetRepo}`;
-
-            // 安全2：source 与 target 相同则拒绝
-            if (sourceRepo === targetRepo && sourceBranch === targetBranch && sourcePath === targetPath) {
+            if (sourceRepo === targetRepo && sourceBranch === targetBranch && safeArgs.source_path === safeArgs.target_path) {
                 return 'ERROR: SOURCE_IS_TARGET - source and target are the same file';
             }
-
-            const srcBase = `https://api.github.com/repos/${sourceRepo}`;
-            const tgtBase = `https://api.github.com/repos/${targetRepo}`;
-
-            // 读 source 文件（服务端内部，内容不进 Agent 上下文）
-            const srcResp = await fetch(`${srcBase}/contents/${encodeURIComponent(sourcePath)}?ref=${sourceBranch}`, { headers: ghHeaders });
-            if (!srcResp.ok) {
-                if (srcResp.status === 404) return 'ERROR: SOURCE_NOT_FOUND - ' + sourcePath + ' not found in ' + sourceRepo + '@' + sourceBranch;
-                const err = await srcResp.json();
-                return `ERROR: GITHUB_API_ERROR - source read failed: ${err.message || srcResp.status}`;
-            }
+            const sourceUrl = `https://api.github.com/repos/${sourceRepo}/contents/${safeArgs.source_path}?ref=${sourceBranch}`;
+            const srcResp = await fetch(sourceUrl, { headers: ghHeaders });
+            if (!srcResp.ok) { const err = await srcResp.json(); throw new Error('取源文件失败：' + (err.message || `HTTP ${srcResp.status}`)); }
             const srcData = await srcResp.json();
-            if (!srcData.content) return 'ERROR: SOURCE_NOT_FOUND - no content at ' + sourcePath;
-            const fileSha = srcData.sha;
-
-            // 检查 target 是否存在
-            const tgtCheck = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
+            if (srcData.type !== 'file') return 'ERROR: source is not a file';
+            const sourceContent = base64ToUtf8(srcData.content);
+            const expectedSize = srcData.size;
+            const targetUrl = `https://api.github.com/repos/${targetRepo}/contents/${safeArgs.target_path}`;
+            const targetCheckResp = await fetch(`${targetUrl}?ref=${targetBranch}`, { headers: ghHeaders });
             let targetSha = null;
-            let overwritten = false;
-            if (tgtCheck.ok) {
-                const tgtData = await tgtCheck.json();
-                targetSha = tgtData.sha;
-                if (!overwrite) {
-                    return `ERROR: TARGET_EXISTS - ${targetPath} already exists in ${targetRepo}@${targetBranch}. Set overwrite=true to overwrite.`;
-                }
-                overwritten = true;
-            } else if (tgtCheck.status !== 404) {
-                const err = await tgtCheck.json();
-                return `ERROR: GITHUB_API_ERROR - target check failed: ${err.message || tgtCheck.status}`;
-            }
-
-            // target=main 时走 push-main 警示逻辑
-            let warn = '';
-            if (targetBranch === 'main') {
-                warn = '⚠️ WARNING: Copying directly to main. This triggers Cloudflare deploy. Confirm before continuing.';
-            }
-
-            // PUT 到 target（用 source 的 base64 内容，服务端内部传递）
-            const body = { message, content: srcData.content, branch: targetBranch };
+            if (targetCheckResp.ok) { const targetData = await targetCheckResp.json(); targetSha = targetData.sha; }
+            const body = {
+                message: safeArgs.message || `Copy ${sourceRepo}:${safeArgs.source_path} → ${targetRepo}:${safeArgs.target_path}`,
+                content: utf8ToBase64(sourceContent),
+                branch: targetBranch
+            };
             if (targetSha) body.sha = targetSha;
-            const putResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}`, {
-                method: 'PUT', headers: ghHeaders, body: JSON.stringify(body)
+            const putResp = await fetch(targetUrl, {
+                method: 'PUT',
+                headers: ghHeaders,
+                body: JSON.stringify(body)
             });
-            if (!putResp.ok) {
-                const err = await putResp.json();
-                return `ERROR: GITHUB_API_ERROR - target write failed: ${err.message || putResp.status}`;
+            if (!putResp.ok) { const err = await putResp.json(); throw new Error('写目标失败：' + (err.message || `HTTP ${putResp.status}`)); }
+            const verifyResp = await fetch(`${targetUrl}?ref=${targetBranch}`, { headers: ghHeaders });
+            if (verifyResp.ok) {
+                const vData = await verifyResp.json();
+                if (vData.size !== expectedSize) return 'ERROR: COPY_VERIFY_FAILED - copy completed but size mismatch (' + vData.size + ' != ' + expectedSize + ')';
             }
-            const putData = await putResp.json();
-
-            // v6.4: copy 后完整性校验——「API 成功 ≠ 文件成功」（ISSUE-4 fix: retry up to 3 times to avoid consistency window）
-            // 必须验证 target 最终 size 与 source size 一致，否则判定 copy 失败
-            let verified = false;
-            let targetFinalSize = 0;
-            for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
-                try {
-                    const verifyResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
-                    if (verifyResp.ok) {
-                        const vData = await verifyResp.json();
-                        targetFinalSize = vData.size || 0;
-                        verified = targetFinalSize === (srcData.size || 0) && targetFinalSize > 0;
-                    } else { targetFinalSize = 0; }
-                } catch (e) { targetFinalSize = 0; }
-                if (!verified && attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
-            }
-            if (!verified) {
-                return (warn ? warn + '\n\n' : '') + `ERROR: COPY_VERIFY_FAILED - target written but size mismatched (source ${srcData.size || 0}, target ${targetFinalSize}). The copy may be truncated or corrupt. This is NOT a success.`;
-            }
-
-            text = (warn ? warn + '\n\n' : '') + JSON.stringify({
-                success: true,
-                verified: true,
-                source_repo: sourceRepo,
-                source_branch: sourceBranch,
-                source_path: sourcePath,
-                source_size: srcData.size || 0,
-                target_repo: targetRepo,
-                target_branch: targetBranch,
-                target_path: targetPath,
-                target_size: targetFinalSize,
-                file_sha: fileSha,
-                commit_sha: putData.commit?.sha || '',
-                overwritten
-            }, null, 2);
+            text = `OK: Copied ${sourceRepo}:${safeArgs.source_path} → ${targetRepo}:${safeArgs.target_path}\nSize: ${expectedSize} bytes`;
         }
 
-        else return 'ERROR: Unknown GitHub tool: ' + name;
+        // 未知工具
+        else {
+            text = `ERROR: Unknown GitHub tool: ${name}`;
+        }
     } catch (e) {
-        return 'ERROR: ' + e.message;
+        text = 'ERROR: ' + (e.message || String(e));
     }
     return text;
 }
