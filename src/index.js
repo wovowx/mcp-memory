@@ -11,6 +11,7 @@
 // v6.5 变更（2026-09-01）：Common Ground chat MCP tools
 // v6.6 变更（2026-09-02）：触发链 PoC webhook 端点（/api/chat/webhook）
 // v6.7 变更（2026-09-02）：Phase 1.5 @GPT 最小闭环（scheduled cron + webhook 触发）
+// v6.8 变更（2026-09-04）：P0-2 Phase1 watchdog —— scheduled 先 watchdogSweep 恢复生命周期，再 processPendingEvents（独立模块不挂 processor）
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
 import { uploadFileToSupabase } from './utils/storage.js';
@@ -29,6 +30,7 @@ import { handleChatTool, CHAT_TOOL_DEFS } from './tools/chat_mcp.js';
 import { handleChatWebhook } from './tools/chat_webhook.js';
 import { processPendingEvents } from './modules/agent_runtime/event_processor.js';
 import { callChat2Api } from './modules/agent_runtime/chat2api_client.js';
+import { watchdogSweep } from './modules/agent_runtime/watchdog.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -191,14 +193,6 @@ async function handleSkillManagement(name, safeArgs, env) {
     return text;
 }
 
-async function handleGitHubWebhook(payload, env) {
-    try {
-        const event = payload.action || 'push'; const ref = payload.ref || 'refs/heads/main';
-        if (ref !== 'refs/heads/main') return { status: 'ignored', reason: 'non-main' };
-        await invalidateCache(); return { status: 'success', message: 'cache cleared', event };
-    } catch (e) { return { status: 'error', message: e.message }; }
-}
-
 export default {
     async fetch(request, env, ctx) {
         if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return buildErrorResponse('Supabase not configured', 500);
@@ -247,11 +241,10 @@ export default {
                     if (result.notification) return new Response(null, { status: 202, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id' } });
                     const status = result.ok === false ? 400 : 200;
                     return new Response(JSON.stringify(result.data), { status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id' } });
-                } catch (e) { return jsonResponse({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error: ' + e.message } }, 400); }
+                } catch (e) { return jsonResponse({ ok: false, error: e.message }, 500); }
             }
-            return new Response('Method not allowed', { status: 405 });
         }
-        if (url.pathname === '/' || url.pathname === '/health') {
+        if (url.pathname === '/') {
             const skills = await getEnabledSkills(env); return new Response('Ziven MCP Server running (' + skills.length + ' skills | Supabase OK)', { status: 200, headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' } });
         }
         return new Response('Not found', { status: 404 });
@@ -259,6 +252,8 @@ export default {
 
     async scheduled(event, env, ctx) {
         try {
+            // P0-2 Phase1：先恢复生命周期（watchdog），再让消费者拿新任务（避免竞争）
+            await watchdogSweep(env);
             const result = await processPendingEvents(env);
             console.log('scheduled processed:', JSON.stringify(result));
         } catch (e) {
