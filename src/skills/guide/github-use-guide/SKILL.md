@@ -5,7 +5,7 @@ category: guide
 tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 ---
 
-# GitHub 使用指南（v6.5.0 · Git 纪律版）
+# GitHub 使用指南（v6.5.1 · content_url 大文件通道）
 
 ## 一句话
 日常 GitHub 操作的工具对照表 + Git 纪律（怎么合并）+ 大文件推送规范；**发布纪律（能不能发布）见 deploy skill，两者分层不混**。
@@ -20,7 +20,7 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 | 我想做什么 | 用什么 |
 |---|---|
 | 推文件到分支 | github_push(path, content, branch) · JSON 用 content_base64 |
-| 推大文件（>16KB 或内容复杂） | 见下方「大文件推送规范」 |
+| 推大文件（>16KB，如 skill/长文档） | **github_push(path, content_url=公开url, branch)** —— 服务端拉取，不经过上下文 |
 | 读文件 | github_read(path, branch) |
 | 列目录 | github_list(path, branch) |
 | 删文件 | github_delete(path, branch) |
@@ -52,6 +52,18 @@ merge_method: rebase
 ```
 
 ## 大文件推送规范（v6.4 新增 · 2026-09-03 实战验证）
+
+### ✅ 首选通道：content_url（v6.11.11 · 2026-09-04 实测通过）
+
+**用法**：先把文件内容放上公开 url（可用 image_upload / 上传通道拿到 url，或任何 http(s) 公开链接），然后：
+```
+github_push(path="src/...", content_url="https://.../file", branch="dev", message="vX.Y.Z: ...")
+```
+- Worker 端自动 fetch(url) → 拉取字节 → base64 → PUT → size 校验，**内容完全不经过 Agent 上下文，永不截断**。
+- **实测**：151KB 文档端到端成功（155046 bytes 一致，Verified: true）；以前同样体量走 base64 必截断（INPUT_CORRUPT）。
+- 与 content / content_base64 **三选一**；小文件（<16KB）继续用 content 即可。
+
+### 备选（旧法，仍可用）：read_file 搬运法
 
 ### 核心原则：内容搬运不构造，能用 github_push 绝不依赖 code_runner
 
@@ -91,6 +103,7 @@ merge_method: rebase
 - 不确定怎么做 → help() 或读对应 SKILL.md，不凭印象。
 
 ## 变更记录
+- 2026-09-04：v6.5.1 content_url 大文件通道（github_push 新增 content_url 参数，实测 151KB 成功；首选通道）
 - 2026-09-04：v6.5.0 Git 纪律版——deploy(github-use-guide) 分层、merge 条目标注 release checklist、版本化示例双仓两种（GPT #505~508）。
 - 2026-09-03：v6.4 新增「大文件推送规范」（read_file → github_push 搬运法；code_runner 去依赖）。
 - 2026-09-01：主体重构——工具表 + 红线为主，去错题本化。
