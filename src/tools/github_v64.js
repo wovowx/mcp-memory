@@ -194,10 +194,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
                 }
                 base64Content = btoa(bin);
-            } else if (safeArgs.content_base64) {
-                base64Content = safeArgs.content_base64;
-            } else {
-                base64Content = utf8ToBase64(String(safeArgs.content));
             }
             // 计算预期 UTF-8 字节长度（解码 base64 后），用于写入后校验
             // BUG-2 fix: strict content_base64 validation, block truncated/polluted input
