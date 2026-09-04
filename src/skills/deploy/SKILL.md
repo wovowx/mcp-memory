@@ -5,7 +5,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.4.1 · 本地与大文件操作版）
+# 部署技能（v6.4.2 · 本地与大文件操作版 + rebase 发布纪律）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
@@ -14,7 +14,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 1. **main 只经 PR 合入**——绝不直接推 main，分支保护兜底。
 2. **柳柳拍板发布**——发布是决策，不是哥哥自动完成的事（第 3 步最高优先级）。
 3. **一个版本一次发布**——dev 攒批，一个 change batch，一次 PR，一次部署。
-4. **合并用 rebase + commit_title=版本号+名称**——保留真实历史、命名从版本号开始，不用 squash。
+4. **合并必须 `merge_method=rebase` + `commit_title=版本号+名称`**——重要：不传 merge_method 走默认 merge，GitHub 会把 commit_title 写两遍（标题重复，柳柳 2026-09-04 抓包）。rebase 保留真实历史、命名从版本号开始。
 5. **合完 dev 必同步**——rebase 只动 main，dev 要跟上，否则下一轮 PR 冲突。
 6. **JSON 文件用 content_base64 推**——普通 content 推 JSON 会被序列化坏。
 7. **skill 是菜谱不是账本**——写/改 skill 按《技能写作规范》，主体优先，教训只留一行。
@@ -39,9 +39,9 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 - **CHANGELOG 更新整批改动**（不更新=不合法发布）。
 - PR 标题 = 版本号+名称，body = 改了什么、为什么。
 
-### 第 5 步：建 PR 并合并
+### 第 5 步：建 PR 并合并（注意 merge_method！）
 - `github_create_pull_request(head=dev, base=main, title=版本号+名称, body=说明)`。
-- 合并用 `merge_method=rebase` + `commit_title=版本号+名称`。
+- 合并用 **`merge_method=rebase`** + `commit_title=版本号+名称`——**必须显式传 rebase**，否则默认 merge 会把 commit_title 写两遍。
 - 合并工具会自动把 dev 同步回 main 最新。
 
 ### 第 6 步：验证 & 收尾
@@ -58,7 +58,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 □ CHANGELOG 是否已更新？（双仓规则见下）
 □ 柳柳是否已批准？
 □ 分支是否对齐 / 无冲突？（compare 确认）
-□ merge 是否用 rebase + commit_title=版本号+名称？
+□ merge 是否用 rebase + commit_title=版本号+名称？（必须显式 merge_method=rebase）
 □ 部署环境是否确认？（Cloudflare Git 集成）
 □ 是否有回滚方案？（基线版本可回退）
 □ 改过 skill 的话：按写作规范骨架了吗？
@@ -98,6 +98,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 
 ## 常见坑（精简版）
 - **忘了问柳柳就推**：第 3 步，最高优先级。
+- **合 main 不传 merge_method**：默认 merge → GitHub 把 commit_title 写两遍 → 标题重复。必须显式 `merge_method=rebase`。
 - **合完不 sync dev**：下一轮 PR dirty；工具已自动处理，手动时别忘。
 - **推 package.json 变 [object Object]**：用 content_base64。
 - **新工具没注册**：v6.3 自动注册兜底（GITHUB_TOOL_DEFS），部署前注册仍最稳。
@@ -105,6 +106,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 - **大文件手写重推**：45KB 必漏段，用 read → 改 → 校验 → 整推。
 
 ## 变更记录
+- 2026-09-04：v6.4.2 发布纪律修正——合 main 必须显式 merge_method=rebase（柳柳发现 commit 标题重复）；常见坑加对应条目。
 - 2026-09-04：v6.4.1 加「本地与大文件操作」一节（linux 逃生通道 / 大文件不手写重推 / 卡住先找更优接入点；柳柳「不想再卡在这」）。
 - 2026-09-04：v6.4.0 发布纪律版（双仓版本模型 + change batch + release checklist 硬闸门 + release_owner；柳柳点出瞎命名，GPT #505~508 讨论）。
 - 2026-09-01：v6.3.3 主体重构（菜谱非账本）+ 自检清单加 skill 写作规范项。
