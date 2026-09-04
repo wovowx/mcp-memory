@@ -33,12 +33,13 @@ async function httpPost(url, payload) {
     }
 }
 
-// 统一发送：env.MCP_URL 存在走 HTTP，否则同进程 handleMCPRequest（避免 Worker 自环回）
+// 统一发送：同 Worker 永远 internal（Cloudflare 禁止自环回），仅显式 MCP_HTTP_TRANSPORT=true 才走 HTTP（跨服务场景）
 async function sendMcpRequest(env, payload) {
-    if (env?.MCP_URL) {
-        return await httpPost(env.MCP_URL, payload);
+    // 同进程优先：Worker 内调用自己公网地址会触发平台自环回限制(1042)
+    if (env?.MCP_HTTP_TRANSPORT === true || env?.MCP_HTTP_TRANSPORT === 'true') {
+        const url = env?.MCP_URL || DEFAULT_MCP_URL;
+        return await httpPost(url, payload);
     }
-    // 同进程调用：不走 HTTP 环回（Cloudflare Worker 禁止自环回）
     const res = await handleMCPRequest(payload, env);
     if (res?.ok === false) return { jsonrpc: '2.0', id: payload.id ?? null, error: res.data?.error };
     return res?.data ?? { jsonrpc: '2.0', id: payload.id ?? null, error: { code: -32603, message: 'no data' } };
