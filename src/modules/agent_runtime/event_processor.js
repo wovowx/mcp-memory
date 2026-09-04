@@ -181,7 +181,7 @@ async function updateAgentToolCall(env, toolCallId, patch) {
 }
 
 // ============ MCP Capability Path MVP Guard ============
-const MCP_READ_ALLOWLIST = new Set(["github_read", "supabase_query"]);
+const MCP_READ_ALLOWLIST = new Set(["github_read", "supabase_query", "ds_quota"]);
 const MCP_DENY_PATTERN = /^(github_push|github_merge|github_delete|github_create|deploy|.*_delete|.*_update|.*_insert|.*_exec)$/i;
 function mcpPermission(name) {
   if (MCP_DENY_PATTERN.test(name)) return "deny";
