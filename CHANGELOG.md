@@ -2,6 +2,24 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.10.0] - 2026-09-04
+
+### Added（Release Guard 入口接入 · Runtime 硬闸门）
+- release_guard.js v1.2 落地为入口层硬闸门：src/index.js github_ 分支前置校验（不动 45KB github_v64.js）
+  - github_push / github_merge_to_main / github_merge_pull_request 到 main 全部硬拦截
+  - 未版本化发布 → ⛔ RELEASE_GUARD 阻断，不依赖记性（柳柳「放在角色卡也没用」→ 系统强制）
+  - unknown repo 拒绝 / release policy 配置化 / docs 正则收紧 / repo normalize（GPT #528/#530 review）
+- deploy skill v6.4.1：新增「本地与大文件操作」经验沉淀
+  - linux 通道 = Shizuku 逃生通道（android 读本地失败时用 environment=linux + /sdcard/...）
+  - 大文件禁止手写整份重推（45KB 必漏段，42643/45950 教训）
+  - 卡死在单文件先找更优接入点，不绕圈子
+
+### Changed
+- 接入策略：release_guard 不改 github_v64.js（45KB 整文件替换风险高），改为小文件入口层加前置闸
+
+### Fixed
+- 大文件卡死循环：github_v64.js 重建漏段 → 用 github_copy 恢复干净原版，改走 index.js 入口接入
+
 ## [v6.9.0] - 2026-09-04
 
 ### Added
