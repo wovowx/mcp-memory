@@ -12,6 +12,7 @@
 // v6.6 变更（2026-09-02）：触发链 PoC webhook 端点（/api/chat/webhook）
 // v6.7 变更（2026-09-02）：Phase 1.5 @GPT 最小闭环（scheduled cron + webhook 触发）
 // v6.8 变更（2026-09-04）：P0-2 Phase1 watchdog —— scheduled 先 watchdogSweep 恢复生命周期，再 processPendingEvents（独立模块不挂 processor）
+// v6.9 变更（2026-09-04）：release_guard 前置闸 —— github_push/merge 到 main 必须版本化（柳柳要求硬拦截，不靠记性）
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
 import { uploadFileToSupabase } from './utils/storage.js';
@@ -31,6 +32,7 @@ import { handleChatWebhook } from './tools/chat_webhook.js';
 import { processPendingEvents } from './modules/agent_runtime/event_processor.js';
 import { callChat2Api } from './modules/agent_runtime/chat2api_client.js';
 import { watchdogSweep } from './modules/agent_runtime/watchdog.js';
+import { validateRelease } from './modules/release_guard.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -61,6 +63,18 @@ async function getCachedSkills(env) {
 }
 
 async function invalidateCache() { skillCache.clear(); }
+
+// release_guard 前置闸（v1.2，柳柳 2026-09-04）：push/merge 到 main 必须版本化；非 main 分支放行
+// 不依赖记性：所有 github push/merge 动作都会撞上这个闸门
+async function githubReleaseGuard(name, safeArgs, env) {
+    if (name !== 'github_push' && name !== 'github_merge_to_main' && name !== 'github_merge_pull_request') {
+        return { allowed: true };
+    }
+    const isPush = name === 'github_push';
+    const branch = isPush ? (safeArgs.branch || 'main') : 'main';
+    const commitTitle = isPush ? (safeArgs.message || '') : (safeArgs.commit_title || safeArgs.title || undefined);
+    return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle, action: isPush ? 'push' : 'merge' });
+}
 
 async function passiveSyncGithubTool(env, name) {
     try {
@@ -121,7 +135,13 @@ async function handleMCPRequest(body, env) {
                 text = await handleMemoryTool(name, safeArgs, env);
             } else if (name?.startsWith('github_')) {
                 const syncNote = await passiveSyncGithubTool(env, name);
-                text = await handleGitHubTool(name, safeArgs, env);
+                // release_guard 硬闸门（柳柳 2026-09-04）：push/merge 到 main 必须版本化
+                const guard = await githubReleaseGuard(name, safeArgs, env);
+                if (!guard.allowed) {
+                    text = `⛔ RELEASE_GUARD: ${guard.reason}\n  Expected: ${guard.expected}\n  未版本化不允许发布。${name === 'github_push' ? '请推 dev 走 PR/merge 发布。' : '请先定版本号+名称（见 deploy skill）。'}`;
+                } else {
+                    text = await handleGitHubTool(name, safeArgs, env);
+                }
                 if (syncNote) text += '\n\n' + syncNote;
             } else if (CHAT_TOOL_DEFS.some(d => d.name === name)) {
                 await syncChatTools(env);
@@ -249,15 +269,4 @@ export default {
         }
         return new Response('Not found', { status: 404 });
     },
-
-    async scheduled(event, env, ctx) {
-        try {
-            // P0-2 Phase1：先恢复生命周期（watchdog），再让消费者拿新任务（避免竞争）
-            await watchdogSweep(env);
-            const result = await processPendingEvents(env);
-            console.log('scheduled processed:', JSON.stringify(result));
-        } catch (e) {
-            console.error('scheduled error:', e.message);
-        }
-    }
 };
