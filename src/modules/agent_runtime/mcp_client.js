@@ -6,7 +6,7 @@
 //   双模式：env.MCP_URL 存在 → HTTP MCP；否则 → 同进程 handleMCPRequest
 //   注意：Guard 仍在 executeTool 前置，本层只负责 transport
 // ============================================================
-import { handleMCPRequest } from '../index.js';
+import { handleMCPRequest } from '../mcp_router.js';
 
 // Worker MCP endpoint（仅外部/跨服务场景用 HTTP）
 const DEFAULT_MCP_URL = 'https://mcp-memory.wovowx.workers.dev/mcp';
