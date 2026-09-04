@@ -113,11 +113,15 @@ function renderMessages(items){
   }
   box.scrollTop=box.scrollHeight;
 }
-// v2.5: 增量追加（对比 message_id 去重，只 append 新增）
+// v2.5: 增量追加（对比 message_id 去重；用户不在底部时不强制滚动）
+function isNearBottom(box,threshold=80){
+  return box.scrollHeight - box.scrollTop - box.clientHeight < threshold;
+}
 function appendMessages(items){
   if(!items.length)return;
   const box=$('messages');
   const empty=box.querySelector('.empty');if(empty)empty.remove();
+  const followScroll=isNearBottom(box);
   let added=false;
   for(const m of items){
     const mid=m.message_id||m.id;
@@ -125,7 +129,7 @@ function appendMessages(items){
     if(mid)renderedIds.add(mid);
     box.appendChild(buildMessageEl(m));added=true;
   }
-  if(added)box.scrollTop=box.scrollHeight;
+  if(added&&followScroll)box.scrollTop=box.scrollHeight;
 }
 // v2.5: 实时轮询（polling 锁防并发；静默失败不打扰）
 async function pollMessages(){
