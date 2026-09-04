@@ -196,7 +196,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 base64Content = btoa(bin);
             }
             // 计算预期 UTF-8 字节长度（解码 base64 后），用于写入后校验
-            // BUG-2 fix: strict content_base64 validation, block truncated/polluted input
+            // v6.4.3: strict base64 validity check (content_url 服务端生成，若截断会 block)
             if (typeof base64Content !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64Content) || base64Content.length % 4 !== 0) {
                 return (text ? text + '\n\n' : '') + `ERROR: INPUT_CORRUPT - content_base64 is not valid base64 (possibly truncated). Length=${(base64Content || '').length}, mod4=${(base64Content || '').length % 4}. Refusing to push.`;
             }
