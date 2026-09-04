@@ -40,6 +40,10 @@ const API={
   messages:id=>`/api/chat/threads/${encodeURIComponent(id)}/messages`
 };
 let currentThread=null;
+// v2.5 实时轮询：5s 间隔 + polling 锁防并发 + message_id 去重增量追加
+const POLL_MS=5000;
+let polling=false;
+let renderedIds=new Set();
 const $=id=>document.getElementById(id);
 function requireElement(id){const el=document.getElementById(id);if(!el)throw new Error('Missing element: '+id);return el}
 function notice(text){const n=$('notice');n.textContent=text;n.style.display=text?'block':'none'}
@@ -91,17 +95,47 @@ async function selectThread(id,thread){
 function normalizeListFromDom(){
   return [...document.querySelectorAll('.thread')].map(el=>({thread_id:el.dataset.id,title:el.querySelector('div')?.textContent,status:el.querySelector('small')?.textContent}));
 }
+// v2.5: 消息元素统一构建（renderMessages 与 appendMessages 共用）
+function buildMessageEl(m){
+  const el=document.createElement('article');el.className='msg'+(m.author==='liuliu'?' user':'');
+  const meta=document.createElement('div');meta.className='meta';meta.textContent=`${m.author||'unknown'} · ${formatTime(m.created_at)}`;
+  if(m.reply_to){const reply=document.createElement('div');reply.className='reply';reply.textContent='回复：'+m.reply_to;el.appendChild(reply)}
+  if(m.tool_calls&&Array.isArray(m.tool_calls)){el.appendChild(renderToolCalls(m.tool_calls))}
+  const content=document.createElement('div');content.className='content';content.textContent=cleanContent(m.content||'');el.append(meta,content);
+  return el;
+}
 function renderMessages(items){
-  const box=$('messages');box.innerHTML='';
+  const box=$('messages');box.innerHTML='';renderedIds.clear();
   if(!items.length){box.innerHTML='<div class="empty">这个讨论还没有消息</div>';return}
   for(const m of items){
-    const el=document.createElement('article');el.className='msg'+(m.author==='liuliu'?' user':'');
-    const meta=document.createElement('div');meta.className='meta';meta.textContent=`${m.author||'unknown'} · ${formatTime(m.created_at)}`;
-    if(m.reply_to){const reply=document.createElement('div');reply.className='reply';reply.textContent='回复：'+m.reply_to;el.appendChild(reply)}
-    if(m.tool_calls&&Array.isArray(m.tool_calls)){el.appendChild(renderToolCalls(m.tool_calls))}
-    const content=document.createElement('div');content.className='content';content.textContent=cleanContent(m.content||'');el.append(meta,content);box.appendChild(el);
+    if(m.message_id||m.id)renderedIds.add(m.message_id||m.id);
+    box.appendChild(buildMessageEl(m));
   }
   box.scrollTop=box.scrollHeight;
+}
+// v2.5: 增量追加（对比 message_id 去重，只 append 新增）
+function appendMessages(items){
+  if(!items.length)return;
+  const box=$('messages');
+  const empty=box.querySelector('.empty');if(empty)empty.remove();
+  let added=false;
+  for(const m of items){
+    const mid=m.message_id||m.id;
+    if(mid&&renderedIds.has(mid))continue;
+    if(mid)renderedIds.add(mid);
+    box.appendChild(buildMessageEl(m));added=true;
+  }
+  if(added)box.scrollTop=box.scrollHeight;
+}
+// v2.5: 实时轮询（polling 锁防并发；静默失败不打扰）
+async function pollMessages(){
+  if(!currentThread||polling)return;
+  polling=true;
+  try{
+    const data=await api(API.messages(currentThread));
+    appendMessages(normalizeMessages(data));
+  }catch(e){/* 静默：避免频繁失败弹错误 */}
+  finally{polling=false;}
 }
 function formatTime(value){if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleString('zh-CN',{hour:'2-digit',minute:'2-digit'})}
 function cleanContent(text){
@@ -171,6 +205,7 @@ requireElement('newThread').addEventListener('click',createThread);
 requireElement('composer').addEventListener('submit',e=>{e.preventDefault();sendMessage()});
 requireElement('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
 loadThreads();
+setInterval(pollMessages,POLL_MS);
 </script>
 </body>
 </html>
