@@ -2,6 +2,36 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.9.0] - 2026-09-04
+
+### Added
+- 发布纪律（Release Discipline）双仓版本模型
+  - mcp-memory（代码仓）→ 语义化版本 vX.Y.Z
+  - ZivenLab（文档仓）→ 知识快照 docs-YYYY.MM
+- change batch 概念：多个相关 commit 形成可交付主题才定版本
+- release_owner 字段：明确谁判断「这批构不构成版本」
+- 驾驶舱新增「发布与版本状态」章节
+- ZivenLab 新建 common-ground/CHANGELOG.md（docs-2026.09 baseline）
+
+### Changed
+- deploy skill v6.4.0：发布纪律版，release checklist 硬闸门（不过不推 main）
+- github-use-guide v6.5.0：Git 纪律版，deploy/github-use-guide 分层
+
+### Fixed
+- 历史 PR 无版本化问题：为当前状态建立基线快照，不回溯伪造版本
+
+## [v6.8.0] - 2026-09-04
+
+### Added（Event Runtime Reliability Phase1）
+- delivery_status 事件生命周期状态机（created/claimed/delivering/delivered/processing/acked/failed）
+- watchdog 独立模块：自动释放卡死 stuck claim，15min 超时保守策略
+- retry×3 进 dead_letter 路径
+- agent claim isolation（claimed_by 责任绑定，防多 Agent 错配）
+
+### Fixed
+- 事件所有权模型错误：chat_adapter.js 硬编码 gpt，ziven 事件无消费链（Phase2 解决消费链）
+- 4 条历史 stuck claim 事件被 watchdog 自动释放（运行验证通过）
+
 ## [v6.3.4] - 2026-09-01
 
 ### 强制路由执行铁律（柳柳点醒）
