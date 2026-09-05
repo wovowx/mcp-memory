@@ -2,6 +2,54 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.16.1] - 2026-09-05
+
+### Added（Level 2 · Permission Guard MVP）
+- patch_proposals 表（Supabase）：proposal 全生命周期 proposed→reviewed→approved→applied，含 evidence/risk/reviewer/approver/rollback_sha
+- permission_guard.js：checkCapabilityAccess 四维校验（Capability+Target+Decision+Evidence）—— read 免费 / write 必须 approved proposal / main 永禁 / 非 dev deny / evidence 必填 / risk 分级（low=proposal / medium=+review / high=+柳柳确认）
+- executeTool 接入 guard：GPT 发 github_push/merge 必须先过检查（受控对象硬闸门）
+- 单测 10/10 通过（permission_guard）；负向验证 #735（无 proposal push → missing_proposal 拒绝，tool_source=permission_guard）
+- README Architecture Proposal #448de374 全流程闭环：proposed→approved（ziven review+liuliu 确认）→applied（ziven 推 dev）
+
+## [v6.16.0] - 2026-09-05
+
+### Added（Permission Guard MVP 前置）
+- patch_proposals 表建表 + README Architecture 提案入库（id=448de374）
+
+## [v6.15.0] - 2026-09-05
+
+### Changed（Level 2 Step 1 · MCP-only 强制）
+- github_read 移除 Worker 内本地实现（fetch GitHub），强制走 MCP dispatcher → tool_source=mcp 铁证（#729）
+- GPT 基于真实 README 内容产出 2 条 Patch Proposal（Level 2 Step 1 通关）
+
+## [v6.14.6] - 2026-09-05
+
+### Changed（GPT 认知壁垒突破）
+- buildSystemPrompt 强化：明确「文本标记就是调用方式，Worker 是你的执行手，不需要持有工具入口」+ 列出已挂载工具名 + 禁止先询问可用性
+- 效果：GPT #723 输出 echo 标记 → #725 ds_quota（tool_source=mcp）→ Capability Invoked 稳定可复现
+
+## [v6.14.5] - 2026-09-05
+
+### Fixed（parser 截断容错）
+- extractJsonObject 滑动截断 + 补右花括号：chat2api 网关截断复杂 JSON 尾巴时的容错（7/7 单测通过）
+- parser 对「解释文本+工具块混合/缺闭合」容错（#707/#709 实测）
+
+## [v6.14.4] - 2026-09-05
+
+### Changed（parser 失败明确标记）
+- 解析失败不再伪装 echo：明确输出 __parse_error__ 标记（GPT #737/#739 诊断一致性）
+
+## [v6.14.3] - 2026-09-05
+
+### Added（部署日志增强 · 柳柳要求）
+- deploy-status 端点增强：?deployment_id 查单次部署日志 / ?include=details 批量详情
+- 部署排查 SOP 沉淀（v6.14.1 部署失败根因：反斜杠字面量损坏）
+
+## [v6.14.2] - 2026-09-05
+
+### Fixed（构建失败 10021 修复）
+- extractJsonObject 反斜杠字面量 '\' 在传输中被损坏成非法 token → 改用 charCodeAt(0)===92 判断（#335 恢复部署）
+
 ## [v6.14.1] - 2026-09-05
 
 ### Fixed（parseToolCalls 鲁棒性 · Level 2 Step 1 实测暴露）
