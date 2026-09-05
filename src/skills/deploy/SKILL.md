@@ -5,12 +5,18 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.6.0 · 部署自动闭环 + 失败自愈）
+# 部署技能（v6.6.1 · 部署自动闭环 + 失败自愈 + Event 触发说明）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
 
 **闭环责任（Ownership Protocol · 柳柳指出 + GPT #789 定稿）**：说「我盯着部署」= 承诺一口气跑到终态（VERIFIED 或明确失败原因），**中途不把控制权交回柳柳/用户**。等待是状态不是结束——sleep + 轮询 + 自动分支跑完，不做「等用户催」的半吊子。
+
+## 触发方式（Event 触发说明 · GPT #791 / Ziven #792 收敛）
+本 skill 是 workflow 形态（第 6 步自动闭环），按「规范生效机制（policy-index）」触发链路：
+1. **主动触发（现状）**：用户/场景发部署请求 → master-router 路由到本 skill。
+2. **merge 工具验证提示（Step 4 落地后）**：`github_merge_to_main` 成功返回时自动带「⚠️ 部署验证提示 + 下一步该调什么工具」→ 引导本 skill 第 6 步（不靠 Agent 记性）。
+3. **远期 event-driven（v2 预留）**：merge_completed event → workflow engine → 自动触发 deploy_verification workflow。event 机制就绪后把第 6 步接入，无需 Agent 介入。
 
 ## 铁律（最高优先级）
 1. **main 只经 PR 合入**——绝不直接推 main，分支保护兜底。
@@ -161,6 +167,7 @@ merge 成功
 - **大文件手写重推**：45KB 必漏段，用 read → 改 → 校验 → 整推。
 
 ## 变更记录
+- 2026-09-05：v6.6.1 加「触发方式（Event 触发说明）」——规范生效机制 Step 3：标注主动触发/merge 验证提示/远期 event-driven 三类链路（GPT #791 + Ziven #792 收敛）
 - 2026-09-05：v6.5.1 部署后必查硬步骤（verify_main）+ merge 硬规则（默认 rebase / merge 必须 commit_title+reason）——PR #131 标题重复转 Runtime Guard（GPT #749 确认）
 - 2026-09-05：v6.5.0 新增 「查部署日志」章节 —— cloudflare_deploy_status MCP 工具（help 可���、可直接调用；柳柳要求工具+skill 都要有）。
 
