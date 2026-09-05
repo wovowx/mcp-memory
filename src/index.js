@@ -13,6 +13,10 @@
 // v6.7 变更（2026-09-02）：Phase 1.5 @GPT 最小闭环（scheduled cron + webhook 触发）
 // v6.8 变更（2026-09-04）：P0-2 Phase1 watchdog —— scheduled 先 watchdogSweep 恢复生命周期，再 processPendingEvents（独立模块不挂 processor）
 // v6.9 变更（2026-09-04）：release_guard 前置闸 —— github_push/merge 到 main 必须版本化（柳柳要求硬拦截，不靠记性）
+// v6.11.19（2026-09-05）：修复「GPT 回复卡死不落库」——补回丢失的 scheduled() handler
+//   根因：index.js 只有 fetch()，cron 每分钟空转，watchdog 从未运行 → 卡死事件无人释放
+//   修复：scheduled → watchdogSweep（释放超时卡死，15min）→ processPendingEvents（重投/处理）
+//   验证：#672 事件自 09-04 17:19 卡 claimed→processing 8+ 小时，counter 停在 672，#673 回复没落库
 // @ts-nocheck
 import { buildErrorResponse, jsonResponse } from './utils/response.js';
 import { uploadFileToSupabase } from './utils/storage.js';
@@ -26,6 +30,24 @@ import { handleMCPRequest } from './modules/mcp_router.js';
 import { discoverMCPTools } from './modules/agent_runtime/mcp_client.js';
 
 export default {
+    // v6.11.19：补回 scheduled() —— cron 每分钟触发（wrangler.toml crons=["* * * * *"]）
+    // 先 watchdogSweep 释放超时卡死事件（15min 超时），再 processPendingEvents 处理待办/重投
+    async scheduled(event, env, ctx) {
+        try {
+            const sweep = await watchdogSweep(env);
+            console.log('[scheduled] watchdogSweep: ' + JSON.stringify(sweep));
+        } catch (e) {
+            console.error('[scheduled] watchdog err: ' + e.message);
+        }
+        try {
+            const result = await processPendingEvents(env);
+            console.log('[scheduled] processPendingEvents: ' + JSON.stringify(result));
+        } catch (e) {
+            console.error('[scheduled] process err: ' + e.message);
+        }
+        return new Response('ok');
+    },
+
     async fetch(request, env, ctx) {
         if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return buildErrorResponse('Supabase not configured', 500);
         if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Last-Event-ID, Authorization, Accept, MCP-Session-Id', 'Access-Control-Expose-Headers': 'MCP-Session-Id, Last-Event-ID, Content-Type', 'Access-Control-Max-Age': '86400' } });
