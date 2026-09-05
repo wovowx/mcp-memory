@@ -31,7 +31,7 @@ export async function callChat2Api(env, promptOrMessages, options = {}) {
         : [{ role: 'user', content: promptOrMessages }];
 
     const body = {
-        model: 'gpt-4o-mini',
+        model: env.GPT_MODEL || 'gpt-4o-mini', // v6.17.3: GPT_MODEL 可配置（驱动自定义 GPT / gizmo）
         messages,
         conversation_id: env.GPT_CONVERSATION_ID || null,
         HISTORY_DISABLED: false,
