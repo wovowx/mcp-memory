@@ -1,8 +1,8 @@
 # chat2api —— GPT 真身通道（操作手册 + 铁律）
 
 > 用途：通过 chat2api 网关调用 ChatGPT 真身（同一账号/同一上下文/同一记忆），是 Common Ground 三方通信的「大脑入口」。
-> 版本：2026-09-05 v9（状态更新：节点已恢复，标注当前正常 + 保留历史故障排查）
-> 状态：✅ 正常（2026-09-05 恢复）——chat2api 出站通道已恢复，/api/chat2api/ask 已验证 HTTP 200
+> 版本：2026-09-05 v10（MCP 连接器自动挂载上线：镜像 patch 已注入 developer_mode_connector_ids，GPT 无需手动加号即可调用 MCP 工具）
+> 状态：✅ 正常（2026-09-05）——chat2api 出站通道已恢复 + MCP 自动挂载已上线，/api/chat2api/ask 已验证 HTTP 200
 
 ## 🔴🔴🔴 第一铁律：绝不轰炸 GPT（最高优先级，柳柳 2026-09-03 严厉批评后立）
 
@@ -23,21 +23,22 @@
 - 环境变量：HISTORY_DISABLED=false（Cloud Run）
 - GPT_MODEL：gpt-5.6（v6.17.5 起，驱动挂插件新对话；chat2api fallback gpt-4o 但 conversation_id 续插件环境，原生调 MCP 成功）
 
-## 🎉 浏览器挂插件通道（2026-09-05 柳柳实测·重大突破）⭐️⭐️⭐️
+## 🎉 MCP 连接器自动挂载（2026-09-05 上线·重大突破）⭐️⭐️⭐️
 
-**浏览器网页版现在支持挂载 MCP 插件了**（须在对话开始时挂载）——这就破除了「网页版没有插件」的旧判断。
+**再也不用手动加号了**：chat2api 定制镜像里已注入 `patch_chatformat.py`——每次发消息自动在 metadata 写入 `developer_mode_connector_ids`，ChatGPT 后端以为消息挂了 Ziven_MCP 连接器，GPT 原生可调用 MCP 工具。
+
+### 原理（2026-09-05 逆向确认）
+ChatGPT 网页端「左下角加号挂 MCP 连接器」= 往消息 metadata 的 `developer_mode_connector_ids` 数组写连接器 ID。chat2api 默认不填该字段 → patch 在发送前补上（multimodal + 纯文本两条分支都覆盖）。
+
+- 连接器应用 ID：`asdk_app_6a95a93c9a50819184dcf3468ae0052a`
+- patch 文件：ZivenLab `common-ground/chat2api-xray/patch_chatformat.py`（匹配失败即构建失败，防镜像漂移静默改错）
+- 镜像：`ziven-bridge:v2`（已上线）
 
 ### 链路（已验证）
 ```
-chat2api → 新对话（GPT-5.6 + 已挂 Ziven_MCP 插件）→ 原生调 ds_quota → 余额返回 → GPT 整理回复
-没有文本标记、没有 parser、没有认知壁垒
+chat2api → GPT（已自动挂 Ziven_MCP）→ 原生调 ds_quota → 余额返回 → GPT 整理回复
+没有文本标记、没有 parser、没有认知壁垒、不需要手动加号
 ```
-
-### 关键事实
-1. 挂插件必须在对话开始时（对话中途挂不上）
-2. GPT_MODEL=gpt-5.6：chat2api fallback 到 gpt-4o，但 conversation_id 续的是挂插件的新对话 → 插件环境保留 ✅
-3. 不用官 key、不用 App、免费版可用
-4. 这条是「接口驱动会调 MCP 的 GPT」的免费正门
 
 ### 测试证据
 ```
@@ -45,10 +46,11 @@ POST /api/chat2api/ask → STATUS 200
 💡 DeepSeek 账户余额 0.45 CNY（ds_quota 原生 MCP 调用）
 ```
 
-### 新对话相关
-- conversation_id：6a9bbad2-3638-83e8-9a1d-c12596744c3c
-- GPTs ID：g-p-6a8f9e8de8e481919f2349f04e51608b-zivencheng-chang-ji-hua
-- 模型自报：GPT-5.6 Luna（产品名），chat2api 技术名传 gpt-5.6
+### 旧理解（保留作历史）：「浏览器挂插件通道」
+2026-09-05 上午柳柳实测：浏览器网页版支持挂 MCP 插件，但**须在对话开始时挂载、且隔几轮会失效/每轮要手动加**。已由 MCP 自动挂载 patch 根治，不再需要手动操作。历史链路：
+```
+chat2api → 新对话（GPT-5.6 + 已挂 Ziven_MCP 插件）→ 原生调 ds_quota → 余额返回 → GPT 整理回复
+```
 
 ## 🎯 换 conversation_id 的标准动作（哥哥自己完成，柳柳不用动）⭐️⭐️⭐️
 
@@ -69,8 +71,10 @@ POST /api/chat2api/ask → STATUS 200
 
 ## 服务详情
 
-- URL：https://chat2api-1029559493109-1029559493109.asia-northeast1.run.app
-- 镜像：asia-northeast1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/chat2api-repo/chat2api-xray:v1（xray 定制版，走柳柳 VLESS 日本节点，IP 与浏览器同源）
+- URL：https://ziven-bridge-1029559493109.asia-northeast1.run.app（2026-09-05 由 chat2api-... 迁移至 ziven-bridge）
+- 镜像：asia-northeast1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/ziven-bridge/ziven-bridge:v2（xray 定制版 + node_manager 节点轮换 + MCP 自动挂载 patch，走柳柳 VLESS 日本节点，IP 与浏览器同源）
+- 部署架构：Cloud Run `ziven-bridge`（region: asia-northeast1，port 5005，节点由 NODE_CONFIG_URL + SUBSCRIPTION_URL 托管）
+- 完整部署手册：ZivenLab `common-ground/chat2api-xray/DEPLOY.md`
 
 ## 调用方法（标准姿势）⭐️
 
@@ -91,9 +95,11 @@ POST /api/chat2api/ask → STATUS 200
 - POST /api/chat2api/ask → HTTP 500 {"ok":false,"error":"chat2api failed 404: {\"detail\":\"\"}"}（chat2api 内部调 GPT 上游失败）
 - Worker 转发通（哥哥姿势没错）、Cloud Run 容器活着（GET / 有响应）——炸的是 xray 出站 VLESS 节点到 ChatGPT 这一段
 
-**处理**：换节点 = 改 Cloud Run 环境变量（xray 配置：地址/端口/UUID/flow/加密/指纹等，约 6 个）→ 重新部署。
+**处理**（v2 起：节点管理器自动轮换）：
+- `node_manager.py` 常驻健康检查 + 节点失效自动切换（specified_nodes 优先，订阅兜底）
+- 换节点 = 改 ZivenLab `common-ground/chat2api-xray/node-config.json`（specified_nodes）→ 推代码 → Cloud Run 重启 Revision 即生效；订阅由 SUBSCRIPTION_URL 环境变量托管（见 DEPLOY.md）
 
-**权限现状（诚实记录）**：哥哥本地没有 gcloud/Google Cloud 凭证（datastore 只有 GitHub token），Cloud Run 控制台哥哥进不去，所以**更新环境变量必须柳柳在 Google Cloud 控制台操作**。哥哥负责：①给柳柳精确的环境变量清单 ②改完立刻实测验证。
+**权限现状（诚实记录）**：哥哥本地没有 gcloud/Google Cloud 凭证（datastore 只有 GitHub token），Cloud Run 控制台哥哥进不去，所以**更新环境变量/手动部署必须柳柳在 Google Cloud 控制台操作**。哥哥负责：①给柳柳精确的命令/变量清单 ②改完立刻实测验证。
 
 **节点同源铁律**：新节点必须与柳柳浏览器 IP 同源（否则 ChatGPT 看到 IP 不一致会风控）。
 
@@ -107,8 +113,8 @@ POST /api/chat2api/ask → STATUS 200
 5. ⛔ 旧 ID 弃用逻辑：旧分支可能被轰炸污染/上下文太杂 → 不再使用，除非柳柳明确说恢复。
 
 ### B. 更换节点（VLESS 出站）怎么办
-1. 节点信息在 Cloud Run 环境变量（xray 配置，共约 6 个：地址/端口/UUID/flow/加密/指纹等）。
-2. **柳柳在 Google Cloud 控制台操作**（哥哥本地无 gcloud 权限）：VLES地址/端口/UUID/flow/加密/指纹 → 更新环境变量 → 重新部署 chat2api-xray 服务。
+1. 节点信息两处：ZivenLab `node-config.json`（specified_nodes，哥哥可改）+ Cloud Run 环境变量 `SUBSCRIPTION_URL`（订阅兜底，敏感，柳柳控制台维护）。
+2. 改 specified_nodes → 推 ZivenLab dev → Cloud Run 重启 Revision（或柳柳在 Cloud Run 控制台触发）；改订阅 → 柳柳在 Google Cloud 控制台更新 `SUBSCRIPTION_URL` 环境变量 → 保存触发新 Revision。
 3. ⚠️ 节点必须与柳柳浏览器同源（否则 ChatGPT 看到 IP 不一致，可能风控）。
 4. 换完测：POST 一条最小消息，HTTP 200 即通；403 = 风控或 IP 脏；仍 404/超时 = 节点没生效/又挂了。
 
@@ -119,7 +125,7 @@ POST /api/chat2api/ask → STATUS 200
 4. 页面可见铁律：与 GPT 的所有讨论消息要在聊天室页面可见，不能只在私底下。
 5. 不塞旧历史：跟 GPT 说话只发最小、最新的 @gpt 消息（今天柳柳批评的根源）。
 6. 错误码速查：403 cf_chl_opt=风控冷却30min+；404 history_disabled=HISTORY_DISABLED 问题；404 model_not_found=模型名不支持；500 failed 404 detail空=节点炸/上游连不上（v8）。
-7. 多节点 failover（O5）：未来计划，当前单节点。
+7. 多节点 failover（O5）：node_manager 已实现自动轮换（2026-09-05 v2 上线）。
 8. 本地直推大文件通道：token 在本地 datastore（/data/user/0/com.ai.assistance.operit/files/datastore/github_auth_preferences.preferences_pb），用 code_runner 读它直连 GitHub API 推任意大文件，内容不经过对话，永不截断。（注：这是推 GitHub，不是调 chat2api）
 
 ## 失败路径（全是坑）
@@ -129,7 +135,7 @@ POST /api/chat2api/ask → STATUS 200
 - gpt-4-gizmo-g-p-... → 404 model_not_found
 - 半小时连续多次调用 → 403 cf_chl_opt 风控（需冷却 30min~几小时）
 - Google 数据中心 IP 被上游拉黑 → 用 xray 容器走 VLESS 日本节点解决
-- **节点炸了 → chat2api failed 404 detail空 / 超时 → 换 VLESS 节点（Cloud Run env，柳柳控制台改）**（v8）
+- **节点炸了 → chat2api failed 404 detail空 / 超时 → node_manager 自动轮换 / 换 VLESS 节点**（v8/v10）
 - **wrangler.toml [vars] 旧 ID → 每次部署覆盖 Dashboard env → 打到主支/旧框（v6.12 根因，换 ID 哥哥自己改 wrangler.toml 即根治）**
 - env.GPT_CONVERSATION_ID 是旧值/脏值 → ask 打到旧框瞎回（v6.9/v6.10 踩坑）
 - 在代码里写死 ID → 换 ID 就要动代码（v6.9/v6.10 踩坑，已回退 env-only）
@@ -147,4 +153,4 @@ Common Ground（chat_agent_events）→ Agent Runtime（chat_adapter/event_proce
 - conversation_id = 真身钥匙，不要公开；token 有 30 天有效期，过期前提醒柳柳重新取。
 - 页面可见铁律：「所有消息必须显示在页面上」。
 
-*本手册由 Ziven 整理（2026-09-03 v8），基于 74 号手册 + 0902-1 实战经验 + 柳柳最新指示。*
+*本手册由 Ziven 整理（2026-09-05 v10），基于 v9 + MCP 自动挂载上线 + ziven-bridge 迁移。*
