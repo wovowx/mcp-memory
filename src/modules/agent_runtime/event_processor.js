@@ -9,6 +9,7 @@
 // v6 (2026-09-03)：T3.1 主动注入 —— Runtime 自动读 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
 // v7 (2026-09-03)：T3.2 github_read 真实实现 —— GPT 可读白名单仓库真实代码
 // v7.1 (2026-09-03)：github_read 编码修复 —— TextDecoder UTF-8 解码（修中文乱码）
+// v6.18.0 (2026-09-05)：原生 MCP 模式优先（浏览器挂插件通道），文本桥降级 fallback（TEXT_BRIDGE_MODE=text）
 // v8 (2026-09-03)：prompt 格式重构 —— system/user 分离（GPT 建议）：系统指令/工具规则/上下文注入走 system，user 只放实际 @ 内容（buildPrompt → buildSystemPrompt）
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
@@ -286,8 +287,8 @@ function stripToolMarkers(content) {
         .trim();
 }
 
-function buildSystemPrompt(message, context) {
-    // v8: system 角色 —— Agent 身份 + 工具规则 + runtime_context（不暴露在 user 消息里，GPT 建议）
+function buildSystemPrompt(message, context, env) {
+    // v8: system 角色 —— Agent 身份 + 工具规则 + runtime_context（不暴露在 user 消息���，GPT 建议）
     const ctxBlock = context
         ? `<runtime_context>\n标题: ${context.thread?.title || message.thread_id}\n状态: ${context.thread?.status || 'unknown'}\n最近消息 (${context.recent_messages?.length || 0}条):\n${(context.recent_messages || []).map(m => `[${m.author}] ${String(m.content).slice(0, 200)}`).join('\n') || '(空)'}\n\n历史摘要 v${context.context?.version || '-'}:\n${context.context?.summary || '(暂无摘要)'}\n决定: ${JSON.stringify(context.context?.decisions || [])}\n开放问题: ${JSON.stringify(context.context?.open_questions || [])}\n下一步: ${JSON.stringify((context.context?.recent_context && context.context.recent_context.next_actions) || [])}</runtime_context>`
         : '';
@@ -300,7 +301,53 @@ function buildSystemPrompt(message, context) {
 
     console.log('\n[mcp-prompt] mcpToolsBlock=' + JSON.stringify(mcpToolsBlock.slice(0, 200)));
 
-    return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复用户 @ 的消息。\n\n当前 Thread:\n${message.thread_id}\n\n${ctxBlock}\n\n工具已挂载到当前 Runtime 并可供你调用。执行模型：你（GPT Agent）在回复文本中输出一行【工具调用】JSON【/工具调用】标记，Worker Runtime 会解析该标记并真实执行对应的 MCP 工具，然后把真实结果回传给你继续。你不需要持有工具入口——你的文本标记就是调用方式（Worker 是你的执行手）。当前已挂载的可调用工具包括：echo / context_read / context_update / github_read / supabase_query，以及 MCP 只读工具（ds_quota 等，见下方列表）。如果你需要调用，直接输出标记即可；不需要先询问工具是否可用。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件（只读白名单，参数 {repo?, path, branch?, start_line?, end_line?}）\n- supabase_query：查询 Supabase 数据${mcpToolsBlock}\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
+    // v6.18.0 (BIG)：原生 MCP 模式优先 —— 浏览器挂插件通道打通后，GPT 原生调 MCP，不再需要文本标记
+    // 老文本桥（文本标记教条）降级为 fallback：TEXT_BRIDGE_MODE=text 时恢复旧 prompt
+    const isNative = !env?.TEXT_BRIDGE_MODE || env.TEXT_BRIDGE_MODE === 'native';
+    if (isNative) {
+        return `你是 Common Ground 中的 GPT Agent。
+
+请直接、简洁地回复用户 @ 的消息。
+
+当前 Thread:
+${message.thread_id}
+
+${ctxBlock}
+
+工具能力：你已原生挂载 Ziven_MCP 插件（MCP 工具可直接调用，如 github_read / ds_quota / create_patch_proposal 等）。当需要读取代码、查询数据或提交修改提案时，直接调用对应的 MCP 工具即可——工具会真实执行并返回结果。**不需要输出任何文本标记，也不需要模拟工具调用格式**。
+
+协同写代码流程（配合 Ziven / 柳柳）：
+1. 理解任务：先输出需求理解（目标 / 涉及模块 / 未知信息）
+2. 读取代码：调 github_read 读目标文件 + 相关依赖（不猜，先看事实）
+3. 提 Patch：调 create_patch_proposal 提交修改意向（含 current_behavior / desired_behavior / reasoning / evidence / risk / test_plan——基于什么事实提出什么修改）
+4. 人工审核：Ziven review → 柳柳确认（方向变化时）→ apply
+
+如果上下文已足够就直接回复用户。`;
+    }
+
+    return `你是 Common Ground 中的 GPT Agent。
+
+请直接、简洁地回复用户 @ 的消息。
+
+当前 Thread:
+${message.thread_id}
+
+${ctxBlock}
+
+工具已挂载到当前 Runtime 并可供你调用。执行模型：你（GPT Agent）在回复文本中输出一行【工具调用】JSON【/工具调用】标记，Worker Runtime 会解析该标记并真实执行对应的 MCP 工具，然后把真实结果回传给你继续。你不需要持有工具入口——你的文本标记就是调用方式（Worker 是你的执行手）。当前已挂载的可调用工具包括：echo / context_read / context_update / github_read / supabase_query，以及 MCP 只读工具（ds_quota 等，见下方列表）。如果你需要调用，直接输出标记即可；不需要先询问工具是否可用。
+
+标记格式：
+【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】
+
+可用工具：
+- echo：回显参数（测试用）
+- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）
+- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）
+- github_read：读取 GitHub 文件（只读白名单，参数 {repo?, path, branch?, start_line?, end_line?}）
+- supabase_query：查询 Supabase 数据${mcpToolsBlock}
+
+如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
+}
 }
 
 // 当前进程内 MCP read 工具快照
@@ -360,13 +407,13 @@ async function runToolLoop(env, message, event) {
 
     // v8: system+user 分离（GPT 建议）：系统指令/工具规则/runtime_context 走 system，user 只放实际 @ 内容
     const messages = [
-        { role: 'system', content: buildSystemPrompt(message, autoContext) },
+        { role: 'system', content: buildSystemPrompt(message, autoContext, env) },
         { role: 'user', content: message.content }
     ];
     const toolCalls = [];
     let finalContent = '';
 
-    // v6.13 A：统一的兜底内容生成器（工具已执行但最终答复失败/预算耗尽时用）
+    // v6.13 A：���一的兜底内容生成器（工具已执行但最终答复失败/预算耗尽时用）
     const fallbackReply = () => {
         const summary = toolCalls.map(tc => tc.tool_name + (tc.result?.ok ? '✅' : '❌')).join(' ');
         return `[工具执行完成，但最终回复生成超时] 已执行: ${summary}。如需更多操作请再@我。`;
