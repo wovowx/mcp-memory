@@ -22,8 +22,10 @@ GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory,wovowx/ZivenLab"
 # 2026-09-05: 切换到 ziven-bridge（chat2api 1.8.8-beta2 + MCP 连接器自动挂载 patch v2）
 CHAT2API_URL = "https://ziven-bridge-1029559493109.asia-northeast1.run.app/v1/chat/completions"
 GPT_CONVERSATION_ID = "6a9bbad2-3638-83e8-9a1d-c12596744c3c"
-# v6.17.5: 直接用新对话模型 GPT-5.6（柳柳建议）—— chat2api fallback gpt-4o，conversation_id 续插件对话
-GPT_MODEL = "gpt-5.6"
+# v6.19.1: GPT_MODEL 改为 GPTs ID（g-p-...）→ chat2api 走 gizmo_interaction 进入挂插件 GPTs 环境
+# 柳柳确认对话 URL 是 https://chatgpt.com/g/g-p-6a8f9e8de8e481919f2349f04e51608b/c/6a9bbad2-...
+# 之前用 gpt-5.6 走 primary_assistant 没进 GPTs，MCP 插件（挂在 GPTs 上）不加载 → 调不到工具
+GPT_MODEL = "g-p-6a8f9e8de8e481919f2349f04e51608b-zivencheng-chang-ji-hua"
 
 [triggers]
 crons = ["* * * * *"]
