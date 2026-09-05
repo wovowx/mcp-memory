@@ -107,14 +107,49 @@ export default {
                 const worker = 'mcp-memory';
                 const base = 'https://api.cloudflare.com/client/v4/accounts/' + account + '/workers/scripts/' + worker;
                 const headers = { 'Authorization': 'Bearer ' + cfToken, 'Content-Type': 'application/json' };
+                const deploymentId = url.searchParams.get('deployment_id');
+                const includeDetails = url.searchParams.get('include') === 'details';
+
+                // 单次部署详情（部署日志：status/trigger/metadata/error）
+                if (deploymentId) {
+                    const detailUrl = base + '/deployments/' + encodeURIComponent(deploymentId) + '/details';
+                    const dResp = await fetch(detailUrl, { headers });
+                    let detail = null;
+                    try { if (dResp.ok) detail = await dResp.json(); } catch (e) { detail = { parse_error: e.message }; }
+                    return jsonResponse({ ok: true, account, worker, deployment_id: deploymentId, detail, note: 'deploy-status detail: single deployment logs via Cloudflare API' }, 200);
+                }
+
                 const [depRes, verRes] = await Promise.all([
                     fetch(base + '/deployments', { headers }),
                     fetch(base + '/versions?per_page=8', { headers })
                 ]);
                 let deployments = [], versions = [];
-                try { const d = await depRes.json(); deployments = (d.result?.deployments || []).slice(0, 5).map(x => ({ id: (x.id || '').slice(0, 8), created_on: x.created_on, source: x.source })); } catch {}
-                try { const v = await verRes.json(); versions = (v.result?.items || []).slice(0, 8).map(x => ({ id: (x.id || '').slice(0, 8), number: x.number, created_on: x.metadata?.created_on, source: x.metadata?.source })); } catch {}
-                return jsonResponse({ ok: true, account, worker, deployments, versions, note: 'deploy-status tool: reads Cloudflare API via worker secret' }, 200);
+                try {
+                    const d = await depRes.json();
+                    const items = (d.result && d.result.deployments) || d.result || [];
+                    deployments = items.slice(0, 8).map(x => ({
+                        id: (x.id || '').slice(0, 12),
+                        created_on: x.created_on,
+                        source: x.source,
+                        trigger: x.trigger || null,
+                        status: x.status || null
+                    }));
+                    // include=details: 给最近 3 个部署拉详情（含 metadata/error）
+                    if (includeDetails) {
+                        deployments = await Promise.all(deployments.slice(0, 3).map(async dep => {
+                            try {
+                                const dr = await fetch(base + '/deployments/' + encodeURIComponent(dep.id) + '/details', { headers });
+                                let djson = null; if (dr.ok) djson = await dr.json();
+                                const det = djson && djson.result ? djson.result : djson;
+                                return Object.assign({}, dep, { detail: det ? { trigger: det.trigger, metadata: det.metadata, status: det.status, error: det.error || null } : null });
+                            } catch (e) {
+                                return Object.assign({}, dep, { detail_error: e.message });
+                            }
+                        }));
+                    }
+                } catch (e) { deployments = [{ parse_error: e.message }]; }
+                try { const v = await verRes.json(); versions = (v.result && v.result.items || []).slice(0, 8).map(x => ({ id: (x.id || '').slice(0, 8), number: x.number, created_on: x.metadata && x.metadata.created_on, source: x.metadata && x.metadata.source })); } catch (e) { versions = [{ parse_error: e.message }]; }
+                return jsonResponse({ ok: true, account, worker, deployments, versions, detail_available: true, note: 'deploy-status tool v2: deployments list + single details via ?deployment_id= or ?include=details' }, 200);
             } catch (e) {
                 return jsonResponse({ ok: false, error: e.message }, 500);
             }
