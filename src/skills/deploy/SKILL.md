@@ -5,17 +5,19 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.5.1 · 部署后必查 + merge 硬规则）
+# 部署技能（v6.6.0 · 部署自动闭环 + 失败自愈）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
+
+**闭环责任（Ownership Protocol · 柳柳指出 + GPT #789 定稿）**：说「我盯着部署」= 承诺一口气跑到终态（VERIFIED 或明确失败原因），**中途不把控制权交回柳柳/用户**。等待是状态不是结束——sleep + 轮询 + 自动分支跑完，不做「等用户催」的半吊子。
 
 ## 铁律（最高优先级）
 1. **main 只经 PR 合入**——绝不直接推 main，分支保护兜底。
 2. **柳柳拍板发布**——发布是决策，不是哥哥自动完成的事（第 3 步最高优先级）。
 3. **一个版本一次发布**——dev 攒批，一个 change batch，一次 PR，一次部署。
 4. **合并默认 `merge_method=rebase`（代码 v6.17.0 硬性）**——不传就是 rebase，标题不会重复（PR #131 教训）。若显式传 `merge`：必须带 `commit_title` + `merge_reason`（hotfix/emergency/history-preserve），否则代码拒绝（MERGE_REQUIRES_COMMIT_TITLE / MERGE_REQUIRES_REASON）。rebase 保留真实历史、命名从版本号开始。
-5. **合完 dev 必同步**——rebase 只动 main，dev 要跟上，否则下一轮 PR 冲突。
+5. **合完 dev 必同步**——rebase 只动 main，dev 要跟上，否则��一轮 PR 冲突。
 6. **JSON 文件用 content_base64 推**——普通 content 推 JSON 会被序列化坏。
 7. **skill 是菜谱不是账本**——写/改 skill 按《技能写作规范》，主体优先，教训只留一行。
 8. **本地文件读取有逃生通道**——android 读本地失败（Shizuku 挂）时，优先用 `environment=linux` + `/sdcard/...` 直接读；大文件绝不手写整份重推（必漏段）。
@@ -34,7 +36,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 
 ### 第 3 步：柳柳确认（最高优先级）
 - 把变更清单贴给柳柳（compare 结果 + CHANGELOG 拟更新 + 版本号），问：**「这批（xxx）可以推到 main 吗？」**
-- 柳柳说"可以"才继续；不说"可以"绝不推。
+- 柳柳���"可以"才继续；不说"可以"绝不推。
 
 ### 第 4 步：版本化 + CHANGELOG（不过此步不进第 5 步）
 - **定版本号 + 版本名称**（规则见下）。
@@ -46,14 +48,47 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 - 合并用 **`merge_method=rebase`** + `commit_title=版本号+名称`——**必须显式传 rebase**，否则默认 merge 会把 commit_title 写两遍。
 - 合并工具会自动把 dev 同步回 main 最新。
 
-### 第 6 步：验证 & 收尾
-- **🔴 部署后必查（柳柳铁律）：merge 后 sleep 45s → `cloudflare_deploy_status(verify_main=true)` 确认最新部署版本=刚合版本**。参数：`repo`（默认 mcp-memory）。
-- 返回 `VERIFIED` ✅ → 收尾；返回 `DEPLOY_UNVERIFIED` ⚠️ → **必须查部署日志分析根因**（`cloudflare_deploy_status` 支持 `?deployment_id` / `?include=details`）——不标 completed，查清楚再说。
-- 读 main 关键文件确认内容正确，help() 确认新工具在。
-- 确认 dev 已与 main 同步。
-- 更新驾驶舱「发布与版本状态」（当前基线版本）。
+### 第 6 步：部署自动闭环验证 & 收尾（🔴 必须一口气跑完，失败自愈）
 
-## Release Checklist（发布前硬闸门 · 不过不许推 main）
+> **铁律（柳柳）**：每次部署后必查；**DEPLOY_UNVERIFIED 必须自己查日志分析根因，不许让柳柳手动贴日志**。
+
+```
+merge 成功
+  ↓ sleep 45s（等待 Cloudflare propagation，不是等人）
+  ↓ cloudflare_deploy_status(verify_main=true)
+  ├─ VERIFIED ✅ → 收尾
+  └─ DEPLOY_UNVERIFIED ⚠️ → 自动进入失败处理（不停！）
+       ↓ cloudflare_deploy_logs(limit=3) 查部署日志/详情
+       ↓ 分类错误（见「部署失败错误分类表」）
+       ├─ 低风险可自愈（构建语法/配置typo/已知问题）→ 修复 → 重推 → 回到 merge 后流程
+       └─ 高风险/未知（架构/库/权限/多次修复无效）→ 停，带证据贴给柳柳拍板
+```
+
+**详细步骤**：
+
+1. **merge 后立即**：`sleep` 45s（Cloudflare append 需要时间）。
+2. **验证**：`cloudflare_deploy_status(verify_main=true, repo=wovowx/mcp-memory)`。
+   - `VERIFIED` → 收尾，进第 7 步。
+   - `DEPLOY_UNVERIFIED` → **不 sleep 等人来问，直接下一步**。
+3. **查日志（自愈第一动作）**：`cloudflare_deploy_logs(limit=3)` 拿最近部署详情（status/trigger/metadata/error）。
+   - 需要单次详情：`cloudflare_deploy_logs(deployment_id=<id>)`。
+   - 要看原始响应：`cloudflare_deploy_logs(include_raw=true)`。
+   - ⚠️ 工具要新会话/重连后才有（MCP 工具列表是连接时快照）；当前会话没有就重新连接后再调。
+4. **分类错误**（见下表）→ 按类处理。
+5. **修复后重推**：改好 → 上传 → 推 dev → 合并 → 回到步骤 1（sleep 45s 再验证），直到 VERIFIED。
+6. **自愈上限**：同一问题连续修 2 次仍 FAILED → 停，带证据（日志 + 修复记录）给柳柳拍板，不无限循环。
+
+**部署失败错误分类表**：
+
+| 日志关键词 | 分类 | 动作 |
+|---|---|---|
+| `syntax error` / `Unexpected token` / `code: 10021` | 构建语法错误（低风险可自愈） | 定位报错文件:行号 → 读该文件对应段 → 修语法 → 本地 `node --check` 确认 → 重推 |
+| `build failed` / `module not found` / import 错误 | 构建依赖/模块错误（低风险可自愈） | 读报错模块 → 修 import/依赖 → 重推 |
+| `HTTP 401/403` / `CF_API_TOKEN` | 凭证问题（需柳柳） | 停，汇报需要更新 CLOUDFLARE_API_TOKEN secret |
+| 无新 deployment 记录 / deployment 列表为空 | 未触发（webhook/Git Integration 断） | 查 GitHub push 是否成功 → 查 Cloudflare Dashboard Git Integration → 可能需柳柳重连 |
+| main HEAD 比部署新但部署记录存在 | 部署未赶上/还在流程 | 再 sleep 30s 重 verify；仍不匹配 → 查 deploy_logs |
+| 日志显示失败但无明确错误 | 未知 | 停，带原始日志贴柳柳 |
+## Release Checklist（发布前硬闸门 · 不过���许推 main）
 
 ```
 □ 是否属于版本级变更？（新架构/Runtime行为/API/部署行为/协议规则 → 是）
@@ -127,7 +162,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 
 ## 变更记录
 - 2026-09-05：v6.5.1 部署后必查硬步骤（verify_main）+ merge 硬规则（默认 rebase / merge 必须 commit_title+reason）——PR #131 标题重复转 Runtime Guard（GPT #749 确认）
-- 2026-09-05：v6.5.0 新增 「查部署日志」章节 —— cloudflare_deploy_status MCP 工具（help 可搜、可直接调用；柳柳要求工具+skill 都要有）。
+- 2026-09-05：v6.5.0 新增 「查部署日志」章节 —— cloudflare_deploy_status MCP 工具（help 可���、可直接调用；柳柳要求工具+skill 都要有）。
 
 - 2026-09-04：v6.4.3 命名纪律——推 dev commit message 也用 `vX.Y.Z: 名称`，不带 docs()/feat() 前缀（柳柳要求，rebase 后 main 历史干净）。
 - 2026-09-04：v6.4.2 发布纪律修正——合 main 必须显式 merge_method=rebase（柳柳发现 commit 标题重复）；常见坑加对应条目。
