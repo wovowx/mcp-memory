@@ -221,7 +221,8 @@ function parseToolCalls(content) {
             if (!obj.tool && obj.name) obj.tool = obj.name;
             calls.push(obj);
         } else {
-            calls.push({ tool: 'echo', arguments: { parse_error: (raw || '').slice(0, 200), error: err || 'invalid tool call object' } });
+            // v6.14.4 (GPT #713)：parse 失败明确标记 __parse_error__，不伪装 echo 成功
+            calls.push({ tool: '__parse_error__', arguments: { parse_error: (raw || '').slice(0, 200), error: err || 'invalid tool call object' } });
         }
     };
 
@@ -273,6 +274,10 @@ function parseToolCalls(content) {
 async function executeTool(env, call, ctx) {
   const name = call?.tool || call?.name || '';
   const args = call?.arguments || call?.args || {};
+  // v6.14.4 (GPT #713)：明确解析失败，不伪装 echo 成功
+  if (name === '__parse_error__') {
+    return { ok: false, error: '工具调用解析失败: ' + (args.error || args.parse_error || 'unknown'), tool_source: 'parse' };
+  }
   const fn = TOOLS[name];
   if (fn) {
     try { const res = await fn(env, args, ctx); return { ok: true, ...res, tool_source: 'local' }; }
