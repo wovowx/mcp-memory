@@ -398,6 +398,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                         steps.push(syncNote);
                     }
                     text = steps.join('\n');
+                    text += '\n\n⚠️ 部署验证提示（Deploy Closure · 规范生效机制 Step 4）: 合并已成功，请按 deploy skill 第 6 步自动闭环——sleep 45s → cloudflare_deploy_status(verify_main=true) → 若 DEPLOY_UNVERIFIED 自动调 cloudflare_deploy_logs 查日志分类自愈，不许让柳柳手动贴日志。';
                 } else {
                     throw new Error('合并失败：' + (mergeData.message || `HTTP ${mergeResp.status}`));
                 }
