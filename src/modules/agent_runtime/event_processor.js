@@ -269,10 +269,18 @@ function cleanReplyContent(text) {
 }
 
 async function runToolLoop(env, message, event) {
+    // v6.13 A：Cloudflare Worker 单请求 wall-clock 硬上限（30s）——预算管理，保证兜底在预算内跑完
+    const LOOP_START = Date.now();
+    const WALL_BUDGET_MS = 27000;    // 总预算 27s，留 3s 给落库 + ack
+    const ROUND_FIRST_MS = 22000;    // 第一轮：GPT 首次生成，给足
+    const ROUND_LATER_MS = 8000;     // 第二轮+：只需基于工具结果收尾，短超时防卡（v6.12.1 的 30s 超时实际轮不到——进程先死）
+    const remainingBudget = () => WALL_BUDGET_MS - (Date.now() - LOOP_START);
+
     // T3.1 防失忆：Runtime 主动读取 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
     const autoContext = await readThreadContext(env, message?.thread_id, 10);
     // v9 + Level1 MVP: 运行前发现一次 MCP read 工具，并构建 OpenAI tools 声明（真实注入）
     let capabilityTrace = { discovered: 0, filtered: 0, injected: 0, names: [], has_ds: false };
+    let traceWritten = false; // v6.13 A：trace 是否已提前落库（工具执行后立即写，不等最终答复）
     let openaiTools = [];
     try {
         const mcpTools = await discoverMCPTools(env);
@@ -304,22 +312,43 @@ async function runToolLoop(env, message, event) {
     const toolCalls = [];
     let finalContent = '';
 
+    // v6.13 A：统一的兜底内容生成器（工具已执行但最终答复失败/预算耗尽时用）
+    const fallbackReply = () => {
+        const summary = toolCalls.map(tc => tc.tool_name + (tc.result?.ok ? '✅' : '❌')).join(' ');
+        return `[工具执行完成，但最终回复生成超时] 已执行: ${summary}。如需更多操作请再@我。`;
+    };
+
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
         // Level1 MVP: 每轮都带 MCP 工具声明（OpenAI tools），让 GPT 可调用面持续可见
-        // v6.12.1: 第二轮及以后可能超时——失败时用工具结果兜底，不让事件烂掉
-        let reply;
-        try {
-            reply = await callChat2Api(env, messages, { tools: openaiTools });
-        } catch (chatErr) {
-            console.error('[tool-loop] round=' + round + ' chat2api 失败: ' + chatErr.message);
-            if (round > 0 && toolCalls.length > 0) {
-                // 已执行过工具但拿不到最终回复 → 用工具结果摘要兜底
-                const summary = toolCalls.map(tc => tc.tool_name + (tc.result?.ok ? '✅' : '❌')).join(' ');
-                finalContent = `[工具执行完成，但最终回复生成超时] 已执行: ${summary}。如需更多操作请再@我。`;
-                console.log('[tool-loop] 使用工具结果兜底回复');
-                break;
+        // v6.13 A：第二轮用短超时 + 预算不足直接兜底——事件绝不卡死在 processing
+        const budgetLeft = remainingBudget();
+        let reply = null;
+        if (round > 0 && budgetLeft < ROUND_LATER_MS + 3000) {
+            // 剩余预算连短超时轮都跑不完 → 直接兜底，保证落库 + ack 在预算内
+            console.log('[tool-loop] round=' + round + ' 预算不足(' + budgetLeft + 'ms) → 直接兜底');
+        } else {
+            const roundTimeout = Math.min(round === 0 ? ROUND_FIRST_MS : ROUND_LATER_MS, Math.max(3000, budgetLeft - 3000));
+            try {
+                reply = await callChat2Api(env, messages, { tools: openaiTools, timeoutMs: roundTimeout });
+            } catch (chatErr) {
+                console.error('[tool-loop] round=' + round + ' chat2api 失败: ' + chatErr.message + ' timeout=' + roundTimeout);
+                if (round > 0 && toolCalls.length > 0) {
+                    // 已执行过工具但拿不到最终回复 → 用工具结果摘要兜底（短超时保证能走到这里）
+                    finalContent = fallbackReply();
+                    console.log('[tool-loop] 使用工具结果兜底回复');
+                    break;
+                }
+                throw chatErr; // 第一轮就失败（还没任何工具结果）→ 让上层 catch 标 failed
             }
-            throw chatErr; // 第一轮就失败（还没任何工具结果）→ 让上层 catch 标 failed
+        }
+        if (!reply) {
+            if (round > 0 && toolCalls.length > 0) {
+                finalContent = fallbackReply();
+                console.log('[tool-loop] 预算不足兜底回复');
+            } else {
+                finalContent = '[系统繁忙，回复生成超时，请稍后再试]';
+            }
+            break;
         }
         const content = reply.content || '';
 
@@ -377,6 +406,27 @@ async function runToolLoop(env, message, event) {
                 content: `【工具结果】{"tool":"${name}","result":${JSON.stringify(result)}}【/工具结果】`
             });
         }
+        // v6.13 A：工具执行完立即落 capability_trace（不等最终答复）——第二轮就算卡死，Capability 证据也已入库
+        try {
+            const traceRow = await insertAgentToolCall(env, {
+                event_id: event?.event_id,
+                message_id: message?.message_id,
+                agent: 'gpt',
+                call: { tool: '__capability_trace__', arguments: capabilityTrace },
+                round: null
+            });
+            if (traceRow?.id) {
+                await updateAgentToolCall(env, traceRow.id, {
+                    status: 'success',
+                    result: { ok: true, capability_trace: capabilityTrace, injected: openaiTools.length, tool_sources: ['mcp'] },
+                    error: null,
+                    finished_at: new Date().toISOString()
+                });
+            }
+            traceWritten = true;
+        } catch (e) {
+            console.error('[capability-trace] 提前写 trace 失败: ' + e.message);
+        }
         // 下一轮继续让 GPT 基于工具结果回复
     }
 
@@ -385,26 +435,28 @@ async function runToolLoop(env, message, event) {
         finalContent = '(工具循环达到上限，未完成最终回复)';
     }
 
-    // Level1 MVP: Capability Injection 证据链 —— 把 discovered/filtered/injected trace 落审计表
+    // Level1 MVP: Capability Injection 证据链 —— trace 已在工具执行后提前落库；这里只兜未写场景（无工具调用时）
     // 验收要求（GPT #689）：不靠「GPT 说我看到了」，要有可查询的观测证据
-    try {
-        const traceRow = await insertAgentToolCall(env, {
-            event_id: event?.event_id,
-            message_id: message?.message_id,
-            agent: 'gpt',
-            call: { tool: '__capability_trace__', arguments: capabilityTrace },
-            round: null
-        });
-        if (traceRow?.id) {
-            await updateAgentToolCall(env, traceRow.id, {
-                status: 'success',
-                result: { ok: true, capability_trace: capabilityTrace, injected: openaiTools.length, tool_sources: ['mcp'] },
-                error: null,
-                finished_at: new Date().toISOString()
+    if (!traceWritten) {
+        try {
+            const traceRow = await insertAgentToolCall(env, {
+                event_id: event?.event_id,
+                message_id: message?.message_id,
+                agent: 'gpt',
+                call: { tool: '__capability_trace__', arguments: capabilityTrace },
+                round: null
             });
+            if (traceRow?.id) {
+                await updateAgentToolCall(env, traceRow.id, {
+                    status: 'success',
+                    result: { ok: true, capability_trace: capabilityTrace, injected: openaiTools.length, tool_sources: ['mcp'] },
+                    error: null,
+                    finished_at: new Date().toISOString()
+                });
+            }
+        } catch (e) {
+            console.error('[capability-trace] 写 trace 失败: ' + e.message);
         }
-    } catch (e) {
-        console.error('[capability-trace] 写 trace 失败: ' + e.message);
     }
 
     return { content: finalContent, toolCalls };
