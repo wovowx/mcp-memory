@@ -30,7 +30,8 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_create_branch', description: '从指定分支新建分支（多仓库兼容）。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '新分支名' }, branch: { type: 'string', description: '新分支名（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支'] },
     { name: 'github_sync_branch', description: '让分支直接指向源分支最新 commit（fast-forward 同步，不删分支）。分叉根治专用。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '要同步的分支（默认dev）' }, branch: { type: 'string', description: '要同步的分支（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '同步'] },
     { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，source/target 大小不一致返回 COPY_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
-    { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] }
+    { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] },
+    { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] }
 ];
 
 // ============================================================
@@ -660,6 +661,38 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 commit_sha: putData.commit?.sha || '',
                 overwritten
             }, null, 2);
+        }
+
+        // cloudflare_deploy_status
+        else if (name === 'cloudflare_deploy_status') {
+            const cfToken = env.CLOUDFLARE_API_TOKEN;
+            if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
+            const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
+            if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
+            const worker = safeArgs.worker_name || 'mcp-memory';
+            const limit = Math.min(10, safeArgs.limit || 5);
+            const base = 'https://api.cloudflare.com/client/v4/accounts/' + account + '/workers/scripts/' + worker;
+            const cfHeaders = { 'Authorization': 'Bearer ' + cfToken, 'Content-Type': 'application/json' };
+            const [depRes, verRes] = await Promise.all([
+                fetch(base + '/deployments', { headers: cfHeaders }),
+                fetch(base + '/versions?per_page=' + limit, { headers: cfHeaders })
+            ]);
+            let deployments = [], versions = [];
+            let depErr = null, verErr = null;
+            try {
+                const d = await depRes.json();
+                if (!depRes.ok) depErr = (d.errors && d.errors[0] && d.errors[0].message) || ('HTTP ' + depRes.status);
+                else deployments = (d.result && d.result.deployments || []).slice(0, limit).map(function (x) { return { id: (x.id || '').slice(0, 8), created_on: x.created_on, source: x.source }; });
+            } catch (e) { depErr = e.message; }
+            try {
+                const v = await verRes.json();
+                if (!verRes.ok) verErr = (v.errors && v.errors[0] && v.errors[0].message) || ('HTTP ' + verRes.status);
+                else versions = (v.result && v.result.items || []).slice(0, limit).map(function (x) { return { id: (x.id || '').slice(0, 8), number: x.number, created_on: x.metadata && x.metadata.created_on, source: x.metadata && x.metadata.source }; });
+            } catch (e) { verErr = e.message; }
+
+            const depLine = depErr ? ('Deployments 错误: ' + depErr) : ('Deployments 最近 ' + deployments.length + ' 次:\n' + deployments.map(function (d, i) { return '  ' + (i+1) + '. [' + d.id + '] ' + d.created_on + ' (' + d.source + ')'; }).join('\n'));
+            const verLine = verErr ? ('Versions 错误: ' + verErr) : ('Versions 最近 ' + versions.length + ' 个:\n' + versions.map(function (v, i) { return '  ' + (i+1) + '. #' + v.number + ' [' + v.id + '] ' + v.created_on + ' (' + v.source + ')'; }).join('\n'));
+            text = '\u2705 Cloudflare 部署状态 (' + worker + '):\n' + depLine + '\n' + verLine;
         }
 
         else return 'ERROR: Unknown GitHub tool: ' + name;
