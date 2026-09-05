@@ -203,7 +203,7 @@ function extractJsonObject(str) {
         const ch = String(str)[i];
         if (inStr) {
             if (esc) { esc = false; continue; }
-            if (ch === '\') { esc = true; continue; }
+            if (ch.charCodeAt(0) === 92) { esc = true; continue; } // ASCII backslash
             if (ch === '"') inStr = false;
             continue;
         }
