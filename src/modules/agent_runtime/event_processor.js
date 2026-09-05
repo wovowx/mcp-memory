@@ -14,6 +14,7 @@
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
 import { discoverMCPTools, mcpCallTool } from "./mcp_client.js";
+import { checkCapabilityAccess } from "../permission_guard.js";
 
 const MAX_TOOL_ROUNDS = 5;
 const CONCLUSION_TIMEOUT_MS = 25000; // v6.14 (B)：结论生成独立请求，可用满 25s（不再被第一轮挤占）
@@ -246,6 +247,27 @@ async function executeTool(env, call, ctx) {
     catch (e) { return { ok: false, error: e.message, tool_source: 'local' }; }
   }
   const permission = mcpPermission(name);
+  // v6.16.1: write 能力（github_push/github_merge）先过 Permission Guard（GPT 是受控对象）
+  if (permission === 'deny' && (name === 'github_push' || name === 'github_merge')) {
+    const guard = checkCapabilityAccess({
+      agent: 'gpt',
+      capability: name,
+      target: { branch: args?.branch || 'dev', repo: args?.repo, rollback_sha: args?.rollback_sha },
+      context: { thread_id: ctx?.thread_id },
+      decision: { proposal_id: args?.proposal_id, proposal_status: args?.proposal_status, reviewed_by: args?.reviewed_by, approved_by: args?.approved_by },
+      evidence: Array.isArray(args?.evidence) ? args.evidence : [],
+      risk: args?.risk || 'low'
+    });
+    if (!guard.allowed) {
+      return { ok: false, error: 'Permission Guard 拒绝: ' + guard.reason + ' — ' + guard.expected, tool_source: 'permission_guard', guard };
+    }
+    try {
+      const res = await mcpCallTool(env, name, args);
+      return { ok: true, result: res, tool_source: 'mcp' };
+    } catch (e) {
+      return { ok: false, error: 'MCP fallback 失败: ' + e.message, tool_source: 'mcp' };
+    }
+  }
   if (permission !== 'read') {
     return { ok: false, error: 'MCP 拒绝调用 ' + name + ': permission=' + permission + '（MVP 仅开放 read）', tool_source: 'mcp_guard' };
   }
