@@ -99,6 +99,17 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 - **工作区 repo:Download/Ziven 工具链有缺陷**：`create_file` 成功但 `read_file` 报 invalid path，不能依赖它中转大文件。
 - **卡住时先跟柳柳对齐**：把现状 + 可选方案告诉柳柳，让她拍板，别一个人闷头试。
 
+## 查部署日志（cloudflare_deploy_status · v6.5.0 新增）
+
+> 部署完要确认线上是不是最新版？用 MCP 工具查 Cloudflare 部署记录，不用开 Dashboard。
+
+- **工具**：`cloudflare_deploy_status`（MCP 工具，help 里能搜到）
+  - 参数：`account_id`（可选，默认 env CLOUDFLARE_ACCOUNT_ID）、`worker_name`（可选，默认 mcp-memory）、`limit`（可选，默认5最大10）
+  - 返回：最近 deployments（id/created_on/source）+ versions（#号/id/created_on/source）
+  - 前提：Worker env 已配 `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`（已经配好）
+- **HTTP 端点**（原始版，同样可用）：GET `https://mcp-memory.wovowx.workers.dev/api/debug/deploy-status`
+- **用法场景**：merge main 后确认自动部署已触发；部署失败排查；看当前线上版本号
+
 ## 常见坑（精简版）
 - **忘了问柳柳就推**：第 3 步，最高优先级。
 - **合 main 不传 merge_method**：默认 merge → GitHub 把 commit_title 写两遍 → 标题重复。必须显式 `merge_method=rebase`。
@@ -110,6 +121,8 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 - **大文件手写重推**：45KB 必漏段，用 read → 改 → 校验 → 整推。
 
 ## 变更记录
+- 2026-09-05：v6.5.0 新增 「查部署日志」章节 —— cloudflare_deploy_status MCP 工具（help 可搜、可直接调用；柳柳要求工具+skill 都要有）。
+
 - 2026-09-04：v6.4.3 命名纪律——推 dev commit message 也用 `vX.Y.Z: 名称`，不带 docs()/feat() 前缀（柳柳要求，rebase 后 main 历史干净）。
 - 2026-09-04：v6.4.2 发布纪律修正——合 main 必须显式 merge_method=rebase（柳柳发现 commit 标题重复）；常见坑加对应条目。
 - 2026-09-04：v6.4.1 加「本地与大文件操作」一节（linux 逃生通道 / 大文件不手写重推 / 卡住先找更优接入点；柳柳「不想再卡在这」）。
