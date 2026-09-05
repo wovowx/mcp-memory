@@ -16,6 +16,7 @@ import { callChat2Api } from "./chat2api_client.js";
 import { discoverMCPTools, mcpCallTool } from "./mcp_client.js";
 
 const MAX_TOOL_ROUNDS = 5;
+const CONCLUSION_TIMEOUT_MS = 25000; // v6.14 (B)：结论生成独立请求，可用满 25s（不再被第一轮挤占）
 
 // ============ Thread 上下文读取（T3.1） ============
 // context_read 工具 + runToolLoop 主动注入共用
@@ -484,6 +485,30 @@ async function runToolLoop(env, message, event) {
         } catch (e) {
             console.error('[capability-trace] 提前写 trace 失败: ' + e.message);
         }
+
+        // v6.14 (B)：工具执行完 → 排结论任务，不再实时跑第二轮
+        // 理由：Cloudflare Worker 30s wall-clock 硬上限，第一轮已花 ~18s，第二轮挤在剩余预算里必然超时
+        // 拆成独立任务后，结论生成单独用满 25s（下次 cron 触发），事件1秒级 ack 闭环
+        if (toolCalls.length > 0) {
+            try {
+                await enqueueToolConclusion(env, {
+                    event_id: event?.event_id,
+                    message_id: message?.message_id,
+                    thread_id: message?.thread_id,
+                    agent: 'gpt',
+                    context_messages: messages.slice(), // 第二阶段完整上下文：system + user + assistant(工具调用) + user(工具结果)
+                    tool_results: toolCalls.map(tc => ({ tool_name: tc.tool_name, status: tc.status, result: tc.result }))
+                });
+                // 阶段1结束：不落库最终回复（结论任务会落），原事件由 processPendingEvents ack
+                console.log('[tool-loop] 工具已执行，结论任务已排队（pendingConclusion）');
+                return { content: '', toolCalls, pendingConclusion: true };
+            } catch (enqueueErr) {
+                console.error('[tool-loop] 排队结论失败: ' + enqueueErr.message);
+                // 排队失败 → 用工具结果摘要兜底（保证有回复）
+                finalContent = fallbackReply();
+                break;
+            }
+        }
         // 下一轮继续让 GPT 基于工具结果回复
     }
 
@@ -516,7 +541,107 @@ async function runToolLoop(env, message, event) {
         }
     }
 
-    return { content: finalContent, toolCalls };
+    return { content: finalContent, toolCalls, pendingConclusion: false };
+}
+
+// ============ v6.14 (B)：工具结论异步队列 ============
+// 拆两段：事件1（工具执行）秒级 ack 闭环；结论生成独立任务（下次 cron），单独用满 25s 预算
+// 表：agent_tool_conclusions（status: pending → processing → done / failed）
+
+function sbSupabase(env) {
+    const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+    return { 'Authorization': 'Bearer ' + key, 'apikey': key, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+}
+
+// 排队结论任务（阶段1 工具执行成功后调用）
+async function enqueueToolConclusion(env, { event_id, message_id, thread_id, agent, context_messages, tool_results }) {
+    const headers = sbSupabase(env);
+    const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/agent_tool_conclusions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            event_id, message_id, thread_id, agent,
+            context_messages: context_messages || [],
+            tool_results: tool_results || [],
+            status: 'pending',
+            retry_count: 0
+        })
+    });
+    if (!resp.ok) throw new Error('enqueue conclusion 写入失败: ' + resp.status + ' ' + (await resp.text()).slice(0, 200));
+    return true;
+}
+
+// 扫描并处理待生成的结论（阶段2：cron/webhook 触发，独立 25s 预算）
+export async function processToolConclusions(env) {
+    const headers = sbSupabase(env);
+    // 查 pending（按 created_at 旧→新）
+    const listResp = await fetch(`${env.SUPABASE_URL}/rest/v1/agent_tool_conclusions?select=*&status=eq.pending&order=created_at.asc&limit=10`, { headers });
+    if (!listResp.ok) return { ok: false, error: '查询结论队列失败: ' + listResp.status };
+    const rows = await listResp.json();
+    const results = [];
+
+    for (const row of (Array.isArray(rows) ? rows : [])) {
+        const conclusionId = row.id;
+        const threadId = row.thread_id;
+        const contextMessages = Array.isArray(row.context_messages) ? row.context_messages : [];
+
+        // claim：pending → processing（防并发重复处理）
+        const claimResp = await fetch(`${env.SUPABASE_URL}/rest/v1/agent_tool_conclusions?id=eq.${conclusionId}&status=eq.pending`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ status: 'processing', updated_at: new Date().toISOString() })
+        });
+        if (!claimResp.ok) { results.push({ id: conclusionId, action: 'claim_failed', error: claimResp.status }); continue; }
+
+        // 独立请求：结论生成可用满 25s（不再被第一轮挤占）
+        let finalText = '';
+        try {
+            const reply = await callChat2Api(env, contextMessages, { timeoutMs: CONCLUSION_TIMEOUT_MS });
+            finalText = cleanReplyContent(reply.content || '');
+            // 若结论里还带工具调用标记（GPT 又调工具），剥离后保留纯正文；本轮不再展开工具循环（递归防爆）
+            const calls = parseToolCalls(reply.content || '');
+            if (calls.length > 0) {
+                console.log('[conclusion] GPT 在结论阶段又请求工具（忽略，直接给摘要）: ' + JSON.stringify(calls.map(c => c.tool)));
+            }
+            if (!finalText) finalText = '(工具执行完成，结论生成返回空)';
+        } catch (e) {
+            console.error('[conclusion] 结论生成失败: ' + e.message);
+            // 失败 → retry（最多 3 次）后 failed；用工具结果摘要兜底写回
+            const nextRetry = (row.retry_count || 0) + 1;
+            const toolSummary = (row.tool_results || []).map(t => `${t.tool_name}${t.status === 'success' ? '✅' : '❌'}`).join(' ');
+            const status = nextRetry >= 3 ? 'failed' : 'pending';
+            await fetch(`${env.SUPABASE_URL}/rest/v1/agent_tool_conclusions?id=eq.${conclusionId}`, {
+                method: 'PATCH', headers,
+                body: JSON.stringify({ status, retry_count: nextRetry, updated_at: new Date().toISOString(), completed_at: status === 'failed' ? new Date().toISOString() : null })
+            });
+            if (status === 'failed') {
+                // 终极兜底：把工具结果摘要作为 GPT 回复写回（不让用户永远等不到）
+                try { await sendMessage(env, threadId, toolSummary ? `[工具执行完成，结论生成失败] 已执行: ${toolSummary}` : '[结论生成失败]', { tool_calls: row.tool_results || [] }, 'gpt'); } catch (e2) { console.error('[conclusion] 兜底写回失败: ' + e2.message); }
+            }
+            results.push({ id: conclusionId, action: status, retry: nextRetry, error: e.message });
+            continue;
+        }
+
+        // 成功：把 GPT 结论写回聊天室（复用 sendMessage → createMessage 自动推进 counter）
+        try {
+            await sendMessage(env, threadId, finalText, { tool_calls: row.tool_results || [] }, row.agent || 'gpt');
+            await fetch(`${env.SUPABASE_URL}/rest/v1/agent_tool_conclusions?id=eq.${conclusionId}`, {
+                method: 'PATCH', headers,
+                body: JSON.stringify({ status: 'done', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            });
+            results.push({ id: conclusionId, action: 'done' });
+        } catch (e) {
+            // 写回失败：重试（不把任务丢掉）
+            const nextRetry = (row.retry_count || 0) + 1;
+            const status = nextRetry >= 3 ? 'failed' : 'pending';
+            await fetch(`${env.SUPABASE_URL}/rest/v1/agent_tool_conclusions?id=eq.${conclusionId}`, {
+                method: 'PATCH', headers,
+                body: JSON.stringify({ status, retry_count: nextRetry, updated_at: new Date().toISOString() })
+            });
+            results.push({ id: conclusionId, action: 'write_retry_' + status, error: e.message });
+        }
+    }
+    return { ok: true, scanned: rows.length, results };
 }
 
 export async function processPendingEvents(env) {
@@ -531,10 +656,13 @@ export async function processPendingEvents(env) {
             if (!message) throw new Error('无法读取消息');
 
             // Runtime Tool Loop：GPT 可请求工具，Worker 执行并回填（带审计）
-            const { content, toolCalls } = await runToolLoop(env, message, event);
+            const { content, toolCalls, pendingConclusion } = await runToolLoop(env, message, event);
 
-            // 把工具调用记录随消息一起发送（前端 tool_calls 字段渲染成卡片）
-            const sent = await sendMessage(env, message.thread_id, content, toolCalls.length ? { tool_calls: toolCalls } : {});
+            // v6.14 (B)：pendingConclusion = 工具已执行、结论任务已排队（异步写回），本事件直接 ack
+            // 只有「非 pendingConclusion」（第一轮就是最终回复 / 兜底）才由本事件写回聊天室
+            if (!pendingConclusion) {
+                const sent = await sendMessage(env, message.thread_id, content, toolCalls.length ? { tool_calls: toolCalls } : {});
+            }
 
             await acknowledge(env, event.event_id, 'success');
         } catch (error) {
