@@ -25,26 +25,33 @@
 - 环境变量：HISTORY_DISABLED=false + **PROXY_URL=http://127.0.0.1:10809**（Cloud Run，**必设**，缺了直连数据中心 IP → 403）
 - GPT_MODEL：gpt-5.6（v6.17.5 起；v6.19.1 试 g-p- GPTs 模式 → 403 cf_chl_opt 更严，已回退，**不要用 g-p-**）
 
-## 🎉 MCP 连接器自动挂载（2026-09-05 上线·验证闭环）⭐️⭐️⭐️
+## 🎉 MCP 连接器自动挂载（2026-09-06 v7 最终闭环）⭐️⭐️⭐️
 
-**再也不用手动加号了**：chat2api 定制镜像里已注入 `patch_chatformat.py`——每次发消息自动在 metadata 写入 `developer_mode_connector_ids`，ChatGPT 后端以为消息挂了 Ziven_MCP 连接器，GPT 原生可调用 MCP 工具。**2026-09-05 22:01 实测 GPT 直接调 `ds_quota` 成功。**
+**再也不用手动加号了**：chat2api 定制镜像里已注入 `patch_chatformat.py`——每次发消息时**照抄真实浏览器挂插件 payload**，GPT 原生可调用 MCP 工具。
+**2026-09-06 00:45 最终闭环验证成功**：
+- 全新对话（conversation_id 置空）+ v7 注入 → GPT 亲眼看到消息开头 `@Ziven_MCP [Ziven]` + ds_quota 成功（0.45 CNY）
+- 柳柳在 ChatGPT 页面确认：哥哥通过 chat2api 发的消息渲染成蓝色 `@Ziven_MCP` 芯片 + 普通文本，**与手动挂插件完全一致**
+- ⚠️ 关键前提：**v7 镜像必须真正构建部署成功**（2026-09-05 那次部署失败，线上一直跑 v6，导致 2/5 随机成功假象，耽误了排查）
 
-### 原理（2026-09-05 逆向确认）
-ChatGPT 网页端「左下角加号挂 MCP 连接器」= 往消息 metadata 的 `developer_mode_connector_ids` 数组写连接器 ID。chat2api 默认不填该字段 → patch 在发送前补上（multimodal + 纯文本两条分支都覆盖）。
-
-- 连接器应用 ID：`asdk_app_6a95a93c9a50819184dcf3468ae0052a`
-- patch 文件：ZivenLab `common-ground/chat2api-xray/patch_chatformat.py`（匹配失败即构建失败，防镜像漂移静默改错）
-- 镜像：`ziven-bridge:v3`（v2 基础上 + node_manager manual 锁定模式）
-- 链路：Worker `/api/chat2api/ask` → ziven-bridge（chat2api，走 xray 代理）→ GPT（消息 metadata 带 connector ids）→ 原生调 MCP → 回复
-
-### 测试证据（2026-09-05 22:01）
+### 真实 payload 真相（2026-09-05 柳柳 F12 抓包铁证）
+**挂插件 ≠ `developer_mode_connector_ids`**（v3-v6 白折腾的错误字段）！真实浏览器挂插件发的 f/conversation：
+```json
+content.parts = ["@Ziven_MCP "]
+metadata = {
+  "system_hints": ["plugin:asdk_app_6a95a93c9a50819184dcf3468ae0052a"],
+  "serialization_metadata": {"custom_symbol_offsets": [{"id": "plugin:asdk_app_6a95a93c9a50819184dcf3468ae0052a", "symbol": "ecosystemMention", "startIndex": 0, "endIndex": 10}]},
+  "submission_mode": "manual_send"
+}
+// 顶层也有 system_hints: ["plugin:asdk_app_..."]
 ```
-POST /api/chat2api/ask → STATUS 200
-💡 DeepSeek 账户余额 0.45 CNY（ds_quota 原生 MCP 调用，无手动加号）
-```
+- parts 要 `@Ziven_MCP ` 前缀 + metadata 带 `system_hints` + `serialization_metadata` 偏移 + `submission_mode`
+- 顶层 ChatService.py 的 `chat_request["system_hints"]` 也要注入插件
+- **正确 ID = 应用 ID** `asdk_app_6a95a93c9a50819184dcf3468ae0052a`（页面+抓包双证实）；版本 ID `asdk_app_v_...` 是 v5/v6 误用已废弃
 
-### 旧理解（保留作历史）：「浏览器挂插件通道」
-2026-09-05 上午柳柳实测：浏览器网页版支持挂 MCP 插件，但**须在对话开始时挂载、且隔几轮会失效/每轮要手动加**。已由 MCP 自动挂载 patch 根治，不再需要手动操作。
+### 旧框插件失效（2026-09-06 关键）
+- 旧框 `6a9bbad2` 在页面上手动加插件也无效（提示 The tool has been disabled）——**不是注入问题，是插件更新后旧框不支持新插件**
+- 换新对话 `6a9c3dbc`（zivencheng 长期计划 GPTs）+ v7 注入 → ds_quota 成功
+- 22:01 那次成功 = 旧对话浏览器挂过插件的残留，不是注入成功
 
 ## 🚨🔴 403 cf_chl_opt 根治（2026-09-05 重大发现）⭐️⭐️⭐️
 
