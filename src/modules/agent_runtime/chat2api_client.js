@@ -7,6 +7,7 @@
 // v4 (2026-09-05)：fetchWithTimeout —— 30s 超时（工具循环第二轮慢时不无限挂）
 // ============================================================
 
+// v5 (2026-09-05)：timeoutMs 可配置 —— 工具循环第二轮用短超时（v6.13 A：wall-clock 预算管理）
 // v4: 带超时的 fetch（AbortController），超时抛错不挂死
 async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
     const controller = new AbortController();
@@ -23,6 +24,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
 
 export async function callChat2Api(env, promptOrMessages, options = {}) {
     const token = env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || '';
+    const timeoutMs = options?.timeoutMs || 30000; // v5: 可配置超时（默认 30s，第二轮可传短超时）
     // 兼容：传字符串 → 单条 user 消息；传数组 → 直接用多轮 messages（工具循环用）
     const messages = Array.isArray(promptOrMessages)
         ? promptOrMessages
@@ -54,7 +56,7 @@ export async function callChat2Api(env, promptOrMessages, options = {}) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
-    }, 30000); // v4: 30s 超时（工具循环第二轮可能慢，超时抛错而非无限挂）
+    }, timeoutMs); // v5: 用可配置超时（默认 30s，工具循环第二轮传短超时）
 
     if (!response.ok) {
         const text = await response.text();
