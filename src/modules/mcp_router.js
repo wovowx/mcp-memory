@@ -188,7 +188,7 @@ async function handleCreatePatchProposal(args, env) {
     const headers = { 'Authorization': 'Bearer ' + supabaseKey, 'apikey': supabaseKey, 'Content-Type': 'application/json' };
     const evidence = Array.isArray(args.evidence) ? args.evidence : (args.evidence ? [args.evidence] : []);
     const diff = (typeof args.diff === 'string') ? args.diff : JSON.stringify(args.diff || {});
-    const body = { target: args.target_file, change: args.change_summary, reason: args.reason, diff: diff, evidence: evidence, risk: args.risk || 'low', status: 'proposed', created_by: 'gpt_app', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const body = { target: args.target_file, change: args.change_summary, reason: args.reason, diff: diff, evidence: evidence, risk: args.risk || 'low', status: 'proposed', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
     if (args.old_sha) body.rollback_sha = args.old_sha;
     try {
         const resp = await fetch(supabaseUrl + '/rest/v1/patch_proposals', { method: 'POST', headers: { ...headers, 'Prefer': 'return=representation' }, body: JSON.stringify(body) });
