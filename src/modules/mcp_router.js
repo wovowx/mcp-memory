@@ -109,6 +109,11 @@ export async function handleMCPRequest(body, env) {
         const safeArgs = args || {};
         let text = '';
         try {
+            // create_patch_proposal 提前拦截（无论 skills 注册与否）
+            if (name === 'create_patch_proposal') {
+                text = await handleCreatePatchProposal(safeArgs, env);
+                return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
+            }
             if (name?.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
                 await invalidateCache();
@@ -134,6 +139,8 @@ export async function handleMCPRequest(body, env) {
                         await invalidateCache();
                     } else if (name === 'increment_usage') {
                         text = await handleIncrementUsage(name, safeArgs, env);
+                    } else if (name === 'create_patch_proposal') {
+                        text = await handleCreatePatchProposal(safeArgs, env);
                     } else text = 'unknown tool: ' + name;
                 } else {
                     const handler = handlerMap[skill.handler_config?.handler];
@@ -165,4 +172,29 @@ async function handleSkillManagement(name, safeArgs, env) {
         else { await deleteSkill(env, safeArgs.name); text = 'deleted: ' + safeArgs.name; }
     }
     return text;
+}
+
+
+// ============================================================
+// create_patch_proposal - GPT App 通道：读代码后把修改意图写入 patch_proposals
+// 2026-09-05 Ziven x GPT #765/#766 —— P2.1.2 Patch Proposal Capability
+// ============================================================
+async function handleCreatePatchProposal(args, env) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return '❌ Supabase 未配置';
+    const required = ['target_file', 'change_summary', 'reason'];
+    for (const f of required) { if (!args[f]) return '❌ 缺少参数: ' + f; }
+    const headers = { 'Authorization': 'Bearer ' + supabaseKey, 'apikey': supabaseKey, 'Content-Type': 'application/json' };
+    const evidence = Array.isArray(args.evidence) ? args.evidence : (args.evidence ? [args.evidence] : []);
+    const diff = (typeof args.diff === 'string') ? args.diff : JSON.stringify(args.diff || {});
+    const body = { target: args.target_file, change: args.change_summary, reason: args.reason, diff: diff, evidence: evidence, risk: args.risk || 'low', status: 'proposed', created_by: 'gpt_app', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    if (args.old_sha) body.rollback_sha = args.old_sha;
+    try {
+        const resp = await fetch(supabaseUrl + '/rest/v1/patch_proposals', { method: 'POST', headers: { ...headers, 'Prefer': 'return=representation' }, body: JSON.stringify(body) });
+        if (!resp.ok) { const errText = await resp.text(); return '❌ 写入失败 (' + resp.status + '): ' + errText; }
+        const data = await resp.json();
+        const id = Array.isArray(data) ? (data[0] && data[0].id) : (data && data.id);
+        return '✅ Patch Proposal 已创建 (id=' + (id || '?') + '\n目标: ' + args.target_file + '\n改动: ' + args.change_summary + '\n状态: proposed（等 Ziven review + 柳柳确认）';
+    } catch (e) { return '❌ 创建失败: ' + e.message; }
 }
