@@ -306,7 +306,21 @@ async function runToolLoop(env, message, event) {
 
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
         // Level1 MVP: 每轮都带 MCP 工具声明（OpenAI tools），让 GPT 可调用面持续可见
-        const reply = await callChat2Api(env, messages, { tools: openaiTools });
+        // v6.12.1: 第二轮及以后可能超时——失败时用工具结果兜底，不让事件烂掉
+        let reply;
+        try {
+            reply = await callChat2Api(env, messages, { tools: openaiTools });
+        } catch (chatErr) {
+            console.error('[tool-loop] round=' + round + ' chat2api 失败: ' + chatErr.message);
+            if (round > 0 && toolCalls.length > 0) {
+                // 已执行过工具但拿不到最终回复 → 用工具结果摘要兜底
+                const summary = toolCalls.map(tc => tc.tool_name + (tc.result?.ok ? '✅' : '❌')).join(' ');
+                finalContent = `[工具执行完成，但最终回复生成超时] 已执行: ${summary}。如需更多操作请再@我。`;
+                console.log('[tool-loop] 使用工具结果兜底回复');
+                break;
+            }
+            throw chatErr; // 第一轮就失败（还没任何工具结果）→ 让上层 catch 标 failed
+        }
         const content = reply.content || '';
 
         // 解析工具调用
