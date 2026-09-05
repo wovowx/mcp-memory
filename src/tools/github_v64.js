@@ -21,7 +21,7 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_read', description: '读取 GitHub 仓库文件内容（UTF-8 安全，支持中文）。支持 start_line/end_line 范围读取；默认最多返回前200行；返回 total_lines/returned_lines/truncated/has_more，明确是否截断。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' }, start_line: { type: 'number', description: '起始行（1-based，可选）' }, end_line: { type: 'number', description: '结束行（包含，可选）' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '读取'] },
     { name: 'github_list', description: '列出 GitHub 仓库目录内容（文件/子目录）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '目录路径（默认根）' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '目录'] },
     { name: 'github_delete', description: '删除 GitHub 仓库文件。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '删除'] },
-    { name: 'github_merge_to_main', description: '智能三步合并 dev 到 main：建PR→查可合并→合并。支持 commit_title（版本号+名称）和 merge_method（merge/rebase，不用squash）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { branch: { type: 'string', description: '源分支（默认dev）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式（推荐rebase或merge）' }, commit_title: { type: 'string', description: '自定义合并 commit 标题（版本号+名称）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
+    { name: 'github_merge_to_main', description: '智能三步合并 dev 到 main：建PR→查可合并→合并。merge_method **默认 rebase**（标准发布策略，防标题重复）；显式 merge 必须带 commit_title + merge_reason（禁止策略含糊）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { branch: { type: 'string', description: '源分支（默认dev）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式（推荐rebase或merge）' }, commit_title: { type: 'string', description: '自定义合并 commit 标题（版本号+名称）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
     { name: 'github_create_pull_request', description: '新建 Pull Request。', input_schema: { type: 'object', properties: { head: { type: 'string', description: '源分支（默认dev）' }, base: { type: 'string', description: '目标分支（默认main）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['title'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
     { name: 'github_merge_pull_request', description: '合并指定 Pull Request。支持 merge_method（merge/squash/rebase）和 commit_title（自定义 commit 标题，从版本号开始）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式' }, commit_title: { type: 'string', description: '自定义 commit 标题（版本号+名称）' }, title: { type: 'string', description: '自定义 commit 标题（别名）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
     { name: 'github_close_pull_request', description: '关闭废弃的 Pull Request。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
@@ -31,7 +31,7 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_sync_branch', description: '让分支直接指向源分支最新 commit（fast-forward 同步，不删分支）。分叉根治专用。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '要同步的分支（默认dev）' }, branch: { type: 'string', description: '要同步的分支（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '同步'] },
     { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，source/target 大小不一致返回 COPY_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
     { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] },
-    { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] }
+    { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。支持 verify_main=true 自动对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查，柳柳铁律）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' }, verify_main: { type: 'boolean', description: '可选，true 时对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查）' }, repo: { type: 'string', description: '可选，verify_main 时对比的仓库（默认 mcp-memory）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] }
 ];
 
 // ============================================================
@@ -328,8 +328,13 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const branch = (safeArgs && safeArgs.branch) || 'dev';
             const title = (safeArgs && safeArgs.title) || `Merge ${branch} into main`;
             const prBody = (safeArgs && safeArgs.body) || '';
-            const mergeMethod = (safeArgs && safeArgs.merge_method) || 'merge';
+            const mergeMethod = (safeArgs && safeArgs.merge_method) || 'rebase';
             const mergeTitle = (safeArgs && safeArgs.commit_title) || (safeArgs && safeArgs.title) || undefined;
+            const mergeReason = (safeArgs && safeArgs.merge_reason) || '';
+            if (mergeMethod === 'merge') {
+                if (!mergeTitle) return 'ERROR: MERGE_REQUIRES_COMMIT_TITLE: 显式 merge 必须带 commit_title（否则 GitHub 会把标题写两遍，参见 PR #131 事故）';
+                if (!mergeReason) return 'ERROR: MERGE_REQUIRES_REASON: 显式 merge 必须说明 merge_reason（hotfix/emergency/history-preserve）——禁止策略含糊，见 release_guard 家族规则';
+            }
             const steps = [];
 
             try {
@@ -420,8 +425,13 @@ export async function handleGitHubTool(name, safeArgs, env) {
         else if (name === 'github_merge_pull_request') {
             const pr = safeArgs.pull_number;
             if (!pr) return 'ERROR: Missing pull_number';
-            const method = safeArgs.merge_method || 'merge';
+            const method = safeArgs.merge_method || 'rebase';
             const commitTitle = safeArgs.commit_title || safeArgs.title || undefined;
+            const mergeReason = (safeArgs && safeArgs.merge_reason) || '';
+            if (method === 'merge') {
+                if (!commitTitle) return 'ERROR: MERGE_REQUIRES_COMMIT_TITLE: 显式 merge 必须带 commit_title（否则 GitHub 会把标题写两遍，参见 PR #131 事故）';
+                if (!mergeReason) return 'ERROR: MERGE_REQUIRES_REASON: 显式 merge 必须说明 merge_reason（hotfix/emergency/history-preserve）——禁止策略含糊，见 release_guard 家族规则';
+            }
             const mergeBody = { merge_method: method };
             if (commitTitle) mergeBody.commit_title = commitTitle;
             const resp = await fetch(`${baseUrl}/pulls/${pr}/merge`, {
@@ -693,6 +703,29 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const depLine = depErr ? ('Deployments 错误: ' + depErr) : ('Deployments 最近 ' + deployments.length + ' 次:\n' + deployments.map(function (d, i) { return '  ' + (i+1) + '. [' + d.id + '] ' + d.created_on + ' (' + d.source + ')'; }).join('\n'));
             const verLine = verErr ? ('Versions 错误: ' + verErr) : ('Versions 最近 ' + versions.length + ' 个:\n' + versions.map(function (v, i) { return '  ' + (i+1) + '. #' + v.number + ' [' + v.id + '] ' + v.created_on + ' (' + v.source + ')'; }).join('\n'));
             text = '\u2705 Cloudflare 部署状态 (' + worker + '):\n' + depLine + '\n' + verLine;
+
+            // v6.17.0 verify_main: 部署后必查（柳柳铁律）——对比 main HEAD commit vs 最新部署版本
+            if (safeArgs.verify_main === true || safeArgs.verify_main === 'true') {
+                try {
+                    const verifyRepo = safeArgs.repo || env.GITHUB_REPO || 'wovowx/mcp-memory';
+                    const ghToken = env.GITHUB_TOKEN || '';
+                    const ghVerifyHeaders = { 'Authorization': 'Bearer ' + ghToken, 'Accept': 'application/vnd.github+json', 'User-Agent': 'mcp-memory' };
+                    const ghResp = await fetch('https://api.github.com/repos/' + verifyRepo + '/commits/main', { headers: ghVerifyHeaders });
+                    const ghData = await ghResp.json();
+                    const mainSha = (ghData && ghData.sha) || '';
+                    const mainDate = (ghData && ghData.commit && ghData.commit.committer && ghData.commit.committer.date) || '';
+                    const latestDep = deployments.length > 0 ? deployments[0] : null;
+                    const latestDepDate = latestDep ? latestDep.created_on : '';
+                    const deployedOk = latestDepDate && mainDate && (latestDepDate >= mainDate);
+                    const verifyStatus = deployedOk ? 'VERIFIED' : 'DEPLOY_UNVERIFIED';
+                    text += '\n\n🔍 verify_main (' + verifyRepo + '):\n' +
+                        '  main HEAD: ' + mainSha.slice(0, 12) + ' (' + mainDate + ')\n' +
+                        '  latest deploy: ' + (latestDep ? '[' + latestDep.id + '] ' + latestDepDate : 'NONE') + '\n' +
+                        '  status: ' + verifyStatus + (deployedOk ? ' ✅ main 已上线' : ' ⚠️ main 比最新部署新——部署可能未触发/失败，去查部署日志');
+                } catch (e) {
+                    text += '\n\n🔍 verify_main 错误: ' + e.message;
+                }
+            }
         }
 
         else return 'ERROR: Unknown GitHub tool: ' + name;
