@@ -50,7 +50,8 @@ export function checkCapabilityAccess({ agent, capability, target, context, deci
     }
 
     if (!Array.isArray(evidence) || evidence.length === 0) return { allowed: false, reason: 'missing_evidence', expected: 'write 必须提供 evidence（issue/讨论记录/测试结果）', requiredApproval: needed, checked };
-    if (capability === 'github_push' && target?.rollback_sha === undefined) return { allowed: false, reason: 'missing_rollback', expected: 'github_push 必须提供 rollback_sha（写入前分支 sha）', requiredApproval: needed, checked };
+    // v1.0.1(MVP): rollback_sha 记录式（有则记，无则 v2 由 Worker 写入前自动获取 dev sha）
+    if (capability === 'github_push' && target?.rollback_sha !== undefined && !target.rollback_sha) return { allowed: false, reason: 'empty_rollback', expected: 'rollback_sha 不能为空串', requiredApproval: needed, checked };
 
     return { allowed: true, reason: 'allowed', requiredApproval: [], checked };
 }
