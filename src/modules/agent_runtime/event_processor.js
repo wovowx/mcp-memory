@@ -196,22 +196,33 @@ function mcpPermission(name) {
 // v6.14.1 (B2)：GPT 输出格式不稳定（解释文本+工具块混合/缺闭合）——新增智能 JSON 提取器：
 //   从第一个 { 开始 brace 配对（跳过字符串内 {} 与转义），忽略前置文本，真正提取工具调用 JSON
 function extractJsonObject(str) {
-    const start = String(str).indexOf('{');
+    const s = String(str);
+    const start = s.indexOf('{');
     if (start < 0) return null;
-    let depth = 0, inStr = false, esc = false;
-    for (let i = start; i < String(str).length; i++) {
-        const ch = String(str)[i];
-        if (inStr) {
-            if (esc) { esc = false; continue; }
-            if (ch.charCodeAt(0) === 92) { esc = true; continue; } // ASCII backslash
-            if (ch === '"') inStr = false;
-            continue;
+    // 解析候选：原样解析；失败则补 1-4 个右花括号（chat2api 网关截断最外层 }）
+    const tryParse = (cand) => {
+        const attempts = [cand];
+        for (let n = 1; n <= 4; n++) attempts.push(cand + '}'.repeat(n));
+        for (const a of attempts) {
+            try {
+                const obj = JSON.parse(a);
+                if (obj && (obj.tool || obj.name)) return a;
+            } catch (e) { /* 尝试下一个 */ }
         }
-        if (ch === '"') { inStr = true; continue; }
-        if (ch === '{') depth++;
-        else if (ch === '}') { depth--; if (depth === 0) return String(str).slice(start, i + 1); }
+        return null;
+    };
+    // 滑动截断：逐字符增长，找「可解析且含 tool/name」的最长前缀
+    let best = null, bestLen = 0;
+    for (let end = start + 1; end <= s.length; end++) {
+        const cand = s.slice(start, end);
+        if (cand[cand.length - 1] !== '}' && end < s.length) continue; // 只试 } 结尾或全文末尾
+        const good = tryParse(cand);
+        if (good && good.length > bestLen) { best = good; bestLen = good.length; }
     }
-    return null; // 未闭合
+    // 全文末尾兜底（即使不以 } 结尾，可能是截断点）
+    const tailGood = tryParse(s.slice(start));
+    if (tailGood && tailGood.length > bestLen) best = tailGood;
+    return best;
 }
 function parseToolCalls(content) {
     const calls = [];
