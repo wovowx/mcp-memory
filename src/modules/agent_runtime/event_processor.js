@@ -84,56 +84,7 @@ const TOOLS = {
             return { ok: false, error: 'context_update 失败: ' + e.message };
         }
     },
-    github_read: async (env, args) => {
-        // 读 GitHub 文件（T3.2 真实实现）—— 只读白名单
-        const repo = args?.repo || env.GITHUB_REPO || (env.GITHUB_ALLOWED_REPOS || 'wovowx/mcp-memory').split(',')[0].trim();
-        const path = args?.path;
-        const branch = args?.branch || 'main';
-        const startLine = parseInt(args?.start_line) || null;
-        const endLine = parseInt(args?.end_line) || null;
-        if (!path) return { ok: false, error: '缺少 path 参数（要读的文件路径）' };
-        // 白名单校验（防止乱读仓库）
-        const allowed = (env.GITHUB_ALLOWED_REPOS || 'wovowx/mcp-memory').split(',').map(s => s.trim());
-        if (!allowed.includes(repo)) return { ok: false, error: `仓库不在白名单: ${repo}（白名单 ${allowed.join(', ')}）` };
-        const token = env.GITHUB_TOKEN || '';
-        const headers = { 'User-Agent': 'CommonGround-Runtime', 'Accept': 'application/vnd.github+json' };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
-        try {
-            const url = `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`;
-            const resp = await fetch(url, { headers });
-            if (!resp.ok) return { ok: false, error: `GitHub API ${resp.status}: ${(await resp.text()).slice(0, 200)}` };
-            const gh = await resp.json();
-            if (gh.type !== 'file') return { ok: false, error: `不是文件: ${gh.type || 'unknown'}` };
-            // GitHub API 返回 base64 编码内容（atob 给 Latin-1，需转 UTF-8）
-            const bytes = Uint8Array.from(atob(gh.content), c => c.charCodeAt(0));
-            let content = new TextDecoder().decode(bytes);
-            const totalLines = content.split('\n').length;
-            // 行范围截取
-            if (startLine || endLine) {
-                const s = Math.max((startLine || 1) - 1, 0);
-                const e = endLine || totalLines;
-                content = content.split('\n').slice(s, e).join('\n');
-            }
-            // 长度限制（防爆 token）
-            const MAX = 8000;
-            const truncated = content.length > MAX;
-            if (truncated) content = content.slice(0, MAX) + '\n...[内容过长已截断，可用 start_line/end_line 分段读取]';
-            return {
-                ok: true,
-                repo,
-                path,
-                branch,
-                size: gh.size,
-                total_lines: totalLines,
-                returned_lines: content.split('\n').length,
-                truncated,
-                content,
-                url: gh.html_url || null
-            };
-        } catch (e) {
-            return { ok: false, error: 'github_read 失败: ' + e.message };
-        }
-    },
+
     supabase_query: async (env, args) => {
         // 查 Supabase（T3 接真实）
         return { ok: true, note: 'supabase_query 工具待 T3 接入真实实现，当前返回占位' };
