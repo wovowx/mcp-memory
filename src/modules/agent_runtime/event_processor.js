@@ -327,7 +327,7 @@ function buildSystemPrompt(message, context) {
 
     console.log('\n[mcp-prompt] mcpToolsBlock=' + JSON.stringify(mcpToolsBlock.slice(0, 200)));
 
-    return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复用户 @ 的消息。\n\n当前 Thread:\n${message.thread_id}\n\n${ctxBlock}\n\n工具已挂载到 Worker Runtime：你在回复中输出一行【工具调用】标记，Worker 会自动解析执行并把结果回传给你，随后你基于结果继续。不需要先确认工具是否可用，直接输出标记即可。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件（只读白名单，参数 {repo?, path, branch?, start_line?, end_line?}）\n- supabase_query：查询 Supabase 数据${mcpToolsBlock}\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
+    return `你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复用户 @ 的消息。\n\n当前 Thread:\n${message.thread_id}\n\n${ctxBlock}\n\n工具已挂载到当前 Runtime 并可供你调用。执行模型：你（GPT Agent）在回复文本中输出一行【工具调用】JSON【/工具调用】标记，Worker Runtime 会解析该标记并真实执行对应的 MCP 工具，然后把真实结果回传给你继续。你不需要持有工具入口——你的文本标记就是调用方式（Worker 是你的执行手）。当前已挂载的可调用工具包括：echo / context_read / context_update / github_read / supabase_query，以及 MCP 只读工具（ds_quota 等，见下方列表）。如果你需要调用，直接输出标记即可；不需要先询问工具是否可用。\n\n标记格式：\n【工具调用】{"tool":"工具名","arguments":{...}}【/工具调用】\n\n可用工具：\n- echo：回显参数（测试用）\n- context_read：读取 Thread 上下文（防失忆，先读再答，参数 {thread_id?, limit?}）\n- context_update：更新 Thread 摘要（summary/decisions/open_questions/next_actions，帮助后续恢复上下文）\n- github_read：读取 GitHub 文件（只读白名单，参数 {repo?, path, branch?, start_line?, end_line?}）\n- supabase_query：查询 Supabase 数据${mcpToolsBlock}\n\n如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
 }
 
 // 当前进程内 MCP read 工具快照
