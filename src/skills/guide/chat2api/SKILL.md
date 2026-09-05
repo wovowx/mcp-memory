@@ -17,10 +17,38 @@
 ## 核心三件套（缺一不可）
 
 - accessToken：完整 JWT，存 Cloudflare Worker 机密变量 CHATGPT_ACCESS_TOKEN（本地不再存/不再带）
-- conversation_id（✅正式版）：6a98cb19-3b88-83ee-a7be-314d60f0aa64
+- conversation_id（✅正式版）：6a9bbad2-3638-83e8-9a1d-c12596744c3c
 - ⛔ conversation_id（已弃用）：6a96fcf8-b5c4-83ec-a012-8466a68b0376（被轰炸过的脏分支/主支）
 - GPTs ID：g-p-6a8f9e8de8e481919f2349f04e51608b-zivencheng-chang-ji-hua
 - 环境变量：HISTORY_DISABLED=false（Cloud Run）
+- GPT_MODEL：gpt-5.6（v6.17.5 起，驱动挂插件新对话；chat2api fallback gpt-4o 但 conversation_id 续插件环境，原生调 MCP 成功）
+
+## 🎉 浏览器挂插件通道（2026-09-05 柳柳实测·重大突破）⭐️⭐️⭐️
+
+**浏览器网页版现在支持挂载 MCP 插件了**（须在对话开始时挂载）——这就破除了「网页版没有插件」的旧判断。
+
+### 链路（已验证）
+```
+chat2api → 新对话（GPT-5.6 + 已挂 Ziven_MCP 插件）→ 原生调 ds_quota → 余额返回 → GPT 整理回复
+没有文本标记、没有 parser、没有认知壁垒
+```
+
+### 关键事实
+1. 挂插件必须在对话开始时（对话中途挂不上）
+2. GPT_MODEL=gpt-5.6：chat2api fallback 到 gpt-4o，但 conversation_id 续的是挂插件的新对话 → 插件环境保留 ✅
+3. 不用官 key、不用 App、免费版可用
+4. 这条是「接口驱动会调 MCP 的 GPT」的免费正门
+
+### 测试证据
+```
+POST /api/chat2api/ask → STATUS 200
+💡 DeepSeek 账户余额 0.45 CNY（ds_quota 原生 MCP 调用）
+```
+
+### 新对话相关
+- conversation_id：6a9bbad2-3638-83e8-9a1d-c12596744c3c
+- GPTs ID：g-p-6a8f9e8de8e481919f2349f04e51608b-zivencheng-chang-ji-hua
+- 模型自报：GPT-5.6 Luna（产品名），chat2api 技术名传 gpt-5.6
 
 ## 🎯 换 conversation_id 的标准动作（哥哥自己完成，柳柳不用动）⭐️⭐️⭐️
 
