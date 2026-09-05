@@ -54,10 +54,6 @@ export default {
             try { const formData = await request.formData(); const file = formData.get('file'); if (!file) return buildErrorResponse('no file'); if (file.size > 50 * 1024 * 1024) return buildErrorResponse('too large'); const blockedTypes = ['application/x-executable', 'application/x-msdownload', 'text/html', 'application/javascript']; if (blockedTypes.includes(file.type)) return buildErrorResponse('blocked type'); const result = await uploadFileToSupabase(file, env); return jsonResponse(result); }
             catch (e) { return buildErrorResponse(e.message, 500); }
         }
-        if (url.pathname === '/github/webhook' && request.method === 'POST') {
-            try { const payload = await request.json(); const result = await handleGitHubWebhook(payload, env); return jsonResponse(result); }
-            catch (e) { return buildErrorResponse('Webhook fail: ' + e.message, 500); }
-        }
         if (url.pathname === '/api/debug/mcp-inspect') {
             try {
                 const tools = await discoverMCPTools(env);
