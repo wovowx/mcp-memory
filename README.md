@@ -11,6 +11,22 @@ Ziven 的 MCP 记忆库 & 技能库。
 - `docs/` — 文档（需求文档等）
 - `CHANGELOG.md` — 版本记录
 
+## Architecture
+
+mcp-memory acts as MCP Server.
+
+Flow:
+
+Agent Runtime
+    ↓
+MCP Client
+    ↓
+mcp-memory Worker
+    ↓
+Supabase Skills / GitHub / Memory
+
+> 本小节由 Patch Proposal #448de374 应用（2026-09-05，GPT #727 建议，Ziven review + 柳柳确认）。
+
 ## 说明
 
 - 推 main 前先走 dev → PR / merge
