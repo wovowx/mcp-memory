@@ -33,6 +33,8 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，source/target 大小不一致返回 COPY_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
     { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] },
     { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。支持 verify_main=true 自动对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查，柳柳铁律）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' }, verify_main: { type: 'boolean', description: '可选，true 时对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查）' }, repo: { type: 'string', description: '可选，verify_main 时对比的仓库（默认 mcp-memory）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] },
+
+    { name: 'cloudflare_deploy_logs', description: '查询 Cloudflare Workers 部署日志与单次部署详情（部署失败排查）。支持：1) deployment_id 查单次部署详情（status/trigger/metadata/error）；2) 默认查最近 N 次部署的详情列表；3) include_raw=true 返回 Cloudflare API 原始响应（定位 API/网络问题）。专为 DEPLOY_UNVERIFIED 排查设计（柳柳铁律：部署后必查 + 失败必查日志）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, deployment_id: { type: 'string', description: '可选，查单次部署详情（可传完整 id 或前 8-12 位）' }, limit: { type: 'number', description: '可选，返回条数（默认3，最大10）' }, include_raw: { type: 'boolean', description: '可选，true 时返回 Cloudflare API 原始响应（不解析）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '详情', '排查'] },
     { name: 'github_apply_patch', description: '应用已批准的 Patch Proposal 到分支（Patch Engine MVP）。输入 proposal_id；查 patch_proposals → 校验/应用 structured patch → 提交 → 记录 rollback_sha → 更新状态。前置：proposal 必须 approved（Permission Guard 家族）。', input_schema: { type: 'object', properties: { proposal_id: { type: 'string', description: 'patch_proposals.id' }, branch: { type: 'string', description: '目标分支（必须 dev，禁止 main）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['proposal_id'] }, handler: 'github', category: 'GitHub', tags: ['Patch', 'Apply', 'Proposal'] }
 ];
 
@@ -83,7 +85,7 @@ async function tryAutoSyncDev(baseUrl, ghHeaders) {
 
 // ============================================================
 // autoSyncGithubTools - 全量对比 + 自动补新增
-// 四态：新增(自动注册) / 变化(报告待确认) / 孤儿(报告待确认) / 无变化
+// 四态：���增(自动注册) / 变化(报告待确认) / 孤儿(报告待确认) / 无变化
 // ============================================================
 export async function autoSyncGithubTools(env, dryRun = false) {
     const added = [];
@@ -501,7 +503,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const refResp = await fetch(`${baseUrl}/git/ref/heads/${fromBranch}`, { headers: ghHeaders });
             if (!refResp.ok) {
                 const err = await refResp.json();
-                throw new Error('取源分支失败：' + (err.message || `HTTP ${refResp.status}`));
+                throw new Error('取源��支失败：' + (err.message || `HTTP ${refResp.status}`));
             }
             const refData = await refResp.json();
             const sha = refData.object.sha;
@@ -673,6 +675,81 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 commit_sha: putData.commit?.sha || '',
                 overwritten
             }, null, 2);
+        }
+
+        // cloudflare_deploy_logs - 部署日志/详情查询（v6.18.1 新增 · 柳柳要求「做查日志的工具」）
+        else if (name === 'cloudflare_deploy_logs') {
+            const cfToken = env.CLOUDFLARE_API_TOKEN;
+            if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
+            const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
+            if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
+            const worker = safeArgs.worker_name || 'mcp-memory';
+            const limit = Math.min(10, safeArgs.limit || 3);
+            const base = 'https://api.cloudflare.com/client/v4/accounts/' + account + '/workers/scripts/' + worker;
+            const cfHeaders = { 'Authorization': 'Bearer ' + cfToken, 'Content-Type': 'application/json' };
+            const includeRaw = safeArgs.include_raw === true || safeArgs.include_raw === 'true';
+
+            // 模式 A：查单次部署详情
+            if (safeArgs.deployment_id) {
+                const depId = String(safeArgs.deployment_id);
+                const dResp = await fetch(base + '/deployments/' + encodeURIComponent(depId) + '/details', { headers: cfHeaders });
+                let detail = null, rawErr = null;
+                try {
+                    const dJson = await dResp.json();
+                    if (!dResp.ok) rawErr = JSON.stringify(dJson).slice(0, 300);
+                    else detail = dJson;
+                } catch (e) { rawErr = dResp.status + ' ' + e.message; }
+                if (includeRaw) return JSON.stringify({ ok: dResp.ok, http: dResp.status, raw: detail || rawErr, note: 'raw response' }, null, 2);
+                if (!detail) return 'ERROR: 部署详情查询失败' + (rawErr ? ': ' + rawErr : '（HTTP ' + dResp.status + '）');
+                const r = detail.result || detail;
+                const lines = [
+                    '📋 Cloudflare 部署详情 (' + worker + ')',
+                    '  deployment_id: ' + (r.id || safeArgs.deployment_id),
+                    '  created_on: ' + (r.created_on || '?'),
+                    '  source: ' + (r.source || '?'),
+                    '  trigger: ' + JSON.stringify(r.trigger || null),
+                    '  status: ' + JSON.stringify(r.status || null),
+                    '  metadata: ' + JSON.stringify(r.metadata || null),
+                    '  error: ' + JSON.stringify(r.error || null),
+                    '  author: ' + (r.author_email || r.author || '?')
+                ];
+                return lines.join('\n');
+            }
+
+            // 模式 B：最近 N 次部署 + 各自详情
+            const depResp = await fetch(base + '/deployments?per_page=' + limit, { headers: cfHeaders });
+            let depList = [];
+            let depErr = null;
+            try {
+                const d = await depResp.json();
+                if (!depResp.ok) depErr = (d.errors && d.errors[0] && d.errors[0].message) || ('HTTP ' + depResp.status);
+                else depList = (d.result && d.result.deployments || []).slice(0, limit);
+            } catch (e) { depErr = e.message; }
+            if (depErr) return 'ERROR: 查询部署列表失败: ' + depErr;
+
+            const out = [];
+            for (const dep of depList) {
+                const item = {
+                    id: (dep.id || '').slice(0, 12),
+                    created_on: dep.created_on,
+                    source: dep.source,
+                    trigger: dep.trigger || null,
+                    status: dep.status || null
+                };
+                try {
+                    const dr = await fetch(base + '/deployments/' + encodeURIComponent(dep.id) + '/details', { headers: cfHeaders });
+                    if (dr.ok) {
+                        const dj = await dr.json();
+                        const det = dj.result || dj;
+                        item.detail = { trigger: det.trigger || null, metadata: det.metadata || null, status: det.status || null, error: det.error || null };
+                    } else {
+                        item.detail_error = 'HTTP ' + dr.status;
+                    }
+                } catch (e) { item.detail_error = e.message; }
+                out.push(item);
+            }
+            if (includeRaw) return JSON.stringify({ ok: depResp.ok, http: depResp.status, raw: out, note: 'raw response (parsed deployments + details)' }, null, 2);
+            return JSON.stringify(out, null, 2);
         }
 
         // cloudflare_deploy_status
