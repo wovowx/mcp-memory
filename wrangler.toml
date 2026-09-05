@@ -21,7 +21,8 @@ GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory,wovowx/ZivenLab"
 # Phase 1.5 @GPT 闭环：chat2api 通道配置（Dashboard 覆盖优先）
 # 2026-09-05: 切换到 ziven-bridge（chat2api 1.8.8-beta2 + MCP 连接器自动挂载 patch v2）
 CHAT2API_URL = "https://ziven-bridge-1029559493109.asia-northeast1.run.app/v1/chat/completions"
-GPT_CONVERSATION_ID = "6a9bbad2-3638-83e8-9a1d-c12596744c3c"
+# 2026-09-06: 旧框 6a9bbad2 插件失效（页面上也加不了新插件），柳柳换新对话 zivencheng 长期计划 GPTs
+GPT_CONVERSATION_ID = "6a9c3dbc-bfb8-83ee-af44-1fbd9d786810"
 # v6.19.2: GPT_MODEL 改回 gpt-5.6（v6.19.1 试 g-p- GPTs 模式 → 403 cf_chl_opt，GPTs 请求风控更严，不可行）
 # 柳柳确认：同一节点 IP 浏览器可正常访问 → 不是 IP 脏，是 chat2api 请求特征 + GPTs 模式触发更严风控
 GPT_MODEL = "gpt-5.6"
