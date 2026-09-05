@@ -2,6 +2,16 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.17.0] - 2026-09-05
+
+### Changed（发布流程硬约束化 · PR #131 标题重复转 Runtime Guard）
+- **merge 策略默认化**：github_merge_to_main / github_merge_pull_request 的 merge_method 默认改为 rebase（不传不再走 merge → 标题不再重复）
+- **merge 必须显式说明**：显式 merge 必须带 commit_title + merge_reason（hotfix/emergency/history-preserve），否则拒绝（MERGE_REQUIRES_COMMIT_TITLE / MERGE_REQUIRES_REASON）——核心修复是「不允许发布策略含糊」（GPT #749）
+- **deploy verification 引入**：cloudflare_deploy_status 新增 verify_main=true 参数——自动对比 main HEAD commit vs 最新部署版本，返回 VERIFIED / DEPLOY_UNVERIFIED
+- **Capability Guide 增加**：新增 code-runner-guide（本地执行能力）、database-capability-guide（数据库能力，不绑定 Supabase）
+- **部署后必查（柳柳铁律）**：deploy skill 第 6 步 → merge 后 sleep 45s → verify_main 确认；DEPLOY_UNVERIFIED 必须查部署日志分析（?deployment_id / ?include=details）
+- skill 同步：deploy v6.5.1 / github-use-guide v6.5.3
+
 ## [v6.16.1] - 2026-09-05
 
 ### Added（Level 2 · Permission Guard MVP）
