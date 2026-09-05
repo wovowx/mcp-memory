@@ -348,7 +348,6 @@ ${ctxBlock}
 
 如果上下文已足够就直接回复用户；需要更详细内容用 context_read；讨论中有重要决定/结论用 context_update 保存。`;
 }
-}
 
 // 当前进程内 MCP read 工具快照
 let mcpPromptToolsCache = [];
