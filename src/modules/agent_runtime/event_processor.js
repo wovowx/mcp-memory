@@ -240,8 +240,10 @@ function buildSystemPrompt(message, context) {
         : '';
 
         // v9: 动态附上 MCP 发现的 read capability
+        // ⚠️ 角色定位（GPT #691 要求 #3）：本块是 debug/context 辅助，不是能力源
+        // 真正让 GPT「可调用」的是 chat2api 请求里的 tools[]（OpenAI 工具声明）
     let mcpToolsBlock = '';
-    try { const tools = discoverToolsForPrompt(); if (tools.length) { mcpToolsBlock = '\nMCP 只读工具（Runtime 自动发现，仅 read 权限）：\n' + tools.map(t => '- ' + t.name + '：' + (t.description || '（无描述）')).join('\n'); } } catch (e) { mcpToolsBlock = '\n（MCP 工具发现不可用：' + e.message + '）'; }
+    try { const tools = discoverToolsForPrompt(); if (tools.length) { mcpToolsBlock = '\nMCP 只读工具（Runtime 自动发现，仅 read 权限，辅助说明；可调用面以 tools schema 为准）：\n' + tools.map(t => '- ' + t.name + '：' + (t.description || '（无描述）')).join('\n'); } } catch (e) { mcpToolsBlock = '\n（MCP 工具发现不可用：' + e.message + '）'; }
 
     console.log('\n[mcp-prompt] mcpToolsBlock=' + JSON.stringify(mcpToolsBlock.slice(0, 200)));
 
@@ -269,8 +271,30 @@ function cleanReplyContent(text) {
 async function runToolLoop(env, message, event) {
     // T3.1 防失忆：Runtime 主动读取 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
     const autoContext = await readThreadContext(env, message?.thread_id, 10);
-    // v9: 运行前发现一次 MCP read 工具
-    try { const mcpTools = await discoverMCPTools(env); const visible = mcpTools.filter(t => mcpPermission(t.name) === 'read').map(t => ({ name: t.name, description: t.description })); setMCPPromptTools(visible); console.log('[mcp-discover] total=' + mcpTools.length + ' read=' + visible.length + ' names=' + visible.map(v=>v.name).join(',') + ' has_ds=' + visible.some(v=>v.name==='ds_quota')); } catch (e) { console.error('[mcp-discover] err: ' + e.message); }
+    // v9 + Level1 MVP: 运行前发现一次 MCP read 工具，并构建 OpenAI tools 声明（真实注入）
+    let capabilityTrace = { discovered: 0, filtered: 0, injected: 0, names: [], has_ds: false };
+    let openaiTools = [];
+    try {
+        const mcpTools = await discoverMCPTools(env);
+        capabilityTrace.discovered = mcpTools.length;
+        const visible = mcpTools.filter(t => mcpPermission(t.name) === 'read');
+        capabilityTrace.filtered = visible.length;
+        capabilityTrace.names = visible.map(v => v.name);
+        capabilityTrace.has_ds = visible.some(v => v.name === 'ds_quota');
+        // 快照给 buildSystemPrompt 文本注入（保留原行为）
+        setMCPPromptTools(visible.map(t => ({ name: t.name, description: t.description })));
+        // Level1: 构建 OpenAI 结构化工具声明 —— MCP capability 真正注入 GPT 可调用面
+        openaiTools = visible.map(t => ({
+            type: 'function',
+            function: {
+                name: t.name,
+                description: t.description || '(MCP capability)',
+                parameters: t.inputSchema || { type: 'object', properties: {} }
+            }
+        }));
+        console.log('[mcp-discover] total=' + mcpTools.length + ' read=' + visible.length + ' names=' + visible.map(v=>v.name).join(',') + ' has_ds=' + visible.some(v=>v.name==='ds_quota') + ' tools=' + openaiTools.length);
+    } catch (e) { console.error('[mcp-discover] err: ' + e.message); }
+    capabilityTrace.injected = openaiTools.length;
 
     // v8: system+user 分离（GPT 建议）：系统指令/工具规则/runtime_context 走 system，user 只放实际 @ 内容
     const messages = [
@@ -281,7 +305,8 @@ async function runToolLoop(env, message, event) {
     let finalContent = '';
 
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-        const reply = await callChat2Api(env, messages);
+        // Level1 MVP: 每轮都带 MCP 工具声明（OpenAI tools），让 GPT 可调用面持续可见
+        const reply = await callChat2Api(env, messages, { tools: openaiTools });
         const content = reply.content || '';
 
         // 解析工具调用
@@ -297,6 +322,14 @@ async function runToolLoop(env, message, event) {
         for (const call of calls) {
             // 执行工具
             const result = await executeTool(env, call, { thread_id: message?.thread_id });
+
+            // Level1 MVP trace（GPT #691 要求 #2）：invoked/result/tool_source 追赶链
+            const traceName = call?.tool || call?.name || 'unknown';
+            capabilityTrace.invoked_names = capabilityTrace.invoked_names || [];
+            if (!capabilityTrace.invoked_names.includes(traceName)) capabilityTrace.invoked_names.push(traceName);
+            capabilityTrace.last_result_ok = result.ok;
+            capabilityTrace.last_tool_source = result.tool_source || null;
+            capabilityTrace.last_invoked_at = new Date().toISOString();
 
             // T2.5 审计链：写 agent_tool_calls（运行事实源）
             const name = call?.tool || call?.name || 'unknown';
@@ -336,6 +369,28 @@ async function runToolLoop(env, message, event) {
     if (!finalContent && toolCalls.length > 0) {
         // 工具循环到顶还没拿到最终回复，用最后一次内容兜底
         finalContent = '(工具循环达到上限，未完成最终回复)';
+    }
+
+    // Level1 MVP: Capability Injection 证据链 —— 把 discovered/filtered/injected trace 落审计表
+    // 验收要求（GPT #689）：不靠「GPT 说我看到了」，要有可查询的观测证据
+    try {
+        const traceRow = await insertAgentToolCall(env, {
+            event_id: event?.event_id,
+            message_id: message?.message_id,
+            agent: 'gpt',
+            call: { tool: '__capability_trace__', arguments: capabilityTrace },
+            round: null
+        });
+        if (traceRow?.id) {
+            await updateAgentToolCall(env, traceRow.id, {
+                status: 'success',
+                result: { ok: true, capability_trace: capabilityTrace, injected: openaiTools.length, tool_sources: ['mcp'] },
+                error: null,
+                finished_at: new Date().toISOString()
+            });
+        }
+    } catch (e) {
+        console.error('[capability-trace] 写 trace 失败: ' + e.message);
     }
 
     return { content: finalContent, toolCalls };
