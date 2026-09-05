@@ -191,17 +191,71 @@ function mcpPermission(name) {
 
 // 从 GPT 回复里解析工具调用请求
 // 约定格式：GPT 在回复里输出一行【工具调用】json【/工具调用】
+// v6.13.1 (B)：chat2api 网关对 OpenAI tools 有损，偶发把原生 tool_call 截断成不完整标记（缺 【/工具调用】）
+// → 加容错：完整标记优先；不完整标记/裸 JSON 自动补全解析，保证 Capability 稳定 Invoked
 function parseToolCalls(content) {
     const calls = [];
-    const re = /【\s*工具调用\s*】([\s\S]*?)【\s*\/工具调用\s*】/g;
-    let m;
-    while ((m = re.exec(content)) !== null) {
-        try {
-            const parsed = JSON.parse(m[1].trim());
-            calls.push(parsed);
-        } catch (e) {
-            calls.push({ tool: 'echo', arguments: { parse_error: m[1].slice(0, 200), error: e.message } });
+    const text = String(content || '');
+    const normalizeCall = (obj, raw, err) => {
+        if (obj && (obj.tool || obj.name)) {
+            // 统一字段：tool 优先，name 兜底
+            if (!obj.tool && obj.name) obj.tool = obj.name;
+            calls.push(obj);
+        } else {
+            calls.push({ tool: 'echo', arguments: { parse_error: (raw || '').slice(0, 200), error: err || 'invalid tool call object' } });
         }
+    };
+
+    // 1) 完整闭合标记（正常格式）
+    const fullRe = /【\s*工具调用\s*】([\s\S]*?)【\s*\/工具调用\s*】/g;
+    let m;
+    while ((m = fullRe.exec(text)) !== null) {
+        try {
+            normalizeCall(JSON.parse(m[1].trim()), m[1]);
+        } catch (e) {
+            normalizeCall(null, m[1], e.message);
+        }
+    }
+    if (calls.length > 0) return calls;
+
+    // 2) 容错：不完整标记（有开头、无闭合）——GPT/chat2api 偶发输出截断（#695/#697 实锤）
+    // 形如：【工具调用】{"tool":"ds_quota","arguments":{}}  （缺闭合，后面直接是正文或结束）
+    const openRe = /【\s*工具调用\s*】([\s\S]*?)(?=【\s*工具调用\s*】|$)/g;
+    let om;
+    while ((om = openRe.exec(text)) !== null) {
+        const raw = om[1].trim();
+        if (!raw) continue;
+        // 限制长度：容错只吞紧跟标记的 JSON（500 字符内），避免把整篇正文误吞
+        const candidate = raw.slice(0, 500);
+        try {
+            const parsed = JSON.parse(candidate);
+            normalizeCall(parsed, candidate);
+        } catch (e) {
+            // 3) 再容错：从候选里抠出第一个 JSON 对象（可能在文中）
+            const openIdx = candidate.indexOf('{');
+            const closeIdx = candidate.lastIndexOf('}');
+            if (openIdx >= 0 && closeIdx > openIdx) {
+                try {
+                    const inner = candidate.slice(openIdx, closeIdx + 1);
+                    normalizeCall(JSON.parse(inner), inner);
+                } catch (e2) {
+                    normalizeCall(null, candidate, e2.message);
+                }
+            } else {
+                normalizeCall(null, candidate, e.message);
+            }
+        }
+    }
+    // 4) 保守容错：整段文本就是一个 JSON 对象（裸 tool call，没有标记包裹）——防御极端情况
+    const trimmed = text.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed && (parsed.tool || parsed.name)) {
+                if (!parsed.tool && parsed.name) parsed.tool = parsed.name;
+                calls.push(parsed);
+            }
+        } catch (e) { /* 忽略：不是合法 JSON 就当普通正文 */ }
     }
     return calls;
 }
@@ -279,7 +333,8 @@ async function runToolLoop(env, message, event) {
     // T3.1 防失忆：Runtime 主动读取 thread 上下文注入 prompt（不依赖 GPT 自觉调工具）
     const autoContext = await readThreadContext(env, message?.thread_id, 10);
     // v9 + Level1 MVP: 运行前发现一次 MCP read 工具，并构建 OpenAI tools 声明（真实注入）
-    let capabilityTrace = { discovered: 0, filtered: 0, injected: 0, names: [], has_ds: false };
+    // v6.13.1 (B)：injection_mode 标注真实注入方式 —— prompt_text（tools 参数因 chat2api 有损已停用）
+    let capabilityTrace = { discovered: 0, filtered: 0, injected: 0, names: [], has_ds: false, injection_mode: 'prompt_text' };
     let traceWritten = false; // v6.13 A：trace 是否已提前落库（工具执行后立即写，不等最终答复）
     let openaiTools = [];
     try {
@@ -329,7 +384,9 @@ async function runToolLoop(env, message, event) {
         } else {
             const roundTimeout = Math.min(round === 0 ? ROUND_FIRST_MS : ROUND_LATER_MS, Math.max(3000, budgetLeft - 3000));
             try {
-                reply = await callChat2Api(env, messages, { tools: openaiTools, timeoutMs: roundTimeout });
+                // v6.13.1 (B)：不再传 tools —— chat2api 网关对 OpenAI tools 有损（把原生 tool_call 截断成不完整标记，实锤 #695/#697）
+                // 能力注入改回 prompt 文本（mcpToolsBlock + 工具规则文本）；openaiTools 仅保留作 trace/审计计数
+                reply = await callChat2Api(env, messages, { timeoutMs: roundTimeout });
             } catch (chatErr) {
                 console.error('[tool-loop] round=' + round + ' chat2api 失败: ' + chatErr.message + ' timeout=' + roundTimeout);
                 if (round > 0 && toolCalls.length > 0) {
