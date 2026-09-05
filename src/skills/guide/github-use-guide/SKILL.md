@@ -5,7 +5,7 @@ category: guide
 tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 ---
 
-# GitHub 使用指南（v6.5.2 · 强制 content_url）
+# GitHub 使用指南（v6.5.3 · 强制 content_url + merge 硬规则）
 
 ## 一句话
 日常 GitHub 操作的工具对照表 + Git 纪律（怎么合并）+ 大文件推送规范；**发布纪律（能不能发布）见 deploy skill，两者分层不混**。
@@ -28,12 +28,13 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 | 建分支 | github_create_branch(name, from=main) |
 | 同步分支 | github_sync_branch(name=dev, from=main) |
 | 对比分支 | github_compare_branches(base=main, head=dev) |
-| **合并 dev→main（发布）** | **先过 deploy release checklist → github_merge_to_main(branch=dev, commit_title=版本号+名称)** |
+| **合并 dev→main（发布）** | **先过 deploy release checklist → github_merge_to_main(branch=dev, commit_title=版本号+名称)**（merge_method 默认 rebase，v6.17.0 硬性） |
 | 建 PR（发布） | github_create_pull_request(base=main, head=dev, title=版本号+名称, body=说明) |
-| 合并 PR | github_merge_pull_request(pull_number, merge_method=rebase, commit_title=版本号+名称) |
+| 合并 PR | github_merge_pull_request(pull_number, merge_method=rebase, commit_title=版本号+名称)（默认 rebase；显式 merge 必须 commit_title+merge_reason） |
 | 关 PR | github_close_pull_request(pull_number) |
 | 查 PR | github_get_pull_request(pull_number) |
 | 同步工具注册表 | github_auto_sync(dry_run=true 先预览) |
+| 部署后必查 | cloudflare_deploy_status(verify_main=true, repo=...) → VERIFIED/DEPLOY_UNVERIFIED |
 
 ## 版本化示例（按仓库类型）
 
@@ -84,12 +85,16 @@ github_push(path="src/...", content_url="https://我们的supabase.../file", bra
 7. **注册表以代码 GITHUB_TOOL_DEFS 为真相源**——表只是缓存。
 8. **发布必过 release checklist**——版本化/CHANGELOG/柳柳确认，见 deploy skill。
 9. **绝不读本地 datastore token 直连 GitHub API**（柳柳红线）。
+10. **merge 默认 rebase（代码硬性 v6.17.0）**——显式 merge 必须 commit_title + merge_reason，否则拒绝（MERGE_REQUIRES_*）。
+11. **部署后必查（柳柳铁律）**——merge main 后 sleep 45s → cloudflare_deploy_status(verify_main=true)，DEPLOY_UNVERIFIED 必须查日志分析。
 
 ## 常见坑
 - **分叉了还硬推/硬合**：先 sync_branch 对齐再开发。
 - **合完忘 sync dev**：下一轮 PR dirty，工具自动做但别依赖记忆。
 - **code_runner 卡死**：App 级 worker 挂死，重启 Operit 恢复；纯推文件时绕开它。
 - **不版本化就合 main**：违反 deploy release checklist，先定版本+更新 CHANGELOG。
+- **merge 不传 merge_method**：v6.17.0 起默认 rebase，标题不再重复（PR #131）；显式 merge 忘带 reason 会被拒。
+- **部署完不 verify**：柳柳铁律——merge 后必须 verify_main，DEPLOY_UNVERIFIED 不标 completed。
 - **js 上传被 400 拦**：MIME 标 text/plain 再传 /upload（内容不变）。
 - **其他情况 → 走 deploy 发布流程**（先问柳柳、版本化）。
 
@@ -98,6 +103,7 @@ github_push(path="src/...", content_url="https://我们的supabase.../file", bra
 - 不确定怎么做 → help() 或读对应 SKILL.md，不凭印象。
 
 ## 变更记录
+- 2026-09-05：v6.5.3 merge 硬规则同步（默认 rebase / merge 必须 commit_title+reason）+ 部署后必查 verify_main（PR #131 教训）
 - 2026-09-04：v6.5.2 强制 content_url（代码层移除 content/base64；白名单只认自有 Supabase；禁止 base64 死转码 & datastore token 红线）
 - 2026-09-04：v6.5.1 content_url 大文件通道（github_push 新增 content_url 参数，实测 151KB 成功）
 - 2026-09-04：v6.5.0 Git 纪律版——deploy(github-use-guide) 分层、merge 条目标注 release checklist、版本化示例双仓两种（GPT #505~508）。
