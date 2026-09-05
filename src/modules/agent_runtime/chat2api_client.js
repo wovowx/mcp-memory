@@ -4,7 +4,22 @@
 // 兼容读取：CHATGPT_ACCESS_TOKEN（已配）→ CHAT2API_TOKEN（备选）
 // v2 (2026-09-03)：支持 messages 数组（工具循环 Runtime Loop 多轮上下文）
 // v3 (2026-09-05)：Level 1 Capability Injection MVP —— 支持 tools 参数（OpenAI 工具声明）
+// v4 (2026-09-05)：fetchWithTimeout —— 30s 超时（工具循环第二轮慢时不无限挂）
 // ============================================================
+
+// v4: 带超时的 fetch（AbortController），超时抛错不挂死
+async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } catch (e) {
+        if (e.name === 'AbortError') throw new Error('chat2api timeout after ' + timeoutMs + 'ms');
+        throw e;
+    } finally {
+        clearTimeout(timer);
+    }
+}
 
 export async function callChat2Api(env, promptOrMessages, options = {}) {
     const token = env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || '';
@@ -32,14 +47,14 @@ export async function callChat2Api(env, promptOrMessages, options = {}) {
         console.log('[chat2api-payload] tools=EMPTY（本轮未注入工具声明）');
     }
 
-    const response = await fetch(env.CHAT2API_URL, {
+    const response = await fetchWithTimeout(env.CHAT2API_URL, {
         method: 'POST',
         headers: {
             'Authorization': 'Bearer ' + token,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
-    });
+    }, 30000); // v4: 30s 超时（工具循环第二轮可能慢，超时抛错而非无限挂）
 
     if (!response.ok) {
         const text = await response.text();
