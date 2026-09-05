@@ -24,6 +24,7 @@ import { getEnabledSkills } from './utils/skills.js';
 import { handleChatRequest } from './tools/chat.js';
 import { handleChatWebhook } from './tools/chat_webhook.js';
 import { processPendingEvents } from './modules/agent_runtime/event_processor.js';
+import { processToolConclusions } from './modules/agent_runtime/event_processor.js';
 import { callChat2Api } from './modules/agent_runtime/chat2api_client.js';
 import { watchdogSweep } from './modules/agent_runtime/watchdog.js';
 import { handleMCPRequest } from './modules/mcp_router.js';
@@ -44,6 +45,13 @@ export default {
             console.log('[scheduled] processPendingEvents: ' + JSON.stringify(result));
         } catch (e) {
             console.error('[scheduled] process err: ' + e.message);
+        }
+        try {
+            // v6.14 (B)：处理工具结论异步队列（独立预算，结论生成可用满 25s）
+            const conclusion = await processToolConclusions(env);
+            console.log('[scheduled] processToolConclusions: ' + JSON.stringify(conclusion));
+        } catch (e) {
+            console.error('[scheduled] conclusions err: ' + e.message);
         }
         return new Response('ok');
     },
