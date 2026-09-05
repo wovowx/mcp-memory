@@ -9,6 +9,7 @@
 // 2026-09-01 ADD v6.3: GITHUB_TOOL_DEFS 元数据（自动注册真相源）+ github_auto_sync 自动同步
 // 2026-09-01 ADD v6.4: 基础工具第一阶段——github_read 范围读取+截断标记 / github_push 写入后 size 校验 / github_copy copy 后 size 校验（「API 成功 ≠ 文件成功」）
 import { getEnabledSkills, addSkill } from '../utils/skills.js';
+import { validatePatch, applyPatch } from '../modules/patch_engine.js';
 
 // ============================================================
 // GITHUB_TOOL_DEFS - 所有 github_* 工具的元数据（唯一真相源）
@@ -31,7 +32,8 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_sync_branch', description: '让分支直接指向源分支最新 commit（fast-forward 同步，不删分支）。分叉根治专用。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '要同步的分支（默认dev）' }, branch: { type: 'string', description: '要同步的分支（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '同步'] },
     { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，source/target 大小不一致返回 COPY_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
     { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] },
-    { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。支持 verify_main=true 自动对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查，柳柳铁律）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' }, verify_main: { type: 'boolean', description: '可选，true 时对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查）' }, repo: { type: 'string', description: '可选，verify_main 时对比的仓库（默认 mcp-memory）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] }
+    { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。支持 verify_main=true 自动对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查，柳柳铁律）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' }, verify_main: { type: 'boolean', description: '可选，true 时对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查）' }, repo: { type: 'string', description: '可选，verify_main 时对比的仓库（默认 mcp-memory）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] },
+    { name: 'github_apply_patch', description: '应用已批准的 Patch Proposal 到分支（Patch Engine MVP）。输入 proposal_id；查 patch_proposals → 校验/应用 structured patch → 提交 → 记录 rollback_sha → 更新状态。前置：proposal 必须 approved（Permission Guard 家族）。', input_schema: { type: 'object', properties: { proposal_id: { type: 'string', description: 'patch_proposals.id' }, branch: { type: 'string', description: '目标分支（必须 dev，禁止 main）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['proposal_id'] }, handler: 'github', category: 'GitHub', tags: ['Patch', 'Apply', 'Proposal'] }
 ];
 
 // ============================================================
@@ -728,6 +730,58 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
         }
 
+
+        // github_apply_patch - Patch Engine MVP (structured patch)
+        else if (name === 'github_apply_patch') {
+            const proposalId = safeArgs.proposal_id;
+            if (!proposalId) return 'ERROR: Missing proposal_id';
+            const branch = safeArgs.branch || 'dev';
+            if (branch === 'main') return 'ERROR: github_apply_patch 禁止 main（release_guard 家族）';
+            const applyRepo = (safeArgs && safeArgs.repo) || env.GITHUB_REPO;
+            if (!env.SUPABASE_URL) return 'ERROR: SUPABASE_URL not configured';
+            const sbKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+            if (!sbKey) return 'ERROR: Supabase key not configured';
+            const sbHeaders = { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json' };
+            // 1) 查 proposal
+            const propResp = await fetch(env.SUPABASE_URL + '/rest/v1/patch_proposals?id=eq.' + proposalId + '&select=*', { headers: sbHeaders });
+            const propRows = await propResp.json();
+            const proposal = Array.isArray(propRows) ? propRows[0] : null;
+            if (!proposal) return 'ERROR: proposal not found: ' + proposalId;
+            if (proposal.status !== 'approved') return 'ERROR: proposal status=' + proposal.status + '（必须 approved 才能 apply）';
+            // 2) 解析 structured patch
+            let patch = null;
+            try { patch = JSON.parse(proposal.diff); } catch (e) { patch = null; }
+            if (!patch || !Array.isArray(patch.changes) || patch.changes.length === 0) return 'ERROR: proposal.diff 不是有效 structured patch JSON';
+            const targetFile = patch.file || proposal.target;
+            if (!targetFile) return 'ERROR: 缺少目标文件（patch.file / proposal.target）';
+            // 3) 读目标文件当前内容（目标分支）
+            const ghToken = env.GITHUB_TOKEN;
+            if (!ghToken) return 'ERROR: GITHUB_TOKEN not configured';
+            const ghApplyHeaders = { 'Authorization': 'Bearer ' + ghToken, 'Accept': 'application/vnd.github+json', 'User-Agent': 'mcp-memory' };
+            const gbUrl = 'https://api.github.com/repos/' + applyRepo;
+            const fileUrl = gbUrl + '/contents/' + targetFile.split('/').map(encodeURIComponent).join('/') + '?ref=' + branch;
+            const fileResp = await fetch(fileUrl, { headers: ghApplyHeaders });
+            const fileData = await fileResp.json();
+            if (!fileResp.ok) return 'ERROR: 读取文件失败: ' + (fileData.message || fileResp.status);
+            const oldSha = fileData.sha;
+            let fileContent;
+            try { fileContent = base64ToUtf8(fileData.content); } catch (e) { return 'ERROR: base64 解码失败: ' + e.message; }
+            // 4) validate + apply
+            const vRes = validatePatch(fileContent, patch);
+            if (!vRes.ok) return 'ERROR: validatePatch: ' + vRes.errors.join('; ');
+            const aRes = applyPatch(fileContent, patch);
+            if (!aRes.ok) return 'ERROR: applyPatch: ' + (aRes.errors ? aRes.errors.join('; ') : 'unknown');
+            const newContent = aRes.content;
+            // 5) 写入 GitHub（PUT contents，带 old sha）
+            const putBody = { message: 'v6.17.1: apply patch proposal ' + proposalId.slice(0, 8) + ' (' + applyRepo + ' ' + branch + ' ' + targetFile + ')', content: utf8ToBase64(newContent), sha: oldSha, branch: branch };
+            const putResp = await fetch(gbUrl + '/contents/' + targetFile.split('/').map(encodeURIComponent).join('/'), { method: 'PUT', headers: ghApplyHeaders, body: JSON.stringify(putBody) });
+            const putData = await putResp.json();
+            if (!putResp.ok) return 'ERROR: 写入失败: ' + (putData.message || putResp.status);
+            // 6) 更新 proposal 状态
+            const updBody = { status: 'applied', applied_by: 'ziven', applied_at: new Date().toISOString(), rollback_sha: oldSha, updated_at: new Date().toISOString() };
+            await fetch(env.SUPABASE_URL + '/rest/v1/patch_proposals?id=eq.' + proposalId, { method: 'PATCH', headers: sbHeaders, body: JSON.stringify(updBody) });
+            text = '✅ github_apply_patch 成功\nproposal: ' + proposalId + '\nfile: ' + targetFile + ' (' + branch + ')\nold_sha: ' + oldSha.slice(0, 12) + '\nnew_sha: ' + (putData.content && putData.content.sha ? putData.content.sha.slice(0, 12) : '?') + '\nrollback: ' + oldSha.slice(0, 12) + '\nstatus: applied';
+        }
         else return 'ERROR: Unknown GitHub tool: ' + name;
     } catch (e) {
         return 'ERROR: ' + e.message;
