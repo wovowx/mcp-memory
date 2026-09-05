@@ -193,13 +193,31 @@ function mcpPermission(name) {
 // 从 GPT 回复里解析工具调用请求
 // 约定格式：GPT 在回复里输出一行【工具调用】json【/工具调用】
 // v6.13.1 (B)：chat2api 网关对 OpenAI tools 有损，偶发把原生 tool_call 截断成不完整标记（缺 【/工具调用】）
-// → 加容错：完整标记优先；不完整标记/裸 JSON 自动补全解析，保证 Capability 稳定 Invoked
+// v6.14.1 (B2)：GPT 输出格式不稳定（解释文本+工具块混合/缺闭合）——新增智能 JSON 提取器：
+//   从第一个 { 开始 brace 配对（跳过字符串内 {} 与转义），忽略前置文本，真正提取工具调用 JSON
+function extractJsonObject(str) {
+    const start = String(str).indexOf('{');
+    if (start < 0) return null;
+    let depth = 0, inStr = false, esc = false;
+    for (let i = start; i < String(str).length; i++) {
+        const ch = String(str)[i];
+        if (inStr) {
+            if (esc) { esc = false; continue; }
+            if (ch === '\') { esc = true; continue; }
+            if (ch === '"') inStr = false;
+            continue;
+        }
+        if (ch === '"') { inStr = true; continue; }
+        if (ch === '{') depth++;
+        else if (ch === '}') { depth--; if (depth === 0) return String(str).slice(start, i + 1); }
+    }
+    return null; // 未闭合
+}
 function parseToolCalls(content) {
     const calls = [];
     const text = String(content || '');
     const normalizeCall = (obj, raw, err) => {
         if (obj && (obj.tool || obj.name)) {
-            // 统一字段：tool 优先，name 兜底
             if (!obj.tool && obj.name) obj.tool = obj.name;
             calls.push(obj);
         } else {
@@ -207,47 +225,38 @@ function parseToolCalls(content) {
         }
     };
 
-    // 1) 完整闭合标记（正常格式）
+    // 1) 完整闭合标记（正常格式）——内部也用 extractJsonObject 鲁棒提取
     const fullRe = /【\s*工具调用\s*】([\s\S]*?)【\s*\/工具调用\s*】/g;
     let m;
     while ((m = fullRe.exec(text)) !== null) {
-        try {
-            normalizeCall(JSON.parse(m[1].trim()), m[1]);
-        } catch (e) {
-            normalizeCall(null, m[1], e.message);
+        const extracted = extractJsonObject(m[1]);
+        if (extracted) {
+            try { normalizeCall(JSON.parse(extracted), extracted); }
+            catch (e) { normalizeCall(null, extracted, e.message); }
+        } else {
+            normalizeCall(null, m[1], 'no json object in marked block');
         }
     }
     if (calls.length > 0) return calls;
 
     // 2) 容错：不完整标记（有开头、无闭合）——GPT/chat2api 偶发输出截断（#695/#697 实锤）
-    // 形如：【工具调用】{"tool":"ds_quota","arguments":{}}  （缺闭合，后面直接是正文或结束）
     const openRe = /【\s*工具调用\s*】([\s\S]*?)(?=【\s*工具调用\s*】|$)/g;
     let om;
     while ((om = openRe.exec(text)) !== null) {
         const raw = om[1].trim();
         if (!raw) continue;
-        // 限制长度：容错只吞紧跟标记的 JSON（500 字符内），避免把整篇正文误吞
-        const candidate = raw.slice(0, 500);
-        try {
-            const parsed = JSON.parse(candidate);
-            normalizeCall(parsed, candidate);
-        } catch (e) {
-            // 3) 再容错：从候选里抠出第一个 JSON 对象（可能在文中）
-            const openIdx = candidate.indexOf('{');
-            const closeIdx = candidate.lastIndexOf('}');
-            if (openIdx >= 0 && closeIdx > openIdx) {
-                try {
-                    const inner = candidate.slice(openIdx, closeIdx + 1);
-                    normalizeCall(JSON.parse(inner), inner);
-                } catch (e2) {
-                    normalizeCall(null, candidate, e2.message);
-                }
-            } else {
-                normalizeCall(null, candidate, e.message);
-            }
+        // 智能提取：忽略前置解释文本，从第一个 { brace 配对
+        const extracted = extractJsonObject(raw);
+        if (extracted) {
+            try { normalizeCall(JSON.parse(extracted), extracted); }
+            catch (e) { normalizeCall(null, extracted, e.message); }
+        } else {
+            normalizeCall(null, raw.slice(0, 200), 'no valid JSON in incomplete mark');
         }
     }
-    // 4) 保守容错：整段文本就是一个 JSON 对象（裸 tool call，没有标记包裹）——防御极端情况
+    if (calls.length > 0) return calls;
+
+    // 3) 保守容错：整段文本就是一个 JSON 对象（裸 tool call）
     const trimmed = text.trim();
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
         try {
@@ -256,7 +265,7 @@ function parseToolCalls(content) {
                 if (!parsed.tool && parsed.name) parsed.tool = parsed.name;
                 calls.push(parsed);
             }
-        } catch (e) { /* 忽略：不是合法 JSON 就当普通正文 */ }
+        } catch (e) { /* 不是合法 JSON 就当普通正文 */ }
     }
     return calls;
 }
