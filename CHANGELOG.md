@@ -2,6 +2,51 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.14.1] - 2026-09-05
+
+### Fixed（parseToolCalls 鲁棒性 · Level 2 Step 1 实测暴露）
+- extractJsonObject 智能提取：brace 配对 + 字符串感知（跳过字符串内 {} 与转义），忽略前置解释文本
+- 完整标记内部也走 extractJsonObject（标记内夹文本也鲁棒）
+- 无闭合标记容错改用 extractJsonObject（不再假设标记从行首开始）
+- 修复 GPT 输出「解释文本+工具块混合/缺闭合」时 fallback echo（#707/#709 实测）
+
+## [v6.14.0] - 2026-09-05
+
+### Added（工具循环拆两段 B 方案 · 异步结论队列）
+- 事件1（工具执行）：第一轮 chat2api → 工具调用 → Worker 执行 → audit/trace 落库 → 排结论任务 → 秒级 ack 闭环
+- 结论任务（独立）：scheduled 扫 agent_tool_conclusions 表 pending → 独立 25s 预算生成自然语言结论 → sendMessage 写回
+- 新表 agent_tool_conclusions（status: pending→processing→done/failed，重试×3 兜底）
+- runToolLoop 返回 pendingConclusion 标记：pendingConclusion 时本事件不落库（结论异步写回）
+
+## [v6.13.1] - 2026-09-05
+
+### Fixed（chat2api tools 有损修复）
+- 不再传 tools 参数（能力注入改回 prompt 文本，绕开 chat2api 网关截断原生 tool_call 问题 #695/#697）
+- parseToolCalls 加容错：不完整标记自动补全、裸 JSON 保守解析（6/6 单测通过）
+- capabilityTrace 加 injection_mode 标注真实注入方式
+
+## [v6.13.0] - 2026-09-05
+
+### Fixed（工具循环 wall-clock 预算管理）
+- runToolLoop 加 27s 总预算（剩 3s 落库+ack），第一轮 22s、第二轮 8s
+- 预算不足直接兜底（不再请求第二轮），保证落库+ack 在预算内
+- capability_trace 提前到工具执行后立即落库（不等最终答复）
+- chat2api_client 超时可配置（timeoutMs）
+
+## [v6.12.1] - 2026-09-05
+
+### Fixed（工具循环稳定性）
+- chat2api 加 30s 超时（fetchWithTimeout AbortController）
+- 工具循环第二轮失败用工具结果摘要兜底（不让事件烂在 processing）
+
+## [v6.12.0] - 2026-09-05
+
+### Added（Level 1 Capability Injection MVP）
+- chat2api_client 支持 OpenAI tools 参数（MCP 能力以结构化工具声明注入）
+- event_processor buildSystemPrompt/runToolLoop 把 MCP read 工具转 function schema 每轮传入
+- capability_trace（discovered/filtered/injected/invoked/tool_source）落 agent_tool_calls 审计表
+- GPT #691 审查补三点：payload trace、invoked/result 追踪、tools schema 是能力源 prompt 辅助
+
 ## [v6.10.2] - 2026-09-04
 
 ### Fixed（发布纪律修正 · 柳柳发现标题重复）
@@ -63,21 +108,3 @@
 - 事件所有权模型错误：chat_adapter.js 硬编码 gpt，ziven 事件无消费链（Phase2 解决消费链）
 - 4 条历史 stuck claim 事件被 watchdog 自动释放（运行验证通过）
 
-## [v6.3.4] - 2026-09-01
-
-### 强制路由执行铁律（柳柳点醒）
-- **根因**：强制路由只卡了「必须调用 help()」这个动作（hasCalledHelp 守门员），没强制「调用后必须读对 skill 再动手」
-  - 发图事件暴露：哥哥凭印象瞎试 read_file 多轮，才想起读 image_upload skill
-- **master-router 新增执行铁律**：遇到任何场景，第一动作 = 读对应 SKILL.md，读完才允许动手调工具；不凭印象
-- **语义边界**：系统路由没问题（场景速查表里白纸黑字写着柳柳发图→多媒体处理→agnes），问题在执行者没走路由；铁律=把执行者也绑进路由
-
-## [v6.3.3] - 2026-09-01
-
-### 技能写作规范（柳柳发现：skill 被记成错题本）
-- **根因**：每次踩坑就往 skill 追加「教训/反例」，从不消化成正确流程 → 主体被淹没（deploy/github-use-guide 重度）
-- **architecture 新增《技能写作规范》**：所有 skill 的标准骨架（一句话/适用场景/主体流程/关键原则/常见坑≤5/变更记录）+ 三条铁规则（主体优先、教训必压缩、追加先回归）+ 体检信号
-- **deploy 主体重构**：发布主流程 SOP 立起（柳柳确认→版本化→建PR→合并→验证），教训压缩成精简版
-- **github-use-guide 主体重构**：工具对照表 + 关键红线为主
-- **master-router 清补丁墙**：步骤重排连续编号（去 0.5/5.5），去重复段落
-- **deploy 自检清单 +1**：改过 skill 必须按写作规范骨架
-- **CHANGELOG 修复**：v6.3.3 记录初推时因读取截断丢了下半历史，找回 main 完整原文后重推（含 v5.3.x 及版本命名规则）
