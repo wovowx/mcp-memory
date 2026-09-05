@@ -12,6 +12,41 @@
 - **部署后必查（柳柳铁律）**：deploy skill 第 6 步 → merge 后 sleep 45s → verify_main 确认；DEPLOY_UNVERIFIED 必须查部署日志分析（?deployment_id / ?include=details）
 - skill 同步：deploy v6.5.1 / github-use-guide v6.5.3
 
+## [v6.17.6] - 2026-09-05
+
+### Changed（浏览器挂插件通道 · GPT 原生 MCP 突破）
+- chat2api skill 增加浏览器挂插件通道说明，记录新 conversation_id + GPT_MODEL 配置方式
+- 验证 GPT App 挂载 MCP 插件后可通过原生 MCP 调用工具（ds_quota / github_read），无需文本标记 parser（整体验证结论，后续版本记录）
+- 为后续 MCP 协同写代码流程提供真实 Capability Path
+
+## [v6.17.5] - 2026-09-05
+
+### Changed（GPT_MODEL 切换 gpt-5.6）
+- GPT_MODEL 调整为 gpt-5.6，对接浏览器挂插件新对话模型（柳柳建议）
+
+## [v6.17.4] - 2026-09-05
+
+### Changed（GPT_MODEL 格式调整）
+- GPT_MODEL 改为 gpt-4o-g-p- 格式，避免免费账号触发 gpt-4 拦截
+
+## [v6.17.3] - 2026-09-05
+
+### Changed（浏览器挂插件通道配置接入）
+- wrangler 配置切换至新 conversation_id
+- chat2api_client 支持从环境变量读取 GPT_MODEL
+
+## [v6.17.2] - 2026-09-05
+
+### Added（create_patch_proposal）
+- mcp_router 增加 create_patch_proposal 工具
+- 支持 GPT 在读取代码后提交结构化修改提案，而不是直接写入
+
+## [v6.17.1] - 2026-09-05
+
+### Added（Patch Engine MVP）
+- 新增 patch_engine.js，实现 structured patch validate/apply 核心流程
+- 增加 github_apply_patch 工具，支持受控 Patch 应用流程
+
 ## [v6.16.1] - 2026-09-05
 
 ### Added（Level 2 · Permission Guard MVP）
