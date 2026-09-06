@@ -17,6 +17,34 @@ function supabaseHeaders(env) {
     return { 'Authorization': 'Bearer ' + key, 'apikey': key, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
 }
 
+// ============================================================
+// dispatcher 运行时配置：优先读 Supabase system_config 表（隧道 URL 动态、token 敏感不写仓库）
+// 兜底：env.OPERIT_BASE_URL / env.OPERIT_BEARER_TOKEN（wrangler.toml 或控制台）
+// 2026-09-06：system_config 方案（GPT #851 review 中）——隧道重启更新表即可，不用重新部署
+// ============================================================
+async function readSystemConfig(env, key) {
+    try {
+        const url = `${env.SUPABASE_URL}/rest/v1/system_config?key=eq.${encodeURIComponent(key)}&select=value`;
+        const resp = await fetch(url, { headers: supabaseHeaders(env) });
+        if (!resp.ok) return null;
+        const rows = await resp.json();
+        return (Array.isArray(rows) && rows.length > 0) ? rows[0].value : null;
+    } catch (e) {
+        console.error('[ziven_wake] 读 system_config ' + key + ' 失败: ' + e.message);
+        return null;
+    }
+}
+
+// 解析唤醒目标：表优先，env 兜底
+async function resolveWakeTarget(env) {
+    const tunnelUrl = await readSystemConfig(env, 'operit_tunnel_url') || env.OPERIT_BASE_URL || '';
+    const token = await readSystemConfig(env, 'operit_bearer_token') || env.OPERIT_BEARER_TOKEN || '';
+    return {
+        baseUrl: String(tunnelUrl).replace(/\/+$/, ''),
+        token: String(token)
+    };
+}
+
 // 查询待唤醒候选：agent=ziven 且 delivery_status='created'（或历史事件未初始化 delivery_status）且非死信
 // 语义：created = 可被 claim（watchdog 释放也回到 created）
 async function findWakeCandidates(env) {
@@ -124,11 +152,10 @@ function buildWakePayload(event) {
 }
 
 // POST Operit 外部 HTTP 服务（8094 经隧道公网暴露），触发 Ziven 唤醒
-async function wakeOperit(env, event) {
-    const baseUrl = (env.OPERIT_BASE_URL || '').replace(/\/+$/, '');
-    const token = env.OPERIT_BEARER_TOKEN || '';
+async function wakeOperit(env, event, target) {
+    const { baseUrl, token } = target;
     if (!baseUrl || !token) {
-        throw new Error('OPERIT_BASE_URL / OPERIT_BEARER_TOKEN 未配置，无法唤醒 Ziven');
+        throw new Error('唤醒目标未配置（system_config 无 operit_tunnel_url/operit_bearer_token 且 env 无 OPERIT_*）');
     }
     const payload = buildWakePayload(event);
     const resp = await fetch(`${baseUrl}/api/external-chat`, {
@@ -150,10 +177,10 @@ async function wakeOperit(env, event) {
 // 主入口：M1-a 每轮调度（scheduled() 调用）
 // 流程：find → claim(原子) → delivering → POST → delivered / 失败重投或死信
 export async function dispatchZivenWake(env) {
-    // 未配置唤醒目标 → 跳过（不炸调度器），日志提示
-    if (!env.OPERIT_BASE_URL || !env.OPERIT_BEARER_TOKEN) {
-        console.log('[ziven_wake] 跳过：OPERIT_BASE_URL/OPERIT_BEARER_TOKEN 未配置');
-        return { ok: true, skipped_reason: 'operit_not_configured', scanned: 0, results: [] };
+    const target = await resolveWakeTarget(env);
+    if (!target.baseUrl || !target.token) {
+        console.log('[ziven_wake] 跳过：system_config/env 均未配置唤醒目标');
+        return { ok: true, skipped_reason: 'wake_target_not_configured', scanned: 0, results: [] };
     }
     try {
         const candidates = await findWakeCandidates(env);
@@ -168,7 +195,7 @@ export async function dispatchZivenWake(env) {
             // 2. 标记 delivering → POST 唤醒
             await markDelivering(env, event.event_id).catch(() => {});
             try {
-                const wake = await wakeOperit(env, event);
+                const wake = await wakeOperit(env, event, target);
                 // 3. Operit 收到 → delivered
                 await markDelivered(env, event.event_id);
                 results.push({ event_id: event.event_id, action: 'delivered', http: wake.status });
