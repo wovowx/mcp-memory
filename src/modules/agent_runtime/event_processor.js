@@ -72,6 +72,23 @@ async function generateReply(env, message) {
     return cleanReplyContent(reply.content || '');
 }
 
+// M1-b B（GPT #895）：失败可见——向聊天室发 system 消息（author=system），同一事件最多提示一次（去重）
+async function notifyFail(env, event, error) {
+    try {
+        const threadId = (event.payload && event.payload.thread_id) || '';
+        if (!threadId) return;
+        const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+        const h = { 'Authorization': 'Bearer ' + key, 'apikey': key };
+        // 去重：查该 source message 是否已有 fail_notice 事件（防止重复刷屏）
+        const dup = await fetch(env.SUPABASE_URL + "/rest/v1/chat_agent_events?select=event_id&payload->>type=eq.fail_notice&message_id=eq." + encodeURIComponent(event.message_id), { headers: h }).then(r => r.ok ? r.json() : []);
+        if (Array.isArray(dup) && dup.length > 0) return;
+        const notice = '[系统] ⚠️ GPT 处理失败：事件 ' + event.event_id + ' 原因：' + String(error.message || 'unknown').slice(0, 200);
+        await sendMessage(env, threadId, notice, { metadata: { m1b_fail_event: event.event_id } }, 'system');
+    } catch (e) {
+        console.error('fail notice send err: ' + e.message);
+    }
+}
+
 export async function processPendingEvents(env) {
     const events = await pendingEvents(env);
 
@@ -91,6 +108,7 @@ export async function processPendingEvents(env) {
             await acknowledge(env, event.event_id, 'success');
         } catch (error) {
             try {
+                await notifyFail(env, event, error);
                 await acknowledge(env, event.event_id, 'failed');
             } catch (ackErr) {
                 console.error("ack failed fallback err: " + ackErr.message, "orig: " + error.message);
