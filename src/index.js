@@ -26,6 +26,7 @@ import { handleChatWebhook } from './tools/chat_webhook.js';
 import { processPendingEvents } from './modules/agent_runtime/event_processor.js';
 import { callChat2Api } from './modules/agent_runtime/chat2api_client.js';
 import { watchdogSweep } from './modules/agent_runtime/watchdog.js';
+import { dispatchZivenWake } from './modules/agent_runtime/ziven_wake_dispatcher.js';
 import { handleMCPRequest } from './modules/mcp_router.js';
 import { discoverMCPTools } from './modules/agent_runtime/mcp_client.js';
 
@@ -44,6 +45,15 @@ export default {
             console.log('[scheduled] processPendingEvents: ' + JSON.stringify(result));
         } catch (e) {
             console.error('[scheduled] process err: ' + e.message);
+        }
+        // v6.22 (2026-09-06)：P0-2 Phase2 M1-a —— Ziven Wake Dispatcher
+        // 发现 agent=ziven created 事件 → 原子 claim → POST Operit :8094 唤醒
+        // 未配置 OPERIT_BASE_URL/OPERIT_BEARER_TOKEN 时自动跳过，不影响 watchdog/GPT 链路
+        try {
+            const wake = await dispatchZivenWake(env);
+            console.log('[scheduled] dispatchZivenWake: ' + JSON.stringify(wake));
+        } catch (e) {
+            console.error('[scheduled] ziven_wake err: ' + e.message);
         }
         return new Response('ok');
     },
