@@ -18,6 +18,13 @@ const MAX_PREVIEW_CHARS = 200;
 const DEFAULT_EVENT_LIMIT = 50;
 const MAX_DEPTH = 5; // v2.4 防自循环：Agent 互@往返深度上限
 
+// v2.5 (2026-09-06): 503 修复 —— Intl.DateTimeFormat 模块级缓存（避免每条消息 new 两次导致 CPU 超限）
+const TIME_FORMATTER = {
+    short: new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
+    full: new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })
+};
+const DEFAULT_MESSAGE_LIMIT = 200; // v2.5: 分页默认条数（原全量拉取 800+ 导致 503）
+
 const ACTOR_IDS = {
     legacy_import: "00000000-0000-0000-0000-000000000001",
     ziven: "00000000-0000-0000-0000-000000000002",
@@ -79,10 +86,10 @@ function buildTimeContext(createdAt, now=new Date()) {
     else if (seconds < 3600) relative = `${Math.floor(seconds/60)}分钟前`;
     else if (seconds < 86400) relative = `${Math.floor(seconds/3600)}小时前`;
     else if (seconds < 172800) relative = "昨天";
-    else relative = new Intl.DateTimeFormat("zh-CN", {month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"}).format(date);
+    else relative = TIME_FORMATTER.short.format(date); // v2.5 缓存复用
     return {
         relative,
-        absolute: new Intl.DateTimeFormat("zh-CN", {year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false}).format(date),
+        absolute: TIME_FORMATTER.full.format(date), // v2.5 缓存复用
         timezone: "Asia/Shanghai"
     };
 }
@@ -95,10 +102,23 @@ async function getNextMessageNumber(env, threadId) {
     throw new Error(`无法解析 message_number RPC 结果: ${JSON.stringify(result)}`);
 }
 
-async function getMessagesWithTime(env, threadId) {
-    const messages = await sbQuery(env, "chat_messages", { filters: { thread_id: threadId }, order: "created_at.asc" });
+// v2.5 (2026-09-06): 503 修复 —— 分页取最近 N 条（原全量拉取 800+ 导致 CPU 超限）
+// 修正 GPT 建议的 before 游标方案：sbQuery filters 硬编码 eq. 前缀，'lt.xxx' 会被拼成 eq.lt.xxx 查不到数据；
+// 改用 sbQuery 原生 limit + offset 实现分页，order desc 取最近 N 条再 reverse 回正序。
+async function getMessagesWithTime(env, threadId, options = {}) {
+    const { limit = DEFAULT_MESSAGE_LIMIT, offset = 0 } = options;
+    const safeLimit = Math.min(Math.max(Number(limit) || DEFAULT_MESSAGE_LIMIT, 1), 200);
+    const safeOffset = Math.max(Number(offset) || 0, 0);
+    const messages = await sbQuery(env, "chat_messages", {
+        filters: { thread_id: threadId },
+        order: "created_at.desc",
+        limit: safeLimit,
+        offset: safeOffset
+    });
     const now = new Date();
-    return messages.map(m => ({ ...m, time_context: buildTimeContext(m.created_at, now) }));
+    return messages
+        .reverse()
+        .map(m => ({ ...m, time_context: buildTimeContext(m.created_at, now) }));
 }
 
 function parseMentions(content) {
@@ -192,7 +212,7 @@ export async function handleChatRequest(request,url,env){
     try{
         if(segments.length===3&&segments[2]==='threads'&&method==='GET'){return jsonResponse(await sbQuery(env,'chat_threads',{order:'created_at.desc',limit:100}));}
         if(segments.length===3&&segments[2]==='threads'&&method==='POST'){const body=await request.json();const title=String(body.title||'未命名话题').trim();const creator=String(body.creator||'liuliu').toLowerCase();if(!ALL_ACTORS.includes(creator))throw new Error(`非法 creator: ${creator}`);const data=await sbInsert(env,'chat_threads',{title,creator,status:'active'});return jsonResponse(Array.isArray(data)?data[0]:data,201);}
-        if(segments.length===5&&segments[2]==='threads'&&segments[4]==='messages'&&method==='GET'){const id=decodeURIComponent(segments[3]);return jsonResponse(await getMessagesWithTime(env,id));}
+        if(segments.length===5&&segments[2]==='threads'&&segments[4]==='messages'&&method==='GET'){const id=decodeURIComponent(segments[3]);const limit=url.searchParams.get('limit');const offset=url.searchParams.get('offset');return jsonResponse(await getMessagesWithTime(env,id,{limit,offset}));}
         if(segments.length===5&&segments[2]==='threads'&&segments[4]==='messages'&&method==='POST'){const id=decodeURIComponent(segments[3]);const payload=await request.json();const result=await createMessage(env,id,payload);return jsonResponse(result,result.partial_failure?207:201);}
     }catch(e){return buildErrorResponse(e.message,400);}
 }
