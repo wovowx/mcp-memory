@@ -13,6 +13,7 @@
 //        readThreadContext（防失忆主动上下文注入）
 //        buildSystemPrompt（原生 MCP 提示——GPT 经自己 App 插件调用工具）
 // 背景：GPT 改走 ChatGPT App 内部原生插件（Ziven_MCP connector），
+// v10 (2026-09-06)：buildSystemPrompt 去工具名（意图式委托，柳柳拍板）——删 create_patch_proposal 幽灵工具引用 + 显式点名工具名；能力描述意图式（按任务目标自主选工具）
 //       Worker 侧不再代执行工具，注入/审计/结论全部失去意义。
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
@@ -48,7 +49,7 @@ function buildSystemPrompt(message, context) {
     const ctxBlock = context
         ? "<runtime_context>\n标题: " + (context.thread?.title || message.thread_id) + "\n状态: " + (context.thread?.status || "unknown") + "\n最近消息 (" + (context.recent_messages?.length || 0) + "条):\n" + (context.recent_messages || []).map(m => "[" + m.author + "] " + String(m.content).slice(0, 200)).join("\n") + "\n\n历史摘要 v" + (context.context?.version || "-") + ":\n" + (context.context?.summary || "(暂无摘要)") + "\n决定: " + JSON.stringify(context.context?.decisions || []) + "\n开放问题: " + JSON.stringify(context.context?.open_questions || []) + "\n下一步: " + JSON.stringify((context.context?.recent_context && context.context.recent_context.next_actions) || []) + "</runtime_context>"
         : '';
-    return "你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复用户 @ 的消息。\n\n当前 Thread:\n" + message.thread_id + "\n\n" + ctxBlock + "\n\n工具能力：你已原生挂载 Ziven_MCP 插件（MCP 工具可直接调用，如 github_read / ds_quota / create_patch_proposal 等）。当需要读取代码、查询数据或提交修改提案时，直接调用对应的 MCP 工具即可——工具会真实执行并返回结果。**不需要输出任何文本标记，也不需要模拟工具调用格式**。\n\n行为规范（Active Policies，见 ZivenLab governance/policy-index.md）：\n- AAD 行为透明：每次回复末尾用 [Activity] 块披露 Actions/Observation/Decision/Evidence/NotDone（没调用过的工具不许写「已读取」）\n- Ownership 闭环：承诺「盯着/负责」= 一口气跑到终态，不把检查责任转回 Ziven/柳柳；等待是状态不是结束\n\n协同写代码流程（配合 Ziven / 柳柳）：\n1. 理解任务：先输出需求理解（目标 / 涉及模块 / 未知信息）\n2. 读取代码：调 github_read 读目标文件 + 相关依赖（不猜，先看事实）\n3. 提 Patch：调 create_patch_proposal 提交修改意向（含 current_behavior / desired_behavior / reasoning / evidence / risk / test_plan——基于什么事实提出什么修改）\n4. 人工审核：Ziven review → 柳柳确认（方向变化时）→ apply\n\n如果上下文已足够就直接回复用户。";
+    return "你是 Common Ground 中的 GPT Agent。\n\n请直接、简洁地回复用户 @ 的消息。\n\n当前 Thread:\n" + message.thread_id + "\n\n" + ctxBlock + "\n\n工具能力：你已原生挂载 Ziven_MCP 插件，MCP 工具可直接调用。当需要读取代码、查询数据或完成操作时，根据任务目标自行选择当前可用工具完成即可——工具会真实执行并返回结果。**不需要输出任何文本标记，也不需要模拟工具调用格式**。\n\n行为规范（Active Policies，见 ZivenLab governance/policy-index.md）：\n- AAD 行为透明：每次回复末尾用 [Activity] 块披露 Actions/Observation/Decision/Evidence/NotDone（没调用过的工具不许写「已读取」）\n- Ownership 闭环：承诺「盯着/负责」= 一口气跑到终态，不把检查责任转回 Ziven/柳柳；等待是状态不是结束\n\n协同写代码流程（配合 Ziven / 柳柳）：\n1. 理解任务：先输出需求理解（目标 / 涉及模块 / 未知信息）\n2. 读取代码：读取目标文件 + 相关依赖（不猜，先看事实）\n3. 提方案：基于已读事实，给出修改方案（含当前行为 / 期望行为 / 理由 / 依据 / 风险 / 测试计划），请 Ziven review、柳柳确认（方向变化时）\n4. 人工审核：Ziven review → 柳柳确认（方向变化时）→ 由 Ziven 合并与部署\n\n如果上下文已足够就直接回复用户。";
 }
 
 // 清洗 GPT 回复里的 reaction 元数据（chat2api 网关把 OpenAI 的 reaction 混进了文本）
