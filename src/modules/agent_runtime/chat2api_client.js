@@ -45,11 +45,12 @@ export async function callChat2Api(env, promptOrMessages, options = {}) {
     const body = {
         model: env.GPT_MODEL || 'gpt-4o-mini', // v6.17.3: GPT_MODEL 可配置（驱动自定义 GPT / gizmo）
         messages,
-        // v6.20 (2026-09-06)：conversation_id 参数优先 —— options.conversation_id 有值用参数（含 ""=开新框），
-        // 无参数回退 env.GPT_CONVERSATION_ID（默认正式对话 6a9c3dbc）。柳柳拍板：哥哥调用时自己带。
+        // v6.21 (2026-09-06)：conversation_id 参数优先 —— 有显式传用参数；否则看 history_disabled
+        // v6.21.2 (2026-09-06)：history_disabled=true 时强制 conversation_id=""（全新临时会话，不复用 env 默认
+        //   6a9c3dbc——否则会 404 history_disabled_conversation_not_found，因为正式对话不支持 history_disabled）
         conversation_id: Object.prototype.hasOwnProperty.call(options, 'conversation_id')
             ? options.conversation_id
-            : (env.GPT_CONVERSATION_ID || null),
+            : (options.history_disabled ? '' : (env.GPT_CONVERSATION_ID || null)),
         // v6.21 (2026-09-06)：history_disabled 可配置 —— 执行会话用完即焚（不落 ChatGPT 历史，页面不堆聊天）
         // v6.21.1 (2026-09-06)：字段名修正！chat2api(ChatService.py L77) 读的是小写 history_disabled，
         //   之前误用大写 HISTORY_DISABLED 根本没透传到（聊天空测试 conversation_id=null 暴露的 bug）
