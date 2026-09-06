@@ -103,23 +103,23 @@ async function releaseForRetry(env, event) {
 }
 
 // 构造唤醒 payload：event_id/thread_id/message_id 必须带上（GPT #846 强调）
+// ExternalChatHttpRequest 字段（ExternalChatModels.kt）：request_id/message/group/timeout_ms/stop_after/stream/response_mode/callback_url
+// 事件溯源信息编码进 message 前缀（Operit 侧 Ziven 醒来后据此定位事件），response_mode=async_callback
 function buildWakePayload(event) {
     const threadId = event.payload?.thread_id || null;
     const sourceMessageId = event.payload?.source_message_id || event.message_id || null;
     const preview = event.payload?.content_preview || '';
+    // 消息前缀：把事件溯源 ID 带给 Ziven（防多事件 ack 错乱）
+    const prefix = `[cg-event] event=${event.event_id} thread=${threadId || ''} msg=${sourceMessageId || ''}\n`;
     return {
-        event_id: event.event_id,
-        thread_id: threadId,
-        message_id: event.message_id || null,
-        source_message_id: sourceMessageId,
-        agent: 'ziven',
-        intent_node: 'WINDOW',
-        content: preview,
+        request_id: event.event_id,
+        message: prefix + preview,
+        group: 'common-ground',
         response_mode: 'async_callback',
-        metadata: {
-            source: 'common-ground',
-            created_at: event.created_at
-        }
+        callback_url: event.callback_url || 'https://mcp-memory.wovowx.workers.dev/api/chat2api/callback',
+        timeout_ms: -1,
+        stop_after: false,
+        stream: false
     };
 }
 
