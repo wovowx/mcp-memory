@@ -139,9 +139,11 @@ function buildWakePayload(event) {
     const preview = event.payload?.content_preview || '';
     // 消息前缀：把事件溯源 ID 带给 Ziven（防多事件 ack 错乱）
     const prefix = `[cg-event] event=${event.event_id} thread=${threadId || ''} msg=${sourceMessageId || ''}\n`;
+    // M1-b C（GPT #895）：唤醒处理协议固定写入 payload（软约束辅助，硬约束在 ack 服务端校验）
+    const replyGuarantee = `\n[处理要求] 1. 处理完成后必须通过 chat_send 回复原 thread（thread_id=${threadId || ''}） 2. 回复成功后再 ack 本事件 3. 如无法回复到聊天室，不允许 ack success（M1-b 回复可见性硬规则）`;
     return {
         request_id: event.event_id,
-        message: prefix + preview,
+        message: prefix + preview + replyGuarantee,
         group: 'common-ground',
         response_mode: 'async_callback',
         callback_url: event.callback_url || 'https://mcp-memory.wovowx.workers.dev/api/chat2api/callback',
