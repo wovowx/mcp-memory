@@ -45,7 +45,11 @@ export async function callChat2Api(env, promptOrMessages, options = {}) {
     const body = {
         model: env.GPT_MODEL || 'gpt-4o-mini', // v6.17.3: GPT_MODEL 可配置（驱动自定义 GPT / gizmo）
         messages,
-        conversation_id: env.GPT_CONVERSATION_ID || null,
+        // v6.20 (2026-09-06)：conversation_id 参数优先 —— options.conversation_id 有值用参数（含 ""=开新框），
+        // 无参数回退 env.GPT_CONVERSATION_ID（默认正式对话 6a9c3dbc）。柳柳拍板：哥哥调用时自己带。
+        conversation_id: Object.prototype.hasOwnProperty.call(options, 'conversation_id')
+            ? options.conversation_id
+            : (env.GPT_CONVERSATION_ID || null),
         HISTORY_DISABLED: false,
         stream: false
     };

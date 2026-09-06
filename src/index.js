@@ -61,7 +61,13 @@ export default {
                 const body = await request.json();
                 const prompt = body?.message || '';
                 if (!prompt) return jsonResponse({ ok: false, error: 'missing message' }, 400);
-                const result = await callChat2Api(env, prompt);
+                // v6.20 (2026-09-06)：支持可选 conversation_id —— 不传用 env 默认（6a9c3dbc 正式对话），
+                // 传 conversation_id="" 开新对话，传具体 id 复用指定对话。柳柳拍板：哥哥发消息时自己带。
+                const options = {};
+                if (body && Object.prototype.hasOwnProperty.call(body, 'conversation_id')) {
+                    options.conversation_id = body.conversation_id;
+                }
+                const result = await callChat2Api(env, prompt, options);
                 return jsonResponse({ ok: true, reply: result.content, conversation_id: result.conversation_id }, 200);
             } catch (e) {
                 return jsonResponse({ ok: false, error: e.message }, 500);
