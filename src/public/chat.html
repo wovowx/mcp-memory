@@ -191,7 +191,7 @@ async function sendMessage(){
   try{
     const body={author:'liuliu',content,mentions:parseMentions(content)};
     await api(API.messages(currentThread),{method:'POST',body:JSON.stringify(body)});
-    input.value='';await selectThread(currentThread,{title:$('threadTitle').textContent});
+    input.value='';appendMessages([{author:'liuliu',content,created_at:new Date().toISOString(),message_id:'local-'+Date.now()}]);pollMessages();
   }catch(e){console.error(e);notice('发送失败：'+e.message)}
   finally{input.disabled=false;if(send)send.disabled=false;input.focus()}
 }
