@@ -51,9 +51,9 @@ export async function callChat2Api(env, promptOrMessages, options = {}) {
             ? options.conversation_id
             : (env.GPT_CONVERSATION_ID || null),
         // v6.21 (2026-09-06)：history_disabled 可配置 —— 执行会话用完即焚（不落 ChatGPT 历史，页面不堆聊天）
-        // options.history_disabled=true → 临时会话（不可恢复，404 是正常的；每次新任务都重新加载工具）
-        // options.history_disabled=false/缺省 → 正常保存（固定讨论对话使用）
-        HISTORY_DISABLED: Object.prototype.hasOwnProperty.call(options, 'history_disabled')
+        // v6.21.1 (2026-09-06)：字段名修正！chat2api(ChatService.py L77) 读的是小写 history_disabled，
+        //   之前误用大写 HISTORY_DISABLED 根本没透传到（聊天空测试 conversation_id=null 暴露的 bug）
+        history_disabled: Object.prototype.hasOwnProperty.call(options, 'history_disabled')
             ? !!options.history_disabled
             : false,
         stream: false
