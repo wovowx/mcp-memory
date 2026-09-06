@@ -10,7 +10,7 @@
 import { jsonResponse, buildErrorResponse } from '../utils/response.js';
 
 const AGENTS = ['gpt', 'ziven'];
-const ALL_ACTORS = ['liuliu', 'gpt', 'ziven'];
+const ALL_ACTORS = ['liuliu', 'gpt', 'ziven', 'system'];
 const EVENT_TYPES = ['message_created'];
 const EVENT_STATUSES = ['processing', 'success', 'failed'];
 const PRECIPITATE_KEYWORD = '@沉淀';
@@ -30,7 +30,8 @@ const ACTOR_IDS = {
     ziven: "00000000-0000-0000-0000-000000000002",
     gpt: "00000000-0000-0000-0000-000000000003",
     liuliu: "00000000-0000-0000-0000-000000000004",
-    context_worker: "00000000-0000-0000-0000-000000000005",
+    system: "00000000-0000-0000-0000-000000000005",
+    context_worker: "00000000-0000-0000-0000-000000000006",
 };
 
 function supabaseHeaders(env) {
@@ -170,7 +171,8 @@ export async function createMessage(env, threadId, payload) {
     const message_number = await getNextMessageNumber(env, threadId);
     const replyTo = payload.reply_to || null;
     const toolCalls = payload.tool_calls && Array.isArray(payload.tool_calls) ? payload.tool_calls : [];
-    const inserted=await sbInsert(env,'chat_messages',{thread_id:threadId,author,actor_id,message_number,content,mentions:mentions.length?mentions:[],reply_to:replyTo,tool_calls:toolCalls});
+    const metadata = payload.metadata && typeof payload.metadata === 'object' ? payload.metadata : {};
+    const inserted=await sbInsert(env,'chat_messages',{thread_id:threadId,author,actor_id,message_number,content,mentions:mentions.length?mentions:[],reply_to:replyTo,tool_calls:toolCalls,metadata});
     const message=Array.isArray(inserted)?inserted[0]:inserted; const messageId=message?.message_id; if(!messageId)throw new Error('消息写入成功但未返回 message_id');
     // v2.4 三方对等触发：任何 actor @任何 agent 都创建事件（liuliu/gpt/ziven 互@全通）；不再限 liuliu
     // v2.4.1 自触发修复：事件目标过滤作者自身（自己 @ 自己不建事件）
@@ -200,6 +202,18 @@ export async function ackEvent(env,eventId,agent,targetStatus){
     if(!AGENTS.includes(agent))throw new Error(`非法 agent: ${agent}`); if(!['success','failed','processing'].includes(targetStatus))throw new Error(`非法 status: ${targetStatus}`);
     const currentRows=await sbQuery(env,'chat_agent_events',{select:'event_id,agent,status,message_id,payload,claimed_at,created_at,updated_at',filters:{event_id:eventId},limit:1}); if(!currentRows.length)throw new Error('事件不存在'); const current=currentRows[0]; if(current.agent!==agent)throw new Error('无权确认其他 Agent 的事件');
     const allowed=(current.status==='processing'&&['success','failed'].includes(targetStatus))||(current.status==='failed'&&targetStatus==='processing'); if(!allowed)throw new Error(`非法状态转换: ${current.status} -> ${targetStatus}`);
+    // M1-b A（GPT #895）：ack success 前置校验——该事件对应 thread 在事件之后必须有 author=本人 的回复消息（回复可见性硬门槛）
+    if(targetStatus==='success'){
+        const threadId = current.payload && (current.payload.thread_id || null);
+        const eventCreatedAt = current.created_at || current.updated_at || new Date().toISOString();
+        if(threadId){
+            const replied = await sbQuery(env,'chat_messages',{select:'message_id',filters:{thread_id:threadId,author:agent},order:'created_at.desc',limit:1});
+            const reply = replied && replied[0];
+            if(!reply || new Date(reply.created_at||0) <= new Date(eventCreatedAt)){
+                throw new Error(`missing_reply: ack success 前必须已有 ${agent} 的回复消息（M1-b 回复可见性硬规则）`);
+            }
+        }
+    }
     const data={status:targetStatus}; if(targetStatus==='processing')data.claimed_at=null;
     const updated=await sbUpdate(env,'chat_agent_events',{event_id:eventId,agent,status:current.status},{...data}); if(!updated.length)throw new Error('事件状态更新失败或状态已被其他请求改变'); return updated[0];
 }
