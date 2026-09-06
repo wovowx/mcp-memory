@@ -207,7 +207,7 @@ export async function ackEvent(env,eventId,agent,targetStatus){
         const threadId = current.payload && (current.payload.thread_id || null);
         const eventCreatedAt = current.created_at || current.updated_at || new Date().toISOString();
         if(threadId){
-            const replied = await sbQuery(env,'chat_messages',{select:'message_id',filters:{thread_id:threadId,author:agent},order:'created_at.desc',limit:1});
+            const replied = await sbQuery(env,'chat_messages',{select:'message_id,created_at',filters:{thread_id:threadId,author:agent},order:'created_at.desc',limit:1});
             const reply = replied && replied[0];
             if(!reply || new Date(reply.created_at||0) <= new Date(eventCreatedAt)){
                 throw new Error(`missing_reply: ack success 前必须已有 ${agent} 的回复消息（M1-b 回复可见性硬规则）`);
