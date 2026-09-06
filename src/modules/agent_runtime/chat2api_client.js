@@ -50,7 +50,12 @@ export async function callChat2Api(env, promptOrMessages, options = {}) {
         conversation_id: Object.prototype.hasOwnProperty.call(options, 'conversation_id')
             ? options.conversation_id
             : (env.GPT_CONVERSATION_ID || null),
-        HISTORY_DISABLED: false,
+        // v6.21 (2026-09-06)：history_disabled 可配置 —— 执行会话用完即焚（不落 ChatGPT 历史，页面不堆聊天）
+        // options.history_disabled=true → 临时会话（不可恢复，404 是正常的；每次新任务都重新加载工具）
+        // options.history_disabled=false/缺省 → 正常保存（固定讨论对话使用）
+        HISTORY_DISABLED: Object.prototype.hasOwnProperty.call(options, 'history_disabled')
+            ? !!options.history_disabled
+            : false,
         stream: false
     };
 
