@@ -20,6 +20,10 @@ GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory,wovowx/ZivenLab"
 CHAT2API_URL = "https://ziven-bridge-1029559493109.asia-northeast1.run.app/v1/chat/completions"
 GPT_CONVERSATION_ID = "6a9c3dbc-bfb8-83ee-af44-1fbd9d786810"
 GPT_MODEL = "gpt-5.6"
+# P0-2 Phase2 M1-a：Ziven Wake Dispatcher 唤醒目标（Operit 外部 HTTP 服务 8094 的公网隧道地址）
+# 真实值走 Cloudflare 控制台 env（keep_vars=true 保留），不写仓库（地址动态 + token 敏感）
+# OPERIT_BASE_URL = "https://xxx.trycloudflare.com"
+# OPERIT_BEARER_TOKEN = ""
 
 [triggers]
 crons = ["* * * * *"]
