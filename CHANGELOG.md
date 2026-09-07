@@ -2,6 +2,14 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.30.0] - 2026-09-07
+
+### Added（neat-freak 洁癖 skill 上传 · 知识治理收尾）
+- 将本地 neat-freak skill（knowledge-governance）上传至 `src/skills/neat-freak/`（SKILL.md 15KB + references/ 4 件 + scripts/audit-inventory.sh）
+- 用途：文件/文档/规则/记忆/工作区与代码真实运行态收敛，让下个会话从「唯一现役答案」开始
+- 目的：把「洁癖开智」从临时读包变成常驻 skill，支撑聊天室文档治理等知识收尾场景
+- （evals/ 测试资产未上传——是验证资产非运行时依赖，如需归档另行处理）
+
 ## [v6.29.0] - 2026-09-07
 
 ### Added（github_move 工具 · 递归移动文件/目录）
