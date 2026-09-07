@@ -65,6 +65,7 @@ async function getDeltaMessages(env, threadId, afterMessageId, limit) {
     const overflow = available > limit;
     const messages = overflow ? fresh.slice(fresh.length - limit) : fresh;
     return { messages, overflow, available_count: available };
+}
 async function getKnowledgeContext(env, threadId) {
     const resp = await sbFetch(env, `${env.SUPABASE_URL}/rest/v1/thread_contexts?thread_id=eq.${encodeURIComponent(threadId)}&select=summary,decisions,open_questions,recent_context,version,created_at&order=version.desc&limit=1`);
     if (!resp.ok) return null;
