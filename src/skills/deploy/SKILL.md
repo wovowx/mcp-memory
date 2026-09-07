@@ -115,6 +115,7 @@ merge 成功
 □ 部署后是否 verify_main？（merge 后 sleep 45s → cloudflare_deploy_status(verify_main=true)）
 □ 是否有回滚方案？（基线版本可回退）
 □ 改过 skill 的话：按写作规范骨架了吗？
+□ 本次改动涉及已有文档/事实 → 已做知识洁癖自检（neat-freak）：改前全仓 grep 看现役、改后 grep 确认无新旧并存；同一事实只留一个权威版本，其他放短指针。
 ```
 
 ## 版本命名规则（双仓模型 · v6.4.0）
