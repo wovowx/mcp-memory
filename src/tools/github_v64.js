@@ -31,6 +31,7 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_create_branch', description: '从指定分支新建分支（多仓库兼容）。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '新分支名' }, branch: { type: 'string', description: '新分支名（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支'] },
     { name: 'github_sync_branch', description: '让分支直接指向源分支最新 commit（fast-forward 同步，不删分支）。分叉根治专用。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '要同步的分支（默认dev）' }, branch: { type: 'string', description: '要同步的分支（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '同步'] },
     { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，source/target 大小不一致返回 COPY_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
+    { name: 'github_move', description: '移动/搬移文件或目录（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。源是文件→单文件搬移；源是目录→自动递归收集全部文件，逐个 copy（复用 size 校验），**全部成功后才删除源**（保证不丢，杜绝「搬一半源没了」）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/recursive/message。默认 recursive=true。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件或目录路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件或目录路径' }, overwrite: { type: 'boolean', description: '目标已存在时是否覆盖（默认false）' }, recursive: { type: 'boolean', description: '源是目录时是否递归（默认true）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '移动', '搬运', '目录'] },
     { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] },
     { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。支持 verify_main=true 自动对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查，柳柳铁律）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' }, verify_main: { type: 'boolean', description: '可选，true 时对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查）' }, repo: { type: 'string', description: '可选，verify_main 时对比的仓库（默认 mcp-memory）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] },
 
@@ -676,6 +677,193 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 file_sha: fileSha,
                 commit_sha: putData.commit?.sha || '',
                 overwritten
+            }, null, 2);
+        }
+
+        // github_move - 移动/搬移文件或目录（copy 全部成功后删除源，保证不丢）
+        else if (name === 'github_move') {
+            if (!safeArgs.source_repo || !safeArgs.source_path || !safeArgs.target_repo || !safeArgs.target_path) {
+                return 'ERROR: github_move requires source_repo, source_path, target_repo, target_path';
+            }
+            const mSourceRepo = String(safeArgs.source_repo).trim();
+            const mSourceBranch = safeArgs.source_branch || 'main';
+            const mSourcePath = String(safeArgs.source_path).trim();
+            const mTargetRepo = String(safeArgs.target_repo).trim();
+            const mTargetBranch = safeArgs.target_branch || 'main';
+            const mTargetPath = String(safeArgs.target_path).trim();
+            const mOverwrite = safeArgs.overwrite === true;
+            const mRecursive = safeArgs.recursive !== false;
+            const mMessage = safeArgs.message || `Move ${mSourcePath} → ${mTargetPath}`;
+
+            // 安全1：source 和 target 都必须过白名单
+            const allowedRaw = env.GITHUB_ALLOWED_REPOS || '';
+            const allowed = allowedRaw.split(',').map(s => s.trim()).filter(Boolean);
+            const checkRepo = (r) => r === env.GITHUB_REPO || (allowed.length > 0 && allowed.includes(r));
+            if (!checkRepo(mSourceRepo)) return `ERROR: Repository not allowed: ${mSourceRepo}`;
+            if (!checkRepo(mTargetRepo)) return `ERROR: Repository not allowed: ${mTargetRepo}`;
+
+            const mSrcBase = `https://api.github.com/repos/${mSourceRepo}`;
+            const mTgtBase = `https://api.github.com/repos/${mTargetRepo}`;
+            const enc = (p) => p.split('/').map(encodeURIComponent).join('/');
+
+            // 递归收集源下的全部文件路径（相对 source 根）。返回 [] 层：[[relPath, absPath]]
+            // 用 contents API tree 一次性拉全树，避免逐层递归过多请求
+            const collectFiles = async (rootPath) => {
+                const treeResp = await fetch(`${mSrcBase}/git/trees/${encodeURIComponent(mSourceBranch)}?recursive=1`, { headers: ghHeaders });
+                if (!treeResp.ok) {
+                    const err = await treeResp.json();
+                    return { error: `GITHUB_API_ERROR - tree read failed: ${err.message || treeResp.status}` };
+                }
+                const tree = await treeResp.json();
+                const files = [];
+                const prefix = rootPath === '' ? '' : rootPath + '/';
+                for (const item of (tree.tree || [])) {
+                    if (item.type !== 'blob') continue;
+                    if (rootPath !== '' && !item.path.startsWith(prefix)) continue;
+                    const rel = rootPath === '' ? item.path : item.path.slice(prefix.length);
+                    // 只收集源目录下的文件（rootPath 为文件时本收集不适用，走单文件路径）
+                    if (rootPath !== '' && item.path === rootPath) continue; // 跳过根自己是目录的情形不会出现
+                    files.push({ rel, abs: item.path });
+                }
+                return { files };
+            };
+
+            // 判断源是文件还是目录（若 recursive=false 且源是目录则报错）
+            const srcCheckResp = await fetch(`${mSrcBase}/contents/${enc(mSourcePath)}?ref=${mSourceBranch}`, { headers: ghHeaders });
+            if (!srcCheckResp.ok) {
+                if (srcCheckResp.status === 404) return 'ERROR: SOURCE_NOT_FOUND - ' + mSourcePath + ' not found in ' + mSourceRepo + '@' + mSourceBranch;
+                const err = await srcCheckResp.json();
+                return `ERROR: GITHUB_API_ERROR - source check failed: ${err.message || srcCheckResp.status}`;
+            }
+            const srcCheck = await srcCheckResp.json();
+            const isDir = Array.isArray(srcCheck);
+
+            // 收集待搬移文件清单：[{abs, rel, targetAbs}]
+            let plan = [];
+            let warn = '';
+            if (mTargetBranch === 'main') {
+                warn = '⚠️ WARNING: Moving directly to main. This triggers Cloudflare deploy. Confirm before continuing.';
+            }
+            if (!isDir) {
+                plan = [{ abs: mSourcePath, rel: mSourcePath.split('/').pop(), targetAbs: mTargetPath }];
+            } else {
+                if (!mRecursive) {
+                    return (warn ? warn + '\n\n' : '') + `ERROR: DIRECTORY_WITHOUT_RECURSIVE - ${mSourcePath} is a directory but recursive=false. A directory source requires recursive=true to move.`;
+                }
+                const col = await collectFiles(mSourcePath);
+                if (col.error) return (warn ? warn + '\n\n' : '') + col.error;
+                if (col.files.length === 0) return (warn ? warn + '\n\n' : '') + `ERROR: EMPTY_DIRECTORY - no files found under ${mSourcePath}`;
+                plan = col.files.map(f => ({
+                    abs: f.abs,
+                    rel: f.rel,
+                    targetAbs: (mTargetPath === '' ? '' : mTargetPath + '/') + f.rel
+                }));
+            }
+
+            // 逐个 copy（带 size 校验），全部成功才进入删除阶段
+            const copied = [];
+            let failed = null;
+            for (const item of plan) {
+                try {
+                    // 读源
+                    const sResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}?ref=${mSourceBranch}`, { headers: ghHeaders });
+                    if (!sResp.ok) {
+                        const err = await sResp.json();
+                        throw new Error(`source read failed: ${err.message || sResp.status}`);
+                    }
+                    const sData = await sResp.json();
+                    if (!sData.content) throw new Error('source has no content: ' + item.abs);
+                    // 检查目标
+                    const tCheck = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}?ref=${mTargetBranch}`, { headers: ghHeaders });
+                    let tSha = null;
+                    let overwritten = false;
+                    if (tCheck.ok) {
+                        const tData = await tCheck.json();
+                        tSha = tData.sha;
+                        if (!mOverwrite) throw new Error(`TARGET_EXISTS - ${item.targetAbs} already exists. Set overwrite=true to overwrite.`);
+                        overwritten = true;
+                    } else if (tCheck.status !== 404) {
+                        const err = await tCheck.json();
+                        throw new Error(`target check failed: ${err.message || tCheck.status}`);
+                    }
+                    // PUT 目标
+                    const putBody = { message: mMessage, content: sData.content, branch: mTargetBranch };
+                    if (tSha) putBody.sha = tSha;
+                    const putResp = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}`, {
+                        method: 'PUT', headers: ghHeaders, body: JSON.stringify(putBody)
+                    });
+                    if (!putResp.ok) {
+                        const err = await putResp.json();
+                        throw new Error(`target write failed: ${err.message || putResp.status}`);
+                    }
+                    // size 校验（retry 3 次）
+                    let verified = false;
+                    let tFinal = 0;
+                    for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
+                        try {
+                            const vResp = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}?ref=${mTargetBranch}`, { headers: ghHeaders });
+                            if (vResp.ok) {
+                                const vData = await vResp.json();
+                                tFinal = vData.size || 0;
+                                verified = tFinal === (sData.size || 0) && tFinal > 0;
+                            } else { tFinal = 0; }
+                        } catch (e) { tFinal = 0; }
+                        if (!verified && attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
+                    }
+                    if (!verified) {
+                        throw new Error(`COPY_VERIFY_FAILED - ${item.targetAbs} size mismatch (${sData.size || 0} vs ${tFinal}). Abort move, source untouched.`);
+                    }
+                    copied.push({ abs: item.abs, rel: item.rel, target: item.targetAbs, verified: true, overwritten, size: tFinal });
+                } catch (e) {
+                    failed = { file: item.abs, reason: e.message };
+                    break;
+                }
+            }
+
+            // 有失败 → 不删任何源，返回已复制清单（让源保持完整可重试）
+            if (failed) {
+                const partial = copied.length ? '\n已成功复制（未删源，可重试或手动清理）：\n' + copied.map(c => '  ✅ ' + c.abs + ' → ' + c.target).join('\n') : '';
+                return (warn ? warn + '\n\n' : '') + `ERROR: MOVE_PARTIAL_FAILED - ${failed.file}: ${failed.reason}. Aborted; NO source deleted.${partial}`;
+            }
+
+            // 全部 copy 成功 → 删除源文件（目录则逐个删文件，空目录 GitHub 无实体自动消失）
+            const deleted = [];
+            for (const item of plan) {
+                try {
+                    const dResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}?ref=${mSourceBranch}`, { headers: ghHeaders });
+                    if (!dResp.ok) {
+                        const err = await dResp.json();
+                        throw new Error(`source check for delete failed: ${err.message || dResp.status}`);
+                    }
+                    const dData = await dResp.json();
+                    const delResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}`, {
+                        method: 'DELETE',
+                        headers: ghHeaders,
+                        body: JSON.stringify({ message: mMessage, sha: dData.sha, branch: mSourceBranch })
+                    });
+                    if (!delResp.ok) {
+                        const err = await delResp.json();
+                        throw new Error(`source delete failed: ${err.message || delResp.status}`);
+                    }
+                    deleted.push(item.abs);
+                } catch (e) {
+                    // 删除失败：已复制成功但源删除失败 → 返回半移状态（源保留，不丢）
+                    return (warn ? warn + '\n\n' : '') + `ERROR: MOVE_DELETE_FAILED - copied ${copied.length}/${plan.length} but failed to delete source ${item.abs}: ${e.message}. Target files exist; source retained for safety. Delete manually: ${deleted.join(', ')}`;
+                }
+            }
+
+            text = (warn ? warn + '\n\n' : '') + JSON.stringify({
+                success: true,
+                moved: plan.length,
+                is_dir: isDir,
+                source_repo: mSourceRepo,
+                source_branch: mSourceBranch,
+                source_path: mSourcePath,
+                target_repo: mTargetRepo,
+                target_branch: mTargetBranch,
+                target_path: mTargetPath,
+                verified_all: true,
+                files: plan.map(p => ({ source: p.abs, target: p.targetAbs }))
             }, null, 2);
         }
 
