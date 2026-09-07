@@ -770,25 +770,29 @@ export async function handleGitHubTool(name, safeArgs, env) {
             // Step 1: 拿 Worker tag（Builds API 用 tag/external_script_id，不用 name）
             const scriptsResp = await fetch(cfBase + '/workers/scripts', { headers: cfHeaders });
             let workerTag = '';
+            let scriptsRaw = '';
             try {
-                const sj = await scriptsResp.json();
+                scriptsRaw = await scriptsResp.text();
+                const sj = JSON.parse(scriptsRaw);
                 if (scriptsResp.ok && Array.isArray(sj.result)) {
                     const found = sj.result.find(x => x.id === worker);
                     if (found && found.tag) workerTag = found.tag;
                 }
-            } catch (e) { workerTag = ''; }
-            if (!workerTag) return 'ERROR: 获取 Worker tag 失败（Builds API 需要 external_script_id）。可能：① token 无 Workers Scripts Read 权限；② Builds API 需要 user-scoped token。HTTP ' + scriptsResp.status;
+            } catch (e) { scriptsRaw = scriptsRaw || e.message; }
+            if (!workerTag) return 'ERROR: 获取 Worker tag 失败（Builds API 需要 external_script_id）。可能：① token 无 Workers Scripts Read 权限；② Builds API 需要 user-scoped token。HTTP ' + scriptsResp.status + '\nRAW: ' + String(scriptsRaw).slice(0, 800);
 
             // Step 2: 列构建
             const listResp = await fetch(cfBase + '/builds/workers/' + encodeURIComponent(workerTag) + '/builds?per_page=' + limit, { headers: cfHeaders });
             let builds = [];
             let listErr = null;
+            let listRaw = '';
             try {
-                const lj = await listResp.json();
+                listRaw = await listResp.text();
+                const lj = JSON.parse(listRaw);
                 if (!listResp.ok) listErr = (lj.errors && lj.errors[0] && lj.errors[0].message) || ('HTTP ' + listResp.status);
                 else builds = (lj.result || []).slice(0, limit);
             } catch (e) { listErr = e.message; }
-            if (listErr) return 'ERROR: 列出构建失败: ' + listErr + '（Builds API 需要 user-scoped token + Workers Builds Configuration Edit 权限）';
+            if (listErr) return 'ERROR: 列出构建失败: ' + listErr + '（Builds API 需要 user-scoped token + Workers Builds Configuration Edit 权限）\nHTTP ' + listResp.status + '\nRAW: ' + String(listRaw).slice(0, 800);
 
             // Step 3: 确定要拉日志的 build_uuid
             let buildUuid = safeArgs.build_uuid || '';
