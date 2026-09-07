@@ -2,6 +2,13 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.32.0] - 2026-09-07
+
+### Changed（github_move 默认目标改为 dev · 防误碰 main）
+- **github_move 默认 target_branch 从 `main` 改为 `dev`**（柳柳 2026-09-07：别默认 main，危险！搬动走 dev，确认后再 merge main）
+- **目标=main 的警告加强**：明确「默认应 target_branch=dev 搬动，确认后再 merge main；除非明确需要直接改 main（如文档仓打通），否则拒绝」
+- source_branch 默认仍为 main（搬动源常是 main 当前版，合理）
+
 ## [v6.31.0] - 2026-09-07
 
 ### Added（知识洁癖自检内嵌 · 把「开智」变成每次必经）
