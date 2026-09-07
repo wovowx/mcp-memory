@@ -35,6 +35,7 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。支持 verify_main=true 自动对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查，柳柳铁律）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' }, verify_main: { type: 'boolean', description: '可选，true 时对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查）' }, repo: { type: 'string', description: '可选，verify_main 时对比的仓库（默认 mcp-memory）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] },
 
     { name: 'cloudflare_deploy_logs', description: '查询 Cloudflare Workers 部署日志与单次部署详情（部署失败排查）。支持：1) deployment_id 查单次部署详情（status/trigger/metadata/error）；2) 默认查最近 N 次部署的详情列表；3) include_raw=true 返回 Cloudflare API 原始响应（定位 API/网络问题）。专为 DEPLOY_UNVERIFIED 排查设计（柳柳铁律：部署后必查 + 失败必查日志）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, deployment_id: { type: 'string', description: '可选，查单次部署详情（可传完整 id 或前 8-12 位）' }, limit: { type: 'number', description: '可选，返回条数（默认3，最大10）' }, include_raw: { type: 'boolean', description: '可选，true 时返回 Cloudflare API 原始响应（不解析）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '详情', '排查'] },
+    { name: 'cloudflare_build_logs', description: '查询 Cloudflare Workers 构建日志（Git 集成构建阶段，含部署失败完整报错如 SyntaxError/10021）。通过 Workers Builds API：自动查 Worker tag → 列最近构建（build_uuid/status/branch/error）→ 拉构建日志全文。这是 cloudflare_deploy_logs 查不到的「构建阶段失败日志」通道（柳柳贴的那种构建日志）。注意：Builds API 需要 user-scoped API token（权限 Workers Builds Configuration Edit + Workers Scripts Read）；token 不支持时返回明确错误。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, build_uuid: { type: 'string', description: '可选，查指定构建的日志（不传则列最近 N 次构建+状态，再从第一个有错误/最近的构建拉日志）' }, limit: { type: 'number', description: '可选，返回构建条数（默认3，最大10）' }, include_raw: { type: 'boolean', description: '可选，true 时返回 Cloudflare API 原始响应（不解析）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '构建', '日志', '排查'] },
     { name: 'github_apply_patch', description: '应用已批准的 Patch Proposal 到分支（Patch Engine MVP）。输入 proposal_id；查 patch_proposals → 校验/应用 structured patch → 提交 → 记录 rollback_sha → 更新状态。前置：proposal 必须 approved（Permission Guard 家族）。', input_schema: { type: 'object', properties: { proposal_id: { type: 'string', description: 'patch_proposals.id' }, branch: { type: 'string', description: '目标分支（必须 dev，禁止 main）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['proposal_id'] }, handler: 'github', category: 'GitHub', tags: ['Patch', 'Apply', 'Proposal'] }
 ];
 
@@ -693,7 +694,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             // 模式 A：查单次部署详情
             if (safeArgs.deployment_id) {
                 const depId = String(safeArgs.deployment_id);
-                const dResp = await fetch(base + '/deployments/' + encodeURIComponent(depId) + '/details', { headers: cfHeaders });
+                const dResp = await fetch(base + '/deployments/' + encodeURIComponent(depId), { headers: cfHeaders });
                 let detail = null, rawErr = null;
                 try {
                     const dJson = await dResp.json();
@@ -738,7 +739,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     status: dep.status || null
                 };
                 try {
-                    const dr = await fetch(base + '/deployments/' + encodeURIComponent(dep.id) + '/details', { headers: cfHeaders });
+                    const dr = await fetch(base + '/deployments/' + encodeURIComponent(dep.id), { headers: cfHeaders });
                     if (dr.ok) {
                         const dj = await dr.json();
                         const det = dj.result || dj;
@@ -751,6 +752,74 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
             if (includeRaw) return JSON.stringify({ ok: depResp.ok, http: depResp.status, raw: out, note: 'raw response (parsed deployments + details)' }, null, 2);
             return JSON.stringify(out, null, 2);
+        }
+
+        // cloudflare_build_logs - 构建日志/构建阶段失败排查（v6.28 新增 · 柳柳要求「查构建日志的通道」）
+        else if (name === 'cloudflare_build_logs') {
+            const cfToken = env.CLOUDFLARE_API_TOKEN;
+            if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
+            const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
+            if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
+            const worker = safeArgs.worker_name || 'mcp-memory';
+            const limit = Math.min(10, safeArgs.limit || 3);
+            const cfBase = 'https://api.cloudflare.com/client/v4/accounts/' + account;
+            const cfHeaders = { 'Authorization': 'Bearer ' + cfToken, 'Content-Type': 'application/json' };
+            const includeRaw = safeArgs.include_raw === true || safeArgs.include_raw === 'true';
+
+            // Step 1: 拿 Worker tag（Builds API 用 tag/external_script_id，不用 name）
+            const scriptsResp = await fetch(cfBase + '/workers/scripts', { headers: cfHeaders });
+            let workerTag = '';
+            try {
+                const sj = await scriptsResp.json();
+                if (scriptsResp.ok && Array.isArray(sj.result)) {
+                    const found = sj.result.find(x => x.id === worker);
+                    if (found && found.tag) workerTag = found.tag;
+                }
+            } catch (e) { workerTag = ''; }
+            if (!workerTag) return 'ERROR: 获取 Worker tag 失败（Builds API 需要 external_script_id）。可能：① token 无 Workers Scripts Read 权限；② Builds API 需要 user-scoped token。HTTP ' + scriptsResp.status;
+
+            // Step 2: 列构建
+            const listResp = await fetch(cfBase + '/builds/workers/' + encodeURIComponent(workerTag) + '/builds?per_page=' + limit, { headers: cfHeaders });
+            let builds = [];
+            let listErr = null;
+            try {
+                const lj = await listResp.json();
+                if (!listResp.ok) listErr = (lj.errors && lj.errors[0] && lj.errors[0].message) || ('HTTP ' + listResp.status);
+                else builds = (lj.result || []).slice(0, limit);
+            } catch (e) { listErr = e.message; }
+            if (listErr) return 'ERROR: 列出构建失败: ' + listErr + '（Builds API 需要 user-scoped token + Workers Builds Configuration Edit 权限）';
+
+            // Step 3: 确定要拉日志的 build_uuid
+            let buildUuid = safeArgs.build_uuid || '';
+            if (!buildUuid && builds.length > 0) {
+                const withErr = builds.find(b => b.status === 'failure' || b.error);
+                const chosen = withErr || builds[0];
+                buildUuid = chosen.build_uuid || chosen.id || '';
+            }
+
+            const summary = builds.map(function (b, i) {
+                return '  ' + (i + 1) + '. [' + (b.build_uuid || b.id || '').slice(0, 12) + '] status=' + (b.status || '?') + ' branch=' + (b.branch || '?') + ' created=' + (b.created_at || '?') + (b.error ? ' error=' + JSON.stringify(b.error).slice(0, 200) : '');
+            }).join('\n');
+
+            if (includeRaw) return JSON.stringify({ ok: listResp.ok, http: listResp.status, worker_tag: workerTag, builds: builds, note: 'raw builds list' }, null, 2);
+
+            if (!buildUuid) {
+                return '📋 Cloudflare 构建列表 (' + worker + ')\n（无构建记录或无法确定 build_uuid）\n' + (summary || '  (empty)') + '\n\n提示：若列表为空，说明 Git 集成未触发过构建，或 Builds API 未覆盖该 Worker。';
+            }
+
+            // Step 4: 拉构建日志（尾部 4000 字符）
+            const logResp = await fetch(cfBase + '/builds/builds/' + encodeURIComponent(buildUuid) + '/logs', { headers: cfHeaders });
+            let logText = '';
+            let logErr = null;
+            try {
+                const lj = await logResp.json();
+                if (!logResp.ok) logErr = (lj.errors && lj.errors[0] && lj.errors[0].message) || ('HTTP ' + logResp.status);
+                else logText = typeof lj.result === 'string' ? lj.result : JSON.stringify(lj.result || lj, null, 2);
+            } catch (e) { logErr = e.message; }
+            if (logErr) return 'ERROR: 拉取构建日志失败: ' + logErr;
+
+            const logTail = String(logText).slice(-4000);
+            return '📋 Cloudflare 构建日志 (' + worker + ')\nbuild_uuid: ' + buildUuid + '\n最近构建：\n' + (summary || '  (empty)') + '\n\n── 日志（尾部 4000 字符）──\n' + logTail;
         }
 
         // cloudflare_deploy_status
