@@ -78,6 +78,19 @@ async function sbRpc(env, fnName, params={}) {
     return resp.json();
 }
 
+// M1.1 (2026-09-07): agent_chat_state upsert（柳柳拍板 + GPT #917 收敛）——
+// 每个 agent 在每个 thread 一行；last_trigger_event_id=为什么这次被叫醒；
+// last_consumed_message_id=最后一次成功消费并完成责任闭环的位置（ack success 后推进）
+async function upsertAgentChatState(env, agent, threadId, data) {
+    const now = new Date().toISOString();
+    const existingRows = await sbQuery(env, 'agent_chat_state', { select: 'id', filters: { agent_id: agent, thread_id: threadId }, limit: 1 });
+    if (existingRows && existingRows.length) {
+        await sbUpdate(env, 'agent_chat_state', { agent_id: agent, thread_id: threadId }, { ...data, last_seen_at: now });
+    } else {
+        await sbInsert(env, 'agent_chat_state', { agent_id: agent, thread_id: threadId, ...data, last_seen_at: now });
+    }
+}
+
 function buildTimeContext(createdAt, now=new Date()) {
     const date = new Date(createdAt);
     const diff = Math.max(0, now.getTime() - date.getTime());
@@ -181,7 +194,7 @@ export async function createMessage(env, threadId, payload) {
     const eventAgents = (depth >= MAX_DEPTH ? [] : events).filter(agent => agent !== author);
     const created=[];const existed=[];const failed=[];
     for(const agent of eventAgents){const eventData={message_id:messageId,agent,status:'processing',claimed_at:null,payload:{event_type:'message_created',thread_id:threadId,author,content_preview:contentPreview(content),mentions,source_message_id:messageId,trigger_agent:author,depth}};
-        try{const result=await sbInsert(env,'chat_agent_events',eventData,{ignoreDuplicates:true});if(Array.isArray(result)&&result.length===0)existed.push(agent);else if(Array.isArray(result)&&result.length>0)created.push(agent);else throw new Error('事件写入成功但未返回可识别结果');}catch(e){failed.push({agent,error:e.message});}}
+        try{const result=await sbInsert(env,'chat_agent_events',eventData,{ignoreDuplicates:true});if(Array.isArray(result)&&result.length===0)existed.push(agent);else if(Array.isArray(result)&&result.length>0){created.push(agent);const __ev=result[0]&&result[0].event_id;if(__ev){await upsertAgentChatState(env,agent,threadId,{last_trigger_event_id:__ev});}}else throw new Error('事件写入成功但未返回可识别结果');}catch(e){failed.push({agent,error:e.message});}}
     return{message,mentions,events:created,existed_events:existed,partial_failure:failed.length>0,event_errors:failed,depth,self_loop_guard:depth>=MAX_DEPTH};
 }
 export async function getPendingEvents(env,agent,limit=DEFAULT_EVENT_LIMIT,offset=0){
@@ -215,7 +228,7 @@ export async function ackEvent(env,eventId,agent,targetStatus){
         }
     }
     const data={status:targetStatus}; if(targetStatus==='processing')data.claimed_at=null;
-    const updated=await sbUpdate(env,'chat_agent_events',{event_id:eventId,agent,status:current.status},{...data}); if(!updated.length)throw new Error('事件状态更新失败或状态已被其他请求改变'); return updated[0];
+    const updated=await sbUpdate(env,'chat_agent_events',{event_id:eventId,agent,status:current.status},{...data}); if(!updated.length)throw new Error('事件状态更新失败或状态已被其他请求改变'); if(targetStatus==='success'){try{const __tid=current.payload&&current.payload.thread_id;const __sid=current.payload&&current.payload.source_message_id;if(__tid&&__sid)await upsertAgentChatState(env,agent,__tid,{last_consumed_message_id:__sid});}catch(e){console.error('[agent_chat_state] consume advance err: '+e.message);}} return updated[0];
 }
 
 export async function handleChatRequest(request,url,env){
