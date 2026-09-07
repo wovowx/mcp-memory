@@ -2,6 +2,16 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.29.0] - 2026-09-07
+
+### Added（github_move 工具 · 递归移动文件/目录）
+- 新增 `github_move` MCP 工具：移动/搬移 GitHub 文件或目录（内容不经 Agent 上下文，MCP 服务端内部搬运，复用 github_copy 的 size 校验）
+- **源是目录** → 自动递归收集全部文件（git/trees recursive）→ 逐个 copy（size 校验）→ **全部成功后才删除源**（保证不丢，杜绝「搬一半源没了」）
+- **任何一步失败** → 不删任何源，返回已复制清单（源保持完整可重试）
+- 白名单校验（source+target 都过 GITHUB_ALLOWED_REPOS）+ target=main 警示 + overwrite 保护，与 github_copy 同级安全
+- 注册进 GITHUB_TOOL_DEFS → 部署后 `github_auto_sync` 自动注册进 Supabase
+- 目的：为聊天室项目目录整合（common-ground/architecture/xray/mvp 收进一个 chatroom/）提供一键搬移能力，替代手动 copy+delete
+
 ## [v6.17.0] - 2026-09-05
 
 ### Changed（发布流程硬约束化 · PR #131 标题重复转 Runtime Guard）
