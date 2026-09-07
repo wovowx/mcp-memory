@@ -18,6 +18,7 @@
 // ============================================================
 import { pendingEvents, claim, loadMessage, sendMessage, acknowledge } from "./chat_adapter.js";
 import { callChat2Api } from "./chat2api_client.js";
+import { resolveAgentContext } from "./context_resolver.js"; // M1.2
 
 const CHAT_TIMEOUT_MS = 27000; // 单轮 GPT 调用预算（Cloudflare Worker 30s wall-clock 硬上限）
 
@@ -63,7 +64,33 @@ function cleanReplyContent(text) {
 
 // 单轮：context 注入 → chat2api → 清洗回复
 async function generateReply(env, message) {
-    const autoContext = await readThreadContext(env, message?.thread_id, 10);
+    // M1.2：用 Context Resolver 组装恢复包（GPT #923/#925）
+    // 渐进迁移：resolver 内部自己查 state/messages/contexts；旧 readThreadContext 保留兼容
+    let autoContext = null;
+    try {
+        const resolved = await resolveAgentContext(env, 'gpt', message?.thread_id);
+        if (resolved && !resolved.error) {
+            autoContext = {
+                thread: { title: resolved.knowledge_context?.version != null ? 'Thread #' + message.thread_id : message.thread_id, status: 'active' },
+                recent_messages: [
+                    ...(resolved.trigger_context ? [{ author: resolved.trigger_context.author || '?', content: resolved.trigger_context.content || '', created_at: resolved.trigger_context.created_at }] : []),
+                    ...(resolved.delta_context?.messages || []).map(m => ({ author: m.author, content: m.content, created_at: m.created_at }))
+                ],
+                context: resolved.knowledge_context ? {
+                    version: resolved.knowledge_context.version,
+                    summary: resolved.knowledge_context.summary,
+                    decisions: resolved.knowledge_context.decisions || [],
+                    open_questions: resolved.knowledge_context.open_questions || [],
+                    recent_context: resolved.knowledge_context.recent_context
+                } : null,
+                state: resolved.state
+            };
+        }
+    } catch (e) {
+        console.error('[context_resolver] err: ' + e.message);
+    }
+    // fallback：resolver 失败或 missing_trigger 时退回旧 readThreadContext（兼容）
+    if (!autoContext) autoContext = await readThreadContext(env, message?.thread_id, 10);
     const messages = [
         { role: 'system', content: buildSystemPrompt(message, autoContext) },
         { role: 'user', content: message.content }
