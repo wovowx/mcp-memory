@@ -27,6 +27,7 @@ import { processPendingEvents } from './modules/agent_runtime/event_processor.js
 import { callChat2Api } from './modules/agent_runtime/chat2api_client.js';
 import { watchdogSweep } from './modules/agent_runtime/watchdog.js';
 import { dispatchZivenWake } from './modules/agent_runtime/ziven_wake_dispatcher.js';
+import { resolveAgentContext } from './modules/agent_runtime/context_resolver.js'; // M1.2 debug
 import { handleMCPRequest } from './modules/mcp_router.js';
 import { discoverMCPTools } from './modules/agent_runtime/mcp_client.js';
 
@@ -107,6 +108,17 @@ export default {
                     read_sample: readTools,
                     note: 'mcp-inspect debug endpoint: Worker internal discover result'
                 }, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
+        if (url.pathname === '/api/debug/agent-context') {
+            try {
+                const agent = url.searchParams.get('agent') || 'gpt';
+                const thread = url.searchParams.get('thread') || '';
+                if (!thread) return jsonResponse({ ok: false, error: 'missing thread' }, 400);
+                const resolved = await resolveAgentContext(env, agent, thread);
+                return jsonResponse({ ok: true, agent, thread, resolved }, 200);
             } catch (e) {
                 return jsonResponse({ ok: false, error: e.message }, 500);
             }
