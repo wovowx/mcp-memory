@@ -47,39 +47,55 @@ async function readThreadContext(env, threadId, limit = 10) {
 }
 
 function buildSystemPrompt(message, context) {
-    let ctxBlock = '';
+    const NL = String.fromCharCode(10);
+    const lines = ['你是 Common Ground 中的 GPT Agent.', '', '请直接、简洁地回复用户 @ 的消息.', '', '当前 Thread:', message.thread_id, ''];
     if (context && context.agent_context) {
         const ac = context.agent_context;
-        ctxBlock = "[AGENT_CONTEXT]
-" + "trigger_context: " + JSON.stringify(ac.trigger_context || null) + "
-" + "delta_context: " + JSON.stringify(ac.delta_context || null) + "
-" + "knowledge_context: " + JSON.stringify(ac.knowledge_context || null) + "
-" + "state: " + JSON.stringify(ac.state || null) + "
-[/AGENT_CONTEXT]";
+        lines.push(
+            '[AGENT_CONTEXT]',
+            'trigger_context: ' + JSON.stringify(ac.trigger_context || null),
+            'delta_context: ' + JSON.stringify(ac.delta_context || null),
+            'knowledge_context: ' + JSON.stringify(ac.knowledge_context || null),
+            'state: ' + JSON.stringify(ac.state || null),
+            '[/AGENT_CONTEXT]',
+            ''
+        );
     } else if (context) {
-        ctxBlock = "<runtime_context>
-标题: " + (context.thread?.title || message.thread_id) + "
-状态: " + (context.thread?.status || "unknown") + "
-最近消息 (" + (context.recent_messages?.length || 0) + "条):
-" + (context.recent_messages || []).map(m => "[" + m.author + "] " + String(m.content).slice(0, 200)).join("
-") + "
-
-历史摘要 v" + (context.context?.version || "-") + ":
-" + (context.context?.summary || "(暂无摘要)") + "
-决定: " + JSON.stringify(context.context?.decisions || []) + "
-开放问题: " + JSON.stringify(context.context?.open_questions || []) + "
-下一步: " + JSON.stringify((context.context?.recent_context && context.context.recent_context.next_actions) || []) + "</runtime_context>";
+        lines.push(
+            '<runtime_context>',
+            '标题: ' + (context.thread?.title || message.thread_id),
+            '状态: ' + (context.thread?.status || 'unknown'),
+            '最近消息 (' + (context.recent_messages?.length || 0) + '条):',
+            ...(context.recent_messages || []).map(m => '[' + m.author + '] ' + String(m.content).slice(0, 200)),
+            '',
+            '历史摘要 v' + (context.context?.version || '-') + ':',
+            (context.context?.summary || '(暂无摘要)'),
+            '决定: ' + JSON.stringify(context.context?.decisions || []),
+            '开放问题: ' + JSON.stringify(context.context?.open_questions || []),
+            '下一步: ' + JSON.stringify((context.context?.recent_context && context.context.recent_context.next_actions) || []),
+            '</runtime_context>',
+            ''
+        );
     }
-    return "你是 Common Ground 中的 GPT Agent。
+    lines.push(
+        '工具能力：你已原生挂载 Ziven_MCP 插件，MCP 工具可直接调用。当需要读取代码、查询数据或完成操作时，根据任务目标自行选择当前可用工具完成即可——工具会真实执行并返回结果。**不需要输出任何文本标记，也不需要模拟工具调用格式**。',
+        '',
+        '行为规范（Active Policies，见 ZivenLab governance/policy-index.md）：',
+        '- AAD 行为透明：每次回复末尾用 [Activity] 块披露 Actions/Observation/Decision/Evidence/NotDone（没调用过的工具不许写「已读取」）',
+        '- Ownership 闭环：承诺「盯着/负责」= 一口气跑到终态，不把检查责任转回 Ziven/柳柳；等待是状态不是结束',
+        '',
+        '协同写代码流程（配合 Ziven / 柳柳）：',
+        '1. 理解任务：先输出需求理解（目标 / 涉及模块 / 未知信息）',
+        '2. 读取代码：读取目标文件 + 相关依赖（不猜，先看事实）',
+        '3. 提方案：基于已读事实，给出修改方案（含当前行为 / 期望行为 / 理由 / 依据 / 风险 / 测试计划），请 Ziven review、柳柳确认（方向变化时）',
+        '4. 人工审核：Ziven review → 柳柳确认（方向变化时）→ 由 Ziven 合并与部署',
+        '',
+        '如果上下文已足够就直接回复用户。'
+    );
+    return lines.join(NL);
+}
 
-请直接、简洁地回复用户 @ 的消息。
-
-当前 Thread:
-" + message.thread_id + "
-
-" + ctxBlock + "
-
-工具能力：你已原生挂载 Ziven_MCP 插件// 清洗 GPT 回复里的 reaction 元数据（chat2api 网关把 OpenAI 的 reaction 混进了文本）
+// 清洗 GPT 回复里的 reaction 元数据（chat2api 网关把 OpenAI 的 reaction 混进了文本）
 function cleanReplyContent(text) {
     if (!text) return '';
     return String(text)
