@@ -52,19 +52,19 @@ async function getDeltaMessages(env, threadId, afterMessageId, limit) {
         rows.reverse();
         return { messages: rows, overflow: false, available_count: rows.length };
     }
-    // 已有消费位置：created_at > afterMessage 的消息
-    const msgResp = await sbFetch(env, `${env.SUPABASE_URL}/rest/v1/chat_messages?thread_id=eq.${encodeURIComponent(threadId)}&select=message_id,author,content,created_at&order=created_at.asc&limit=200`);
+    // 已有消费位置：取最近消息（desc）再过滤出 afterMessageId 之后（修复 asc+limit 取最早的 bug）
+    const scanLimit = Math.max(limit * 2, 50);
+    const msgResp = await sbFetch(env, `${env.SUPABASE_URL}/rest/v1/chat_messages?thread_id=eq.${encodeURIComponent(threadId)}&select=message_id,author,content,created_at&order=created_at.desc&limit=${scanLimit}`);
     if (!msgResp.ok) return { messages: [], overflow: false, available_count: 0 };
     let rows = await msgResp.json();
-    // 找到 afterMessage 的索引，取它之后的消息
+    rows.reverse();
     const idx = rows.findIndex(m => m.message_id === afterMessageId);
-    const fresh = idx >= 0 ? rows.slice(idx + 1) : rows;
+    let fresh = idx >= 0 ? rows.slice(idx + 1) : rows;
+    fresh = fresh.filter(m => m.message_id !== afterMessageId);
     const available = fresh.length;
     const overflow = available > limit;
     const messages = overflow ? fresh.slice(fresh.length - limit) : fresh;
     return { messages, overflow, available_count: available };
-}
-
 async function getKnowledgeContext(env, threadId) {
     const resp = await sbFetch(env, `${env.SUPABASE_URL}/rest/v1/thread_contexts?thread_id=eq.${encodeURIComponent(threadId)}&select=summary,decisions,open_questions,recent_context,version,created_at&order=version.desc&limit=1`);
     if (!resp.ok) return null;
