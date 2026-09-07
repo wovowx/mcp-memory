@@ -5,7 +5,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.6.1 · 部署自动闭环 + 失败自愈 + Event 触发说明）
+# 部署技能（v6.6.2 · 部署自动闭环 + 失败自愈 + 本地复现）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
@@ -28,6 +28,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 7. **skill 是菜谱不是账本**——写/改 skill 按《技能写作规范》，主体优先，教训只留一行。
 8. **本地文件读取有逃生通道**——android 读本地失败（Shizuku 挂）时，优先用 `environment=linux` + `/sdcard/...` 直接读；大文件绝不手写整份重推（必漏段）。
 9. **推 dev 的 commit message 也用 `vX.Y.Z: 名称`**——不带 `docs(xxx):` 前缀（rebase 到 main 后显示才干净，柳柳 2026-09-04 要求）。
+10. **部署失败必须本地自愈，不许让柳柳贴日志（柳柳 2026-09-07 铁律）**——DEPLOY_UNVERIFIED 后第一步永远是**本地复现**：拉代码 → `node --check` 全部 JS（抓 SyntaxError）→ `wrangler deploy --dry-run`（确认打包）。构建失败日志 `deploy_logs` 查不到（构建阶段不产生 deployment 记录），必须靠本地 `node --check` 100% 复现。永远不把「帮我贴日志」丢给柳柳。
 
 ## 发布主流程（SOP）
 
@@ -64,11 +65,13 @@ merge 成功
   ↓ cloudflare_deploy_status(verify_main=true)
   ├─ VERIFIED ✅ → 收尾
   └─ DEPLOY_UNVERIFIED ⚠️ → 自动进入失败处理（不停！）
-       ↓ cloudflare_deploy_logs(limit=3) 查部署日志/详情
+       ↓ 【本地复现 · 自愈第一动作】拉代码 → node --check 全部 JS + wrangler deploy --dry-run
        ↓ 分类错误（见「部署失败错误分类表」）
        ├─ 低风险可自愈（构建语法/配置typo/已知问题）→ 修复 → 重推 → 回到 merge 后流程
        └─ 高风险/未知（架构/库/权限/多次修复无效）→ 停，带证据贴给柳柳拍板
 ```
+
+> 💡 **为什么先本地复现而不是查 deploy_logs？** 构建阶段失败（SyntaxError）**不产生 deployment 记录**，`deploy_logs` 查不到（文档经验 #12）。而 `node --check` 对 SyntaxError **100% 能抓**（v6.27.1/v6.27.5 失败全是这种）。本地复现 = 把「查失败日志」变成「不让失败发生」，且永远不需要柳柳贴日志。
 
 **详细步骤**：
 
@@ -76,23 +79,27 @@ merge 成功
 2. **验证**：`cloudflare_deploy_status(verify_main=true, repo=wovowx/mcp-memory)`。
    - `VERIFIED` → 收尾，进第 7 步。
    - `DEPLOY_UNVERIFIED` → **不 sleep 等人来问，直接下一步**。
-3. **查日志（自愈第一动作）**：`cloudflare_deploy_logs(limit=3)` 拿最近部署详情（status/trigger/metadata/error）。
-   - 需要单次详情：`cloudflare_deploy_logs(deployment_id=<id>)`。
-   - 要看原始响应：`cloudflare_deploy_logs(include_raw=true)`。
-   - ⚠️ 工具要新会话/重连后才有（MCP 工具列表是连接时快照）；当前会话没有就重新连接后再调。
+3. **本地复现（自愈第一动作，柳柳 2026-09-07 铁律）**——不查 deploy_logs 起手，先本地定位：
+   1. 拉代码（`github_read` 或 codeload tarball 到 `/tmp/cf-check`）。
+   2. **`node --check` 全部 `.js` 文件** → 100% 抓 SyntaxError（定位文件:行号）。
+   3. **`wrangler deploy --dry-run`**（`CLOUDFLARE_API_TOKEN=cfat_xxx`，已实测成功）→ 确认打包无错、连得上 Cloudflare。
+   4. 本地复现无错但线上仍 FAILED → 才回 `cloudflare_deploy_logs(limit=3)` 看 runtime/deploy 层错误。
+   - ⚠️ deploy_logs 工具要新会话/重连后才有（MCP 工具列表是连接时快照）；当前会话没有就重新连接后再调。
 4. **分类错误**（见下表）→ 按类处理。
 5. **修复后重推**：改好 → 上传 → 推 dev → 合并 → 回到步骤 1（sleep 45s 再验证），直到 VERIFIED。
 6. **自愈上限**：同一问题连续修 2 次仍 FAILED → 停，带证据（日志 + 修复记录）给柳柳拍板，不无限循环。
 
 **部署失败错误分类表**：
 
+> ⚠️ 构建阶段失败（SyntaxError/10021/import 错）**不产生 deployment 记录**，`deploy_logs` 查不到——必须本地 `node --check` 复现（铁律 #10）。
+
 | 日志关键词 | 分类 | 动作 |
 |---|---|---|
-| `syntax error` / `Unexpected token` / `code: 10021` | 构建语法错误（低风险可自愈） | 定位报错文件:行号 → 读该文件对应段 → 修语法 → 本地 `node --check` 确认 → 重推 |
+| `syntax error` / `Unexpected token` / `code: 10021` | 构建语法错误（低风险可自愈） | 本地 `node --check` 全部 JS 100% 复现 → 定位报错文件:行号 → 修语法 → 本地确认 → 重推 |
 | `build failed` / `module not found` / import 错误 | 构建依赖/模块错误（低风险可自愈） | 读报错模块 → 修 import/依赖 → 重推 |
 | `HTTP 401/403` / `CF_API_TOKEN` | 凭证问题（需柳柳） | 停，汇报需要更新 CLOUDFLARE_API_TOKEN secret |
 | 无新 deployment 记录 / deployment 列表为空 | 未触发（webhook/Git Integration 断） | 查 GitHub push 是否成功 → 查 Cloudflare Dashboard Git Integration → 可能需柳柳重连 |
-| main HEAD 比部署新但部署记录存在 | 部署未赶上/还在流程 | 再 sleep 30s 重 verify；仍不匹配 → 查 deploy_logs |
+| main HEAD 比部署新但部署记录存在 | 部署未赶上/还在流程 | 再 sleep 30s 重 verify；仍不匹配 → 本地复现后仍无错 → 查 deploy_logs |
 | 日志显示失败但无明确错误 | 未知 | 停，带原始日志贴柳柳 |
 ## Release Checklist（发布前硬闸门 · 不过���许推 main）
 
@@ -143,6 +150,21 @@ merge 成功
 - **工作区 repo:Download/Ziven 工具链有缺陷**：`create_file` 成功但 `read_file` 报 invalid path，不能依赖它中转大文件。
 - **卡住时先跟柳柳对齐**：把现状 + 可选方案告诉柳柳，让她拍板，别一个人闷头试。
 
+## 部署失败本地复现（node --check + wrangler dry-run · v6.6.2 新增）
+> 柳柳 2026-09-07：**部署失败后哥哥自己查日志，不许让柳柳手动贴**。核心思路：把「查失败日志」变成「本地复现 + 不让失败发生」。
+
+### 为什么这个方案可行（已实测）
+- **构建阶段失败（SyntaxError/10021）不产生 deployment 记录** → `deploy_logs` 查不到 → 之前靠 Cloudflare Builds API 查构建日志，但**那是平台 bug**（正确 token 也 401/403，社区多帖实证）→ 已放弃。
+- **`node --check` 对 SyntaxError 100% 能抓**（v6.27.1/v6.27.5 失败全是这种）。
+- **`wrangler deploy --dry-run` 已实测跑通**（用 `cfat_` account token 就能驱动，不依赖 Builds API）。
+
+### 本地复现三步（自愈第一动作）
+1. 拉代码：`codeload.github.com/wovowx/mcp-memory/tar.gz/main` 解压到 `/tmp/cf-check`（避开 API 限流）。
+2. **全部 JS 过 `node --check`** → 抓 SyntaxError（文件:行号）。
+3. **`wrangler deploy --dry-run`**（token=cfat_ + account id）→ 确认打包无错、连得上 Cloudflare。
+
+> token 说明：保留 **cfat_**（第一把，驱动 wrangler 本地验证）。**cfut_**（第二把，Builds API 专用）已废弃可删——Builds API 平台 bug 不可依赖，不需 user token。
+
 ## 查部署日志（cloudflare_deploy_status · v6.5.0 新增）
 
 > 部署完要确认线上是不是最新版？用 MCP 工具查 Cloudflare 部署记录，不用开 Dashboard。
@@ -167,6 +189,7 @@ merge 成功
 - **大文件手写重推**：45KB 必漏段，用 read → 改 → 校验 → 整推。
 
 ## 变更记录
+- 2026-09-07：v6.6.2 部署失败本地自愈闭环（柳柳 2026-09-07 铁律 #10）——DEPLOY_UNVERIFIED 后第一步从「查 deploy_logs」改为「node --check + wrangler dry-run 本地复现」（构建失败不产生 deployment 记录，deploy_logs 查不到；Cloudflare Builds API 是平台 bug 已放弃）。新增「部署失败本地复现」章节 + 铁律 #10 + 错误分类表更新。
 - 2026-09-05：v6.6.1 加「触发方式（Event 触发说明）」——规范生效机制 Step 3：标注主动触发/merge 验证提示/远期 event-driven 三类链路（GPT #791 + Ziven #792 收敛）
 - 2026-09-05：v6.5.1 部署后必查硬步骤（verify_main）+ merge 硬规则（默认 rebase / merge 必须 commit_title+reason）——PR #131 标题重复转 Runtime Guard（GPT #749 确认）
 - 2026-09-05：v6.5.0 新增 「查部署日志」章节 —— cloudflare_deploy_status MCP 工具（help 可���、可直接调用；柳柳要求工具+skill 都要有）。
