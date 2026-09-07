@@ -689,7 +689,8 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const mSourceBranch = safeArgs.source_branch || 'main';
             const mSourcePath = String(safeArgs.source_path).trim();
             const mTargetRepo = String(safeArgs.target_repo).trim();
-            const mTargetBranch = safeArgs.target_branch || 'main';
+            // github_move 默认目标 = dev（柳柳 2026-09-07：别默认 main，危险！搬动走 dev，确认后再 merge main）
+            const mTargetBranch = safeArgs.target_branch || 'dev';
             const mTargetPath = String(safeArgs.target_path).trim();
             const mOverwrite = safeArgs.overwrite === true;
             const mRecursive = safeArgs.recursive !== false;
@@ -742,7 +743,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             let plan = [];
             let warn = '';
             if (mTargetBranch === 'main') {
-                warn = '⚠️ WARNING: Moving directly to main. This triggers Cloudflare deploy. Confirm before continuing.';
+                warn = '⚠️ WARNING: Moving directly to main（危险！）。默认应 target_branch=dev 搬动，确认后再 merge main。除非明确需要直接改 main（如文档仓打通），否则拒绝。Confirm before continuing.';
             }
             if (!isDir) {
                 plan = [{ abs: mSourcePath, rel: mSourcePath.split('/').pop(), targetAbs: mTargetPath }];
