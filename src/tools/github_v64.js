@@ -733,6 +733,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             for (const dep of depList) {
                 const item = {
                     id: (dep.id || '').slice(0, 12),
+                    full_id: dep.id || '', // v6.28.1: 完整 UUID（Get Deployment API 要求完整 UUID，截断会 10004）
                     created_on: dep.created_on,
                     source: dep.source,
                     trigger: dep.trigger || null,
