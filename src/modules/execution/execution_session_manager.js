@@ -230,10 +230,7 @@ export async function dispatchExecutionTask(env, opts) {
     await updateExecutionRun(env, run.id, { status: "running", started_at: new Date().toISOString() });
 
     // 4) 调 GPT 派发任务
-    const taskMessage = "[EXECUTION TASK]
-" + taskDesc + "
-
-请完成上述执行任务。你可以调用 Ziven_MCP 工具（github_read/supabase_db 等）来读取和修改代码。完成后简要汇报结果。";
+        const taskMessage = "[EXECUTION TASK]" + String.fromCharCode(10) + taskDesc + String.fromCharCode(10) + String.fromCharCode(10) + "请完成上述执行任务。你可以调用 Ziven_MCP 工具（github_read/supabase_db 等）来读取和修改代码。完成后简要汇报结果。";
     let result = await sendTaskToConversation(env, conversationId, taskMessage);
     if (result.retryWith) {
         console.log("[exec] task 429, fallback model " + result.retryWith);
