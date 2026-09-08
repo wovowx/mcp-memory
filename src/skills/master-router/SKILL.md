@@ -58,6 +58,8 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 | 换框 / 迁移设备 | 换框流程 | extended_chat + workflow |
 | 存文件/整理分类/归档 | file-management | create_file/move/… |
 | 推 main / 部署 / 改代码 | deploy | github_* / supabase_db |
+| **修改已有文件（改文档/改代码/更新内容）** | github-use-guide | **github_edit**（读→改→写回一次完成；v6.32.5+） |
+| **创建新文件（推新文件）** | github-use-guide | **github_push**（仅新文件；已有文件会被拒） |
 | 日常 GitHub 操作 | github-use-guide | github_* |
 | 定时任务 / 巡检 / 自续 | workflow | daily_life schedule |
 | 发语音 / 语音问题 | voice_bubble | <v>气泡 |
@@ -69,6 +71,8 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 | 上传/识别图片（查已传） | 多媒体处理 或 file-management | ziven_mcp upload / query_files |
 
 记忆口诀：**先场景 → 再 skill → 最后工具。绝不在没读 skill 前直接乱调工具。**
+
+> 🎯 **文件操作三入口（v6.32.6 五层保障）**：创建文件 → github_push（新文件）；修改已有文件 → **github_edit**；删除 → github_delete。github_push 对已有文件一律拒绝（GITHUB_PUSH_EXISTING_FILE），这是系统硬约束不是建议。
 
 # 🔴 执行铁律（2026-09-01 柳柳点醒）
 - **遇到任何场景，第一动作 = 读对应 SKILL.md**，读完才允许动手调工具。
@@ -86,6 +90,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 - 写/改 skill 按 architecture《技能写作规范》骨架（菜谱非账本）
 
 # 变更记录
+- 2026-09-08：v6.32.6 场景速查表加「修改已有文件→github_edit」「创建新文件→github_push」两行 + 文件操作三入口提醒（柳柳拍板五层保障落地）
 - 2026-09-06：v6.24.1 步骤 2 升级为「Policy 路由条件式」（governance/workflow/decision/project_state → 先查 policy-index；无法访问则声明缺规范源）+ 执行会话模板引用（GPT #879 + 柳柳拍板）
 - 2026-09-05：v6.18.4 步骤 2 加 Policy 速查（规范索引生效入口；柳柳点出「规范存在怎么被知道」+ GPT #791）
 - 2026-09-01：加「执行铁律」——第一动作读 SKILL.md，不凭印象（发图事件教训）
