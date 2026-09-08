@@ -140,7 +140,7 @@ async function ensureExecutionThread(env, threadId, opts) {
     const row = {
         thread_id: tid,
         title: opts?.title || "执行框（execution-room）",
-        creator: opts?.creator || "system",
+        creator: opts?.creator || "ziven",
         status: "active",
         thread_type: "execution",
         metadata: { purpose: "execution", logical_name: logical, parent_thread_id: opts?.parentThreadId || null }
