@@ -25,36 +25,49 @@ function sbFetch(env, url, method, body) {
 
 async function acquireConversation(env, initMessage) {
     const chat2apiUrl = env.CHAT2API_URL;
-    const body = {
-        model: env.GPT_MODEL || "gpt-4o-mini",
+    const baseBody = {
         messages: [{ role: "user", content: initMessage || "初始化执行会话。" }],
         conversation_id: "",
         history_disabled: false,
         stream: false
     };
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), (env.EXEC_TIMEOUT_MS || 30000));
-    try {
-        const resp = await fetch(chat2apiUrl, {
-            method: "POST",
-            headers: { "Authorization": "Bearer " + (env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || ""), "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-            signal: controller.signal
-        });
-        const text = await resp.text();
-        if (!resp.ok) throw new Error("chat2api init failed " + resp.status + ": " + text.slice(0, 300));
-        const data = JSON.parse(text);
-        const cid = data.conversation_id || null;
-        if (!cid) throw new Error("chat2api did not return conversation_id (is bridge < v8?)");
-        return { conversation_id: cid };
-    } catch (e) {
-        if (e.name === "AbortError") throw new Error("chat2api init timeout");
-        throw e;
-    } finally {
-        clearTimeout(timer);
+    // 429 降级：与 chat2api_client.js v6 一致 —— 上游对某 model 限流时自动降级 default model 重试一次
+    // 依据：chat2api 官方源码 chatLimit.py —— 429 是 token+model 维度，错误信息
+    //       "You can continue with the default model now" 明说降级即可继续
+    async function doInit(model) {
+        const body = { ...baseBody, model: model };
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), (env.EXEC_TIMEOUT_MS || 30000));
+        try {
+            const resp = await fetch(chat2apiUrl, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + (env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || ""), "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+            const text = await resp.text();
+            if (resp.status === 429 && !(env.EXEC_NO_FALLBACK)) {
+                return { retryWith: (env.GPT_FALLBACK_MODEL || "auto") };
+            }
+            if (!resp.ok) throw new Error("chat2api init failed " + resp.status + ": " + text.slice(0, 300));
+            const data = JSON.parse(text);
+            const cid = data.conversation_id || null;
+            if (!cid) throw new Error("chat2api did not return conversation_id (is bridge < v8?)");
+            return { conversation_id: cid };
+        } catch (e) {
+            if (e.name === "AbortError") throw new Error("chat2api init timeout");
+            throw e;
+        } finally {
+            clearTimeout(timer);
+        }
     }
+    const first = await doInit(env.GPT_MODEL || "gpt-4o-mini");
+    if (first.retryWith) {
+        console.log("[exec] init 429, fallback model " + first.retryWith);
+        return await doInit(first.retryWith);
+    }
+    return first;
 }
-
 async function bindConversation(env, agentId, threadId, conversationId, reason) {
     const url = env.SUPABASE_URL + "/rest/v1/conversation_bindings";
     const row = {
