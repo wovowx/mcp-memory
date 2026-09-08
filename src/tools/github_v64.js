@@ -361,10 +361,8 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
 
             if (dryRun) {
-                text = `DRY_RUN (${branch}/${safeArgs.path}):
-` + details.join('
-') + '
-' + content.length + ' bytes after edit';
+                const NL = String.fromCharCode(10);
+                text = 'DRY_RUN (' + branch + '/' + safeArgs.path + '):' + NL + details.join(NL) + NL + content.length + ' bytes after edit';
             } else {
                 // 写回（带 sha 防覆盖）
                 const newBase64 = utf8ToBase64(content);
