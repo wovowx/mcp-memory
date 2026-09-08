@@ -5,7 +5,7 @@ category: guide
 tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 ---
 
-# GitHub 使用指南（v6.5.4 · 强制 content_url + merge 硬规则 + 版本号下沉 dev commit）
+# GitHub 使用指南（v6.5.5 · 强制 content_url + merge 硬规则 + 版本号下沉 dev commit + github_edit 修改入口）
 
 ## 一句话
 日常 GitHub 操作的工具对照表 + Git 纪律（怎么合并）+ 大文件推送规范；**发布纪律（能不能发布）见 deploy skill，两者分层不混**。
@@ -19,7 +19,8 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 
 | 我想做什么 | 用什么 |
 |---|---|
-| 推文件到分支 | **github_push(path, content_url, branch, message)** —— content_url 必填 |
+| 推文件到分支（新文件） | **github_push(path, content_url, branch, message)** —— content_url 必填；**已有文件一律拒绝**（GITHUB_PUSH_EXISTING_FILE） |
+| **修改已有文件** | **github_edit(path, operations, message, branch=dev)** —— 读→改→写回一次完成，operations=[{old,new}] 精确替换；老文件修改主路径 |
 | 上传本地文件先拿 url | **POST /upload**（我们自己的 Worker）→ 返回你的 Supabase url |
 | 读文件 | github_read(path, branch) |
 | 列目录 | github_list(path, branch) |
@@ -53,6 +54,29 @@ commit_title: docs-2026.09: 项目驾驶舱与协作协议整理
 PR title: docs-2026.09: 项目驾驶舱与协作协议整理
 merge_method: rebase
 ```
+
+## 🚨 修改已有文件（github_edit · v6.5.5 / 代码 v6.32.5+）
+
+**github_push 只能创建新文件**（已有文件全分支拒绝，代码硬约束）——修改已有文件一律用 **github_edit**：
+
+```
+github_edit(
+  path="src/skills/deploy/SKILL.md",
+  operations=[
+    { old: "v6.6.2", new: "v6.6.3" },
+    { old: "旧行内容", new: "新行内容" }
+  ],
+  message="v6.32.7: 更新说明",
+  branch="dev"   // 默认 dev；写 main 会被 release_guard 拦
+)
+```
+
+- **operations**：数组，每个 `{old, new}` 精确替换。old 必须**唯一匹配**（0次=ANCHOR_NOT_FOUND，>1次=ANCHOR_AMBIGUOUS 都不写）。
+- **old_sha**（可选）：带则强校验「当前文件 sha 必须等于 old_sha」防用旧内容覆盖（乐观锁）；不带则工具读最新文件再改。
+- **dry_run=true**：预览改动不写入（先试后改）。
+- **写 main 会被 release_guard 拦**（与 push 同级，防幽灵入口）——先改 dev 再走正常发布。
+- 追加内容到文件结尾 = `{old: "最后一行", new: "最后一行
+新内容"}`。
 
 ## 🚨 大文件推送规范（v6.5.2 · 强制 content_url，2026-09-04 代码层硬性限制）
 
@@ -107,6 +131,7 @@ github_push(path="src/...", content_url="https://我们的supabase.../file", bra
 - 不确定怎么做 → help() 或读对应 SKILL.md，不凭印象。
 
 ## 变更记录
+- 2026-09-08：v6.5.5 github_edit 修改入口（五层保障落地：description 引导 + 服务端硬约束 github_push 拒绝已有文件 + router 路由 + SOP）——工具职责：push=创建/edit=修改/delete=删除（柳柳 + GPT 真讨论收敛）
 - 2026-09-08：v6.5.4 版本号下沉 dev commit（v6.32.3 release_guard rebase 硬校验）——rebase 后 main 保留 dev HEAD 标题，版本号必须写在推 dev 的 commit message 上（柳柳点出 6.32.0 后版本号消失）。新增红线 #12 + 常见坑。
 - 2026-09-05：v6.5.3 merge 硬规则同步（默认 rebase / merge 必须 commit_title+reason）+ 部署后必查 verify_main（PR #131 教训）
 - 2026-09-04：v6.5.2 强制 content_url（代码层移除 content/base64；白名单只认自有 Supabase；禁止 base64 死转码 & datastore token 红线）
