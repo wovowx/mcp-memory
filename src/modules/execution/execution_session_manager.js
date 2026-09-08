@@ -147,3 +147,101 @@ export async function getActiveExecutionBinding(env, opts) {
     const rows = await resp.json();
     return rows && rows[0] ? rows[0] : null;
 }
+
+
+// ============ B4 MVP 5-6：任务派发 ============
+
+// 创建 execution_run 记录（status=created）
+async function createExecutionRun(env, opts) {
+    const url = env.SUPABASE_URL + "/rest/v1/execution_runs";
+    const row = {
+        execution_session_id: opts.executionSessionId || null,
+        agent_id: opts.agentId || "gpt",
+        thread_id: opts.threadId || "execution-room",
+        task_type: opts.taskType || "code",
+        status: "created",
+        task_desc: opts.taskDesc || ""
+    };
+    const resp = await sbFetch(env, url, "POST", row);
+    if (!resp.ok) throw new Error("createExecutionRun failed " + resp.status + ": " + (await resp.text()).slice(0, 300));
+    const rows = await resp.json();
+    return (Array.isArray(rows) && rows[0]) || rows;
+}
+
+// 更新 execution_run 状态
+export async function updateExecutionRun(env, runId, patch) {
+    const url = env.SUPABASE_URL + "/rest/v1/execution_runs?id=eq." + encodeURIComponent(runId);
+    const resp = await sbFetch(env, url, "PATCH", patch);
+    if (!resp.ok) throw new Error("updateExecutionRun failed " + resp.status);
+    return resp.json();
+}
+
+// 用指定 conversation_id 调 chat2api 派发任务消息（复用执行会话上下文）
+async function sendTaskToConversation(env, conversationId, taskMessage, timeoutMs) {
+    const chat2apiUrl = env.CHAT2API_URL;
+    const body = {
+        model: env.GPT_MODEL || "gpt-4o-mini",
+        messages: [{ role: "user", content: taskMessage }],
+        conversation_id: conversationId,
+        history_disabled: false,
+        stream: false
+    };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs || 30000);
+    try {
+        const resp = await fetch(chat2apiUrl, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + (env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || ""), "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            signal: controller.signal
+        });
+        const text = await resp.text();
+        if (resp.status === 429 && !(env.EXEC_NO_FALLBACK)) {
+            return { retryWith: (env.GPT_FALLBACK_MODEL || "auto") };
+        }
+        if (!resp.ok) throw new Error("chat2api task failed " + resp.status + ": " + text.slice(0, 300));
+        const data = JSON.parse(text);
+        return { content: data?.choices?.[0]?.message?.content || "", conversation_id: data.conversation_id || conversationId };
+    } catch (e) {
+        if (e.name === "AbortError") throw new Error("chat2api task timeout");
+        throw e;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+// 派发任务：提任务 -> 用 active 执行 binding -> 调 GPT -> 写回结果
+// 返回 { run_id, status, reply, conversation_id }
+export async function dispatchExecutionTask(env, opts) {
+    const agent = opts.agentId || "gpt";
+    const thread = opts.threadId || "execution-room";
+    const taskDesc = opts.taskDesc || opts.task || "";
+    if (!taskDesc) throw new Error("dispatchExecutionTask: missing task");
+
+    // 1) 找当前 active 执行 binding（复用已有 execution conversation，不新建）
+    const binding = await getActiveExecutionBinding(env, { agentId: agent, threadId: thread });
+    if (!binding) throw new Error("dispatchExecutionTask: no active execution binding, call init first");
+    const conversationId = binding.conversation_id;
+
+    // 2) 创建 execution_run
+    const run = await createExecutionRun(env, { executionSessionId: binding.id, agentId: agent, threadId: thread, taskType: opts.taskType, taskDesc: taskDesc });
+
+    // 3) 标记 running
+    await updateExecutionRun(env, run.id, { status: "running", started_at: new Date().toISOString() });
+
+    // 4) 调 GPT 派发任务
+    const taskMessage = "[EXECUTION TASK]
+" + taskDesc + "
+
+请完成上述执行任务。你可以调用 Ziven_MCP 工具（github_read/supabase_db 等）来读取和修改代码。完成后简要汇报结果。";
+    let result = await sendTaskToConversation(env, conversationId, taskMessage);
+    if (result.retryWith) {
+        console.log("[exec] task 429, fallback model " + result.retryWith);
+        result = await sendTaskToConversation(env, conversationId, taskMessage);
+    }
+
+    // 5) 写回结果 + completed
+    await updateExecutionRun(env, run.id, { status: "completed", finished_at: new Date().toISOString(), result: { reply: result.content, conversation_id: result.conversation_id } });
+
+    return { run_id: run.id, status: "completed", reply: result.content, conversation_id: result.conversation_id };
+}
