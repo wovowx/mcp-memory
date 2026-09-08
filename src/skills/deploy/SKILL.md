@@ -5,7 +5,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.6.2 · 部署自动闭环 + 失败自愈 + 本地复现）
+# 部署技能（v6.6.3 · 部署自动闭环 + 失败自愈 + 本地复现 + release_guard rebase 硬校验）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
@@ -27,7 +27,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 6. **JSON 文件用 content_base64 推**——普通 content 推 JSON 会被序列化坏。
 7. **skill 是菜谱不是账本**——写/改 skill 按《技能写作规范》，主体优先，教训只留一行。
 8. **本地文件读取有逃生通道**——android 读本地失败（Shizuku 挂）时，优先用 `environment=linux` + `/sdcard/...` 直接读；大文件绝不手写整份重推（必漏段）。
-9. **推 dev 的 commit message 也用 `vX.Y.Z: 名称`**——不带 `docs(xxx):` 前缀（rebase 到 main 后显示才干净，柳柳 2026-09-04 要求）。
+9. **推 dev 的 commit message 也用 `vX.Y.Z: 名称`**——不带 `docs(xxx):` 前缀（rebase 到 main 后显示才干净，柳柳 2026-09-04 要求）；**v6.32.3 起 release_guard 强制校验源分支 HEAD commit 标题**（rebase 后真实出现在 main 上的标题，2026-09-08 柳柳点出「6.32.0 后看不到版本号」教训）——merge 时传的 commit_title 在 rebase 模式下不会落到 main，版本号必须写在 dev commit 标题上。
 10. **部署失败必须本地自愈，不许让柳柳贴日志（柳柳 2026-09-07 铁律）**——DEPLOY_UNVERIFIED 后第一步永远是**本地复现**：拉代码 → `node --check` 全部 JS（抓 SyntaxError）→ `wrangler deploy --dry-run`（确认打包）。构建失败日志 `deploy_logs` 查不到（构建阶段不产生 deployment 记录），必须靠本地 `node --check` 100% 复现。永远不把「帮我贴日志」丢给柳柳。
 
 ## 发布主流程（SOP）
@@ -190,6 +190,7 @@ merge 成功
 - **大文件手写重推**：45KB 必漏段，用 read → 改 → 校验 → 整推。
 
 ## 变更记录
+- 2026-09-08：v6.6.3 release_guard rebase 硬校验（v6.32.3 代码同步）——版本号必须写在 dev commit 标题，rebase 后 main 自然保留（柳柳点出 6.32.0 后版本号消失，哥哥查证是 rebase 标题失守 + guard 校验对象错误）
 - 2026-09-07：v6.6.2 部署失败本地自愈闭环（柳柳 2026-09-07 铁律 #10）——DEPLOY_UNVERIFIED 后第一步从「查 deploy_logs」改为「node --check + wrangler dry-run 本地复现」（构建失败不产生 deployment 记录，deploy_logs 查不到；Cloudflare Builds API 是平台 bug 已放弃）。新增「部署失败本地复现」章节 + 铁律 #10 + 错误分类表更新。
 - 2026-09-05：v6.6.1 加「触发方式（Event 触发说明）」——规范生效机制 Step 3：标注主动触发/merge 验证提示/远期 event-driven 三类链路（GPT #791 + Ziven #792 收敛）
 - 2026-09-05：v6.5.1 部署后必查硬步骤（verify_main）+ merge 硬规则（默认 rebase / merge 必须 commit_title+reason）——PR #131 标题重复转 Runtime Guard（GPT #749 确认）
