@@ -5,7 +5,7 @@ category: guide
 tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 ---
 
-# GitHub 使用指南（v6.5.3 · 强制 content_url + merge 硬规则）
+# GitHub 使用指南（v6.5.4 · 强制 content_url + merge 硬规则 + 版本号下沉 dev commit）
 
 ## 一句话
 日常 GitHub 操作的工具对照表 + Git 纪律（怎么合并）+ 大文件推送规范；**发布纪律（能不能发布）见 deploy skill，两者分层不混**。
@@ -44,6 +44,8 @@ commit_title: v6.9.0: Release Discipline
 PR title: v6.9.0: Release Discipline
 merge_method: rebase
 ```
+
+> 🔴 **v6.32.3 起（2026-09-08 教训）：版本号必须写在「推 dev 的 commit message」上**——rebase 后 main 保留的是 dev 原始 commit 标题，merge 时传的 commit_title 在 rebase 模式下不会落到 main。release_guard 已强制校验源分支 HEAD commit 标题，不带 `vX.Y.Z: 名称` 会被拦截。
 
 ### ZivenLab（文档仓）→ 知识快照
 ```
@@ -87,6 +89,7 @@ github_push(path="src/...", content_url="https://我们的supabase.../file", bra
 9. **绝不读本地 datastore token 直连 GitHub API**（柳柳红线）。
 10. **merge 默认 rebase（代码硬性 v6.17.0）**——显式 merge 必须 commit_title + merge_reason，否则拒绝（MERGE_REQUIRES_*）。
 11. **部署后必查（柳柳铁律）**——merge main 后 sleep 45s → cloudflare_deploy_status(verify_main=true)，DEPLOY_UNVERIFIED 必须查日志分析。
+12. **版本号写在 dev commit 标题上**（v6.32.3 起 release_guard 强制）——rebase 后 main 自然保留，merge 参数 commit_title 不生效。
 
 ## 常见坑
 - **分叉了还硬推/硬合**：先 sync_branch 对齐再开发。
@@ -94,6 +97,7 @@ github_push(path="src/...", content_url="https://我们的supabase.../file", bra
 - **code_runner 卡死**：App 级 worker 挂死，重启 Operit 恢复；纯推文件时绕开它。
 - **不版本化就合 main**：违反 deploy release checklist，先定版本+更新 CHANGELOG。
 - **merge 不传 merge_method**：v6.17.0 起默认 rebase，标题不再重复（PR #131）；显式 merge 忘带 reason 会被拒。
+- **版本号只写在 merge 参数上不写 dev commit**：v6.32.3 前 rebase 后 main 全是裸标题（柳柳点出 6.32.0 后看不见版本号）；现在 release_guard 强制校验 dev HEAD commit 标题。
 - **部署完不 verify**：柳柳铁律——merge 后必须 verify_main，DEPLOY_UNVERIFIED 不标 completed。
 - **js 上传被 400 拦**：MIME 标 text/plain 再传 /upload（内容不变）。
 - **其他情况 → 走 deploy 发布流程**（先问柳柳、版本化）。
@@ -103,6 +107,7 @@ github_push(path="src/...", content_url="https://我们的supabase.../file", bra
 - 不确定怎么做 → help() 或读对应 SKILL.md，不凭印象。
 
 ## 变更记录
+- 2026-09-08：v6.5.4 版本号下沉 dev commit（v6.32.3 release_guard rebase 硬校验）——rebase 后 main 保留 dev HEAD 标题，版本号必须写在推 dev 的 commit message 上（柳柳点出 6.32.0 后版本号消失）。新增红线 #12 + 常见坑。
 - 2026-09-05：v6.5.3 merge 硬规则同步（默认 rebase / merge 必须 commit_title+reason）+ 部署后必查 verify_main（PR #131 教训）
 - 2026-09-04：v6.5.2 强制 content_url（代码层移除 content/base64；白名单只认自有 Supabase；禁止 base64 死转码 & datastore token 红线）
 - 2026-09-04：v6.5.1 content_url 大文件通道（github_push 新增 content_url 参数，实测 151KB 成功）
