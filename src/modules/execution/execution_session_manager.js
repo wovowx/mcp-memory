@@ -120,23 +120,30 @@ async function archiveActiveBindings(env, agentId, threadId) {
 
 // 查/建 execution thread（thread_type=execution）
 // 柳柳原始需求：执行框 = 单独聊天框，换执行 GPT 的 ID 就更新绑定新 ID 到这个框
+// 用 crypto.randomUUID() 生成真实 uuid 作为 execution thread 的 thread_id（chat_threads.thread_id 是 uuid 类型）
+// 传入的 threadId 仅作为「逻辑名」（metadata.logical_name），真实 thread 用 uuid
 async function ensureExecutionThread(env, threadId, opts) {
-    const tid = threadId || "execution-room";
-    // 1) 查是否存在
-    const query = env.SUPABASE_URL + "/rest/v1/chat_threads?thread_id=eq." + encodeURIComponent(tid) + "&select=thread_id,title,status&limit=1";
+    // 1) 查是否已有该逻辑名的 execution thread（按 metadata.logical_name 查）
+    const logical = threadId || "execution-room";
+    const qkey = encodeURIComponent(logical);
+    // 先按 metadata 过滤查（如果支持）
+    const query = env.SUPABASE_URL + "/rest/v1/chat_threads?select=thread_id,title,status,thread_type,metadata&limit=10";
     const qr = await sbFetch(env, query);
+    let existing = null;
     if (qr.ok) {
         const rows = await qr.json();
-        if (rows && rows.length) return rows[0];
+        existing = (rows || []).find(t => (t.metadata && t.metadata.logical_name === logical) || t.thread_id === logical) || null;
     }
-    // 2) 不存在则创建（thread_type=execution，长期事实容器）
+    if (existing) return existing;
+    // 2) 不存在则创建（thread_type=execution，thread_id 用 uuid）
+    const tid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2, 10);
     const row = {
         thread_id: tid,
         title: opts?.title || "执行框（execution-room）",
         creator: opts?.creator || "system",
         status: "active",
         thread_type: "execution",
-        metadata: { purpose: "execution", parent_thread_id: opts?.parentThreadId || null }
+        metadata: { purpose: "execution", logical_name: logical, parent_thread_id: opts?.parentThreadId || null }
     };
     const resp = await sbFetch(env, env.SUPABASE_URL + "/rest/v1/chat_threads", "POST", row);
     if (!resp.ok) throw new Error("ensureExecutionThread create failed " + resp.status + ": " + (await resp.text()).slice(0, 300));
@@ -153,9 +160,10 @@ export async function initExecutionSession(env, opts) {
         creator: opts.creator || "system",
         parentThreadId: opts.parentThreadId || null
     });
+    const realThreadId = execThread.thread_id || thread;
     const acquired = await acquireConversation(env, opts.initMessage);
-    const binding = await bindConversation(env, agent, thread, acquired.conversation_id, opts.reason);
-    return { status: "ready", execution_session_id: binding.id, conversation_id: acquired.conversation_id, binding_id: binding.id, agent_id: agent, thread_id: thread, thread: execThread };
+    const binding = await bindConversation(env, agent, realThreadId, acquired.conversation_id, opts.reason);
+    return { status: "ready", execution_session_id: binding.id, conversation_id: acquired.conversation_id, binding_id: binding.id, agent_id: agent, thread_id: realThreadId, thread: execThread };
 }
 
 export async function rotateExecutionSession(env, opts) {
