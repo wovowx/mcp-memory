@@ -114,12 +114,48 @@ async function archiveActiveBindings(env, agentId, threadId) {
     return resp.json();
 }
 
+
+
+// ============ execution thread 管理（B4 接入层）============
+
+// 查/建 execution thread（thread_type=execution）
+// 柳柳原始需求：执行框 = 单独聊天框，换执行 GPT 的 ID 就更新绑定新 ID 到这个框
+async function ensureExecutionThread(env, threadId, opts) {
+    const tid = threadId || "execution-room";
+    // 1) 查是否存在
+    const query = env.SUPABASE_URL + "/rest/v1/chat_threads?thread_id=eq." + encodeURIComponent(tid) + "&select=thread_id,title,status&limit=1";
+    const qr = await sbFetch(env, query);
+    if (qr.ok) {
+        const rows = await qr.json();
+        if (rows && rows.length) return rows[0];
+    }
+    // 2) 不存在则创建（thread_type=execution，长期事实容器）
+    const row = {
+        thread_id: tid,
+        title: opts?.title || "执行框（execution-room）",
+        creator: opts?.creator || "system",
+        status: "active",
+        thread_type: "execution",
+        metadata: { purpose: "execution", parent_thread_id: opts?.parentThreadId || null }
+    };
+    const resp = await sbFetch(env, env.SUPABASE_URL + "/rest/v1/chat_threads", "POST", row);
+    if (!resp.ok) throw new Error("ensureExecutionThread create failed " + resp.status + ": " + (await resp.text()).slice(0, 300));
+    const rows = await resp.json();
+    return (Array.isArray(rows) && rows[0]) || rows;
+}
+
 export async function initExecutionSession(env, opts) {
     const agent = opts.agentId || "gpt";
     const thread = opts.threadId || "execution-room";
+    // B4 接入：确保 execution thread 存在（长期事实容器），再领 conversation（短期模型会话）
+    const execThread = await ensureExecutionThread(env, thread, {
+        title: opts.threadTitle || "执行框（execution-room）",
+        creator: opts.creator || "system",
+        parentThreadId: opts.parentThreadId || null
+    });
     const acquired = await acquireConversation(env, opts.initMessage);
     const binding = await bindConversation(env, agent, thread, acquired.conversation_id, opts.reason);
-    return { status: "ready", execution_session_id: binding.id, conversation_id: acquired.conversation_id, binding_id: binding.id, agent_id: agent, thread_id: thread };
+    return { status: "ready", execution_session_id: binding.id, conversation_id: acquired.conversation_id, binding_id: binding.id, agent_id: agent, thread_id: thread, thread: execThread };
 }
 
 export async function rotateExecutionSession(env, opts) {
