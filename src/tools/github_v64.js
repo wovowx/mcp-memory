@@ -25,6 +25,7 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_merge_to_main', description: '智能三步合并 dev 到 main：建PR→查可合并→合并。merge_method **默认 rebase**（标准发布策略，防标题重复）；显式 merge 必须带 commit_title + merge_reason（禁止策略含糊）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { branch: { type: 'string', description: '源分支（默认dev）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式（推荐rebase或merge）' }, commit_title: { type: 'string', description: '自定义合并 commit 标题（版本号+名称）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
     { name: 'github_create_pull_request', description: '新建 Pull Request。', input_schema: { type: 'object', properties: { head: { type: 'string', description: '源分支（默认dev）' }, base: { type: 'string', description: '目标分支（默认main）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['title'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
     { name: 'github_merge_pull_request', description: '合并指定 Pull Request。支持 merge_method（merge/squash/rebase）和 commit_title（自定义 commit 标题，从版本号开始）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式' }, commit_title: { type: 'string', description: '自定义 commit 标题（版本号+名称）' }, title: { type: 'string', description: '自定义 commit 标题（别名）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
+    { name: 'github_edit', description: '服务端编辑文件：读 GitHub 文件 → 按 operations 数组（{old,new} 精确替换，锚点必须唯一）→ 写回同一分支。一次调用完成修改+提交+size 校验，不用先 /upload。默认 dev 分支（push 到 main 会被 release_guard 拦）。dry_run=true 预览不写。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '目标分支（默认dev）' }, message: { type: 'string', description: 'commit message（发布必须 vX.Y.Z: 名称）' }, operations: { type: 'array', items: { type: 'object', properties: { old: { type: 'string', description: '要替换的原文' }, new: { type: 'string', description: '替换成的新内容' } } }, description: '替换操作列表：[{old,new}]，每个 old 必须唯一匹配' }, dry_run: { type: 'boolean', description: '预览不写入（默认false）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['path', 'operations'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '编辑', '修改'] },
     { name: 'github_close_pull_request', description: '关闭废弃的 Pull Request。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
     { name: 'github_compare_branches', description: '对比两个分支差异（base...head），返回值：ahead/behind/status/files。', input_schema: { type: 'object', properties: { base: { type: 'string', description: '基础分支（默认main）' }, head: { type: 'string', description: '对比分支（默认dev）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '对比'] },
     { name: 'github_get_pull_request', description: '查询单个 Pull Request 详情（state/merged/mergeable）。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
@@ -326,7 +327,59 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 body: JSON.stringify({ message: safeArgs.message || `Delete ${safeArgs.path}`, sha: data.sha, branch })
             });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
-            text = `DELETED: ${safeArgs.path}`;
+                    // github_edit (v6.32.5 ADD: 服务端编辑——读→改→写回一次完成，不用上传)
+        else if (name === 'github_edit') {
+            if (!safeArgs.path) return 'ERROR: github_edit requires path';
+            if (!Array.isArray(safeArgs.operations) || safeArgs.operations.length === 0) return 'ERROR: github_edit requires operations (array of {old, new})';
+            const branch = safeArgs.branch || 'dev';
+            const message = safeArgs.message || `Update ${safeArgs.path}`;
+            const dryRun = safeArgs.dry_run === true;
+
+            // 读文件
+            const readResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+            if (!readResp.ok) { const err = await readResp.json(); return 'ERROR: READ_FAILED ' + (err.message || `HTTP ${readResp.status}`); }
+            const readData = await readResp.json();
+            if (!readData.content) return 'ERROR: READ_NO_CONTENT';
+            let content = base64ToUtf8(readData.content);
+
+            // 逐操作替换（锚点必须唯一，0次=没找到，>1次=歧义）
+            const details = [];
+            for (let i = 0; i < safeArgs.operations.length; i++) {
+                const op = safeArgs.operations[i];
+                if (typeof op.old !== 'string' || typeof op.new !== 'string') return 'ERROR: each operation must be {old: string, new: string}';
+                const count = content.split(op.old).length - 1;
+                if (count === 0) return `ERROR: ANCHOR_NOT_FOUND (op #${i + 1}): ${op.old.slice(0, 80)}`;
+                if (count > 1) return `ERROR: ANCHOR_AMBIGUOUS (op #${i + 1}) matches ${count} times: ${op.old.slice(0, 80)}`;
+                content = content.replace(op.old, op.new);
+                details.push(`op#${i + 1}: ${op.old.slice(0, 40)}… → ${op.new.slice(0, 40)}…`);
+            }
+
+            if (dryRun) {
+                text = `DRY_RUN (${branch}/${safeArgs.path}):
+` + details.join('
+') + '
+' + content.length + ' bytes after edit';
+            } else {
+                // 写回（带 sha 防覆盖）
+                const newBase64 = utf8ToBase64(content);
+                const putBody = { message, content: newBase64, branch };
+                if (readData.sha) putBody.sha = readData.sha;
+                const putResp = await fetch(`${baseUrl}/contents/${safeArgs.path}`, { method: 'PUT', headers: ghHeaders, body: JSON.stringify(putBody) });
+                if (!putResp.ok) { const err = await putResp.json(); return 'ERROR: WRITE_FAILED ' + (err.message || `HTTP ${putResp.status}`); }
+                const putData = await putResp.json();
+                // size 校验
+                let verified = false;
+                const verifyResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+                if (verifyResp.ok) {
+                    const vData = await verifyResp.json();
+                    if (vData.content) verified = base64ToUtf8(vData.content) === content;
+                }
+                text = `OK: github_edit (${branch}/${safeArgs.path})
+` + details.join('
+') + '
+Verified: ' + verified + '
+URL: ' + (putData.content?.html_url || '');
+            }
         }
 
         // github_merge_to_main
