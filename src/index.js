@@ -30,6 +30,7 @@ import { dispatchZivenWake } from './modules/agent_runtime/ziven_wake_dispatcher
 import { resolveAgentContext } from './modules/agent_runtime/context_resolver.js'; // M1.2 debug
 import { handleMCPRequest } from './modules/mcp_router.js';
 import { discoverMCPTools } from './modules/agent_runtime/mcp_client.js';
+import { initExecutionSession, rotateExecutionSession, getActiveExecutionBinding } from './modules/execution/execution_session_manager.js'; // B4 execution session
 
 export default {
     // v6.11.19：补回 scheduled() —— cron 每分钟触发（wrangler.toml crons=["* * * * *"]）
@@ -72,6 +73,50 @@ export default {
                 const body = await request.json();
                 const prompt = body?.message || '';
                 if (!prompt) return jsonResponse({ ok: false, error: 'missing message' }, 400);
+        // B4 execution session manager（2026-09-08 柳柳拍板）
+        // init：领 id + bind + ready（执行 GPT 独立框前置）
+        if (url.pathname === '/api/execution/session/init' && request.method === 'POST') {
+            try {
+                const body = await request.json();
+                const result = await initExecutionSession(env, {
+                    agentId: body?.agent_id || 'gpt',
+                    threadId: body?.thread_id || 'execution-room',
+                    initMessage: body?.init_message || '初始化执行会话。',
+                    reason: body?.reason
+                });
+                return jsonResponse(result, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
+        // rotate：换 id（归档旧 + 领新 + 绑新 + 写事件）
+        if (url.pathname === '/api/execution/session/rotate' && request.method === 'POST') {
+            try {
+                const body = await request.json();
+                const result = await rotateExecutionSession(env, {
+                    agentId: body?.agent_id || 'gpt',
+                    threadId: body?.thread_id || 'execution-room',
+                    reason: body?.reason || 'context_reset'
+                });
+                return jsonResponse(result, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
+        // status：查当前 active 执行绑定
+        if (url.pathname === '/api/execution/session/status' && request.method === 'POST') {
+            try {
+                const body = await request.json();
+                const binding = await getActiveExecutionBinding(env, {
+                    agentId: body?.agent_id || 'gpt',
+                    threadId: body?.thread_id || 'execution-room'
+                });
+                return jsonResponse({ ok: true, status: binding ? 'active' : 'none', binding }, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
+
                 // v6.20 (2026-09-06)：支持可选 conversation_id —— 不传用 env 默认（6a9c3dbc 正式对话），
                 // 传 conversation_id="" 开新对话，传具体 id 复用指定对话。柳柳拍板：哥哥发消息时自己带。
                 // v6.21 (2026-09-06)：支持可选 history_disabled=true —— 执行会话用完即焚（不落历史）
