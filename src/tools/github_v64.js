@@ -378,11 +378,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     const vData = await verifyResp.json();
                     if (vData.content) verified = base64ToUtf8(vData.content) === content;
                 }
-                text = `OK: github_edit (${branch}/${safeArgs.path})
-` + details.join('
-') + '
-Verified: ' + verified + '
-URL: ' + (putData.content?.html_url || '');
+                text = 'OK: github_edit (' + branch + '/' + safeArgs.path + '):' + String.fromCharCode(10) + details.join(String.fromCharCode(10)) + String.fromCharCode(10) + 'Verified: ' + verified + String.fromCharCode(10) + 'URL: ' + (putData.content?.html_url || '');
             }
         }
 
