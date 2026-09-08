@@ -177,10 +177,10 @@ export async function updateExecutionRun(env, runId, patch) {
 }
 
 // 用指定 conversation_id 调 chat2api 派发任务消息（复用执行会话上下文）
-async function sendTaskToConversation(env, conversationId, taskMessage, timeoutMs) {
+async function sendTaskToConversation(env, conversationId, taskMessage, timeoutMs, modelOverride) {
     const chat2apiUrl = env.CHAT2API_URL;
     const body = {
-        model: env.GPT_MODEL || "gpt-4o-mini",
+        model: modelOverride || env.GPT_MODEL || "gpt-4o-mini",
         messages: [{ role: "user", content: taskMessage }],
         conversation_id: conversationId,
         history_disabled: false,
@@ -234,7 +234,7 @@ export async function dispatchExecutionTask(env, opts) {
     let result = await sendTaskToConversation(env, conversationId, taskMessage);
     if (result.retryWith) {
         console.log("[exec] task 429, fallback model " + result.retryWith);
-        result = await sendTaskToConversation(env, conversationId, taskMessage);
+        result = await sendTaskToConversation(env, conversationId, taskMessage, null, result.retryWith);
     }
 
     // 5) 写回结果 + completed
