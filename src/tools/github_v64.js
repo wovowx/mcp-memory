@@ -17,7 +17,7 @@ import { validatePatch, applyPatch } from '../modules/patch_engine.js';
 // 原则：代码是权威，Supabase skills 表只是缓存
 // ============================================================
 export const GITHUB_TOOL_DEFS = [
-    { name: 'github_push', description: '推送文件到 GitHub 仓库（支持多仓库 repo 参数，白名单兜底）。内容必须通过 content_url 传入（我们自己的 Supabase 存储 url，先经 /upload 上传得到；服务端从 url 拉取，不经过对话上下文，永不截断）。写入后自动做 size 校验，校验失败返回 WRITE_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content_url: { type: 'string', description: '必填，文件内容来源：仅限我们自己的 Supabase 存储 url（*.supabase.co/storage/v1/object/public/files/...），先经 /upload 上传本地文件拿到 url 再传这里' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path', 'content_url'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
+    { name: 'github_push', description: '【创建入口】推送 NEW 文件到 GitHub 仓库（目标文件不存在时）。内容通过 content_url（我们自己的 Supabase 存储 url，先经 /upload）传入。如果文件已存在会被拒绝（GITHUB_PUSH_EXISTING_FILE）——修改已有文件请用 github_edit（读→改→写回一次完成，服务端精确替换，不用上传）。写入后自动 size 校验。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content_url: { type: 'string', description: '必填，文件内容来源：仅限我们自己的 Supabase 存储 url（*.supabase.co/storage/v1/object/public/files/...），先经 /upload 上传本地文件拿到 url 再传这里' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path', 'content_url'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
     { name: 'github_create_repo', description: '在 GitHub 创建新仓库。', input_schema: { type: 'object', properties: { repo: { type: 'string', description: '仓库名称' }, private: { type: 'boolean', description: '是否私有（默认false）' }, description: { type: 'string', description: '仓库描述' } }, required: ['repo'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '仓库'] },
     { name: 'github_read', description: '读取 GitHub 仓库文件内容（UTF-8 安全，支持中文）。支持 start_line/end_line 范围读取；默认最多返回前200行；返回 total_lines/returned_lines/truncated/has_more，明确是否截断。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' }, start_line: { type: 'number', description: '起始行（1-based，可选）' }, end_line: { type: 'number', description: '结束行（包含，可选）' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '读取'] },
     { name: 'github_list', description: '列出 GitHub 仓库目录内容（文件/子目录）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '目录路径（默认根）' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '目录'] },
@@ -209,9 +209,15 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 return (text ? text + '\n\n' : '') + `ERROR: INPUT_CORRUPT - base64 content is not valid (possibly truncated). Length=${(base64Content || '').length}, mod4=${(base64Content || '').length % 4}. Refusing to push.`;
             }
             const expectedBytes = atob(base64Content).length;
+            // v6.32.6 (2026-09-08)：文件已存在 → 一律拒绝（全分支），必须用 github_edit 修改
+            // 理由：github_push=创建入口 / github_edit=修改入口，工具职责清晰（柳柳 + GPT 真讨论收敛）
             const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+            if (checkResp.ok) {
+                const existingData = await checkResp.json();
+                const shaHint = existingData.sha ? existingData.sha.slice(0, 12) : '';
+                return (text ? text + '\n\n' : '') + `ERROR: GITHUB_PUSH_EXISTING_FILE - ${safeArgs.path} already exists on ${branch} (sha ${shaHint}). github_push is for CREATE only. Use github_edit to modify existing files (or github_delete first).`;
+            }
             let sha = null;
-            if (checkResp.ok) { const data = await checkResp.json(); sha = data.sha; }
             const body = { message, content: base64Content, branch };
             if (sha) body.sha = sha;
             const resp = await fetch(`${baseUrl}/contents/${safeArgs.path}`, {
