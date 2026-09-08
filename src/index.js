@@ -30,7 +30,7 @@ import { dispatchZivenWake } from './modules/agent_runtime/ziven_wake_dispatcher
 import { resolveAgentContext } from './modules/agent_runtime/context_resolver.js'; // M1.2 debug
 import { handleMCPRequest } from './modules/mcp_router.js';
 import { discoverMCPTools } from './modules/agent_runtime/mcp_client.js';
-import { initExecutionSession, rotateExecutionSession, getActiveExecutionBinding } from './modules/execution/execution_session_manager.js'; // B4 execution session
+import { initExecutionSession, rotateExecutionSession, getActiveExecutionBinding, dispatchExecutionTask } from './modules/execution/execution_session_manager.js'; // B4 execution session + task dispatch
 
 export default {
     // v6.11.19：补回 scheduled() —— cron 每分钟触发（wrangler.toml crons=["* * * * *"]）
@@ -129,6 +129,21 @@ export default {
                     threadId: body?.thread_id || 'execution-room'
                 });
                 return jsonResponse({ ok: true, status: binding ? 'active' : 'none', binding }, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
+        // task：派发执行任务（B4 MVP5-6）——需先 init（有 active binding）
+        if (url.pathname === '/api/execution/task' && request.method === 'POST') {
+            try {
+                const body = await request.json();
+                const result = await dispatchExecutionTask(env, {
+                    agentId: body?.agent_id || 'gpt',
+                    threadId: body?.thread_id || 'execution-room',
+                    taskType: body?.task_type || 'code',
+                    taskDesc: body?.task || body?.task_desc || ''
+                });
+                return jsonResponse(result, 200);
             } catch (e) {
                 return jsonResponse({ ok: false, error: e.message }, 500);
             }
