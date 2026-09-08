@@ -47,14 +47,54 @@ async function getCachedSkills(env) {
 async function invalidateCache() { skillCache.clear(); }
 
 // release_guard 前置闸：push/merge 到 main 必须版本化；非 main 分支放行
+// v6.32.3 (2026-09-08)：FIX rebase 标题失守——rebase 模式 GitHub 保留 dev 原始 commit 标题，
+//   只校验 merge 参数 commit_title 没意义（merge 时的 title 不会落到 main 上）。
+//   改为：rebase 模式校验源分支 HEAD commit 标题（rebase 后真实出现在 main 上的标题）；
+//   merge/squash 模式才校验 commit_title 参数（会真实落到 main）。
+async function getBranchHeadCommitTitle(env, branch) {
+    try {
+        const token = env.GITHUB_TOKEN;
+        const repo = env.GITHUB_REPO;
+        if (!token || !repo || !branch) return '';
+        const resp = await fetch(`https://api.github.com/repos/${repo}/commits/${encodeURIComponent(branch)}`, {
+            headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'User-Agent': 'ziven-bridge' }
+        });
+        if (!resp.ok) return '';
+        const data = await resp.json();
+        return (data.commit?.message || '').split('\n')[0] || '';
+    } catch (e) { return ''; }
+}
+
 async function githubReleaseGuard(name, safeArgs, env) {
     if (name !== 'github_push' && name !== 'github_merge_to_main' && name !== 'github_merge_pull_request') {
         return { allowed: true };
     }
     const isPush = name === 'github_push';
     const branch = isPush ? (safeArgs.branch || 'main') : 'main';
+    const action = isPush ? 'push' : 'merge';
+
+    // rebase（默认）模式：merge 标题由源分支 HEAD commit 决定，校验真实标题
+    if (!isPush) {
+        const mergeMethod = (safeArgs.merge_method || 'rebase');
+        if (mergeMethod === 'rebase') {
+            let srcBranch = '';
+            if (name === 'github_merge_to_main') srcBranch = safeArgs.branch || 'dev';
+            else if (name === 'github_merge_pull_request') {
+                // PR merge 需要知道 head 分支，查 PR 详情太重，改用 PR 标题（GitHub rebase PR 保留 head commit 名，但 guard 无法轻量拿 head）
+                // 保守：rebase PR merge 用 title/commit_title 校验（与旧行为一致），鼓励走 merge_to_main 流程
+                return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
+            }
+            const headTitle = await getBranchHeadCommitTitle(env, srcBranch);
+            if (headTitle) {
+                return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: headTitle, action });
+            }
+            // 查不到 dev HEAD 标题（网络/权限）——fallback 到参数校验，不静默放行
+            return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
+        }
+    }
+
     const commitTitle = isPush ? (safeArgs.message || '') : (safeArgs.commit_title || safeArgs.title || undefined);
-    return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle, action: isPush ? 'push' : 'merge' });
+    return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle, action });
 }
 
 async function passiveSyncGithubTool(env, name) {
