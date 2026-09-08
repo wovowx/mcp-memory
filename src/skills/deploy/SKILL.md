@@ -27,7 +27,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 6. **JSON 文件用 content_base64 推**——普通 content 推 JSON 会被序列化坏。
 7. **skill 是菜谱不是账本**——写/改 skill 按《技能写作规范》，主体优先，教训只留一行。
 8. **本地文件读取有逃生通道**——android 读本地失败（Shizuku 挂）时，优先用 `environment=linux` + `/sdcard/...` 直接读；大文件绝不手写整份重推（必漏段）。
-9. **推 dev 的 commit message 也用 `vX.Y.Z: 名称`**——不带 `docs(xxx):` 前缀（rebase 到 main 后显示才干净，柳柳 2026-09-04 要求）；**v6.32.3 起 release_guard 强制校验源分支 HEAD commit 标题**（rebase 后真实出现在 main 上的标题，2026-09-08 柳柳点出「6.32.0 后看不到版本号」教训）——merge 时传的 commit_title 在 rebase 模式下不会落到 main，版本号必须写在 dev commit 标题上。
+9. **推 dev 的 commit message 也用 `vX.Y.Z: 名称`**——不带 `docs(xxx):` 前缀（rebase 到 main 后显示才干净，柳柳 2026-09-04 要求）；**v6.32.3 起 release_guard 强制校验源分支 HEAD commit 标题**（rebase 后真实出现在 main 上的标题，2026-09-08 柳柳点出「6.32.0 后看不到版本号」教训）——merge 时传的 commit_title 在 rebase 模式下不会落到 main，版本号必须写在 dev commit 标题上。**修改已有文件一律用 github_edit**（v6.32.5+，read→edit→write 一次完成；github_push 只用于创建新文件）。
 10. **部署失败必须本地自愈，不许让柳柳贴日志（柳柳 2026-09-07 铁律）**——DEPLOY_UNVERIFIED 后第一步永远是**本地复现**：拉代码 → `node --check` 全部 JS（抓 SyntaxError）→ `wrangler deploy --dry-run`（确认打包）。构建失败日志 `deploy_logs` 查不到（构建阶段不产生 deployment 记录），必须靠本地 `node --check` 100% 复现。永远不把「帮我贴日志」丢给柳柳。
 
 ## 发布主流程（SOP）
