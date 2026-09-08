@@ -79,12 +79,19 @@ async function writeBindingChangedEvent(env, agentId, threadId, oldId, newId, re
         const url = env.SUPABASE_URL + "/rest/v1/chat_agent_events";
         const ev = {
             agent: agentId,
-            event_type: "conversation_binding_changed",
-            payload: { type: "conversation_binding_changed", old_id: oldId, new_id: newId, reason: reason, thread_id: threadId, timestamp: new Date().toISOString() },
+            payload: {
+                event_type: "conversation_binding_changed",
+                type: "conversation_binding_changed",
+                old_id: oldId,
+                new_id: newId,
+                reason: reason,
+                thread_id: threadId,
+                timestamp: new Date().toISOString()
+            },
             status: "pending"
         };
         const resp = await sbFetch(env, url, "POST", ev);
-        if (!resp.ok) console.error("[exec] write event failed: " + resp.status);
+        if (!resp.ok) console.error("[exec] write event failed: " + resp.status + ": " + (await resp.text()).slice(0, 200));
     } catch (e) {
         console.error("[exec] write event error: " + e.message);
     }
