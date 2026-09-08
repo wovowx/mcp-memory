@@ -75,25 +75,21 @@ async function bindConversation(env, agentId, threadId, conversationId, reason) 
 }
 
 async function writeBindingChangedEvent(env, agentId, threadId, oldId, newId, reason) {
+    // 绑定变更是「路由状态事件」，写独立审计表 conversation_binding_events，
+    // 不混进 chat_agent_events（聊天消息事实源，message_id NOT NULL）
     try {
-        const url = env.SUPABASE_URL + "/rest/v1/chat_agent_events";
+        const url = env.SUPABASE_URL + "/rest/v1/conversation_binding_events";
         const ev = {
-            agent: agentId,
-            payload: {
-                event_type: "conversation_binding_changed",
-                type: "conversation_binding_changed",
-                old_id: oldId,
-                new_id: newId,
-                reason: reason,
-                thread_id: threadId,
-                timestamp: new Date().toISOString()
-            },
-            status: "pending"
+            agent_id: agentId,
+            thread_id: threadId,
+            old_conversation_id: oldId,
+            new_conversation_id: newId,
+            reason: reason
         };
         const resp = await sbFetch(env, url, "POST", ev);
-        if (!resp.ok) console.error("[exec] write event failed: " + resp.status + ": " + (await resp.text()).slice(0, 200));
+        if (!resp.ok) console.error("[exec] write binding event failed: " + resp.status + ": " + (await resp.text()).slice(0, 200));
     } catch (e) {
-        console.error("[exec] write event error: " + e.message);
+        console.error("[exec] write binding event error: " + e.message);
     }
 }
 
