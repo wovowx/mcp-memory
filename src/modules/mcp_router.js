@@ -66,10 +66,11 @@ async function getBranchHeadCommitTitle(env, branch) {
 }
 
 async function githubReleaseGuard(name, safeArgs, env) {
-    if (name !== 'github_push' && name !== 'github_merge_to_main' && name !== 'github_merge_pull_request') {
+    if (name !== 'github_push' && name !== 'github_merge_to_main' && name !== 'github_merge_pull_request' && name !== 'github_edit') {
         return { allowed: true };
     }
-    const isPush = name === 'github_push';
+    // v6.32.5: github_edit 按 push 处理（写操作）——写 dev 放行，写 main 拦（版本化）
+    const isPush = name === 'github_push' || name === 'github_edit';
     const branch = isPush ? (safeArgs.branch || 'main') : 'main';
     const action = isPush ? 'push' : 'merge';
 
