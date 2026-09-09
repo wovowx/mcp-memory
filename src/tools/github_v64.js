@@ -333,7 +333,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 body: JSON.stringify({ message: safeArgs.message || `Delete ${safeArgs.path}`, sha: data.sha, branch })
             });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
-                    // github_edit (v6.32.5 ADD: 服务端编辑——读→改→写回一次完成，不用上传)
+            text = `DELETED: ${safeArgs.path}`;
+        }
+
+        // github_edit (v6.32.5 ADD: 服务端编辑——读→改→写回一次完成，不用上传)
         else if (name === 'github_edit') {
             if (!safeArgs.path) return 'ERROR: github_edit requires path';
             if (!Array.isArray(safeArgs.operations) || safeArgs.operations.length === 0) return 'ERROR: github_edit requires operations (array of {old, new})';
