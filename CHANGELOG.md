@@ -2,6 +2,20 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.32.10] - 2026-09-09
+
+### Added（database.js Table Change Guard 工具化 · 数据库治理第三批）
+- **create_table 强制 necessity**（柳柳 2026-09-09 铁律）：建表前必须过现有表 + 证明必要性，不传 necessity 直接拒绝（TABLE_CHANGE_GUARD_REQUIRED），并自动列出现有 21 张表
+- **schema_dump action**：从 OpenAPI definitions 自动生成全表结构快照（md/json 格式），供 generated-schema.md 同步，不再逐张手摸
+- 目的：把「加表/改表必须过现有表信息」从文档规则变成工具硬约束（Table Change Guard，与 release_guard 同思想）
+
+## [v6.32.9] - 2026-09-09
+
+### Changed（cloudflare 工具官方日志化 · 部署自愈增强）
+- **cloudflare_deploy_status(verify_main=true) 增强**：DEPLOY_UNVERIFIED 时自动查官方 Builds（Git 集成构建）→ 构建 success 提示等传播 / 构建 fail 自动返回日志尾部（SyntaxError 文件:行号）——部署后一把梭，失败直接给根因
+- **token 统一支持 env.cloudflare_key**（cfut_ user token，Builds API 专用；工具读 cloudflare_key || CLOUDFLARE_API_TOKEN）
+- **deploy skill v6.6.4**：记录自动部署机制（Cloudflare Git 集成 push→main 自动构建部署，wrangler deploy --no-bundle）+ 官方日志权威化（不再依赖本地 node --check——script 模式漏 ESM 错误，v6.32.5-7 教训）
+
 ## [v6.32.0] - 2026-09-07
 
 ### Changed（github_move 默认目标改为 dev · 防误碰 main）
