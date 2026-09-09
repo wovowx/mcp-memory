@@ -927,7 +927,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // cloudflare_deploy_logs - 部署日志/详情查询（v6.18.1 新增 · 柳柳要求「做查日志的工具」）
         else if (name === 'cloudflare_deploy_logs') {
             const cfToken = env.cloudflare_key || env.CLOUDFLARE_API_TOKEN;
-            if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
+            if (!cfToken) return 'ERROR: Cloudflare token not set (env.cloudflare_key or CLOUDFLARE_API_TOKEN, e.g. cfut_ user token for Builds API)';
             const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
             if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
             const worker = safeArgs.worker_name || 'mcp-memory';
@@ -1003,7 +1003,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // cloudflare_build_logs - 构建日志/构建阶段失败排查（v6.28 新增 · 柳柳要求「查构建日志的通道」）
         else if (name === 'cloudflare_build_logs') {
             const cfToken = env.cloudflare_key || env.CLOUDFLARE_API_TOKEN;
-            if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
+            if (!cfToken) return 'ERROR: Cloudflare token not set (env.cloudflare_key or CLOUDFLARE_API_TOKEN, e.g. cfut_ user token for Builds API)';
             const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
             if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
             const worker = safeArgs.worker_name || 'mcp-memory';
@@ -1075,7 +1075,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // cloudflare_deploy_status
         else if (name === 'cloudflare_deploy_status') {
             const cfToken = env.cloudflare_key || env.CLOUDFLARE_API_TOKEN;
-            if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
+            if (!cfToken) return 'ERROR: Cloudflare token not set (env.cloudflare_key or CLOUDFLARE_API_TOKEN, e.g. cfut_ user token for Builds API)';
             const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
             if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
             const worker = safeArgs.worker_name || 'mcp-memory';
