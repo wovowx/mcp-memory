@@ -157,7 +157,7 @@ export async function initExecutionSession(env, opts) {
     // B4 接入：确保 execution thread 存在（长期事实容器），再领 conversation（短期模型会话）
     const execThread = await ensureExecutionThread(env, thread, {
         title: opts.threadTitle || "执行框（execution-room）",
-        creator: opts.creator || "system",
+        creator: opts.creator || "ziven",  // v6.32.11 fix: creator 默认 ziven（原 system 导致执行框 creator 显示错误）
         parentThreadId: opts.parentThreadId || null
     });
     const realThreadId = execThread.thread_id || thread;
