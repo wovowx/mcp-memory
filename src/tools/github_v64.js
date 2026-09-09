@@ -926,7 +926,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
 
         // cloudflare_deploy_logs - 部署日志/详情查询（v6.18.1 新增 · 柳柳要求「做查日志的工具」）
         else if (name === 'cloudflare_deploy_logs') {
-            const cfToken = env.CLOUDFLARE_API_TOKEN;
+            const cfToken = env.cloudflare_key || env.CLOUDFLARE_API_TOKEN;
             if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
             const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
             if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
@@ -1002,7 +1002,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
 
         // cloudflare_build_logs - 构建日志/构建阶段失败排查（v6.28 新增 · 柳柳要求「查构建日志的通道」）
         else if (name === 'cloudflare_build_logs') {
-            const cfToken = env.CLOUDFLARE_API_TOKEN;
+            const cfToken = env.cloudflare_key || env.CLOUDFLARE_API_TOKEN;
             if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
             const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
             if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
@@ -1074,7 +1074,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
 
         // cloudflare_deploy_status
         else if (name === 'cloudflare_deploy_status') {
-            const cfToken = env.CLOUDFLARE_API_TOKEN;
+            const cfToken = env.cloudflare_key || env.CLOUDFLARE_API_TOKEN;
             if (!cfToken) return 'ERROR: CLOUDFLARE_API_TOKEN secret not set (set via wrangler secret put)';
             const account = safeArgs.account_id || env.CLOUDFLARE_ACCOUNT_ID || '';
             if (!account) return 'ERROR: CLOUDFLARE_ACCOUNT_ID not set';
@@ -1120,7 +1120,59 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     text += '\n\n🔍 verify_main (' + verifyRepo + '):\n' +
                         '  main HEAD: ' + mainSha.slice(0, 12) + ' (' + mainDate + ')\n' +
                         '  latest deploy: ' + (latestDep ? '[' + latestDep.id + '] ' + latestDepDate : 'NONE') + '\n' +
-                        '  status: ' + verifyStatus + (deployedOk ? ' ✅ main 已上线' : ' ⚠️ main 比最新部署新——部署可能未触发/失败，去查部署日志');
+                        '  status: ' + verifyStatus + (deployedOk ? ' ✅ main 已上线' : ' ⚠️ main 比最新部署新');
+
+                    // v6.32.9（柳柳 2026-09-09拍板）：DEPLOY_UNVERIFIED → 自动查官方 Builds（Git 集成构建）
+                    // 不再依赖本地 node --check（script 模式漏 ESM 错误，v6.32.5-7 教训）；官方构建结果 + 失败日志为准
+                    if (deployedOk) return text;
+
+                    const cfBase = 'https://api.cloudflare.com/client/v4/accounts/' + account;
+                    const scriptsResp = await fetch(cfBase + '/workers/scripts', { headers: cfHeaders });
+                    let workerTag = '';
+                    try {
+                        const sj = await scriptsResp.json();
+                        if (scriptsResp.ok && Array.isArray(sj.result)) {
+                            const found = sj.result.find(function (x) { return x.id === worker; });
+                            if (found && found.tag) workerTag = found.tag;
+                        }
+                    } catch (e) { workerTag = ''; }
+                    if (!workerTag) { text += '\n\n⚠️ 无法获取 Worker tag（Builds API 需 user-scoped token cfut_）——自动查构建失败 HTTP ' + scriptsResp.status; return text; }
+
+                    const blistResp = await fetch(cfBase + '/builds/workers/' + encodeURIComponent(workerTag) + '/builds?per_page=3', { headers: cfHeaders });
+                    let builds = [];
+                    try {
+                        const lj = await blistResp.json();
+                        if (blistResp.ok && Array.isArray(lj.result)) builds = lj.result.slice(0, 3);
+                    } catch (e) { builds = []; }
+                    if (builds.length === 0) { text += '\n\n⚠️ Git 集成未触发构建（无构建记录）——推 main 后 Cloudflare 没收到 push 事件，检查 Git 集成/分支配置'; return text; }
+
+                    const latestBuild = builds[0];
+                    const bMeta = latestBuild.build_trigger_metadata || {};
+                    const bStatus = latestBuild.build_outcome || latestBuild.status || '?';
+                    const bCommit = (bMeta.commit_hash || '').slice(0, 12);
+                    const bMsg = (bMeta.commit_message || '').slice(0, 60);
+                    text += '\n\n🏗️ Cloudflare Build（Git 集成自动部署 push→main 触发）:\n' +
+                        '  构建 ' + String(latestBuild.build_uuid || '').slice(0, 12) + ' @ ' + (latestBuild.created_on || '?') + '\n' +
+                        '  commit: ' + bCommit + ' | ' + bMsg + '\n' +
+                        '  outcome: ' + bStatus;
+                    if (bStatus === 'success') {
+                        text += '\n  ✅ 构建成功——部署记录若仍滞后，可能还在传播（等 30-60s 重跑 verify_main）';
+                        return text;
+                    }
+
+                    const logResp = await fetch(cfBase + '/builds/builds/' + encodeURIComponent(latestBuild.build_uuid) + '/logs', { headers: cfHeaders });
+                    let logText = '';
+                    try {
+                        const lj = await logResp.json();
+                        if (logResp.ok && lj.result && Array.isArray(lj.result.lines)) {
+                            logText = lj.result.lines.map(function (L) { return L[1]; }).join('\n');
+                        } else if (logResp.ok) {
+                            logText = JSON.stringify(lj.result || lj).slice(0, 2000);
+                        }
+                    } catch (e) { logText = ''; }
+                    const logTailData = String(logText).slice(-2500);
+                    text += '\n  ❌ 构建失败（' + (logResp.ok ? '日志尾部' : 'HTTP ' + logResp.status) + '）:\n' + logTailData;
+                    return text;
                 } catch (e) {
                     text += '\n\n🔍 verify_main 错误: ' + e.message;
                 }
