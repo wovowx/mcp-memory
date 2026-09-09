@@ -173,8 +173,19 @@ export async function handleDatabaseTool(name, safeArgs, env) {
         // 用法：{ action:'create_table', table:'my_table', columns:'id uuid primary key, name text not null', rls:false }
         // ============================================
         if (action === 'create_table' || action === 'createTable' || name === 'supabase_schema_create') {
+            // v3（2026-09-09 Table Change Guard · 柳柳铁律）：加表前必须过现有表 + 证明必要性
             if (!safeArgs.table) return '❌ 缺少参数：需要 table（表名）';
             if (!safeArgs.columns) return '❌ 缺少参数：需要 columns（逗号分隔的列定义）';
+            if (!safeArgs.necessity) {
+                const listResp = await fetch(`${supabaseUrl}/rest/v1/`, { headers });
+                let tableList = '';
+                try {
+                    const listData = await listResp.json();
+                    const tables = (listData.definitions && Object.keys(listData.definitions)) || [];
+                    tableList = tables.join(', ');
+                } catch (e) { tableList = '（获取现有表失败）'; }
+                return '❌ TABLE_CHANGE_GUARD_REQUIRED: 建表前必须先过一遍现有表并证明必要性。\n当前已有表：' + tableList + '\n请传 necessity 参数说明：为什么现有表无法覆盖/不是重复造轮子（参照 database-overview.md）。';
+            }
             let sql = `CREATE TABLE IF NOT EXISTS public.${safeArgs.table} (${safeArgs.columns})`;
             if (safeArgs.rls !== false) {
                 sql += `;\nALTER TABLE public.${safeArgs.table} ENABLE ROW LEVEL SECURITY`;
@@ -212,7 +223,51 @@ export async function handleDatabaseTool(name, safeArgs, env) {
             return raw ? `✅ 删表成功：${safeArgs.table}（${raw}）` : `✅ 删表成功：${safeArgs.table}`;
         }
 
-        return '❌ 未知操作：' + action + '（支持 query/insert/update/delete/tables/exec/create_table/drop_table）';
+        // ============================================
+        // schema_dump - 生成数据库表结构快照（v3 · 2026-09-09 数据库治理）
+        // 从 OpenAPI definitions 生成全表结构 md/json，供 generated-schema.md 同步
+        // 用法：{ action:'schema_dump', format:'md' | 'json' }
+        // ============================================
+        if (action === 'schema_dump' || action === 'dump_schema') {
+            const resp = await fetch(`${supabaseUrl}/rest/v1/`, { headers });
+            if (!resp.ok) {
+                const errText = await resp.text();
+                return `❌ 获取 schema 失败 (${resp.status}): ${errText}`;
+            }
+            const data = await resp.json();
+            const defs = data.definitions || {};
+            const tableNames = Object.keys(defs).sort();
+            const format = safeArgs.format || 'md';
+            if (format === 'json') {
+                const dump = {};
+                for (const t of tableNames) {
+                    const props = (defs[t] && defs[t].properties) || {};
+                    const required = (defs[t] && defs[t].required) || [];
+                    dump[t] = { columns: Object.entries(props).map(([name, p]) => ({
+                        name,
+                        type: p.format || p.type || '?',
+                        nullable: !required.includes(name),
+                        description: p.description || ''
+                    })) };
+                }
+                return JSON.stringify(dump, null, 2);
+            }
+            let md = '# Schema Snapshot（机器生成 · ' + new Date().toISOString().slice(0, 10) + ')\n\n> 由 supabase_schema schema_dump 自动生成，勿手改。\n\n';
+            for (const t of tableNames) {
+                const props = (defs[t] && defs[t].properties) || {};
+                const required = (defs[t] && defs[t].required) || [];
+                md += '## ' + t + '\n\n| 列 | 类型 | nullable | 说明 |\n|---|---|---|---|\n';
+                for (const [name, p] of Object.entries(props)) {
+                    const type = p.format || p.type || '?';
+                    const nullable = required.includes(name) ? 'NO' : 'YES';
+                    md += '| ' + name + ' | ' + type + ' | ' + nullable + ' | ' + (p.description || '') + ' |\n';
+                }
+                md += '\n';
+            }
+            return md;
+        }
+
+        return '❌ 未知操作：' + action + '（支持 query/insert/update/delete/tables/exec/create_table/drop_table/schema_dump）';
     } catch (e) {
         return '❌ 执行出错：' + e.message;
     }
