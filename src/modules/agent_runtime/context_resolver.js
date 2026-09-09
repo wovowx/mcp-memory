@@ -11,6 +11,7 @@
 // - Resolver 只读取与组装，不负责生成知识（不自动摘要/不查 memory/GitHub/skill）
 //
 // v1 (2026-09-07)：M1.2 初版
+// v1.1 (2026-09-09)：M1.2 v2 收敛（柳柳+GZ 讨论）——轻量裁剪不语义压缩 + continuation_available 续看标记
 // ============================================================
 
 function sbFetch(env, url, headers = {}) {
@@ -41,6 +42,14 @@ async function getTriggerContext(env, triggerEventId) {
         content: payload.content_preview || null,
         created_at: ev.created_at || payload.created_at || null
     };
+}
+
+// M1.2 v2：轻量裁剪（不语义压缩）——保留开头+结尾（关键条件常在句尾），明确标注截断
+function clipContent(text, maxChars) {
+    if (!text || text.length <= maxChars) return { text, truncated: false };
+    const headLen = Math.floor(maxChars * 0.65);
+    const tailLen = Math.max(maxChars - headLen - 3, 0); // 留 "..."
+    return { text: text.slice(0, headLen) + '...' + text.slice(-tailLen), truncated: true };
 }
 
 async function getDeltaMessages(env, threadId, afterMessageId, limit) {
@@ -125,15 +134,20 @@ export async function resolveAgentContext(env, agentId, threadId) {
         trigger_context: trigger,
         delta_context: {
             from_message_id: lastConsumedMessageId || null,
-            messages: deltaMessages.map(m => ({
-                id: m.message_id,
-                author: m.author,
-                content: m.content ? String(m.content).slice(0, 500) : '',
-                created_at: m.created_at
-            })),
+            messages: deltaMessages.map(m => {
+                const clip = clipContent(m.content ? String(m.content) : '', 500);
+                return {
+                    id: m.message_id,
+                    author: m.author,
+                    content: clip.text,
+                    content_truncated: clip.truncated,
+                    created_at: m.created_at
+                };
+            }),
             count: deltaMessages.length,
             overflow: deltaRaw.overflow,
-            available_count: deltaRaw.available_count
+            available_count: deltaRaw.available_count,
+            continuation_available: deltaRaw.overflow
         },
         knowledge_context: knowledge,
         state: {
