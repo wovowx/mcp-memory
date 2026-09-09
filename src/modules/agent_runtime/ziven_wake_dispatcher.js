@@ -8,7 +8,9 @@
 //   - delivered 只代表「Operit HTTP 收到」，processing 由 Ziven 侧回调（M1-b）
 //   - 不碰 event_processor.js（那是 GPT 通道），独立 dispatcher 模块
 // v1 (2026-09-06)：M1-a 初版
+// v1.2 (2026-09-09)：M1.2 v2（柳柳+GZ 讨论收敛）——唤醒时注入 Recovery Package（trigger/delta/knowledge），Ziven 醒来即可补看漏掉的消息；受通道预算裁剪
 // ============================================================
+import { resolveAgentContext } from './context_resolver.js'; // M1.2 v2
 const MAX_RETRY = 3;          // 唤醒重投上限（与 watchdog 一致）
 const BATCH_LIMIT = 10;       // 每轮最多处理条数
 
@@ -130,20 +132,73 @@ async function releaseForRetry(env, event) {
     return { event_id: event.event_id, action: 'retry', retry_count: nextRetry };
 }
 
+// M1.2 v2（柳柳+GZ 讨论收敛）：Ziven 唤醒通道 [AGENT_CONTEXT] 预算（字符）
+// 预算内优先 trigger/summary/decisions，delta 从最近消息放起，不足则丢弃更早（不刷屏）
+const ZIVEN_CONTEXT_BUDGET = 3000;
+
+// Ziven Adapter：把 Resolver 统一产物裁剪为 Ziven 通道可承载的恢复包
+// 顺序：trigger（谁@我）→ knowledge（已沉淀摘要/决定）→ delta（漏看原文）→ cursor
+function formatContextBlock(resolved) {
+    if (!resolved || resolved.error) return '';
+    const parts = [];
+    const trig = resolved.trigger_context;
+    if (trig) {
+        parts.push('trigger: ' + JSON.stringify({ author: trig.author, content: trig.content ? String(trig.content).slice(0, 200) : null }));
+    }
+    const know = resolved.knowledge_context;
+    if (know) {
+        if (know.summary) parts.push('summary: ' + String(know.summary).slice(0, 300));
+        if (Array.isArray(know.decisions) && know.decisions.length > 0) parts.push('decisions: ' + JSON.stringify(know.decisions).slice(0, 500));
+        if (Array.isArray(know.open_questions) && know.open_questions.length > 0) parts.push('open_questions: ' + JSON.stringify(know.open_questions).slice(0, 300));
+    }
+    // delta：预算内尽量多放，超预算逐条丢（从旧到新保留最近）
+    let budget = ZIVEN_CONTEXT_BUDGET - parts.join('\n').length - 60;
+    const deltaLines = [];
+    const msgs = (resolved.delta_context && resolved.delta_context.messages) || [];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i];
+        const line = '[' + m.author + '] ' + String(m.content || '').slice(0, 300);
+        if (budget - line.length < 0) break;
+        deltaLines.unshift(line);
+        budget -= line.length;
+    }
+    if (deltaLines.length > 0) {
+        parts.push('delta (' + deltaLines.length + '条):');
+        parts.push(deltaLines.join('\n'));
+    }
+    if (resolved.delta_context && resolved.delta_context.continuation_available) {
+        parts.push('(还有更早消息未包含——如需要可请求继续)');
+    }
+    const st = resolved.state;
+    if (st) parts.push('cursor: ' + JSON.stringify({ last_consumed: st.last_consumed_message_id, first_contact: st.is_first_contact }));
+    if (parts.length === 0) return '';
+    return '[AGENT_CONTEXT]\n' + parts.join('\n') + '\n[/AGENT_CONTEXT]\n';
+}
+
 // 构造唤醒 payload：event_id/thread_id/message_id 必须带上（GPT #846 强调）
 // ExternalChatHttpRequest 字段（ExternalChatModels.kt）：request_id/message/group/timeout_ms/stop_after/stream/response_mode/callback_url
 // 事件溯源信息编码进 message 前缀（Operit 侧 Ziven 醒来后据此定位事件），response_mode=async_callback
-function buildWakePayload(event) {
+async function buildWakePayload(env, event) {
     const threadId = event.payload?.thread_id || null;
     const sourceMessageId = event.payload?.source_message_id || event.message_id || null;
     const preview = event.payload?.content_preview || '';
+    // M1.2 v2：Resolver 恢复包（失败不阻塞唤醒——拿不到上下文也要叫醒，只是少信息）
+    let contextBlock = '';
+    if (threadId) {
+        try {
+            const resolved = await resolveAgentContext(env, 'ziven', threadId);
+            contextBlock = formatContextBlock(resolved);
+        } catch (e) {
+            console.error('[ziven_wake] context resolve 失败: ' + e.message);
+        }
+    }
     // 消息前缀：把事件溯源 ID 带给 Ziven（防多事件 ack 错乱）
     const prefix = `[cg-event] event=${event.event_id} thread=${threadId || ''} msg=${sourceMessageId || ''}\n`;
     // M1-b C（GPT #895）：唤醒处理协议固定写入 payload（软约束辅助，硬约束在 ack 服务端校验）
     const replyGuarantee = `\n[处理要求] 1. 处理完成后必须通过 chat_send 回复原 thread（thread_id=${threadId || ''}） 2. 回复成功后再 ack 本事件 3. 如无法回复到聊天室，不允许 ack success（M1-b 回复可见性硬规则）`;
     return {
         request_id: event.event_id,
-        message: prefix + preview + replyGuarantee,
+        message: prefix + contextBlock + preview + replyGuarantee,
         group: 'common-ground',
         response_mode: 'async_callback',
         callback_url: event.callback_url || 'https://mcp-memory.wovowx.workers.dev/api/chat2api/callback',
@@ -159,7 +214,7 @@ async function wakeOperit(env, event, target) {
     if (!baseUrl || !token) {
         throw new Error('唤醒目标未配置（system_config 无 operit_tunnel_url/operit_bearer_token 且 env 无 OPERIT_*）');
     }
-    const payload = buildWakePayload(event);
+    const payload = await buildWakePayload(env, event);
     const resp = await fetch(`${baseUrl}/api/external-chat`, {
         method: 'POST',
         headers: {
