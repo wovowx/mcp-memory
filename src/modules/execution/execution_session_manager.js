@@ -13,6 +13,7 @@
 //
 // v1 (2026-09-08)：领 id + bind + rotate + archive
 // v2 (2026-09-09)：dispatch 完成后任务摘要写回 chat_messages（柳柳要求执行产出回到聊天室可见）
+// v3 (2026-09-09)：conversation_bindings 健康字段（柳柳+GPT 讨论定稿）——health/last_checked_at/last_success_at/last_failure_at/check_count；status(生命周期) 与 health(健康) 正交分离；查询无副作用；失败标 switch_candidate 不自动换档
 // ============================================================
 import { createMessage } from '../../tools/chat.js';
 
@@ -80,6 +81,7 @@ async function bindConversation(env, agentId, threadId, conversationId, reason) 
         access_mode: "exclusive",
         route_type: "temporary",
         status: "active",
+        health: "unknown",  // 绑定≠可用，第一次真实成功调用后置 healthy
         source: "execution_session_init",
         metadata: { reason: reason || "session init", created_by: "execution_session_manager" }
     };
@@ -105,6 +107,50 @@ async function writeBindingChangedEvent(env, agentId, threadId, oldId, newId, re
         if (!resp.ok) console.error("[exec] write binding event failed: " + resp.status + ": " + (await resp.text()).slice(0, 200));
     } catch (e) {
         console.error("[exec] write binding event error: " + e.message);
+    }
+}
+
+// ============ M1.3 健康观测（2026-09-09 柳柳+GPT 讨论定稿）============
+// 核心：status（生命周期）与 health（健康）正交分离
+// - bind 时 health=unknown；第一次真实成功调用 → healthy
+// - 调用失败（401/403/429 等）→ failed + metadata.switch_candidate=true（下次换档，不在 error path 自动换）
+// - 查询函数无副作用（getActiveExecutionBinding 保持纯读取，健康只由 runtime 调用结果更新）
+async function updateBindingHealth(env, binding, mode, extra) {
+    try {
+        const now = new Date().toISOString();
+        if (!binding || !binding.id) return;
+        const patch = {
+            last_checked_at: now,
+            check_count: (binding.check_count || 0) + 1,
+            updated_at: now
+        };
+        let eventReason = null;
+        if (mode === 'success') {
+            patch.health = 'healthy';
+            patch.last_success_at = now;
+            eventReason = 'health_success';
+        } else if (mode === 'failure') {
+            patch.health = 'failed';
+            patch.last_failure_at = now;
+            patch.metadata = {
+                ...(binding.metadata || {}),
+                switch_candidate: true,
+                switch_reason: extra?.reason || 'unknown'
+            };
+            eventReason = 'health_failed';
+        } else if (mode === 'stale') {
+            patch.health = 'stale';
+            eventReason = 'health_stale';
+        } else {
+            return;
+        }
+        const url = env.SUPABASE_URL + "/rest/v1/conversation_bindings?id=eq." + encodeURIComponent(binding.id);
+        const resp = await sbFetch(env, url, "PATCH", patch);
+        if (!resp.ok) console.error("[exec] update binding health failed " + resp.status);
+        // 健康事件写审计（与生命周期事件共用表，reason 用 health_* 前缀区分语义组）
+        await writeBindingChangedEvent(env, binding.agent_id || '', binding.thread_id || '', null, binding.conversation_id, eventReason);
+    } catch (e) {
+        console.error("[exec] update binding health error: " + e.message);
     }
 }
 
@@ -165,6 +211,8 @@ export async function initExecutionSession(env, opts) {
     const realThreadId = execThread.thread_id || thread;
     const acquired = await acquireConversation(env, opts.initMessage);
     const binding = await bindConversation(env, agent, realThreadId, acquired.conversation_id, opts.reason);
+    // 健康观测：acquireConversation 已真实调用 chat2api 成功 → 首次成功即 healthy
+    await updateBindingHealth(env, binding, 'success');
     return { status: "ready", execution_session_id: binding.id, conversation_id: acquired.conversation_id, binding_id: binding.id, agent_id: agent, thread_id: realThreadId, thread: execThread };
 }
 
@@ -179,6 +227,8 @@ export async function rotateExecutionSession(env, opts) {
     await archiveActiveBindings(env, agent, thread);
     const acquired = await acquireConversation(env, "执行会话更换，初始化新对话。");
     const binding = await bindConversation(env, agent, thread, acquired.conversation_id, opts.reason || "context_reset");
+    // 健康观测：新绑定首次成功调用即 healthy
+    await updateBindingHealth(env, binding, 'success');
     await writeBindingChangedEvent(env, agent, thread, oldId, acquired.conversation_id, opts.reason || "context_reset");
     return { status: "ready", execution_session_id: binding.id, conversation_id: acquired.conversation_id, binding_id: binding.id, previous_conversation_id: oldId, agent_id: agent, thread_id: thread };
 }
@@ -277,10 +327,24 @@ export async function dispatchExecutionTask(env, opts) {
 
     // 4) 调 GPT 派发任务
         const taskMessage = "[EXECUTION TASK]" + String.fromCharCode(10) + taskDesc + String.fromCharCode(10) + String.fromCharCode(10) + "请完成上述执行任务。你可以调用 Ziven_MCP 工具（github_read/supabase_db 等）来读取和修改代码。完成后简要汇报结果。";
-    let result = await sendTaskToConversation(env, conversationId, taskMessage);
-    if (result.retryWith) {
-        console.log("[exec] task 429, fallback model " + result.retryWith);
-        result = await sendTaskToConversation(env, conversationId, taskMessage, null, result.retryWith);
+    // 健康观测（v3）：真实调用成功 → healthy；失败 → failed + switch_candidate（下次换档，不自动换）
+    let result = null;
+    try {
+        result = await sendTaskToConversation(env, conversationId, taskMessage);
+        if (result.retryWith) {
+            console.log("[exec] task 429, fallback model " + result.retryWith);
+            result = await sendTaskToConversation(env, conversationId, taskMessage, null, result.retryWith);
+        }
+    } catch (e) {
+        // 健康观测：调用失败 → failed + switch_candidate（不在 error path 自动换档）
+        await updateBindingHealth(env, binding, 'failure', { reason: String(e.message || e).slice(0, 200) });
+        throw e;
+    }
+    // 健康观测：任务调用成功 → healthy（连续 429 无内容也视为失败）
+    if (result.retryWith || !result.content) {
+        await updateBindingHealth(env, binding, 'failure', { reason: 'task_429_retry_still_no_content' });
+    } else {
+        await updateBindingHealth(env, binding, 'success');
     }
 
     // 5) 写回结果 + completed
