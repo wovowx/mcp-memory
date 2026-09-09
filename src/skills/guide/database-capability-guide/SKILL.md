@@ -5,7 +5,7 @@ category: guide
 tags: ["数据库", "Supabase", "查询", "建表", "SQL", "Capability"]
 ---
 
-# Database Capability Guide（2026-09-05 新增 · 能力指南）
+# Database Capability Guide（v1.1 · 2026-09-09 更新 · 能力指南）
 
 ## 一句话
 数据库操作是哥哥的能力层（Capability），不是某个场景的附属。当前承载：Supabase（supabase_db / supabase_schema 工具）。
@@ -18,9 +18,10 @@ tags: ["数据库", "Supabase", "查询", "建表", "SQL", "Capability"]
 | 插入 | supabase_db | action=insert, table, data |
 | 更新 | supabase_db | action=update, table, filters, data |
 | 删除 | supabase_db | action=delete, table, filters |
-| 建表 | supabase_schema | action=create_table, table, columns |
+| 建表 | supabase_schema | action=create_table, table, columns, **necessity**（必填，必要性证明） |
 | 删表 | supabase_schema | action=drop_table, table |
 | 列表 | supabase_db / supabase_schema | action=tables |
+| 生成表结构快照 | supabase_schema | action=schema_dump, format=md/json |
 | 执行 SQL | supabase_db / supabase_schema | action=exec, sql |
 
 ## 常见坑（实战沉淀）
@@ -32,6 +33,8 @@ tags: ["数据库", "Supabase", "查询", "建表", "SQL", "Capability"]
 6. **插入 data 用对象**：data={...}，别拼 SQL 字符串。
 7. **建表默认开 RLS**：supabase_schema 默认 rls=true；需要关闭显式传 rls=false。
 8. **exec 是受限 DDL**：复杂改动用 supabase_schema 的 exec + sql。
+9. **建表必须传 necessity**（v3 · 柳柳铁律）：create_table 不传 necessity 会被 TABLE_CHANGE_GUARD_REQUIRED 拒绝并列出已有表——先过现有表再证明必要性。
+10. **schema_dump 自动生成快照**：查结构不再逐张摸，schema_dump 一次生成全部表（md/json），同步到 generated-schema.md。
 
 ## 查询黄金流程
 1. 不确定表结构 → action=tables 或 SELECT * LIMIT 1
@@ -40,4 +43,5 @@ tags: ["数据库", "Supabase", "查询", "建表", "SQL", "Capability"]
 4. 结果里的 JSON 字段 → 读出来再解析，不直接过滤
 
 ## 变更记录
+- 2026-09-09：v1.1 create_table 强制 necessity（Table Change Guard）+ 新增 schema_dump action（数据库治理第三批，柳柳拍板）
 - 2026-09-05：v1.0 新增（GPT #749 建议命名 database-capability-guide，不绑定 Supabase）
