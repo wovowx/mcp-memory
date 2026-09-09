@@ -277,7 +277,7 @@ mInput.addEventListener('keydown',e=>{
 mDrop.addEventListener('mousedown',e=>{e.preventDefault();const it=e.target.closest('.mItem');if(it)applyMention(it.dataset.m)});
 bar.addEventListener('click',e=>{const b=e.target.closest('.qBtn');if(b)applyMention(b.dataset.m)});
 document.addEventListener('click',e=>{if(!e.target.closest('.mWrap')&&!e.target.closest('.qBar'))closeDrop()});
-function renderContent(t){return (t||'').replace(/(@(?:GPT|Ziven|all)\b)/g,'<span class="mBadge '+((m)=>m[1].toLowerCase()==='gpt'?'gpt':m[1].toLowerCase()==='ziven'?'ziv':'all')+' ">$1</span>')}
+function renderContent(t){return (t||'').replace(/@(?:GPT|Ziven|all)\b/g,function(m){var c=m.toLowerCase();return '<span class="mBadge '+(c==='@gpt'?'gpt':c==='@ziven'?'ziv':'all')+'">'+m+'</span>'})}
 requireElement('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
 loadThreads();
 setInterval(pollMessages,POLL_MS);
