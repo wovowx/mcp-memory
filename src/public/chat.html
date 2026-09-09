@@ -12,6 +12,24 @@
 @media(max-width:720px){
 .app{grid-template-columns:1fr}.sidebar{position:fixed;top:0;bottom:0;left:-280px;width:280px;z-index:20;transition:left .2s}.sidebar.open{left:0}.mobile-header{display:flex}.overlay.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:10}.messages{padding:14px}.main .header{display:none}.composer{padding:10px}
 }
+/* ===== 深空协作舱 · Mention UX (v6.32.15) ===== */
+:root{--gpt:#7AA7FF;--ziv:#B38CFF;--liu:#FFD6A5}
+.brand{background:linear-gradient(90deg,var(--gpt),var(--ziv));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.5px}
+.avatar{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;margin-right:6px;vertical-align:-6px;flex-shrink:0}
+.avatar.gpt{background:rgba(122,167,255,.16);color:var(--gpt)}.avatar.ziv{background:rgba(179,140,255,.16);color:var(--ziv)}.avatar.liu{background:rgba(255,214,165,.16);color:var(--liu)}
+.mBadge{display:inline-block;padding:0 8px;border-radius:999px;font-size:12px;font-weight:650;line-height:1.7;margin:0 2px;vertical-align:1px}
+.mBadge.gpt{background:rgba(122,167,255,.14);color:var(--gpt)}.mBadge.ziv{background:rgba(179,140,255,.14);color:var(--ziv)}.mBadge.all{background:rgba(255,214,165,.14);color:var(--liu)}
+.mWrap{position:relative;flex:1;display:flex;flex-direction:column;min-width:0}
+.mDrop{position:absolute;left:0;right:0;bottom:calc(100% + 8px);max-height:220px;overflow:auto;background:rgba(14,20,38,.96);border:1px solid var(--line);border-radius:12px;padding:6px;display:none;z-index:60;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.mDrop.open{display:block}.mDrop .mItem{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;min-height:44px}
+.mDrop .mItem:hover,.mDrop .mItem.sel{background:var(--panel2)}
+.mDrop .mAva{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.mDrop .mAva.gpt{background:rgba(122,167,255,.18);color:var(--gpt)}.mDrop .mAva.ziv{background:rgba(179,140,255,.18);color:var(--ziv)}.mDrop .mAva.liu{background:rgba(255,214,165,.18);color:var(--liu)}
+.mDrop .mInfo{min-width:0}.mDrop .mName{font-size:14px;font-weight:650}.mDrop .mDesc{font-size:11px;color:var(--muted)}
+.qBar{display:flex;gap:8px;padding:0 0 10px;overflow-x:auto;flex-shrink:0}
+.qBtn{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer;min-height:36px;touch-action:manipulation;transition:border-color .15s,background .15s}
+.qBtn:hover{border-color:var(--accent);background:var(--panel2)}.qBtn b{color:var(--accent)}
+.composer{flex-wrap:wrap}.composer textarea{flex:1 1 auto;min-width:0}
 </style>
 </head>
 <body>
@@ -28,7 +46,15 @@
 <section class="messages" id="messages"><div class="empty">选择或新建一个 Thread</div></section>
 <div class="notice" id="notice"></div>
 <form class="composer" id="composer">
-<textarea id="input" placeholder="输入消息… 支持 @GPT / @Ziven / @all" disabled></textarea>
+<div class="mWrap">
+<div class="mDrop" id="mDrop"></div>
+<textarea id="input" placeholder="输入消息… @ 选择成员" disabled></textarea>
+</div>
+<div class="qBar" id="qBar">
+<button class="qBtn" type="button" data-m="gpt"><b>@GPT</b> · 协作者</button>
+<button class="qBtn" type="button" data-m="ziven"><b>@Ziven</b> · 哥哥</button>
+<button class="qBtn" type="button" data-m="all"><b>@all</b> · 全体</button>
+</div>
 <button class="send" type="submit" disabled>发送</button>
 </form>
 </main>
@@ -101,7 +127,7 @@ function buildMessageEl(m){
   const meta=document.createElement('div');meta.className='meta';meta.textContent=`${m.author||'unknown'} · ${formatTime(m.created_at)}`;
   if(m.reply_to){const reply=document.createElement('div');reply.className='reply';reply.textContent='回复：'+m.reply_to;el.appendChild(reply)}
   if(m.tool_calls&&Array.isArray(m.tool_calls)){el.appendChild(renderToolCalls(m.tool_calls))}
-  const content=document.createElement('div');content.className='content';content.textContent=cleanContent(m.content||'');el.append(meta,content);
+  const content=document.createElement('div');content.className='content';content.innerHTML=renderContent(cleanContent(m.content||''));el.append(meta,content);
   return el;
 }
 function renderMessages(items){
@@ -215,6 +241,43 @@ requireElement('threadToggle').addEventListener('click',openThreads);
 requireElement('overlay').addEventListener('click',closeThreads);
 requireElement('newThread').addEventListener('click',createThread);
 requireElement('composer').addEventListener('submit',e=>{e.preventDefault();sendMessage()});
+/* ===== Mention UX v6.32.15 ===== */
+const MENTIONS=[{id:'gpt',tag:'GPT',icon:'✦',cls:'gpt',desc:'协作者 · 蓝色智能体'},{id:'ziven',tag:'Ziven',icon:'✧',cls:'ziv',desc:'哥哥 · 紫色智能体'},{id:'all',tag:'all',icon:'☀',cls:'liu',desc:'全体成员'}];
+let composing=false,dropSel=-1;
+const mInput=requireElement('input'),mDrop=requireElement('mDrop'),bar=requireElement('qBar');
+function curToken(v){const m=v.match(/(?:^|\s)(@[\w-]*)$/);return m?m[1].toLowerCase():null}
+function renderDrop(list){mDrop.innerHTML='';list.forEach((x,i)=>{const it=document.createElement('div');it.className='mItem'+(i===dropSel?' sel':'');it.dataset.m=x.id;it.innerHTML='<span class="mAva '+x.cls+'">'+x.icon+'</span><span class="mInfo"><div class="mName">'+x.tag+'</div><div class="mDesc">'+x.desc+'</div></span>';mDrop.appendChild(it)});mDrop.classList.add('open')}
+function closeDrop(){mDrop.classList.remove('open');mDrop.innerHTML='';dropSel=-1}
+function checkMention(){
+  if(composing)return;
+  const tok=curToken(mInput.value);
+  if(!tok){closeDrop();return}
+  const q=tok.slice(1).toLowerCase();
+  const list=MENTIONS.filter(m=>!q||m.tag.toLowerCase().includes(q)||m.id.includes(q));
+  if(!list.length){closeDrop();return}
+  const r=mInput.getBoundingClientRect();
+  const space=mInput.getBoundingClientRect().top;
+  mDrop.style.bottom=(space>mDrop.offsetHeight+16?'calc(100% + 8px)':'auto');
+  mDrop.style.top=(space>mDrop.offsetHeight+16?'auto':'auto');
+  dropSel=0;renderDrop(list);
+}
+function applyMention(id){const x=MENTIONS.find(m=>m.id===id);if(!x)return;const v=mInput.value;const at=v.lastIndexOf('@');if(at<0)return;mInput.value=v.slice(0,at)+'@'+x.tag+' ';closeDrop();mInput.focus()}
+mInput.addEventListener('compositionstart',()=>{composing=true});
+mInput.addEventListener('compositionend',()=>{composing=false;checkMention()});
+mInput.addEventListener('input',checkMention);
+mInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey&&mDrop.classList.contains('open')){e.preventDefault();const s=mDrop.querySelector('.mItem.sel');if(s)applyMention(s.dataset.m);return}
+  if(!mDrop.classList.contains('open'))return;
+  const items=mDrop.querySelectorAll('.mItem');if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();dropSel=(dropSel+1)%items.length}
+  else if(e.key==='ArrowUp'){e.preventDefault();dropSel=(dropSel-1+items.length)%items.length}
+  else if(e.key==='Escape'){closeDrop();return}
+  items.forEach((it,i)=>it.classList.toggle('sel',i===dropSel));
+});
+mDrop.addEventListener('mousedown',e=>{e.preventDefault();const it=e.target.closest('.mItem');if(it)applyMention(it.dataset.m)});
+bar.addEventListener('click',e=>{const b=e.target.closest('.qBtn');if(b)applyMention(b.dataset.m)});
+document.addEventListener('click',e=>{if(!e.target.closest('.mWrap')&&!e.target.closest('.qBar'))closeDrop()});
+function renderContent(t){return (t||'').replace(/(@(?:GPT|Ziven|all)\b)/g,'<span class="mBadge '+((m)=>m[1].toLowerCase()==='gpt'?'gpt':m[1].toLowerCase()==='ziven'?'ziv':'all')+' ">$1</span>')}
 requireElement('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
 loadThreads();
 setInterval(pollMessages,POLL_MS);
