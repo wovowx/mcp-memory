@@ -12,7 +12,9 @@
 // - 换 id = 归档旧 + 新增新 + 写事件，不 UPDATE
 //
 // v1 (2026-09-08)：领 id + bind + rotate + archive
+// v2 (2026-09-09)：dispatch 完成后任务摘要写回 chat_messages（柳柳要求执行产出回到聊天室可见）
 // ============================================================
+import { createMessage } from '../../tools/chat.js';
 
 function sbFetch(env, url, method, body) {
     if (method === undefined) method = 'GET';
@@ -283,6 +285,20 @@ export async function dispatchExecutionTask(env, opts) {
 
     // 5) 写回结果 + completed
     await updateExecutionRun(env, run.id, { status: "completed", finished_at: new Date().toISOString(), result: { reply: result.content, conversation_id: result.conversation_id } });
+
+    // 6) 任务摘要写回 chat_messages（v2 · 柳柳要求执行产出回到聊天室可见）
+    // 用独立 try-catch：摘要写失败不阻塞主流程（执行结果已落 execution_runs）
+    try {
+        const realThreadId = binding.thread_id || thread;
+        const summary = '[EXEC·' + (opts.taskType || 'task') + '] ' + String(result.content || '(无结果)').replace(/\s+/g, ' ').trim().slice(0, 1500);
+        await createMessage(env, realThreadId, {
+            author: 'gpt',
+            content: summary,
+            metadata: { type: 'execution_summary', run_id: run.id, task_type: opts.taskType || 'task', source: 'execution_session_manager' }
+        });
+    } catch (e) {
+        console.log('[exec] write summary to chat_messages failed: ' + e.message);
+    }
 
     return { run_id: run.id, status: "completed", reply: result.content, conversation_id: result.conversation_id };
 }
