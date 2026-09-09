@@ -99,7 +99,8 @@ export default {
                     agentId: body?.agent_id || 'gpt',
                     threadId: body?.thread_id || 'execution-room',
                     initMessage: body?.init_message || '初始化执行会话。',
-                    reason: body?.reason
+                    reason: body?.reason,
+                    creator: body?.creator || 'ziven'  // v6.32.11 fix: creator 透传（执行框默认创建者 ziven）
                 });
                 return jsonResponse(result, 200);
             } catch (e) {
