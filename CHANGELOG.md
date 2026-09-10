@@ -9,6 +9,13 @@
 - **修复**：① viewport meta 加 `interactive-widget=resizes-content`（Chrome/Edge 键盘弹出时自动 resize）；② 加 visualViewport resize 监听 JS（所有现代移动浏览器兜底：键盘弹出时自动把 composer 滚进可视区，含 focusin 预触发）
 - 之前「好/坏」反复是因为页面从没处理过键盘场景，与缓存无关
 
+## [v6.32.12] - 2026-09-10
+
+### Fixed（聊天室输入框不可见 · 柳柳报）
+- **根因①（柳柳指出）**：chat.html 用 `height:100%` + `overflow:hidden`——手机浏览器工具栏/地址栏占掉部分可视高度后，100% 超出可视区，且 overflow:hidden 禁止滚动 → 底部 composer 直接跑出屏幕外，**不打开键盘也看不到输入框**（这不是键盘问题，视口高度适配错误）
+- **根因②**：键盘弹出时也无处理（safe-area-inset-bottom 在普通浏览器≈0），键盘盖住输入框
+- **修复**：① `html,body` 及 `.app` 高度改 `100dvh`（动态视口高度，工具栏显示/隐藏自适应）；② body 改 `overflow-x:hidden;overflow-y:auto`（滚动兜底）；③ viewport meta 加 `interactive-widget=resizes-content`（键盘自动 resize）；④ visualViewport resize 监听 JS（键盘弹出时滚 composer 进可视区，含 focusin 预触发）
+
 ## [v6.32.11] - 2026-09-10
 
 ### Changed（help 输出增强 · skill 文件路径直接可见）
