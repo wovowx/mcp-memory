@@ -2,6 +2,12 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.32.11] - 2026-09-10
+
+### Changed（help 输出增强 · skill 文件路径直接可见）
+- **help() 清单每条 skill 直接贴 file_path**（柳柳 2026-09-10 点出：查 skill 不该多一步查表）——场景清单、完整工具清单、help(工具名) 单工具详情三处都拼上 `📄 路径`，有 file_path 的显示、没有的不显示
+- 数据源未变（getEnabledSkills 本来就返回 file_path），只把字段拼进格式化输出——**不改行为，只改可见性**，哥哥找 skill 从「help→查表→读」三步缩成「help→读」两步
+
 ## [v6.32.10] - 2026-09-09
 
 ### Added（database.js Table Change Guard 工具化 · 数据库治理第三批）
