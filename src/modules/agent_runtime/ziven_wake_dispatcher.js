@@ -231,14 +231,34 @@ async function wakeOperit(env, event, target) {
     return { status: resp.status };
 }
 
+// 构造 ntfy 推送：聊天室事件 → ntfy 频道（柳柳拍板 2026-09-10，替代隧道作为唤醒通道）
+// 不依赖 Operit 隧道/公网入站，Operit 侧主动订阅即可收到（类似微信桥接 ws_receiver）
+async function wakeViaNtfy(env, event) {
+    const topic = env.NTFY_TOPIC || 'ziven-arch-test';
+    const base = env.NTFY_BASE || 'https://ntfy.sh';
+    const threadId = event.payload?.thread_id || null;
+    const sourceMessageId = event.payload?.source_message_id || event.message_id || null;
+    const preview = (event.payload?.content_preview || '').slice(0, 400);
+    const body = `[cg-event] event=${event.event_id} thread=${threadId || ''} msg=${sourceMessageId || ''}\n${preview}`;
+    const resp = await fetch(`${base}/${encodeURIComponent(topic)}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain',
+            'Title': '聊天室 @ziven',
+            'Priority': 'high',
+            'Tags': 'ziven-wake'
+        },
+        body
+    });
+    if (!resp.ok) throw new Error('ntfy 推送失败 HTTP ' + resp.status);
+    return { status: resp.status };
+}
+
 // 主入口：M1-a 每轮调度（scheduled() 调用）
 // 流程：find → claim(原子) → delivering → POST → delivered / 失败重投或死信
 export async function dispatchZivenWake(env) {
     const target = await resolveWakeTarget(env);
-    if (!target.baseUrl || !target.token) {
-        console.log('[ziven_wake] 跳过：system_config/env 均未配置唤醒目标');
-        return { ok: true, skipped_reason: 'wake_target_not_configured', scanned: 0, results: [] };
-    }
+    // 即使隧道目标未配置，也继续（ntfy 通道不依赖隧道）
     try {
         const candidates = await findWakeCandidates(env);
         const results = [];
@@ -249,13 +269,26 @@ export async function dispatchZivenWake(env) {
                 results.push({ event_id: event.event_id, action: 'skip_claimed' });
                 continue;
             }
-            // 2. 标记 delivering → POST 唤醒
+            // 2. 标记 delivering → 推送
             await markDelivering(env, event.event_id).catch(() => {});
+            // 2b. ntfy 推送（柳柳拍板：即发即回主通道）——先推 ntfy，隧道作为辅助（若配置）
+            let ntfyResult = null;
             try {
-                const wake = await wakeOperit(env, event, target);
-                // 3. Operit 收到 → delivered
-                await markDelivered(env, event.event_id);
-                results.push({ event_id: event.event_id, action: 'delivered', http: wake.status });
+                ntfyResult = await wakeViaNtfy(env, event);
+            } catch (e) {
+                console.error('[ziven_wake] ntfy 推送失败 ' + event.event_id + ': ' + e.message);
+            }
+            try {
+                if (target.baseUrl && target.token) {
+                    const wake = await wakeOperit(env, event, target);
+                    // 3. Operit 收到 → delivered
+                    await markDelivered(env, event.event_id);
+                    results.push({ event_id: event.event_id, action: 'delivered', http: wake.status, ntfy: ntfyResult?.status });
+                } else {
+                    // 隧道未配置：ntfy 已推送，标记 delivered（避免重复推送）
+                    await markDelivered(env, event.event_id);
+                    results.push({ event_id: event.event_id, action: 'ntfy_only', ntfy: ntfyResult?.status });
+                }
             } catch (e) {
                 // 4. 失败 → 重投（release 回 created）或超限死信
                 console.error('[ziven_wake] 唤醒失败 ' + event.event_id + ': ' + e.message);
