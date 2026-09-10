@@ -221,7 +221,9 @@ export async function handleAITool(name, safeArgs, env) {
         'github_merge_pull_request': '\n用法：github_merge_pull_request(pull_number, merge_method="merge")',
         'github_merge_to_main': '\n用法：github_merge_to_main(branch="dev", title, body)——自动建PR→查可合并→合并（适配分支保护）'
       };
-      return `💡 **${toolName}**\n${toolHelp[toolName]}${extraHelp[toolName] || ''}`;
+      const skill = skills.find(x => x.name === toolName);
+      const p = skill?.file_path ? `\n📄 ${skill.file_path}` : '';
+      return `💡 **${toolName}**\n${toolHelp[toolName]}${extraHelp[toolName] || ''}${p}`;
     } else if (toolName) {
       return `❌ 未找到工具 "${toolName}"\n\n可用工具：${Object.keys(toolHelp).join('、')}`;
     }
@@ -231,7 +233,8 @@ export async function handleAITool(name, safeArgs, env) {
     let lines = '🎬 **遇到场景先查这里**（场景 → skill）：\n';
     for (const s of skills) {
       if (sceneSkills.includes(s.name)) {
-        lines += `- \`${s.name}\`: ${(s.description || '').substring(0, 80)}\n`;
+        const p = s.file_path ? ` 📄 \`${s.file_path}\`` : '';
+        lines += `- \`${s.name}\`: ${(s.description || '').substring(0, 80)}${p}\n`;
       }
     }
 
@@ -242,7 +245,8 @@ export async function handleAITool(name, safeArgs, env) {
       if (shown.has(s.name)) continue;
       count++;
       const desc = (s.description || '').substring(0, 50);
-      lines += `- \`${s.name}\`: ${desc}${desc.length >= 50 ? '...' : ''}\n`;
+      const p = s.file_path ? ` 📄 \`${s.file_path}\`` : '';
+      lines += `- \`${s.name}\`: ${desc}${desc.length >= 50 ? '...' : ''}${p}\n`;
     }
     lines += `\n📊 共 ${skills.length} 个技能（场景skill ${sceneSkills.filter(x => skills.some(s => s.name === x)).length} 个 + 工具 ${count} 个）`;
     lines += '\n💡 查看某个工具的详细用法：help(工具名)';
