@@ -2,6 +2,13 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.32.12] - 2026-09-10
+
+### Fixed（聊天室输入框键盘遮挡 · 柳柳报）
+- **根因**：chat.html 无键盘弹出处理——页面 `height:100%` 固定 + 只靠 `env(safe-area-inset-bottom)`（普通浏览器地址栏模式下≈0），键盘弹出时页面不避让 → 底部输入框被键盘盖住
+- **修复**：① viewport meta 加 `interactive-widget=resizes-content`（Chrome/Edge 键盘弹出时自动 resize）；② 加 visualViewport resize 监听 JS（所有现代移动浏览器兜底：键盘弹出时自动把 composer 滚进可视区，含 focusin 预触发）
+- 之前「好/坏」反复是因为页面从没处理过键盘场景，与缓存无关
+
 ## [v6.32.11] - 2026-09-10
 
 ### Changed（help 输出增强 · skill 文件路径直接可见）
