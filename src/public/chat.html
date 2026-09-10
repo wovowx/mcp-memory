@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Common Ground · 深空协作舱</title>
 <style>
 :root{color-scheme:light;--bg:#f4f7fd;--panel:rgba(255,255,255,.86);--panel2:rgba(238,243,255,.95);--line:rgba(120,145,220,.22);--text:#1c2440;--muted:#7a86a8;--accent:#5b7cfa;--user:#fff3dc;--agent:#ffffff;--gpt:#4a7dff;--ziv:#8b5cf6;--liu:#e8853d;--ok:#16a34a}
@@ -171,6 +171,35 @@ requireElement('composer').addEventListener('submit',e=>{e.preventDefault();send
 requireElement('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
 loadThreads();
 setInterval(pollMessages,POLL_MS);
+
+/* ===== 键盘遮挡修复 v6.32.12：visualViewport 兜底（不依赖浏览器） ===== */
+(function(){
+  if(!('visualViewport' in window))return;
+  var composer=null;
+  function ensureComposerVisible(){
+    if(!composer)composer=document.querySelector('.composer');
+    if(!composer||!currentThread)return;
+    var vv=window.visualViewport;
+    if(vv.height>=window.innerHeight-4)return; // 键盘未弹出（可视视口≈布局视口）
+    var rect=composer.getBoundingClientRect();
+    if(rect.bottom>vv.height+8){ // 输入框底部超出可视区 → 滚动到可见
+      composer.scrollIntoView({block:'nearest'});
+      var tries=0;
+      function recheck(){
+        var r2=composer.getBoundingClientRect();
+        if(r2.bottom>window.visualViewport.height+8&&tries<4){
+          window.scrollTo(0,window.scrollY+r2.bottom-window.visualViewport.height+8);
+          tries++;
+          setTimeout(recheck,60);
+        }
+      }
+      setTimeout(recheck,60);
+    }
+  }
+  window.visualViewport.addEventListener('resize',ensureComposerVisible);
+  // 输入框聚焦（键盘即将弹出）也触发一次
+  document.addEventListener('focusin',function(e){if(e.target&&e.target.tagName==='TEXTAREA')setTimeout(ensureComposerVisible,180)});
+})();
 </script>
 </body>
 </html>
