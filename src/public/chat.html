@@ -172,33 +172,31 @@ requireElement('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.sh
 loadThreads();
 setInterval(pollMessages,POLL_MS);
 
-/* ===== 键盘遮挡修复 v6.32.12：visualViewport 兜底（不依赖浏览器） ===== */
+/* ===== 键盘/工具栏遮挡根治 v6.32.14：JS 强制视口高度（不依赖 dvh/浏览器差异） ===== */
 (function(){
-  if(!('visualViewport' in window))return;
   var composer=null;
-  function ensureComposerVisible(){
+  function fit(){
+    // 取可视视口高度（移动浏览器全支持；不支持时回退 innerHeight）
+    var vv=('visualViewport' in window)?window.visualViewport:null;
+    var h=vv?vv.height:window.innerHeight;
+    if(h>200){
+      // 强制 html/body 高度 = 可视区高度 → 无论工具栏/键盘怎么变，页面刚好一屏，输入框就在底部可见
+      document.documentElement.style.height=h+'px';
+      document.body.style.height=h+'px';
+    }
+    // 兜底：万一输入框仍在可视区外，滚它进来
     if(!composer)composer=document.querySelector('.composer');
-    if(!composer||!currentThread)return;
-    var vv=window.visualViewport;
-    if(vv.height>=window.innerHeight-4)return; // 键盘未弹出（可视视口≈布局视口）
-    var rect=composer.getBoundingClientRect();
-    if(rect.bottom>vv.height+8){ // 输入框底部超出可视区 → 滚动到可见
-      composer.scrollIntoView({block:'nearest'});
-      var tries=0;
-      function recheck(){
-        var r2=composer.getBoundingClientRect();
-        if(r2.bottom>window.visualViewport.height+8&&tries<4){
-          window.scrollTo(0,window.scrollY+r2.bottom-window.visualViewport.height+8);
-          tries++;
-          setTimeout(recheck,60);
-        }
-      }
-      setTimeout(recheck,60);
+    if(composer){
+      var vh=vv?vv.height:window.innerHeight;
+      var rect=composer.getBoundingClientRect();
+      if(rect.bottom>vh+8)composer.scrollIntoView({block:'end'});
     }
   }
-  window.visualViewport.addEventListener('resize',ensureComposerVisible);
+  if(window.visualViewport)window.visualViewport.addEventListener('resize',fit);
+  window.addEventListener('resize',fit);
   // 输入框聚焦（键盘即将弹出）也触发一次
-  document.addEventListener('focusin',function(e){if(e.target&&e.target.tagName==='TEXTAREA')setTimeout(ensureComposerVisible,180)});
+  document.addEventListener('focusin',function(e){if(e.target&&e.target.tagName==='TEXTAREA')setTimeout(fit,180)});
+  fit();
 })();
 </script>
 </body>
