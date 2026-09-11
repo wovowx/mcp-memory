@@ -5,6 +5,7 @@
 //       ④ 精准错误分析（不盲重试） ⑤ verbose 诊断信息 ⑥ help场景置顶
 // ============================================================
 import { getEnabledSkills } from '../utils/skills.js';
+import { uploadFileToSupabase } from '../utils/storage.js';
 
 // ---------- 常量 ----------
 const AGNES_ENDPOINT = 'https://apihub.agnes-ai.com/v1';
@@ -126,13 +127,30 @@ function buildBody(action, args, model) {
   return { model, prompt };
 }
 
+// ---------- data URI → File 对象（供上传） ----------
+function dataUriToFile(dataUri) {
+  const comma = dataUri.indexOf(',');
+  const meta = dataUri.substring(5, comma); // 去掉 data:
+  const b64 = dataUri.substring(comma + 1);
+  const mime = /data:([^;]+)/.test(dataUri) ? meta.split(';')[0] : 'application/octet-stream';
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const ext = (mime.split('/')[1] || 'bin').replace('jpeg', 'jpg');
+  return {
+    name: 'upload_' + Date.now() + '.' + ext,
+    type: mime,
+    size: bytes.length,
+    arrayBuffer: () => Promise.resolve(bytes.buffer),
+  };
+}
+
 // ---------- 核心：带降级的请求 ----------
 async function callAgnes(action, args, env) {
   const keys = [];
-  if (env.AGNES_PLUS) keys.push({ name: 'AGNES_PLUS', value: env.AGNES_PLUS });
   if (env.AGNES_API_KEY) keys.push({ name: 'AGNES_API_KEY', value: env.AGNES_API_KEY });
   if (keys.length === 0) {
-    throw new Error('❌ 未配置任何 AGNES API Key（AGNES_PLUS / AGNES_API_KEY）');
+    throw new Error('❌ 未配置 AGNES_API_KEY（免费 key 未设置）');
   }
 
   const models = ACTION_MODELS[action] || { default: 'agnes-2.5-flash', fallback: 'agnes-2.0-flash' };
@@ -291,6 +309,17 @@ export async function handleAITool(name, safeArgs, env) {
   // 参数预检
   if (action === 'describe_image' && !safeArgs.image_url) {
     return '❌ describe_image 需要 image_url 参数（图片的公网 URL）';
+  }
+
+  // describe_image 图片预处理：data URI 自动上传拿公网 URL（免去先找上传工具）
+  if (action === 'describe_image' && safeArgs.image_url && !/^https?:/i.test(safeArgs.image_url)) {
+    try {
+      const file = await dataUriToFile(safeArgs.image_url);
+      const uploaded = await uploadFileToSupabase(file, env);
+      safeArgs.image_url = uploaded.url;
+    } catch (e) {
+      return '❌ 图片自动上传失败：' + e.message;
+    }
   }
   if (action === 'generate_image' && !safeArgs.prompt) {
     return '❌ generate_image 需要 prompt 参数（图片描述）';
