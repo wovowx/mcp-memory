@@ -1,8 +1,8 @@
 # chat2api —— GPT 真身通道（操作手册 + 铁律）
 
 > 用途：通过 chat2api 网关调用 ChatGPT 真身（同一账号/同一上下文/同一记忆），是 Common Ground 三方通信的「大脑入口」。
-> 版本：2026-09-05 v11（**403 根因根治：Cloud Run 部署必须显式设 `PROXY_URL`** + MCP 连接器自动挂载 ✅ 验证闭环）
-> 状态：✅ 正常（2026-09-05 22:01）——GPT 经 ziven-bridge v3 原生调用 `ds_quota` 成功（余额 0.45 CNY），**MCP 自动挂载主线彻底闭环**
+> 版本：2026-09-11 v12（**平台迁移 Northflank 完成**：Cloud Run → Northflank liu--zivenlab--x7t9qxpv5vy6.code.run，换新GPT号 liugamer888@163.com，全链路实测「通」）
+> 状态：✅ 正常（2026-09-11 16:07）——/api/chat2api/ask 连测3次全通，部署 #433 VERIFIED
 
 ## 🔴🔴🔴 第一铁律：绝不轰炸 GPT（最高优先级，柳柳 2026-09-03 严厉批评后立）
 
@@ -18,12 +18,14 @@
 
 ## 核心三件套（缺一不可）
 
-- accessToken：完整 JWT，存 Cloudflare Worker 机密变量 CHATGPT_ACCESS_TOKEN（本地不再存/不再带）
-- conversation_id（✅正式版）：6a9bbad2-3638-83e8-9a1d-c12596744c3c
-- ⛔ conversation_id（已弃用）：6a96fcf8-b5c4-83ec-a012-8466a68b0376（被轰炸过的脏分支/主支）
+- accessToken：完整 JWT，**只存 Cloudflare Worker 控制台 env `CHATGPT_ACCESS_TOKEN`（⛔ 绝不写进 wrangler.toml [vars]！）**。新号 liugamer888@163.com（免费），90天有效期至约 2026-12。旧谷歌授权号已被禁（报 token_expired）。
+- conversation_id（✅正式版）：6aa39eae-98e4-83e8-bb8d-ebc19d2a7047
+- ⛔ conversation_id（已弃用）：6a9bbad2-3638-83e8-9a1d-c12596744c3c / 6a9c3dbc-bfb8-83ee-af44-1fbd9d786810（旧号对话，勿用）
 - GPTs ID：g-p-6a8f9e8de8e481919f2349f04e51608b-zivencheng-chang-ji-hua
-- 环境变量：HISTORY_DISABLED=false + **PROXY_URL=http://127.0.0.1:10809**（Cloud Run，**必设**，缺了直连数据中心 IP → 403）
+- 环境变量：HISTORY_DISABLED=false + **PROXY_URL=http://127.0.0.1:10809**（容器内必设，缺了直连数据中心 IP → 403）
 - GPT_MODEL：gpt-5.6（v6.17.5 起；v6.19.1 试 g-p- GPTs 模式 → 403 cf_chl_opt 更严，已回退，**不要用 g-p-**）
+
+> 🔴🔴 **token 存放铁律（2026-09-11 血泪教训）**：`CHATGPT_ACCESS_TOKEN` 只存 Cloudflare Worker 控制台 env（keep_vars=true 保留）。⛔ **绝不能写进 wrangler.toml [vars]**——`wrangler.toml [vars]` 每次部署会覆盖 Dashboard env（v6.12 同款大坑），写入任意值都会导致部署后通道 401 `Could not parse your authentication token`。本次踩坑：哥哥把 token 写进 [vars] 推部署 → 通道 401；柳柳手动贴 CF 控制台 env → 立刻通；随后 v6.36.1 删掉 [vars] 里的 token 才根治。
 
 ## 🎉 MCP 连接器自动挂载（2026-09-06 v7 最终闭环）⭐️⭐️⭐️
 
