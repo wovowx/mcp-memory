@@ -51,6 +51,20 @@ async function invalidateCache() { skillCache.clear(); }
 //   只校验 merge 参数 commit_title 没意义（merge 时的 title 不会落到 main 上）。
 //   改为：rebase 模式校验源分支 HEAD commit 标题（rebase 后真实出现在 main 上的标题）；
 //   merge/squash 模式才校验 commit_title 参数（会真实落到 main）。
+async function getPullRequestHeadBranch(env, pullNumber) {
+    try {
+        const token = env.GITHUB_TOKEN;
+        const repo = env.GITHUB_REPO;
+        if (!token || !repo || !pullNumber) return '';
+        const resp = await fetch(`https://api.github.com/repos/${repo}/pulls/${pullNumber}`, {
+            headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'User-Agent': 'ziven-bridge' }
+        });
+        if (!resp.ok) return '';
+        const data = await resp.json();
+        return (data.head && data.head.ref) || '';
+    } catch (e) { return ''; }
+}
+
 async function getBranchHeadCommitTitle(env, branch) {
     try {
         const token = env.GITHUB_TOKEN;
@@ -81,8 +95,15 @@ async function githubReleaseGuard(name, safeArgs, env) {
             let srcBranch = '';
             if (name === 'github_merge_to_main') srcBranch = safeArgs.branch || 'dev';
             else if (name === 'github_merge_pull_request') {
-                // PR merge 需要知道 head 分支，查 PR 详情太重，改用 PR 标题（GitHub rebase PR 保留 head commit 名，但 guard 无法轻量拿 head）
-                // 保守：rebase PR merge 用 title/commit_title 校验（与旧行为一致），鼓励走 merge_to_main 流程
+                // v6.34.1 FIX：PR rebase merge 也会真实落库 PR head 分支的原始 commit 标题，必须查真实标题校验
+                const prHead = await getPullRequestHeadBranch(env, safeArgs.pull_number);
+                if (prHead) {
+                    const realTitle = await getBranchHeadCommitTitle(env, prHead);
+                    if (realTitle) {
+                        return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: realTitle, action });
+                    }
+                }
+                // 查不到 PR head / 标题——保守拒绝，不静默放行
                 return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
             }
             const headTitle = await getBranchHeadCommitTitle(env, srcBranch);
