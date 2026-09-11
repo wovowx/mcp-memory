@@ -1,0 +1,29 @@
+name = "mcp-memory"
+main = "src/index.js"
+compatibility_date = "2025-07-24"
+
+# 保留 Cloudflare 控制台配置的环境变量（GITHUB_REPO/GITHUB_TOKEN/AGNES_API_KEY等）
+keep_vars = true
+
+# no-bundle 模式保持多文件结构
+# 显式开启 find_additional_modules，遍历 src/ 下所有文件
+find_additional_modules = true
+
+[[rules]]
+type = "ESModule"
+globs = ["**/*.js"]
+fallthrough = true
+
+[vars]
+SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
+GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory,wovowx/ZivenLab"
+CHAT2API_URL = "https://liu--zivenlab--x7t9qxpv5vy6.code.run/v1/chat/completions"
+GPT_CONVERSATION_ID = "6aa39eae-98e4-83e8-bb8d-ebc19d2a7047"
+GPT_MODEL = "gpt-5.6"
+# P0-2 Phase2 M1-a：Ziven Wake Dispatcher 唤醒目标（Operit 外部 HTTP 服务 8094 的公网隧道地址）
+# 真实值走 Cloudflare 控制台 env（keep_vars=true 保留），不写仓库（地址动态 + token 敏感）
+# OPERIT_BASE_URL = "https://xxx.trycloudflare.com"
+# OPERIT_BEARER_TOKEN = ""
+
+[triggers]
+crons = ["* * * * *"]
