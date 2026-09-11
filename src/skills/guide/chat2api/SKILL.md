@@ -95,11 +95,12 @@ metadata = {
 
 ## 服务详情
 
-- URL：https://ziven-bridge-1029559493109.asia-northeast1.run.app（2026-09-05 由 chat2api-... 迁移至 ziven-bridge）
-- 镜像：asia-northeast1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/ziven-bridge/ziven-bridge:v3（xray 定制版 + node_manager manual 锁定模式 + MCP 自动挂载 patch，走柳柳 VLESS 日本节点，IP 与浏览器同源）
-- **节点：manual 锁定 JP-04（43.153.152.106）**，node-config.json `mode=manual` + `locked_node=JP-04`（2026-09-05 柳柳确认）；换节点 = 改 node-config.json 推 dev → Cloud Run 重启 Revision，**不用重建镜像**
-- 部署架构：Cloud Run `ziven-bridge`（region: asia-northeast1，port 5005，env：HISTORY_DISABLED + **PROXY_URL** + NODE_CONFIG_URL + SUBSCRIPTION_URL）
-- 完整部署手册：ZivenLab `common-ground/chat2api-xray/DEPLOY.md`
+- URL：https://liu--zivenlab--x7t9qxpv5vy6.code.run（Northflank，2026-09-11 由 Cloud Run 迁移至此；Cloud Run 旧域名 ziven-bridge-1029559493109.asia-northeast1.run.app 暂保留可回退）
+- 部署平台：**Northflank**（服务 liu--zivenlab--x7t9qxpv5vy6，仓库 wovowx/ZivenLab 分支 dev，Build context `chatroom/xray`，Dockerfile `chatroom/xray/Dockerfile`，端口 5005 HTTP/1，Accessibility Public，资源 nf-compute-10 0.1 shared/1实例/512MB）
+- 镜像：lanqian528/chat2api:latest 定制版（xray + node_manager + MCP 自动挂载 patch，走 VLESS 节点，IP 与柳柳浏览器同源）
+- **节点：manual 锁定 JP-04（43.153.152.106）**，node-config.json `mode=manual` + `locked_node=JP-04`（2026-09-05 柳柳确认）；换节点 = 改 node-config.json 推 dev → **Northflank 重启服务**，不用重建镜像
+- 部署架构 Northflank env：HISTORY_DISABLED=false + **PROXY_URL=http://127.0.0.1:10809** + NODE_CONFIG_URL + SUBSCRIPTION_URL
+- 完整部署手册：ZivenLab `chatroom/xray/DEPLOY.md`
 
 ## 调用方法（标准姿势）⭐️
 
