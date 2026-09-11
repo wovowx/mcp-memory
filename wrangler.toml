@@ -17,7 +17,7 @@ fallthrough = true
 [vars]
 SUPABASE_URL = "https://shxfosnnaoxzscrhvkat.supabase.co"
 GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory,wovowx/ZivenLab"
-CHAT2API_URL = "https://ziven-bridge-1029559493109.asia-northeast1.run.app/v1/chat/completions"
+CHAT2API_URL = "https://liu--zivenlab--x7t9qxpv5vy6.code.run/v1/chat/completions"
 GPT_CONVERSATION_ID = "6a9c3dbc-bfb8-83ee-af44-1fbd9d786810"
 GPT_MODEL = "gpt-5.6"
 # P0-2 Phase2 M1-a：Ziven Wake Dispatcher 唤醒目标（Operit 外部 HTTP 服务 8094 的公网隧道地址）
