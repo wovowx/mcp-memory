@@ -139,18 +139,18 @@ metadata = {
 5. ⛔ 旧 ID 弃用逻辑：旧分支可能被轰炸污染/上下文太杂 → 不再使用，除非柳柳明确说恢复。
 
 ### B. 更换节点（VLESS 出站）怎么办
-1. 节点配置两处：ZivenLab `node-config.json`（specified_nodes + **locked_node**，哥哥可改）+ Cloud Run 环境变量 `SUBSCRIPTION_URL`（订阅兜底，敏感，柳柳控制台维护）。
-2. **换节点（manual 模式）**：改 node-config.json 的 `locked_node`（如 "JP-04"）→ 推 ZivenLab dev → Cloud Run 控制台重新部署（重启 Revision）即生效，**不用重建镜像**。
+1. 节点配置两处：ZivenLab `node-config.json`（specified_nodes + **locked_node**，哥哥可改）+ Northflank 环境变量 `SUBSCRIPTION_URL`（订阅兜底，敏感，柳柳控制台维护）。
+2. **换节点（manual 模式）**：改 node-config.json 的 `locked_node`（如 "JP-04"）→ 推 ZivenLab dev → **Northflank 控制台重启服务** 即生效，**不用重建镜像**。
 3. ⚠️ 节点必须与柳柳浏览器同源（否则 ChatGPT 看到 IP 不一致，可能风控）。
 4. 换完测：POST 一条最小消息，HTTP 200 即通；403 = 先查 PROXY_URL（v11 教训），再查节点；仍 404/超时 = 节点没生效/又挂了。
 
 ### C. 其他注意事项（哥哥补充）
-1. token 更新：有效期约 30 天（当前至 2026-12-01），过期前提醒柳柳重新抓；更新记忆库 + Cloudflare Worker 环境变量 CHATGPT_ACCESS_TOKEN。
+1. token 更新：✅新号 liugamer888@163.com（免费），有效期约 90 天（当前至 2026-12 左右），过期前提醒柳柳重新抓；**token 只存 Cloudflare Worker 控制台 env `CHATGPT_ACCESS_TOKEN`，⛔ 绝不写 wrangler.toml**（部署会覆盖 Dashboard env → 401，2026-09-11 血泪教训）。
 2. 调用姿势：走 Worker 转发（env token）就别本地塞 token——本地塞又长又易截断，已上线 /api/chat2api/ask。
 3. 调 chat2api 的工具：只用 extended_http_tools:http_request 走 Worker 端点；code_runner 不是调 chat2api 的（v7 柳柳 2026-09-03 明确）。
 4. 页面可见铁律：与 GPT 的所有讨论消息要在聊天室页面可见，不能只在私底下。
 5. 不塞旧历史：跟 GPT 说话只发最小、最新的 @gpt 消息（今天柳柳批评的根源）。
-6. 错误码速查：403 cf_chl_opt=**先查 PROXY_URL（v11）/节点/轰炸**；404 history_disabled=HISTORY_DISABLED 问题；404 model_not_found=模型名不支持；500 failed 404 detail空=节点炸/上游连不上（v8）。
+6. 错误码速查：401 unauthorized_unknown "Could not parse your authentication token" = **token 无效/被覆盖（查 CF env 是否是手动贴的新 token，wrangler.toml [vars] 是否残留）**；403 cf_chl_opt=**先查 PROXY_URL（v11）/节点/轰炸**；404 history_disabled=HISTORY_DISABLED 问题；404 model_not_found=模型名不支持；500 failed 404 detail空=节点炸/上游连不上（v8）。
 7. 节点 failover：v2 自动轮换 → **v3 改为 manual 手动锁定**（柳柳 2026-09-05：不自动切，手动换）。
 8. 本地直推大文件通道：token 在本地 datastore（/data/user/0/com.ai.assistance.operit/files/datastore/github_auth_preferences.preferences_pb），用 code_runner 读它直连 GitHub API 推任意大文件，内容不经过对话，永不截断。（注：这是推 GitHub，不是调 chat2api）
 
@@ -160,7 +160,7 @@ metadata = {
 - HISTORY_DISABLED=true → 404 history_disabled_conversation_not_found
 - gpt-4-gizmo-g-p-... → 404 model_not_found；**g-p- GPTs 模式 → 403 cf_chl_opt 更严（v6.19.1 实测已回退）**
 - 半小时连续多次调用 → 403 cf_chl_opt 风控（需冷却 30min~几小时）——**但首要排障先查 PROXY_URL（v11）**
-- **Cloud Run 部署漏设 PROXY_URL → chat2api 直连数据中心 IP → 403 cf_chl_opt（v11 根治根因！entrypoint.sh 的 echo 不是 export）**
+- **部署漏设 PROXY_URL → chat2api 直连数据中心 IP → 403 cf_chl_opt（v11 根治根因！entrypoint.sh 的 echo 不是 export）**
 - Google 数据中心 IP 被上游拉黑 → 用 xray 容器走 VLESS 日本节点解决（必须显式设 PROXY_URL）
 - **节点炸了 → chat2api failed 404 detail空 / 超时 → node_manager 换节点 / 改 locked_node 重启 Revision**（v8/v10/v11）
 - **wrangler.toml [vars] 旧 ID → 每次部署覆盖 Dashboard env → 打到主支/旧框（v6.12 根因，换 ID 哥哥自己改 wrangler.toml 即根治）**
