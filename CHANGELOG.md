@@ -2,6 +2,15 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.33.1] - 2026-10-16
+### Changed（chat2api 发给 GPT 的 Ziven_MCP 工具头默认关闭 · 柳柳拍板）
+- event_processor.js buildSystemPrompt：Ziven_MCP 工具能力头默认不注入（方案A：GPT 改走外包写代码，不连 MCP 调工具）
+- 代码一字未删，用 env 开关 `GPT_MCP_HEAD=true` 控制——想用随时在 Cloudflare 配 env 恢复注入
+- 修改用条件展开（spread）+ 保留行为规范/协同写代码流程原样
+
+### Changed（记忆管理 skill 加「临时克制模式」· 柳柳2026-10-16同意）
+- src/skills/guide/记忆管理/SKILL.md（v6.33.0）：记忆框架落地前临时克制——不乱造新分类/不存进度/暂缓主动存，只存真正需长期记住的
+
 ## [v6.32.15] - 2026-09-10
 ### Fixed（聊天室发一条显示两条）
 - 根因：乐观占位替换要求内容逐字节相等才移除，带提及的内容经处理后不一致 → 占位未删 → 双显
