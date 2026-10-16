@@ -29,6 +29,8 @@
 
 ## 🎉 MCP 连接器自动挂载（2026-09-06 v7 最终闭环）⭐️⭐️⭐️
 
+> 🔴 **v8（2026-10-16 柳柳拍板·方案甲）默认关闭**：注入逻辑已加 `MCP_ORIGIN_INJECT` 开关，**默认 `0` 不注入**——GPT 发消息不再自动带 `@Ziven_MCP` 前缀、不被强制挂 MCP 连接器（当前 GPT 只做外包写代码，不再需要 MCP）。**代码完整保留**，想恢复：构建镜像时设环境变量 `MCP_ORIGIN_INJECT=1` → Redeploy。以下 v7 内容为原理细节，仅在 `MCP_ORIGIN_INJECT=1` 时生效。
+
 **再也不用手动加号了**：chat2api 定制镜像里已注入 `patch_chatformat.py`——每次发消息时**照抄真实浏览器挂插件 payload**，GPT 原生可调用 MCP 工具。
 **2026-09-06 00:45 最终闭环验证成功**：
 - 全新对话（conversation_id 置空）+ v7 注入 → GPT 亲眼看到消息开头 `@Ziven_MCP [Ziven]` + ds_quota 成功（0.45 CNY）
