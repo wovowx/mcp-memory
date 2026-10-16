@@ -79,12 +79,11 @@ function buildSystemPrompt(message, context, enableMCP = false) {
     }
     // 2026-10-16（v6.33.1，柳柳拍板）：Ziven_MCP 工具头默认不注入（GPT 改走外包写代码，不连 MCP 调工具）
     // 想恢复：Cloudflare 配 env GPT_MCP_HEAD=true 即重新注入（代码保留，开关控制）
-    if (enableMCP) {
-        lines.push(
-            '工具能力：你已原生挂载 Ziven_MCP 插件，MCP 工具可直接调用。当需要读取代码、查询数据或完成操作时，根据任务目标自行选择当前可用工具完成即可——工具会真实执行并返回结果。**不需要输出任何文本标记，也不需要模拟工具调用格式**。',
-            '',
-        );
-    }
+    lines.push(
+        // 2026-10-16（v6.33.1，柳柳拍板）：Ziven_MCP 工具头默认不注入（GPT 改走外包写代码，不连 MCP 调工具）
+        // 想恢复：Cloudflare 配 env GPT_MCP_HEAD=true 即重新注入（代码保留，开关控制）
+        ...(enableMCP ? ['工具能力：你已原生挂载 Ziven_MCP 插件，MCP 工具可直接调用。当需要读取代码、查询数据或完成操作时，根据任务目标自行选择当前可用工具完成即可——工具会真实执行并返回结果。**不需要输出任何文本标记，也不需要模拟工具调用格式**。'] : []),
+        '',
         '行为规范（Active Policies，见 ZivenLab governance/policy-index.md）：',
         '- AAD 行为透明：每次回复末尾用 [Activity] 块披露 Actions/Observation/Decision/Evidence/NotDone（没调用过的工具不许写「已读取」）',
         '- Ownership 闭环：承诺「盯着/负责」= 一口气跑到终态，不把检查责任转回 Ziven/柳柳；等待是状态不是结束',
