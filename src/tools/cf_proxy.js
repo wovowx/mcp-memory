@@ -6,12 +6,14 @@
 // 柳柳 2026-10-17 拍板：给 Worker 加「自由调用（非查看）CF 环境变量」的方法。
 // 安全边界：token 永远在 Worker env 里，只用来发起 CF API 请求，永不回显给 Client。
 // 典型场景：查账号 → 查 zone → 建固定隧道 → 配 DNS 记录 → 拿隧道 token。
+// v6.34.1：支持 token_var 指定 env 中的其他 token（如 cloudflare_key），多令牌场景自动回退。
 // ============================================================
 const CF_API_BASE = 'https://api.cloudflare.com/client/v4/';
 
 export async function handleCfProxyTool(args, env) {
-    const token = env.CLOUDFLARE_API_TOKEN;
-    if (!token) return '❌ CLOUDFLARE_API_TOKEN 未配置（请在 Cloudflare Worker 环境变量中设置）';
+    const varName = (args.token_var || 'CLOUDFLARE_API_TOKEN').trim();
+    const token = env[varName] || env.CLOUDFLARE_API_TOKEN || env.cloudflare_key || env.CLOUDFLARE_TOKEN || '';
+    if (!token) return '❌ 找不到可用 CF token（尝试 token_var=' + varName + ' / CLOUDFLARE_API_TOKEN / cloudflare_key / CLOUDFLARE_TOKEN）';
     const accountId = env.CLOUDFLARE_ACCOUNT_ID || '';
     const method = (args.method || 'GET').toUpperCase();
     let endpoint = (args.endpoint || '').trim();
@@ -44,6 +46,7 @@ export const CF_PROXY_TOOL_DEF = {
     input_schema: {
         type: 'object',
         properties: {
+            token_var: { type: 'string', description: '可选，指定用哪个环境变量的 CF token（默认 CLOUDFLARE_API_TOKEN，fallback 到 cloudflare_key / CLOUDFLARE_TOKEN）' },
             method: { type: 'string', enum: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'], description: 'HTTP 方法，默认 GET' },
             endpoint: { type: 'string', description: 'CF API 路径，如 accounts、zones?name=wovowx.win、accounts/{account_id}/tunnels' },
             body: { type: 'string', description: '可选，请求体 JSON 字符串（POST/PATCH/PUT 用）' }
