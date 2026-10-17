@@ -176,9 +176,15 @@ export async function handleMemoryTool(name, safeArgs, env) {
         else {
             const keywords = safeArgs.keyword.trim().split(/\s+/).filter(k => k.length > 0);
             const { limit, cursor } = parsePagination(safeArgs);
+            // 多钥匙检索：先查别名表拿到关联记忆 id 集
+            const aliasResp = await fetch(`${env.SUPABASE_URL}/rest/v1/memory_aliases?select=memory_id&alias=ilike.%25${encodeURIComponent(safeArgs.keyword.trim())}%25`, {
+                headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
+            });
+            const aliasIds = aliasResp.ok ? (await aliasResp.json()).map(a => a.memory_id) : [];
             const matched = (await getAllMemories(env)).filter(item => {
                 const combined = (item.key + ' ' + item.value).toLowerCase();
-                return keywords.every(kw => combined.includes(kw.toLowerCase()));
+                const kwHit = keywords.every(kw => combined.includes(kw.toLowerCase()));
+                return kwHit || aliasIds.includes(item.id);
             }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             let startIndex = 0;
             if (cursor) { const idx = matched.findIndex(i => i.id === cursor); if (idx !== -1) startIndex = idx + 1; }
