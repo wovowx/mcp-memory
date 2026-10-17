@@ -8,6 +8,7 @@
 - 用法：`cf_proxy(method, endpoint, body)` → 查账号/查 zone/建固定隧道/配 DNS/拿隧道 token 全自动
 - 文件：`src/tools/cf_proxy.js`（新增）+ `src/modules/mcp_router.js`（handlerMap + 路由注册）
 - 背景：配合 wovowx.win named tunnel（方案B 根治 Ziven 唤醒断链）；也用于前端网页/API 网关
+- 发布版本 v6.34.0（2026-10-17）
 
 ## [v6.33.1] - 2026-10-16
 ### Changed（chat2api 发给 GPT 的 Ziven_MCP 工具头默认关闭 · 柳柳拍板）
