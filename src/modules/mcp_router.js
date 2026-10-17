@@ -14,6 +14,7 @@ import handleKnowledgeSkill from '../tools/knowledge.js';
 import { handleIncrementUsage } from '../tools/increment_usage.js';
 import { handleDeleteBranch } from '../tools/delete_branch.js';
 import { handleChatTool, CHAT_TOOL_DEFS } from '../tools/chat_mcp.js';
+import { handleCfProxyTool } from '../tools/cf_proxy.js';
 import { validateRelease } from './release_guard.js';
 
 const handlerMap = {
@@ -27,7 +28,8 @@ const handlerMap = {
     'skill': handleSkillManagement,
     'increment_usage': handleIncrementUsage,
     'delete_branch': handleDeleteBranch,
-    'chat': handleChatTool
+    'chat': handleChatTool,
+    'cf_proxy': handleCfProxyTool
 };
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2024-11-05', '2025-03-26'];
@@ -190,6 +192,9 @@ export async function handleMCPRequest(body, env) {
                     text = await handleGitHubTool(name, safeArgs, env);
                 }
                 if (syncNote) text += '\n\n' + syncNote;
+            } else if (name === 'cf_proxy') {
+                // v6.34.0：CF API 代理——用 env.CLOUDFLARE_API_TOKEN 代调 Cloudflare API（只执行不暴露）
+                text = await handleCfProxyTool(safeArgs, env);
             } else if (CHAT_TOOL_DEFS.some(d => d.name === name)) {
                 await syncChatTools(env);
                 text = await handleChatTool(name, safeArgs, env);
