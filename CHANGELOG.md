@@ -2,6 +2,13 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.34.0] - 2026-10-17
+### Added（CF API 代理工具 cf_proxy · 柳柳2026-10-17拍板）
+- 新增 MCP 工具 `cf_proxy`：用 Worker 环境变量 `CLOUDFLARE_API_TOKEN` 代调 Cloudflare API（只执行、不暴露 token 明文）
+- 用法：`cf_proxy(method, endpoint, body)` → 查账号/查 zone/建固定隧道/配 DNS/拿隧道 token 全自动
+- 文件：`src/tools/cf_proxy.js`（新增）+ `src/modules/mcp_router.js`（handlerMap + 路由注册）
+- 背景：配合 wovowx.win named tunnel（方案B 根治 Ziven 唤醒断链）；也用于前端网页/API 网关
+
 ## [v6.33.1] - 2026-10-16
 ### Changed（chat2api 发给 GPT 的 Ziven_MCP 工具头默认关闭 · 柳柳拍板）
 - event_processor.js buildSystemPrompt：Ziven_MCP 工具能力头默认不注入（方案A：GPT 改走外包写代码，不连 MCP 调工具）
