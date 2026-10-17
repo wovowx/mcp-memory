@@ -182,9 +182,11 @@ export async function handleMemoryTool(name, safeArgs, env) {
             });
             const aliasIds = aliasResp.ok ? (await aliasResp.json()).map(a => a.memory_id) : [];
             const matched = (await getAllMemories(env)).filter(item => {
+                // 当前有效判定：只检索 status='active' AND valid_to IS NULL（运行时校验来源有效性）
+                const isCurrent = item.status === 'active' && (item.valid_to == null);
                 const combined = (item.key + ' ' + item.value).toLowerCase();
                 const kwHit = keywords.every(kw => combined.includes(kw.toLowerCase()));
-                return kwHit || aliasIds.includes(item.id);
+                return isCurrent && (kwHit || aliasIds.includes(item.id));
             }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             let startIndex = 0;
             if (cursor) { const idx = matched.findIndex(i => i.id === cursor); if (idx !== -1) startIndex = idx + 1; }
