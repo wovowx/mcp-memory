@@ -72,6 +72,8 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 
 记忆口诀：**先场景 → 再 skill → 最后工具。绝不在没读 skill 前直接乱调工具。**
 
+> 🎯 **工具调用三键自查（lesson已登记 ⚙️/lesson-工具调用构造层污染 · 2026-10-18）**：每次构造工具调用，尤其长参数/长命令时，默念三键齐全——① `params`（含 path/repo/branch 等必需字段）② `tool_name`（外层）③ params 若 JSON 则字段完整。缺 tool_name 或 path 是最高频构造层错误。代码层已由 dispatch_tool 硬拦（缺 tool_name→INVALID_TOOL_NAME/UNKNOWN_TOOL；缺 path→MISSING_REQUIRED_PARAM），但构造时主动自查能更快、不浪费一次调用。
+
 > 🎯 **文件操作三入口（v6.32.6 五层保障）**：创建文件 → github_push（新文件）；修改已有文件 → **github_edit**；删除 → github_delete。github_push 对已有文件一律拒绝（GITHUB_PUSH_EXISTING_FILE），这是系统硬约束不是建议。
 
 # 🔴 执行铁律（2026-09-01 柳柳点醒）
