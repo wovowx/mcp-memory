@@ -57,7 +57,8 @@ tags: ["记忆", "存档", "查询", "记忆管理", "分类"]
 
 ## 怎么存/查（工具用法）
 
-- **新增**：`ziven_mcp:memory(action="remember", key="分类/标题", value="内容")`
+- **新增**：`ziven_mcp:memory(action="remember", key="分类/标题", value="内容")`（底层写入 memories 表）
+- **type 字段（读写时机 · 2026-10-18 增）**：新写记忆按内容设 `type`——fact(事实/记录)/quote(柳柳原话)/inference(推断)/agreement(规则约定)。写入时在 value 内标注 type，或明确该记忆的性质；不确定默认 `agreement`（防误当事实）。检索结果显示 `[type]` 元数据可自查。
 - **更新**：`action="update", key=..., value=...`
 - **重命名/迁移**：`action="rename", old_key=..., new_key=...`
 - **查单条**：`get_memory_by_title(title="分类/标题")` 或 `ziven_mcp:memory(action="recall", key=...)`
