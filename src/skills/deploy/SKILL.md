@@ -77,6 +77,7 @@ merge 成功
 
 **详细步骤**：
 
+0. **merge 后先确证真合并（lesson-PR合并误报须确证 · 2026-10-18）**：`github_merge_to_main` 在 dev 分叉/冲突时可能虚报「已合并」（PR#250 实际 open/dirty）。合并后必须先 `github_get_pull_request(pull_number)` 确证 `Merged:true` 才算数；`Merged:false` → 主动查冲突 → 关掉脏 PR → sync dev 到 main 干净 → 重新 apply 改动 → 重新发 PR。确证后才进 step 1。
 1. **merge 后立即**：`sleep` 45s（Cloudflare append 需要时间）。
 2. **验证**：`cloudflare_deploy_status(verify_main=true, repo=wovowx/mcp-memory)`。
    - `VERIFIED` → 收尾，进第 7 步。
