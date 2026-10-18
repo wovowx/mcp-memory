@@ -84,6 +84,11 @@ export default {
                 if (body && Object.prototype.hasOwnProperty.call(body, 'history_disabled')) {
                     options.history_disabled = !!body.history_disabled;
                 }
+                // v6.35.5 (2026-10-18柳柳拍板+搜索验证)：支持可选 timeoutMs —— 长问题(需思考>30s)默认30s超时砍断，
+                // 显式传 timeoutMs 透传给 callChat2Api（其 v5 已支持 options.timeoutMs），默认仍 30s，只有显式传才变大
+                if (body && Number.isInteger(body?.timeoutMs) && body.timeoutMs > 0) {
+                    options.timeoutMs = body.timeoutMs;
+                }
                 const result = await callChat2Api(env, prompt, options);
                 return jsonResponse({ ok: true, reply: result.content, conversation_id: result.conversation_id }, 200);
             } catch (e) {
