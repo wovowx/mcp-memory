@@ -55,16 +55,28 @@ function isKnownToolName(name) {
     if (name.startsWith('database_')) return true;                // handleDatabaseTool
     if (name.startsWith('category_')) return true;                // handleCategoryTool
     if (name.startsWith('skill_')) return true;                   // handleSkillManagement
-    return false;
+    return null;                                                  // null=前缀未匹配，需查注册表
 }
-
-function dispatchGuard(name, args) {
+// v6.35.7 (2026-10-18)：修复——前缀未匹配的工具（如 cloudflare_deploy_status/deploy/chat2api 等
+// 走 skills 表动态注册的合法 ziven_mcp 工具）会被误判为 UNKNOWN_TOOL。改为查 getCachedSkills 注册表兜底，
+// 与现有懒注册逻辑一致；只有连注册表都没有才真拒绝。验证难度前置，防误伤。
+async function isKnownTool(env, name) {
+    const prefix = isKnownToolName(name);
+    if (prefix === true) return true;
+    if (prefix === false) return false;
+    try {
+        const skills = await getCachedSkills(env);
+        return Array.isArray(skills) && skills.some(s => s && s.name === name);
+    } catch (e) { return false; }
+}
+// v6.35.7：dispatchGuard 改 async + 接收 env，前缀未匹配查注册表兜底
+async function dispatchGuard(env, name, args) {
     // 1. 调用信封校验
     if (!name || typeof name !== 'string') {
         return { allowed: false, code: 'INVALID_TOOL_NAME', reason: 'tool 调用缺少有效 name（可能 tool_name 丢失/污染）', expected: 'name 必须是非空字符串' };
     }
-    // 2. 工具注册校验
-    if (!isKnownToolName(name)) {
+    // 2. 工具注册校验（前缀 + 注册表兜底）
+    if (!(await isKnownTool(env, name))) {
         return { allowed: false, code: 'UNKNOWN_TOOL', reason: '未知工具: ' + name, expected: 'name 必须在已注册工具集合内' };
     }
     // 参数信封校验：arguments 必须为对象（可选增强，先最小）
@@ -213,8 +225,8 @@ export async function handleMCPRequest(body, env) {
     if (method === 'tools/call') {
         const { name, arguments: args } = params || {};
         const safeArgs = args || {};
-        // dispatch_tool 网关：执行前硬门禁（P0 · 2026-10-18）
-        const guard = dispatchGuard(name, safeArgs);
+        // dispatch_tool 网关：执行前硬门禁（P0 · 2026-10-18，v6.35.7 async+注册表兜底）
+        const guard = await dispatchGuard(env, name, safeArgs);
         if (!guard.allowed) {
             return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'DISPATCH_GUARD_REJECT: [' + guard.code + '] ' + guard.reason + ' Expected: ' + guard.expected }] } } };
         }
