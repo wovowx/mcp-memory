@@ -110,6 +110,22 @@ export async function handleMemoryTool(name, safeArgs, env) {
             }
         }
     }
+    else if (action === 'history') {
+        if (!safeArgs.key) text = '❌ 缺少参数：需要 key';
+        else {
+            const m = await getMemoryByKey(env, safeArgs.key);
+            if (!m) text = '❌ 没有找到 "' + safeArgs.key + '"';
+            else {
+                try {
+                    const hh = { 'Authorization': 'Bearer ' + env.SUPABASE_ANON_KEY, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+                    const resp = await fetch(env.SUPABASE_URL + '/rest/v1/memory_events?memory_id=eq.' + m.id + '&select=*&order=created_at.asc', { headers: hh });
+                    const evs = await resp.json();
+                    if (!Array.isArray(evs) || evs.length === 0) text = '💡 ' + safeArgs.key + '（当前 v' + (m.version || 1) + '，暂无历史版本）';
+                    else text = '📜 ' + safeArgs.key + ' 历史版本（当前 v' + (m.version || 1) + '，共 ' + evs.length + ' 次更新）：\n' + evs.map(function (e) { return '- [v' + e.version + '] ' + formatTime(e.created_at) + ' ' + (e.reason || 'update') + '：' + String(e.old_value || '').substring(0, 80); }).join('\n') + '\n💡 当前值：' + String(m.value || '').substring(0, 120);
+                } catch (e) { text = '❌ 查历史失败：' + e.message; }
+            }
+        }
+    }
     else if (action === 'update') {
         if (!safeArgs.key || !safeArgs.value) text = '❌ 缺少参数：需要 key 和 value';
         else {
