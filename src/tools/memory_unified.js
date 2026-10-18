@@ -56,9 +56,12 @@ async function putMemory(env, key, data) {
 }
 
 async function deleteMemory(env, key) {
-    await fetch(`${env.SUPABASE_URL}/rest/v1/memories?key=eq.${encodeURIComponent(key)}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
+    // v6.38.2 软删修复：因 memory_events 为 append-only(禁 UPDATE/DELETE)，memories 物理 DELETE 会触发清理链被拒→整个删除回滚(forget假成功bug)。
+    // 改为 UPDATE status='deleted'+valid_to=now() 软删：getMemoryByKey 过滤 status=active 自动隐藏 deleted 行，且删除留痕(合双时间轴/抗污染设计)。
+    await fetch(`${env.SUPABASE_URL}/rest/v1/memories?key=eq.${encodeURIComponent(key)}&status=eq.active`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'deleted', valid_to: new Date().toISOString(), updated_at: new Date().toISOString() })
     });
 }
 
