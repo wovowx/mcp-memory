@@ -69,7 +69,23 @@ async function isKnownTool(env, name) {
         return Array.isArray(skills) && skills.some(s => s && s.name === name);
     } catch (e) { return false; }
 }
+// v6.35.8 (2026-10-18)：从工具注册表取 input_schema（含 required）。
+// 对齐"踩肩+不重复造"：直接复用 skills 表/GITHUB_TOOL_DEFS 已有的参数契约，不自己定义。
+// 返回 null=查不到 schema（这种情况走信封校验放行，不误伤无 schema 的工具）。
+async function getToolSchema(env, name) {
+    // 前缀族直连工具——它们的 input_schema 在 GITHUB_TOOL_DEFS / skills 表
+    try {
+        const skills = await getCachedSkills(env);
+        const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
+        if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
+            return skill.input_schema;
+        }
+    } catch (e) { /* 查不到用信封校验兜底 */ }
+    return null;
+}
 // v6.35.7：dispatchGuard 改 async + 接收 env，前缀未匹配查注册表兜底
+// v6.35.8：加参数 schema 校验——input_schema.required 里的字段缺一个都拒（定稿验收#1），
+//   这是真正拦"漏 path/tool_name/必需参数"这类构造层污染的硬约束，不只信封层面。
 async function dispatchGuard(env, name, args) {
     // 1. 调用信封校验
     if (!name || typeof name !== 'string') {
@@ -82,6 +98,18 @@ async function dispatchGuard(env, name, args) {
     // 参数信封校验：arguments 必须为对象（可选增强，先最小）
     if (args !== undefined && args !== null && typeof args !== 'object') {
         return { allowed: false, code: 'INVALID_ARGS', reason: 'arguments 必须是对象', expected: 'arguments 为 JSON 对象' };
+    }
+    // 3. 参数 schema 校验（v6.35.8）：required 字段缺一个都拒（若该工具有规范 schema）
+    const schema = await getToolSchema(env, name);
+    if (schema && Array.isArray(schema.required) && schema.required.length > 0) {
+        const missing = schema.required.filter(req => {
+            // args 缺字段 或 值为空字符串/undefined/null 都算"未提供"
+            const v = args?.[req];
+            return v === undefined || v === null || v === '';
+        });
+        if (missing.length > 0) {
+            return { allowed: false, code: 'MISSING_REQUIRED_PARAM', reason: '缺少必需参数: ' + missing.join(', '), expected: '必填: ' + schema.required.join(', ') };
+        }
     }
     return { allowed: true };
 }
