@@ -32,6 +32,48 @@ const handlerMap = {
     'cf_proxy': handleCfProxyTool
 };
 
+// ============================================================
+// dispatch_tool 网关（P0 · 2026-10-18 Ziven×GPT 讨论 + 业内踩肩）
+// 职责：执行前硬门禁——调用信封校验 + 工具注册校验
+// 现状（本文件第4行）：只做 dispatch，不做 permission/audit → 这里补第一道缝。
+// 原则（GPT 确认）：让非法调用无法执行，不靠 Agent 自觉。
+// 最小切片只做两件事（可扩展，后续加 schema/角色权限/副作用策略）：
+//   1. 调用信封校验：name 必须为非空字符串
+//   2. 工具注册校验：name 必须在已知工具集合内（handlerMap + 动态前缀 + create_patch_proposal），未知拒
+// 校验不通过 → 执行前返回结构化错误，绝不进入 handler。
+// ============================================================
+const KNOWN_HANDLERS = new Set(Object.keys(handlerMap));
+
+function isKnownToolName(name) {
+    if (!name || typeof name !== 'string') return false;
+    if (KNOWN_HANDLERS.has(name)) return true;                    // handlerMap 直连工具
+    if (name === 'create_patch_proposal') return true;            // 专门 handler
+    // 动态注册的前缀族（其余走 skills 表懒注册）
+    if (name.startsWith('github_')) return true;                  // handleGitHubTool
+    if (name.startsWith('supabase_')) return true;                // handleDatabaseTool
+    if (name.startsWith('memory_')) return true;                  // handleMemoryTool
+    if (name.startsWith('database_')) return true;                // handleDatabaseTool
+    if (name.startsWith('category_')) return true;                // handleCategoryTool
+    if (name.startsWith('skill_')) return true;                   // handleSkillManagement
+    return false;
+}
+
+function dispatchGuard(name, args) {
+    // 1. 调用信封校验
+    if (!name || typeof name !== 'string') {
+        return { allowed: false, code: 'INVALID_TOOL_NAME', reason: 'tool 调用缺少有效 name（可能 tool_name 丢失/污染）', expected: 'name 必须是非空字符串' };
+    }
+    // 2. 工具注册校验
+    if (!isKnownToolName(name)) {
+        return { allowed: false, code: 'UNKNOWN_TOOL', reason: '未知工具: ' + name, expected: 'name 必须在已注册工具集合内' };
+    }
+    // 参数信封校验：arguments 必须为对象（可选增强，先最小）
+    if (args !== undefined && args !== null && typeof args !== 'object') {
+        return { allowed: false, code: 'INVALID_ARGS', reason: 'arguments 必须是对象', expected: 'arguments 为 JSON 对象' };
+    }
+    return { allowed: true };
+}
+
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2024-11-05', '2025-03-26'];
 const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 const skillCache = new Map();
@@ -171,6 +213,11 @@ export async function handleMCPRequest(body, env) {
     if (method === 'tools/call') {
         const { name, arguments: args } = params || {};
         const safeArgs = args || {};
+        // dispatch_tool 网关：执行前硬门禁（P0 · 2026-10-18）
+        const guard = dispatchGuard(name, safeArgs);
+        if (!guard.allowed) {
+            return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'DISPATCH_GUARD_REJECT: [' + guard.code + '] ' + guard.reason + ' Expected: ' + guard.expected }] } } };
+        }
         let text = '';
         try {
             // create_patch_proposal 提前拦截（无论 skills 注册与否）
