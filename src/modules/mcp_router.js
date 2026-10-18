@@ -234,6 +234,12 @@ async function syncChatTools(env) {
     if (changed) await invalidateCache();
 }
 
+async function autoIncrementUsage(env, name) {
+    // v6.38.0 自动使用打点：工具执行成功后分发层自动+1（②自动技能沉淀数据源修复，不再靠 AI 自觉调 increment_usage）
+    if (!name || name === 'increment_usage') return;
+    try { await handleIncrementUsage(name, { name }, env); } catch (e) { /* 静默，不污染回复 */ }
+}
+
 export async function handleMCPRequest(body, env) {
     const { method, params, id } = body || {};
     if (!method) return { ok: false, data: { jsonrpc: '2.0', id: id ?? null, error: { code: -32600, message: 'Invalid Request' } } };
@@ -303,6 +309,8 @@ export async function handleMCPRequest(body, env) {
                 }
             }
         } catch (e) { text = 'err: ' + e.message; }
+        const toolOk = !text.startsWith('err:') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:');
+        if (toolOk) await autoIncrementUsage(env, name);
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
     if (method === 'ping') return { ok: true, data: { jsonrpc: '2.0', id, result: {} } };
