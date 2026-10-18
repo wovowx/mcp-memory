@@ -193,7 +193,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
             const page = matched.slice(startIndex, startIndex + limit);
             const nextCursor = matched.length > startIndex + limit ? page[page.length - 1]?.id : null;
             text = '💡 找到 ' + matched.length + ' 条结果（显示 ' + page.length + ' 条）：\n' +
-                page.map(i => '- [' + getCategory(i.key) + '] ' + highlightText(getTitle(i.key), keywords) + ': ' + highlightText(i.value, keywords) + '\n  💡 ' + formatTime(i.created_at)).join('\n') +
+                page.map(i => '- [' + getCategory(i.key) + '][' + (i.type || 'fact') + '] ' + highlightText(getTitle(i.key), keywords) + ': ' + highlightText(i.value, keywords) + '\n  💡 ' + formatTime(i.created_at)).join('\n') +
                 (nextCursor ? '\n\n💡 next_cursor: ' + nextCursor : '');
             await recordSearchKeyword(env, safeArgs.keyword.trim());
         }
