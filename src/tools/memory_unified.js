@@ -30,20 +30,19 @@ async function getAllMemories(env) {
 async function putMemory(env, key, data) {
     const existing = await getMemoryByKey(env, key);
     if (existing) {
-        // v6.37.0 双时间轴激活（柳柳2026-10-18拍板）：旧行归档(valid_to+archived)，新行 version+1/supersedes_id/valid_from
+        // v6.37.1 双时间轴激活·修正（key 唯一约束，不能同 key 拆行存 memories）：
+        // memories 保留当前单行 active（version+1）；被覆盖旧值记入 memory_events 承载历史/可回溯
         const nowTs = now();
-        const baseVersion = existing.version || 1;
+        const oldVersion = existing.version || 1;
+        await fetch(`${env.SUPABASE_URL}/rest/v1/memory_events`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ memory_id: existing.id, event_type: 'update', version: oldVersion, old_value: existing.value, actor: 'agent', reason: 'memory update (version chain)' })
+        });
         await fetch(`${env.SUPABASE_URL}/rest/v1/memories?id=eq.${existing.id}`, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'archived', valid_to: nowTs })
-        });
-        const category = getCategory(key);
-        const title = getTitle(key);
-        await fetch(`${env.SUPABASE_URL}/rest/v1/memories`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key, value: data.value, category, title, created_at: data.created_at || existing.created_at || nowTs, updated_at: data.updated_at || nowTs, version: baseVersion + 1, supersedes_id: existing.id, valid_from: nowTs, status: 'active' })
+            body: JSON.stringify({ value: data.value, version: oldVersion + 1, status: 'active', updated_at: data.updated_at || nowTs })
         });
     } else {
         const category = getCategory(key);
