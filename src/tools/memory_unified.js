@@ -11,7 +11,7 @@ import {
 import { recordSearchKeyword, getSearchSuggestions } from '../utils/search.js';
 
 async function getMemoryByKey(env, key) {
-    const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?key=eq.${encodeURIComponent(key)}&select=*`, {
+    const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?key=eq.${encodeURIComponent(key)}&status=eq.active&select=*`, {
         headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
     });
     if (!resp.ok) return null;
@@ -30,10 +30,20 @@ async function getAllMemories(env) {
 async function putMemory(env, key, data) {
     const existing = await getMemoryByKey(env, key);
     if (existing) {
-        await fetch(`${env.SUPABASE_URL}/rest/v1/memories?key=eq.${encodeURIComponent(key)}`, {
+        // v6.37.0 双时间轴激活（柳柳2026-10-18拍板）：旧行归档(valid_to+archived)，新行 version+1/supersedes_id/valid_from
+        const nowTs = now();
+        const baseVersion = existing.version || 1;
+        await fetch(`${env.SUPABASE_URL}/rest/v1/memories?id=eq.${existing.id}`, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify({ status: 'archived', valid_to: nowTs })
+        });
+        const category = getCategory(key);
+        const title = getTitle(key);
+        await fetch(`${env.SUPABASE_URL}/rest/v1/memories`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, value: data.value, category, title, created_at: data.created_at || existing.created_at || nowTs, updated_at: data.updated_at || nowTs, version: baseVersion + 1, supersedes_id: existing.id, valid_from: nowTs, status: 'active' })
         });
     } else {
         const category = getCategory(key);
@@ -41,7 +51,7 @@ async function putMemory(env, key, data) {
         await fetch(`${env.SUPABASE_URL}/rest/v1/memories`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key, value: data.value, category, title, created_at: data.created_at || now(), updated_at: data.updated_at || now() })
+            body: JSON.stringify({ key, value: data.value, category, title, created_at: data.created_at || now(), updated_at: data.updated_at || now(), version: 1, valid_from: now(), status: 'active' })
         });
     }
 }
