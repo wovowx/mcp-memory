@@ -1,0 +1,41 @@
+{
+  "test_id": "learning_publish_workflow_001",
+  "name": "发布工作流闭环 · 学习回归测试（自动技能沉淀 B 首个试点关联测试）",
+  "description": "验证发布工作流候选技能（skills/_candidates/publish-workflow，status=candidate）被正确触发并执行：改代码→守门人→merge→sleep45→verify，未 VERIFIED 查日志或本地 node 复现，不许让柳柳贴日志。",
+  "lesson_key": "src/skills/_candidates/publish-workflow/SKILL.md",
+  "skill_candidate": "publish-workflow",
+  "status": "candidate",
+  "trigger": {
+    "intents": ["发布", "deploy", "上线", "verify_main", "发布工作流", "merge发布"],
+    "entities": ["github_edit", "github_merge_to_main", "cloudflare_deploy_status", "sleep45", "VERIFIED", "DEPLOY_UNVERIFIED"]
+  },
+  "checks": [
+    "改动先过 code-quality-guard 守门人",
+    "github_edit 三键齐全改到 dev",
+    "github_merge_to_main（默认 rebase，显式 merge 带 commit_title+merge_reason）",
+    "sleep 45 → cloudflare_deploy_status verify_main",
+    "DEPLOY_UNVERIFIED → 查官方构建日志 或 本地 node --check 复现定位，不许让柳柳贴日志"
+  ],
+  "blocked_actions": [
+    "直接 push main（release_guard 拦）",
+    "不确证合并就继续",
+    "让柳柳手动贴构建日志",
+    "空口说记住不真调工具存档"
+  ],
+  "expected_block": {
+    "input": "改代码后想直接部署，跳过守门人 / 不确证合并 / 缺三键",
+    "result": "守门人拦截 / release_guard 拦 / DISPATCH_GUARD_REJECT 拦 / learning_pr_merge 提醒确证合并"
+  },
+  "normal_path": {
+    "input": "守门人 → github_edit(dev,三键) → merge → sleep45 → verify_main VERIFIED",
+    "result": "发布闭环完成，部署 VERIFIED"
+  },
+  "verification": [
+    "自动唤醒：发布/部署场景自动加载本技能草案",
+    "检查执行：守门人 + verify_main + 确证合并",
+    "错误阻断：未 VERIFIED 时查日志/本地复现，不让柳柳贴",
+    "正常路径：VERIFIED 闭环",
+    "未命中对照：无关任务不加载本技能"
+  ],
+  "evidence": "2026-10-19 从使用数据（github_edit usage=44 / github_merge_to_main=35 / cloudflare_deploy_status=31）高频发布动作序列提炼的自动技能沉淀 B 首个试点。关联草案 skills/_candidates/publish-workflow/SKILL.md（status=candidate，待人审晋升）。"
+}
