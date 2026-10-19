@@ -124,6 +124,40 @@ export default {
                 return jsonResponse({ ok: false, error: e.message }, 500);
             }
         }
+        // v6.46.0 (2026-10-19)：Northflank 只读服务查询端点——查服务详情+环境变量名列表（不含值）
+        // 用途：验证 chat2api 服务当前 env 配置（有无 AUTHORIZATION/API_PREFIX），决定能否走直连验证。
+        // token 金钥匙铁律：只在 Worker env 内读，绝不落地/绝不含变量值外传。
+        if (url.pathname === '/api/northflank/service' && request.method === 'GET') {
+            try {
+                const nfToken = env.ZivenNorthflank || env.NORTHFLANK_TOKEN;
+                if (!nfToken) return jsonResponse({ ok: false, error: 'ZivenNorthflank not set in env' }, 500);
+                const project = url.searchParams.get('project') || 'zivenbridge';
+                const service = url.searchParams.get('service') || 'zivenlab';
+                const apiBase = 'https://api.northflank.com/v1';
+                const resp = await fetch(`${apiBase}/projects/${encodeURIComponent(project)}/services/${encodeURIComponent(service)}`, {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + nfToken, 'Content-Type': 'application/json' }
+                });
+                const text = await resp.text();
+                let data = null;
+                try { data = JSON.parse(text); } catch (e) { data = text; }
+                if (!resp.ok) return jsonResponse({ ok: false, status: resp.status, error: 'Northflank service query failed: ' + text }, 502);
+                const result = {
+                    ok: true,
+                    project,
+                    service,
+                    name: data?.service?.name || data?.name || null,
+                    image: data?.service?.image || data?.image || null,
+                    env_names: data?.service?.env
+                        ? Object.keys(data.service.env)
+                        : (data?.env ? Object.keys(data.env) : []),
+                    raw_keys: data && typeof data === 'object' ? Object.keys(data) : []
+                };
+                return jsonResponse(result, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
         // B4 execution session manager（2026-09-08 柳柳拍板）
         // init：领 id + bind + ready（执行 GPT 独立框前置）
         if (url.pathname === '/api/execution/session/init' && request.method === 'POST') {
