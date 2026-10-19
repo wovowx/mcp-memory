@@ -107,7 +107,7 @@ export async function callChat2ApiStream(env, promptOrMessages, options = {}) {
             : false,
         stream: true
     };
-    const response = await fetch(env.CHAT2API_URL, {
+    let response = await fetch(env.CHAT2API_URL, {
         method: 'POST',
         headers: {
             'Authorization': 'Bearer ' + (env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || ''),
@@ -116,6 +116,21 @@ export async function callChat2ApiStream(env, promptOrMessages, options = {}) {
         },
         body: JSON.stringify(body)
     });
+    // v6.48.1: 流式版 429 限流自动降级（与非流式 callChat2Api 一致）——GPT_MODEL(gpt-5.6) 超额时改用默认模型(auto)重试一次
+    if (response.status === 429 && !options?.noFallback) {
+        const fallbackModel = env.GPT_FALLBACK_MODEL || 'auto';
+        console.log('[chat2api:stream] 429 限流，降级模型 ' + fallbackModel + ' 重试一次');
+        const fallbackBody = { ...body, model: fallbackModel };
+        response = await fetch(env.CHAT2API_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + (env.CHATGPT_ACCESS_TOKEN || env.CHAT2API_TOKEN || ''),
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            },
+            body: JSON.stringify(fallbackBody)
+        });
+    }
     if (response.status !== 200 && response.status !== 201) {
         const text = await response.text();
         throw new Error(`chat2api failed ${response.status}: ${text}`);
