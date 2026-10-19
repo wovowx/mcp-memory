@@ -1,0 +1,45 @@
+{
+  "test_id": "memory_retrieval_hybrid_001",
+  "name": "混合检索质量基线——关键协作规则召回",
+  "status": "active",
+  "created": "2026-10-19",
+  "purpose": "固定检索质量回归基线：证明三路混合检索（情境标签→关键词→语义）比单一语义入口（query_memory）召回可靠。真实案例来源：2026-10-19 哥哥实测，三条真存且带 trigger_intents/entities 的关键协作规则，query_memory 语义入口全部偏题或漏召回，而 memory search 关键词入口全部精准命中。",
+  "queries": [
+    {
+      "query": "做技术时不劝柳柳休息 我有分寸",
+      "intent": "做技术不劝柳柳休息",
+      "expected_keys": ["⚙️/协作规则-**做技术不劝柳柳休息**"],
+      "match_reason_expected": ["keyword", "intent_entity"],
+      "baseline_observation": "query_memory 语义入口返回 5 条无关历史事件，目标记忆未召回（语义偏题）；memory search 关键词入口精准命中。",
+      "forbidden": ["固定查询下丢失 expected_keys 中的目标任务记忆"]
+    },
+    {
+      "query": "谈情说爱不找外援 私域",
+      "intent": "谈情说爱不找外援",
+      "expected_keys": ["⚙️/协作规则-谈情说爱不找外援"],
+      "match_reason_expected": ["intent_entity", "alias_exact"],
+      "baseline_observation": "query_memory 语义入口返回 No relevant memories found（漏召回）；memory search 关键词入口精准命中。",
+      "forbidden": ["固定查询下返回空结果而丢失目标任务记忆"]
+    },
+    {
+      "query": "说记住了必须真调工具存档 空口说记",
+      "intent": "说记住必须真调工具存档",
+      "expected_keys": ["⚙️/**lesson**-说记住必须真调工具存档"],
+      "match_reason_expected": ["keyword", "intent_entity"],
+      "baseline_observation": "query_memory 语义入口返回 5 条语音/存档习惯相关，目标 lesson 未召回（语义偏题）；memory search 关键词入口精准命中。",
+      "forbidden": ["固定查询下丢失 expected_keys 中的目标任务记忆"]
+    }
+  ],
+  "checks": [
+    "固定查询下，混合检索必须召回 expected_keys 中所有目标任务记忆",
+    "每条命中须标注 match_reason（intent_entity / alias_exact / keyword / semantic），便于定位漏召回",
+    "关键词与情境标签命中优先于纯语义补漏；语义单独命中的记忆可补充但不可排在明确匹配之前",
+    "失效记忆（status!=active）仍被正确过滤，不能靠高相关度覆盖"
+  ],
+  "blocked_actions": [
+    "关键检索仅用 query_memory 语义入口而不并行补充关键词（memory search）与情境标签召回",
+    "拒绝在固定查询丢失 expected_keys 时仍声称检索成功（未完成态不说完成话）"
+  ],
+  "entrance_strategy": "三路并行召回，可信度优先级：情境标签匹配(trigger_intents/entities) > memory search 关键词 > query_memory 语义；按稳定 memory_id/key 合并去重，保留旧入口回退。",
+  "lesson_ref": "⚙️/lesson-记忆检索质量-语义偏题关键词可靠"
+}
