@@ -151,9 +151,35 @@ export default {
                     env_names: data?.service?.env
                         ? Object.keys(data.service.env)
                         : (data?.env ? Object.keys(data.env) : []),
-                    raw_keys: data && typeof data === 'object' ? Object.keys(data) : []
+                    raw_keys: data && typeof data === 'object' ? Object.keys(data) : [],
+                    summary: data && typeof data === 'object' ? data : null
                 };
                 return jsonResponse(result, 200);
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
+        // v6.46.1 (2026-10-19)：Northflank 服务列表——service 空时返回项目下所有服务名与 id
+        if (url.pathname === '/api/northflank/services' && request.method === 'GET') {
+            try {
+                const nfToken = env.ZivenNorthflank || env.NORTHFLANK_TOKEN;
+                if (!nfToken) return jsonResponse({ ok: false, error: 'ZivenNorthflank not set in env' }, 500);
+                const project = url.searchParams.get('project') || 'zivenbridge';
+                const apiBase = 'https://api.northflank.com/v1';
+                const resp = await fetch(`${apiBase}/projects/${encodeURIComponent(project)}/services`, {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + nfToken, 'Content-Type': 'application/json' }
+                });
+                const text = await resp.text();
+                let data = null;
+                try { data = JSON.parse(text); } catch (e) { data = text; }
+                if (!resp.ok) return jsonResponse({ ok: false, status: resp.status, error: 'Northflank services list failed: ' + text }, 502);
+                const items = data?.data?.services || data?.services || data?.data || [];
+                const list = (Array.isArray(items) ? items : []).map(s => ({
+                    id: s?.id || s?.name || null,
+                    name: s?.name || null
+                }));
+                return jsonResponse({ ok: true, project, count: list.length, services: list, raw_keys: Array.isArray(data) ? ['array'] : (data && typeof data === 'object' ? Object.keys(data) : []) }, 200);
             } catch (e) {
                 return jsonResponse({ ok: false, error: e.message }, 500);
             }
