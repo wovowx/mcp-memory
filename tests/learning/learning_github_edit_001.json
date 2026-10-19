@@ -1,0 +1,35 @@
+{
+  "test_id": "learning_github_edit_001",
+  "name": "github_edit 嵌套插入致 SyntaxError · 学习回归测试（持续学习引擎 MVP 第二种错误）",
+  "description": "验证「github_edit 往函数内 return 后插入新函数必须含闭合 }」教训被自动加载并转化为可执行检查，阻止构建失败。MVP 第二种错误的复制：复用 learning_toolcheck_001 模板。",
+  "lesson_key": "⚙️/**lesson**-github_edit嵌套插入致SyntaxError",
+  "status": "active",
+  "trigger": {
+    "intents": ["github_edit", "嵌套插入", "新建函数", "函数内部", "SyntaxError", "export非顶层", "构建失败", "部署失败", "DEPLOY_UNVERIFIED"],
+    "entities": ["github_edit", "callChat2ApiStream", "export", "SyntaxError", "return", "闭合大括号", "node --check"]
+  },
+  "checks": [
+    "往函数内 return 后插入新函数时，old 锚点必须含闭合 }",
+    "改动后先本地 node --check --input-type=module 验证再 merge",
+    "确认新函数是顶层（export 不在任何函数内部）"
+  ],
+  "blocked_actions": [
+    "在函数 return 后未含闭合 } 就插入新函数（导致嵌套，export 非顶层）"
+  ],
+  "expected_block": {
+    "input": "github_edit 在 callChat2Api 的 return{...}; 后插入 callChat2ApiStream（old 锚点不含闭合 }）",
+    "result": "export 非顶层 → SyntaxError: Unexpected token 'export' → 构建失败 DEPLOY_UNVERIFIED"
+  },
+  "normal_path": {
+    "input": "old 锚点含闭合 } + node --check 验证通过 + merge",
+    "result": "部署 VERIFIED"
+  },
+  "verification": [
+    "自动唤醒：同类任务（用 github_edit 改代码/插函数）无需提醒自动加载本教训",
+    "检查执行：改完先 node --check 本地验证",
+    "错误阻断：old 锚点不含闭合 } 的插入 → 预先识别并修正（2026-10-19 v6.48.0 曾犯，构建失败告警）",
+    "正常路径：含闭合 } + node 验证通过 → merge 部署 VERIFIED",
+    "未命中对照：无关任务（非 github_edit）不加载本教训"
+  ],
+  "evidence": "2026-10-19 v6.48.0 哥哥用 github_edit 把 callChat2ApiStream 插入 callChat2Api 函数内部（old 锚点只到 return{...}; 未含闭合 }）→ export 非顶层 → SyntaxError: Unexpected token 'export' → Cloudflare 构建失败 DEPLOY_UNVERIFIED。修复：node --check 本地定位 → 补回闭合 } + 删末尾多余 } → v6.48.1 merge 部署 VERIFIED。完整细节存 ⚙️/lesson-流式端点根治与修复要点。"
+}
