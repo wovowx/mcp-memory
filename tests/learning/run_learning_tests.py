@@ -6,7 +6,7 @@
 import glob, json, sys, re
 
 REQUIRED = ['test_id', 'name', 'lesson_key', 'status', 'trigger', 'checks', 'blocked_actions', 'verification']
-VALID_STATUS = {'active', 'superseded', 'revoked'}
+VALID_STATUS = {'active', 'superseded', 'revoked', 'candidate'}  # candidate=候选技能待晋升
 ID_RE = re.compile(r'^learning_[a-z0-9_]+_\d{3}$')
 
 errors = []
