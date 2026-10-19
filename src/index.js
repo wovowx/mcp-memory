@@ -99,6 +99,7 @@ export default {
         // 读取柳柳已存入 Worker env 的 NORTHFLANK_TOKEN（金钥匙铁律：只进 env，绝不写 wrangler.toml）。
         // 用法：POST /api/northflank/restart，body 可带 {project?, service?}（默认 zivenbridge/zivenlab）。
         // 哥哥以后换节点/节点炸后带 UA 调此端点一键重启，本地/对话不碰 token。
+        // v6.41.4: GET 健康自检（不重启，只确认端点可读 env.ZivenNorthflank 配置）
         if (url.pathname === '/api/northflank/restart' && request.method === 'POST') {
             try {
                 const nfToken = env.ZivenNorthflank || env.NORTHFLANK_TOKEN;
