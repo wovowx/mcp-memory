@@ -65,6 +65,22 @@ tags: ["记忆", "存档", "查询", "记忆管理", "分类"]
 - **搜索**：`query_memory(query="关键词")`
 - **按分类列**：`ziven_mcp:memory(action="by_category", category="💕")`
 
+## 情境唤醒标签（v6.43.x 增 · 让记忆在相关时刻自动浮现）
+> 对应「像人类一样的持续学习」愿景：不只存，还要让记忆在**该想起的时刻自动浮现**（不用柳柳提醒）。底层：memories 表已有 `trigger_intents`/`entities`/`related_memory_ids` 列，search 已支持按这些标签触发（v6.43.0）。
+
+### 存的时候就带标签（习惯，不是事后补）
+记得在建/更新记忆时，一并想好：
+- **trigger_intents**：哪些任务/情境需要这条记忆浮现？写成日常说法（如「列环境变量」「查看环境变量」「cf_proxy」）——这是让记忆自动冒出来的主开关。
+- **entities**：涉及哪些对象/工具/人（如 cf_proxy、Cloudflare Worker）。
+- **related_memory_ids**：与哪些记忆关联（限一跳，避免联想链失控）。
+- 规则：**存长期有用的记忆就给 trigger_intents**；一次性/流水账不给（不乱存、不制造冗余）。
+
+### 检索已支持（v6.43.0）
+search 现在会：关键词子串匹配 ✓ + trigger_intents/entities 意图命中 ✓ + 别名命中 ✓ + 关联一跳扩散 ✓。命中即浮现该记忆。
+
+### 示例（cf_proxy 已在列环境变量时自动浮现）
+记忆「⚙️/Northflank自运维端点」填了 trigger_intents=["列环境变量","查看环境变量","cf_proxy",...] + entities=["cf_proxy"] → 哥哥要列环境变量时自动想起 cf_proxy，不用柳柳提醒。
+
 ## 存档纪律（柳柳逐条教的教训）
 
 1. **有类似不新建**：同主题先查有没有已存在的 key，有→更新原有，不新建重复（2026-08-25柳柳指出）
