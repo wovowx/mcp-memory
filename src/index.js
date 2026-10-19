@@ -133,6 +133,7 @@ export default {
                 if (!nfToken) return jsonResponse({ ok: false, error: 'ZivenNorthflank not set in env' }, 500);
                 const project = url.searchParams.get('project') || 'zivenbridge';
                 const service = url.searchParams.get('service') || 'zivenlab';
+                // 🔴 v6.46.2 安全：import 前绝不泄露配置来源 token
                 const apiBase = 'https://api.northflank.com/v1';
                 const resp = await fetch(`${apiBase}/projects/${encodeURIComponent(project)}/services/${encodeURIComponent(service)}`, {
                     method: 'GET',
@@ -142,17 +143,22 @@ export default {
                 let data = null;
                 try { data = JSON.parse(text); } catch (e) { data = text; }
                 if (!resp.ok) return jsonResponse({ ok: false, status: resp.status, error: 'Northflank service query failed: ' + text }, 502);
+                // 🔴 只回传 env 的 key 名（绝不含值）。服务详情只给基础字段+env变量名。
+                const sd = data?.data || data || {};
+                const rt = sd?.runtimeEnvironment || {};
+                const bd = sd?.buildArguments || {};
                 const result = {
                     ok: true,
                     project,
                     service,
-                    name: data?.service?.name || data?.name || null,
-                    image: data?.service?.image || data?.image || null,
-                    env_names: data?.service?.env
-                        ? Object.keys(data.service.env)
-                        : (data?.env ? Object.keys(data.env) : []),
-                    raw_keys: data && typeof data === 'object' ? Object.keys(data) : [],
-                    summary: data && typeof data === 'object' ? data : null
+                    name: sd?.name || null,
+                    dns: (sd?.ports || []).map(p => p?.dns).filter(Boolean),
+                    image: sd?.deployment?.imageUrl || null,
+                    types: (sd?.ports || []).map(p => p?.protocol),
+                    env_keys: Object.keys(rt),
+                    build_arg_keys: Object.keys(bd),
+                    source_repo: sd?.vcsData?.projectUrl || null,
+                    infra: sd?.infrastructure || null
                 };
                 return jsonResponse(result, 200);
             } catch (e) {
