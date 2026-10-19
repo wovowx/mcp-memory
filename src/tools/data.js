@@ -2,55 +2,8 @@
 // 数据导入/导出工具（Supabase 版）
 // ============================================================
 import { getCategory, getTitle, formatTime, generateId, now } from '../utils/helpers.js';
+import { getMemoryByKey, getAllMemories, putMemory } from './memory_unified.js';
 
-async function getMemoryByKey(env, key) {
-    const supabaseUrl = env.SUPABASE_URL;
-    const supabaseKey = env.SUPABASE_ANON_KEY;
-    const resp = await fetch(`${supabaseUrl}/rest/v1/memories?key=eq.${encodeURIComponent(key)}&select=*`, {
-        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
-    });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    return data && data.length > 0 ? data[0] : null;
-}
-async function putMemory(env, key, data) {
-    const supabaseUrl = env.SUPABASE_URL;
-    const supabaseKey = env.SUPABASE_ANON_KEY;
-    const existing = await getMemoryByKey(env, key);
-    if (existing) {
-        await fetch(`${supabaseUrl}/rest/v1/memories?key=eq.${encodeURIComponent(key)}`, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
-    } else {
-        const category = getCategory(key);
-        const title = getTitle(key);
-        await fetch(`${supabaseUrl}/rest/v1/memories`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                key: key, value: data.value, category: category, title: title,
-                created_at: data.created_at || now(), updated_at: data.updated_at || now()
-            })
-        });
-    }
-}
-async function getAllMemories(env) {
-    const supabaseUrl = env.SUPABASE_URL;
-    const supabaseKey = env.SUPABASE_ANON_KEY;
-    const resp = await fetch(`${supabaseUrl}/rest/v1/memories?select=*`, {
-        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
-    });
-    if (!resp.ok) return [];
-    return await resp.json();
-}
 
 export async function handleDataTool(name, safeArgs, env) {
     let text = '';
@@ -84,10 +37,12 @@ export async function handleDataTool(name, safeArgs, env) {
     } else if (name === 'export') {
         const format = (safeArgs.format || 'json').toLowerCase();
         const all = await getAllMemories(env);
-        if (all.length === 0) {
+        // 只导出当前有效记录（软删除的 status=deleted 不导出）
+        const active = Array.isArray(all) ? all.filter(i => i.status === 'active' && (i.valid_to == null)) : [];
+        if (active.length === 0) {
             text = '💡 暂无记忆可导出';
         } else {
-            const items = all.map(item => ({ key: item.key, value: item.value, created_at: item.created_at, updated_at: item.updated_at }));
+            const items = active.map(item => ({ key: item.key, value: item.value, created_at: item.created_at, updated_at: item.updated_at }));
             if (format === 'text') {
                 let lines = '💡 记忆导出（共 ' + items.length + ' 条）：\n\n';
                 for (const item of items) {
