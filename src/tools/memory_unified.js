@@ -209,13 +209,35 @@ export async function handleMemoryTool(name, safeArgs, env) {
                 headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
             });
             const aliasIds = aliasResp.ok ? (await aliasResp.json()).map(a => a.memory_id) : [];
-            const matched = (await getAllMemories(env)).filter(item => {
-                // 当前有效判定：只检索 status='active' AND valid_to IS NULL（运行时校验来源有效性）
+            const matchedRaw = (await getAllMemories(env)).filter(item => {
+                // 当前有效判定：只检索 status='active' AND valid_to IS NULL
                 const isCurrent = item.status === 'active' && (item.valid_to == null);
                 const combined = (item.key + ' ' + item.value).toLowerCase();
                 const kwHit = keywords.every(kw => combined.includes(kw.toLowerCase()));
-                return isCurrent && (kwHit || aliasIds.includes(item.id));
-            }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                // v6.43.0 情境唤醒：关键词命中 或 trigger_intents/entities 意图标签命中 或 别名命中
+                const trigArr = item.trigger_intents || [];
+                const entArr = item.entities || [];
+                const kwLow = safeArgs.keyword.trim().toLowerCase();
+                const ctxHit = (Array.isArray(trigArr) && trigArr.some(t => String(t).toLowerCase().includes(kwLow))) ||
+                               (Array.isArray(entArr) && entArr.some(e => String(e).toLowerCase() === kwLow));
+                return isCurrent && (kwHit || ctxHit || aliasIds.includes(item.id));
+            });
+            // 一跳关联扩散：命中记忆的 related_memory_ids 也带入（限一跳，防联想链失控）
+            const matchedIds = new Set(matchedRaw.map(i => i.id));
+            const allMem = await getAllMemories(env);
+            const relatedAdded = [];
+            for (const hit of matchedRaw) {
+                const relIds = hit.related_memory_ids || [];
+                if (Array.isArray(relIds)) {
+                    for (const rid of relIds) {
+                        if (!matchedIds.has(rid)) {
+                            const rel = allMem.find(m => m.id === rid && m.status === 'active' && (m.valid_to == null));
+                            if (rel) { relatedAdded.push(rel); matchedIds.add(rid); }
+                        }
+                    }
+                }
+            }
+            const matched = matchedRaw.concat(relatedAdded).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             let startIndex = 0;
             if (cursor) { const idx = matched.findIndex(i => i.id === cursor); if (idx !== -1) startIndex = idx + 1; }
             const page = matched.slice(startIndex, startIndex + limit);
