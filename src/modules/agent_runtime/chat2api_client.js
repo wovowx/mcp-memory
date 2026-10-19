@@ -86,6 +86,7 @@ export async function callChat2Api(env, promptOrMessages, options = {}) {
         conversation_id: data.conversation_id || null,
         raw: data
     };
+}
 
 // v6.48.0 (2026-10-19 柳柳拍板)：chat2api 流式透传版——治 524。
 // 原理：chat2api 真流式（快速返 SSE 头 + 持续流 token）。此版不 await response.text()，
@@ -120,5 +121,4 @@ export async function callChat2ApiStream(env, promptOrMessages, options = {}) {
         throw new Error(`chat2api failed ${response.status}: ${text}`);
     }
     return response; // 2xx：返回 upstream Response（含 SSE body 流）
-}
 }
