@@ -24,7 +24,7 @@ import { getEnabledSkills } from './utils/skills.js';
 import { handleChatRequest } from './tools/chat.js';
 import { handleChatWebhook } from './tools/chat_webhook.js';
 import { processPendingEvents } from './modules/agent_runtime/event_processor.js';
-import { callChat2Api } from './modules/agent_runtime/chat2api_client.js';
+import { callChat2Api, callChat2ApiStream } from './modules/agent_runtime/chat2api_client.js';
 import { watchdogSweep } from './modules/agent_runtime/watchdog.js';
 import { dispatchZivenWake } from './modules/agent_runtime/ziven_wake_dispatcher.js';
 import { resolveAgentContext } from './modules/agent_runtime/context_resolver.js'; // M1.2 debug
@@ -93,6 +93,34 @@ export default {
                 return jsonResponse({ ok: true, reply: result.content, conversation_id: result.conversation_id }, 200);
             } catch (e) {
                 return jsonResponse({ ok: false, error: e.message }, 500);
+            }
+        }
+        // v6.48.0 (2026-10-19 柳柳拍板)：chat2api 流式透传端点——治 524 根因。
+        // 原理：chat2api 真流式（快速返 SSE 头+持续流 token）；本端点不 await text()，
+        // 直接透传 upstream 流，worker 拿到流头即返回退出，CF 边缘接管传流 → 突破 30s wall-clock。
+        // 返回 text/event-stream（SSE）。conversation_id 由客户端从流事件的 data 里取（chat2api 会在流里带）。
+        // ⚠️ 保护现有 /ask：本端点独立新增，不改原非流式路径，可回滚。
+        if (url.pathname === '/api/chat2api/ask/stream' && request.method === 'POST') {
+            try {
+                const body = await request.json();
+                const prompt = body?.message || '';
+                if (!prompt) return jsonResponse({ ok: false, error: 'missing message' }, 400);
+                const options = {};
+                if (body && Object.prototype.hasOwnProperty.call(body, 'conversation_id')) options.conversation_id = body.conversation_id;
+                if (body && Object.prototype.hasOwnProperty.call(body, 'history_disabled')) options.history_disabled = !!body.history_disabled;
+                const upstream = await callChat2ApiStream(env, prompt, options);
+                return new Response(upstream.body, {
+                    status: upstream.status,
+                    headers: {
+                        'Content-Type': 'text/event-stream',
+                        'Cache-Control': 'no-cache, no-transform',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Expose-Headers': 'Content-Type',
+                        'X-Accel-Buffering': 'no'
+                    }
+                });
+            } catch (e) {
+                return jsonResponse({ ok: false, error: e.message }, 502);
             }
         }
         // v6.40.0 (2026-10-19 柳柳拍板)：Northflank 自运维端点——重启 ZivenLab 服务。
