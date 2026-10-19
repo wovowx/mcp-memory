@@ -10,7 +10,7 @@ import {
 } from '../utils/helpers.js';
 import { recordSearchKeyword, getSearchSuggestions } from '../utils/search.js';
 
-async function getMemoryByKey(env, key) {
+export async function getMemoryByKey(env, key) {
     const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?key=eq.${encodeURIComponent(key)}&status=eq.active&select=*`, {
         headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
     });
@@ -19,7 +19,7 @@ async function getMemoryByKey(env, key) {
     return data && data.length > 0 ? data[0] : null;
 }
 
-async function getAllMemories(env) {
+export async function getAllMemories(env) {
     const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?select=*`, {
         headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
     });
@@ -27,7 +27,7 @@ async function getAllMemories(env) {
     return await resp.json();
 }
 
-async function putMemory(env, key, data) {
+export async function putMemory(env, key, data) {
     const existing = await getMemoryByKey(env, key);
     if (existing) {
         // v6.37.1 双时间轴激活·修正（key 唯一约束，不能同 key 拆行存 memories）：
