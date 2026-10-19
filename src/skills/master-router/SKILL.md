@@ -59,6 +59,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 | 存文件/整理分类/归档 | file-management | create_file/move/… |
 | 推 main / 部署 / 改代码 | deploy | github_* / supabase_db |
 | **改代码 / 创建文件 / 提交合并（质量闸门）** | **code-quality-guard** | 先过此闸门再 deploy |
+| **改代码要发布/部署后闭环验证** | **publish-workflow** | code-quality-guard → github_edit(dev,三键) → merge → sleep45 → verify_main |
 | **修改已有文件（改文档/改代码/更新内容）** | github-use-guide | **github_edit**（读→改→写回一次完成；v6.32.5+） |
 | **创建新文件（推新文件）** | github-use-guide | **github_push**（仅新文件；已有文件会被拒） |
 | 日常 GitHub 操作 | github-use-guide | github_* |
