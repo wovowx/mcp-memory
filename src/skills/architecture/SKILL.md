@@ -92,7 +92,7 @@ tags: ["架构", "路由", "技能系统", "GitHub", "部署", "场景skill", "�
 | 知识型 | knowledge | Supabase description | 简单规则 |
 
 **改完 MCP 工具注册（v6.3 起自动化）**：
-- **v6.3 起**：github.js 的 **GITHUB_TOOL_DEFS**（name/description/input_schema/handler）是唯一真相源；index.js passive 同步在调用时自动补注册，github_auto_sync 可主动同步；部署后无需手动 insert
+- **v6.3 起**：github_v64.js 的 **GITHUB_TOOL_DEFS**（name/description/input_schema/handler）是唯一真相源；index.js passive 同步在调用时自动补注册，github_auto_sync 可主动同步；部署后无需手动 insert
 - 仍建议注册时序「先注册→再推代码→再部署」保底（部署前手动注册，部署后自动注册兜底）
 - handler_config.handler 与 index.js 的 handlerMap 对应；验证：help() 能查到新工具
 
