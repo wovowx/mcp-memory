@@ -64,12 +64,8 @@ function normalize(value) {
 // ============================================================
 async function tryAutoSyncDev(baseUrl, ghHeaders) {
     try {
-        const cmpResp = await fetch(`${baseUrl}/compare/main...dev`, { headers: ghHeaders });
-        if (!cmpResp.ok) return '⚠️ 自动同步 dev 失败：无法对比分支';
-        const cmp = await cmpResp.json();
-        if (cmp.ahead_by > 0) {
-            return '⚠️ 检测到 dev 仍有未合入 main 的改动（ahead_by=' + cmp.ahead_by + '），未自动同步，请先处理。';
-        }
+        // v6.41.3 根治假分叉（2026-10-19 柳柳拍板）：写入 router 实际加载的 github_v64.js。
+        // 合并成功后源分支(dev)的改动已全部并入 main，直接 force 同步到 main（rebase 合并生成新 hash 会让 compare 误报 ahead_by>0，旧代码因此跳过快进→假分叉）。
         const refResp = await fetch(`${baseUrl}/git/ref/heads/main`, { headers: ghHeaders });
         if (!refResp.ok) return '⚠️ 自动同步 dev 失败：取 main SHA 出错';
         const refData = await refResp.json();
