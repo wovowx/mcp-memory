@@ -1,0 +1,37 @@
+{
+  "test_id": "learning_toolcheck_001",
+  "name": "工具调用三键自查 · 学习回归测试（持续学习引擎 MVP 最小切片）",
+  "description": "验证「工具调用构造层污染」教训在下次同类任务中被自动加载并转化为可执行检查，阻止已知错误。这是 MVP 最小切片：一条已闭环 lesson + 一处路由/代码硬校验 + 一个可执行检查 + 一个可重跑回归测试。",
+  "lesson_key": "⚙️/**lesson**-工具调用构造层污染",
+  "status": "active",
+  "trigger": {
+    "intents": ["工具调用报错", "漏参数", "MISSING_REQUIRED_PARAM", "缺tool_name", "缺path", "工具构造", "参数污染"],
+    "entities": ["tool_name", "params", "path", "dispatch_tool", "github_*", "super_admin:terminal"]
+  },
+  "checks": [
+    "params 含 path/repo/branch（必要字段）",
+    "tool_name 在外层（非 params 内）",
+    "参数字段完整（与目标工具 schema 一致）"
+  ],
+  "blocked_actions": [
+    "缺 tool_name 的工具调用",
+    "缺 path 的工具调用（github_* 系）"
+  ],
+  "expected_block": {
+    "input": "调用 github_read 但 params 缺 path",
+    "result": "DISPATCH_GUARD_REJECT: [MISSING_REQUIRED_PARAM] 缺少必需参数: path"
+  },
+  "normal_path": {
+    "input": "params 含 path + tool_name 外层 + 字段完整",
+    "result": "调用成功（返回正常结果）"
+  },
+  "verification": [
+    "自动唤醒：同类任务（工具调用）无需提醒自动加载本教训",
+    "检查执行：dispatch_tool 硬校验运行（INVALID_TOOL_NAME / MISSING_REQUIRED_PARAM）",
+    "错误阻断：故意漏 path/tool_name → 被 DISPATCH_GUARD_REJECT 拦（已验证 ✅）",
+    "正常路径：三键齐全 → 调用成功",
+    "未命中对照：无关任务不加载本教训",
+    "失效对照：被新版本取代的教训不再作为当前规则"
+  ],
+  "evidence": "2026-10-19 多次漏 path/tool_name 被 DISPATCH_GUARD_REJECT 拦；curl /mcp github_read 缺 path → MISSING_REQUIRED_PARAM（已验证 ✅）。闭环原理（GPT）：记住教训是数据问题，下次必应用是执行路径问题——确定性错误转代码硬校验+路由召回，不能只靠提示词。"
+}
