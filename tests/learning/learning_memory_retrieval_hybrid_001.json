@@ -1,7 +1,13 @@
 {
-  "test_id": "memory_retrieval_hybrid_001",
+  "test_id": "learning_memory_retrieval_001",
   "name": "混合检索质量基线——关键协作规则召回",
+  "description": "2026-10-19 哥哥实测三条真存关键协作规则：query_memory 语义入口全部偏题/漏召回，memory search 关键词入口全部精准命中。本案验证三路混合检索（情境标签→关键词→语义）召回质量，固定查询基线证明关键词优先可靠。",
+  "lesson_key": "⚙️/lesson-记忆检索质量-语义偏题关键词可靠",
   "status": "active",
+  "trigger": {
+    "intents": ["检索记忆", "召回", "找记忆", "这条规则在哪", "怎么检索", "memory search", "query_memory"],
+    "entities": ["trigger_intents", "entities", "memory_aliases", "记忆检索", "三路召回", "match_reason"]
+  },
   "created": "2026-10-19",
   "purpose": "固定检索质量回归基线：证明三路混合检索（情境标签→关键词→语义）比单一语义入口（query_memory）召回可靠。真实案例来源：2026-10-19 哥哥实测，三条真存且带 trigger_intents/entities 的关键协作规则，query_memory 语义入口全部偏题或漏召回，而 memory search 关键词入口全部精准命中。",
   "queries": [
@@ -41,5 +47,12 @@
     "拒绝在固定查询丢失 expected_keys 时仍声称检索成功（未完成态不说完成话）"
   ],
   "entrance_strategy": "三路并行召回，可信度优先级：情境标签匹配(trigger_intents/entities) > memory search 关键词 > query_memory 语义；按稳定 memory_id/key 合并去重，保留旧入口回退。",
+  "verification": [
+    "自动唤醒：哥哥需要检索关键规则/lesson/约定时，加载本工件并检查入口选择",
+    "检查执行：检索前自问『我先走了 memory search 关键词入口吗』（没有→先关键词再语义补漏）",
+    "错误阻断：仅用 query_memory 语义入口检索 → 自我纠正为补 memory search 关键词与情境标签召回",
+    "正常路径：情境标签/关键词优先，语义补漏，按稳定 key 合并去重",
+    "未命中对照：无关检索不加载本工件"
+  ],
   "lesson_ref": "⚙️/lesson-记忆检索质量-语义偏题关键词可靠"
 }
