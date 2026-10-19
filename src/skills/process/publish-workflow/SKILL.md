@@ -1,15 +1,15 @@
 ---
-name: publish-workflow-candidate
+name: publish-workflow
 description: >
   【发布工作流·候选人草案】mcp-memory/Cloudflare 项目发布闭环：改代码→守门人→merge→sleep45→verify_main。
   从使用数据自动沉淀的首个试点草案（高频真实动作序列：github_edit→github_merge_to_main→sleep45→cloudflare_deploy_status）。
-  状态：candidate——待关联回归测试 + 人审后晋升正式 skill。
+  已由柳柳人审批准晋升正式 skill（2026-10-19）。
 category: process
-status: candidate
+status: active
 tags: ["发布", "deploy", "verify", "发布闭环", "候选人"]
 ---
 
-# 发布工作流（发布闭环 · 候选人草案）
+# 发布工作流（发布闭环 · 正式技能）
 
 ## 触发条件
 修改代码后要发布上线（mcp-memory / 任何 Cloudflare 部署仓库），或部署后要闭环验证。
@@ -38,4 +38,4 @@ tags: ["发布", "deploy", "verify", "发布闭环", "候选人"]
 verify_main VERIFIED + merge 已确证 + 部署闭环已记录。
 
 ## 迭代（用完更新）
-- 2026-10-19：自动技能沉淀 B 首个试点草案（从高频发布动作序列提炼）——待回归测试 + 人审晋升
+- 2026-10-19：自动技能沉淀 B 首个试点草案 → 柳柳人审批准晋升正式 skill
