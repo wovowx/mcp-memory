@@ -1,0 +1,36 @@
+{
+  "test_id": "learning_pr_merge_001",
+  "name": "PR 合并误报须确证 · 学习回归测试（持续学习引擎 MVP 历史 lesson 归档·第一批）",
+  "description": "github_merge_to_main 在 dev 分叉/冲突时可能虚报『已合并』（PR state=open merged=false dirty），实际没合并。合并后必须用 github_get_pull_request(pull_number) 确证 Merged:true 才算数。",
+  "lesson_key": "⚙️/**lesson**-PR合并误报须确证",
+  "status": "active",
+  "trigger": {
+    "intents": ["合并", "merge", "PR", "已合并", "合并误报", "假合并", "deploy", "部署", "github_merge_to_main", "确证合并", "合并失败"],
+    "entities": ["github_merge_to_main", "github_get_pull_request", "PR state", "merged", "rebase冲突", "dev分叉"]
+  },
+  "checks": [
+    "调用 github_merge_to_main 后，必须用 github_get_pull_request(pull_number) 确证 Merged:true 才算合并成功",
+    "Merged:false → 主动查 detail，close + 重新干净发布（不能信任 merge 工具返回的『已合并』）",
+    "verify_main 持续显示旧版本是合并未成功的信号，需回头确证"
+  ],
+  "blocked_actions": [
+    "依赖 github_merge_to_main 返回的『已合并』结论而不确证",
+    "dev 分叉/冲突时直接信任 merge 成功"
+  ],
+  "expected_block": {
+    "input": "dev 分叉导致 rebase 冲突，merge 工具返回『已合并』但 PR 实际 open/dirty",
+    "result": "应确证时发现 merged=false → 不能继续，需重新干净发布"
+  },
+  "normal_path": {
+    "input": "merge 后 github_get_pull_request 返回 merged:true 且部署 verify_main VERIFIED",
+    "result": "真合并成功，可继续"
+  },
+  "verification": [
+    "自动唤醒：调用 github_merge_to_main 后自动加载『确证合并』检查",
+    "检查执行：merge 后跑 github_get_pull_request 确证",
+    "错误阻断：Merged:false → 不信任工具返回值，重新发布",
+    "正常路径：merged:true + VERIFIED",
+    "未命中对照：无关任务不加载"
+  ],
+  "evidence": "2026-10-18 PR#250 v6.35.8 返回『已合并』但实际 open/dirty（dev 分叉致 rebase 冲突），verify 一直显示旧版本才真相大白；PR#251（干净无分叉）才真合并 Merged:true。原理(GPT)：合并状态是执行路径事实，必须由代码/API 确证而非信任工具返回值。"
+}
