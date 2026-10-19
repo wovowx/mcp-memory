@@ -2,9 +2,9 @@
   "test_id": "learning_publish_workflow_001",
   "name": "发布工作流闭环 · 学习回归测试（自动技能沉淀 B 首个试点关联测试）",
   "description": "验证发布工作流候选技能（skills/_candidates/publish-workflow，status=candidate）被正确触发并执行：改代码→守门人→merge→sleep45→verify，未 VERIFIED 查日志或本地 node 复现，不许让柳柳贴日志。",
-  "lesson_key": "src/skills/_candidates/publish-workflow/SKILL.md",
+  "lesson_key": "src/skills/process/publish-workflow/SKILL.md",
   "skill_candidate": "publish-workflow",
-  "status": "candidate",
+  "status": "active",
   "trigger": {
     "intents": ["发布", "deploy", "上线", "verify_main", "发布工作流", "merge发布"],
     "entities": ["github_edit", "github_merge_to_main", "cloudflare_deploy_status", "sleep45", "VERIFIED", "DEPLOY_UNVERIFIED"]
@@ -37,5 +37,5 @@
     "正常路径：VERIFIED 闭环",
     "未命中对照：无关任务不加载本技能"
   ],
-  "evidence": "2026-10-19 从使用数据（github_edit usage=44 / github_merge_to_main=35 / cloudflare_deploy_status=31）高频发布动作序列提炼的自动技能沉淀 B 首个试点。关联草案 skills/_candidates/publish-workflow/SKILL.md（status=candidate，待人审晋升）。"
+  "evidence": "2026-10-19 从使用数据（github_edit usage=44 / github_merge_to_main=35 / cloudflare_deploy_status=31）高频发布动作序列提炼的自动技能沉淀 B 首个试点。已由柳柳人审批准晋升正式 skill（src/skills/process/publish-workflow/SKILL.md）。"
 }
