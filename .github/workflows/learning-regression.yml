@@ -1,0 +1,29 @@
+name: learning-regression
+# 持续学习引擎 MVP：学习回归测试门禁（CI）
+# 任何 push/PR 触及 tests/learning/ 时自动运行 runner，校验工件一致性（test_id 唯一+格式/必填字段/status 合法/checks 非空）。
+# 对应代码质量守门人「持续学习回归检查」——回归测试必需 CI（GPT 建议）。
+
+on:
+  push:
+    paths:
+      - 'tests/learning/**'
+      - '.github/workflows/learning-regression.yml'
+  pull_request:
+    paths:
+      - 'tests/learning/**'
+      - '.github/workflows/learning-regression.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run learning regression tests
+        run: python3 tests/learning/run_learning_tests.py
