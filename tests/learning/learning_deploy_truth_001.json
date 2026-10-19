@@ -1,0 +1,37 @@
+{
+  "test_id": "learning_deploy_truth_001",
+  "name": "部署机制真相 · 学习回归测试（持续学习引擎 MVP 历史 lesson 归档）",
+  "description": "mcp-memory 部署 = Cloudflare Git 集成自动（merge main → sleep → verify VERIFIED）；传播延迟可能短暂显示旧版本需稍等重验；DEPLOY_UNVERIFIED 须查官方构建日志（cloudflare_build_logs 需 cfut_ user token）或本地 node --check 复现，不许让柳柳手动贴日志。",
+  "lesson_key": "⚙️/lesson-部署机制真相mcp-memory自动",
+  "status": "active",
+  "trigger": {
+    "intents": ["部署", "deploy", "VERIFIED", "DEPLOY_UNVERIFIED", "旧版本", "构建失败", "build_logs", "部署机制", "上线"],
+    "entities": ["mcp-memory", "Cloudflare Git集成", "wrangler", "verify_main", "cloudflare_build_logs", "DEPLOY_UNVERIFIED", "node --check"]
+  },
+  "checks": [
+    "merge 后 sleep 45s 再 verify_main（传播延迟可能短暂旧版本，稍等重验）",
+    "DEPLOY_UNVERIFIED → 查官方构建日志（cloudflare_build_logs，需 cfut_ user token 配 env.cloudflare_key）或本地 node --check --input-type=module 复现定位",
+    "不许让柳柳手动贴日志（柳柳铁律）",
+    "构建失败优先本地复现（下载 main 最新文件 node 校验），不等 token 就能定位"
+  ],
+  "blocked_actions": [
+    "merge 后立即 verify 见 DEPLOY_UNVERIFIED 就上报『没触发』而不先等传播/查日志",
+    "让柳柳贴构建日志"
+  ],
+  "expected_block": {
+    "input": "merge main 后 verify_main 显示 DEPLOY_UNVERIFIED（传播未到 或 构建失败）",
+    "result": "先 sleep 45 重验；仍未通过 → 查官方日志/本地 node 复现定位，不慌不上报"
+  },
+  "normal_path": {
+    "input": "sleep 45 → verify_main VERIFIED",
+    "result": "部署成功，闭环完成"
+  },
+  "verification": [
+    "自动唤醒：merge/deploy 后自动加载本教训（sleep 45 + verify）",
+    "检查执行：verify_main 运行",
+    "错误阻断：DEPLOY_UNVERIFIED → 查日志/本地复现，不让柳柳贴",
+    "正常路径：VERIFIED 闭环",
+    "未命中对照：无关任务不加载"
+  ],
+  "evidence": "2026-10-18 记忆 lesson 『部署 mcp-memory 或判断部署状态时』：mcp-memory 部署=Cloudflare Git 集成自动；传播延迟可能短暂显示旧版本，稍等重验。2026-10-19 v6.48.0 构建失败排查：cloudflare_build_logs 需 cfut_ user token（env.cloudflare_key）当前只有 cfat_ 查不了 → 改本地下载 main 最新文件 node --check 复现定位（callChat2ApiStream 嵌套 SyntaxError）。"
+}
