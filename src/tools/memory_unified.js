@@ -20,7 +20,7 @@ export async function getMemoryByKey(env, key) {
 }
 
 export async function getAllMemories(env) {
-    const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?select=*`, {
+    const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?select=*&status=eq.active`, {
         headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
     });
     if (!resp.ok) return [];
