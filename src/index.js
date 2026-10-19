@@ -107,7 +107,8 @@ export default {
                 try { body = await request.json(); } catch (e) { /* body optional */ }
                 const project = body?.project || 'zivenbridge';
                 const service = body?.service || 'zivenlab';
-                const apiBase = 'https://api.northflank.com/v1';
+                // v6.41.1: 重启端点用法——POST /api/northflank/restart，body 可带 {project?, service?}（默认 zivenbridge/zivenlab）
+        const apiBase = 'https://api.northflank.com/v1';
                 const resp = await fetch(`${apiBase}/projects/${encodeURIComponent(project)}/services/${encodeURIComponent(service)}/restart`, {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + nfToken, 'Content-Type': 'application/json' }
