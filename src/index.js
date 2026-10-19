@@ -101,8 +101,8 @@ export default {
         // 哥哥以后换节点/节点炸后带 UA 调此端点一键重启，本地/对话不碰 token。
         if (url.pathname === '/api/northflank/restart' && request.method === 'POST') {
             try {
-                const nfToken = env.NORTHFLANK_TOKEN;
-                if (!nfToken) return jsonResponse({ ok: false, error: 'NORTHFLANK_TOKEN not set in env' }, 500);
+                const nfToken = env.ZivenNorthflank || env.NORTHFLANK_TOKEN;
+                if (!nfToken) return jsonResponse({ ok: false, error: 'ZivenNorthflank not set in env' }, 500);
                 let body = {};
                 try { body = await request.json(); } catch (e) { /* body optional */ }
                 const project = body?.project || 'zivenbridge';
