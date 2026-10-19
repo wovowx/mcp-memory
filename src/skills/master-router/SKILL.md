@@ -54,6 +54,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 |---|---|---|
 | 柳柳发图/要生图/生视频/视频识别 | 多媒体处理（image_upload） | agnes（先上传拿公网URL） |
 | 存取/查询/整理记忆、柳柳流露话要存 | 记忆管理 | memory / query_memory |
+| **检索记忆/召回关键规则、lesson、约定** | **memory-retrieval-hybrid（三路混合检索）** | **memory search 关键词优先 → query_memory 语义补漏 → 情境标签核对** |
 | 改设定（角色卡/技能/文档） | 设定修改确认流程 | operit_editor update |
 | 换框 / 迁移设备 | 换框流程 | extended_chat + workflow |
 | 存文件/整理分类/归档 | file-management | create_file/move/… |
