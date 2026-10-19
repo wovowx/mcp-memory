@@ -112,7 +112,10 @@ metadata = {
 - Body: {"message":"..."}，Content-Type: application/json
 - token 只在 Worker 环境变量里，本地不带。返回 {ok, reply, conversation_id}
 - ⚠️ v6.39.0 UA铁律：本地/任何客户端调 /api/chat2api/ask 必须带正常浏览器 User-Agent（如 Chrome UA）——python urllib 默认 UA 会被 Cloudflare 前端判 1010「Access denied」直接拦（2026-10-19 排查：同节点 JP-07 柳柳手机能通但哥哥 urllib 被拒；带 UA 立刻 200 通）。节点 JP-07 一直健康，勿误判节点问题。
-- 🔴 v6.45.0 timeoutMs铁律：**长问题/需 deep thinking 的问题（架构、方案设计、讨论）必须 body 传 `timeoutMs`（建议 180000）+ client 端超时同步放大（略大于 timeoutMs，如 190s）**。端点默认 30s，GPT 长问题可能思考 2 分钟+（实测 2m19s），不传 body timeoutMs 会被 30s 截断→500/空。只设 client 端超时不传 body timeoutMs = 照样 30s 被砍（2026-10-19 柳柳点出，哥哥踩坑）。例：Body {"message":"...", "timeoutMs":180000}。
+- 🔴 v6.46.0 timeoutMs 铁律（默认化·2026-10-19 柳柳拍板）：**一律 body 传 `timeoutMs`（建议 180000），不只长问题**——GPT 深思考（GPT-5.x 长推理）是常态，短时 30s 默认会被砍断。client 端超时必须同步放大（略大于 timeoutMs，如 190s），否则工具/curl 客户端先行超时。
+- 端点默认 30s；不传 body timeoutMs 或只放大 client 不传 body → 照样 30s 被砍（2026-10-19 踩坑）
+- ⚠️ 新坑（2026-10-19 实锤）：**extended_http_tools:http_request 工具客户端也有自身超时**——即使 body 传了 180s，工具可能先报 `HTTP timeout`。长讨论用**后台跑**：`nohup curl -s -m 200 -X POST https://mcp-memory.wovowx.workers.dev/api/chat2api/ask -H 'Content-Type: application/json' -H 'User-Agent: <Chrome UA>' --data @payload.json > out.txt 2>&1 &`，轮询等 `"ok":true` 出现再读完整 reply。
+- 例：Body {"message":"...", "timeoutMs":180000}
 - ⛔⛔ 禁止用 code_runner 跑 Python 调 chat2api——code_runner 会卡死（App 级持久 worker 挂死），且不是这个用途（柳柳 2026-09-03 明确）
 
 【备选·紧急兜底】extended_http_tools 裸请求 chat2api URL + Authorization: Bearer <accessToken> + Body{"model":"gpt-4o-mini","conversation_id":"6a98cb19-3b88-83ee-a7be-314d60f0aa64","messages":[{"role":"user","content":"..."}],"stream":false}
