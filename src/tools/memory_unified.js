@@ -27,6 +27,15 @@ export async function getAllMemories(env) {
     return await resp.json();
 }
 
+// v6.39.0 防副本闸门：同一事实只有一个权威版本（柳柳 2026-10-20 治本 · 巡检规则双副本根因）
+// 若写入「不带分类前缀」的 key，而已存在「标题同名/带前缀」的权威档 → 返回权威 key（应重定向更新，不新建默认分类副本）
+export async function findAuthoritativeKey(env, key) {
+    if (!key || key.includes('/')) return null;
+    const all = await getAllMemories(env);
+    const hit = all.find(m => m.key && m.key.includes('/') && getTitle(m.key) === key && m.status === 'active');
+    return hit ? hit.key : null;
+}
+
 export async function putMemory(env, key, data) {
     const existing = await getMemoryByKey(env, key);
     if (existing) {
@@ -86,9 +95,13 @@ export async function handleMemoryTool(name, safeArgs, env) {
             const existing = await getMemoryByKey(env, safeArgs.key);
             if (existing) text = '⚠️ 该记忆已存在。如需修改请用 action=update';
             else {
-                const data = { value: safeArgs.value, created_at: now(), updated_at: now() };
-                await putMemory(env, safeArgs.key, data);
-                text = '✅ 已新建记忆：' + safeArgs.key + '\n📂 分类：' + getCategory(safeArgs.key) + '\n📅 创建时间：' + formatTime(data.created_at);
+                const authKey = await findAuthoritativeKey(env, safeArgs.key);
+                if (authKey) text = '⚠️ 已有权威档「' + authKey + '」（标题同名）。请用这个完整 key 去 update，别新建默认分类副本（防冗余 · v6.39.0）';
+                else {
+                    const data = { value: safeArgs.value, created_at: now(), updated_at: now() };
+                    await putMemory(env, safeArgs.key, data);
+                    text = '✅ 已新建记忆：' + safeArgs.key + '\n📂 分类：' + getCategory(safeArgs.key) + '\n📅 创建时间：' + formatTime(data.created_at);
+                }
             }
         }
     }
@@ -133,10 +146,13 @@ export async function handleMemoryTool(name, safeArgs, env) {
         if (!safeArgs.key || !safeArgs.value) text = '❌ 缺少参数：需要 key 和 value';
         else {
             const existing = await getMemoryByKey(env, safeArgs.key);
-            if (!existing) text = '❌ 没有找到 "' + safeArgs.key + '"，请用 action=remember';
-            else {
+            if (existing) {
                 await putMemory(env, safeArgs.key, { ...existing, value: safeArgs.value, updated_at: now() });
                 text = '✏️ 已更新：' + safeArgs.key + '\n📅 创建：' + formatTime(existing.created_at) + '\n✏️ 更新：' + formatTime(now());
+            } else {
+                const authKey = await findAuthoritativeKey(env, safeArgs.key);
+                if (authKey) text = '⚠️ 没找到「' + safeArgs.key + '」，但已有权威档「' + authKey + '」——请用这个完整 key 更新（防另建副本 · v6.39.0）';
+                else text = '❌ 没有找到 "' + safeArgs.key + '"，请用 action=remember';
             }
         }
     }
