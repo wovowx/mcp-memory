@@ -72,6 +72,7 @@ github_edit(
 ```
 
 - **operations**：数组，每个 `{old, new}` 精确替换。old 必须**唯一匹配**（0次=ANCHOR_NOT_FOUND，>1次=ANCHOR_AMBIGUOUS 都不写）。
+- **失败可诊断（v6.58.0）**：ANCHOR_NOT_FOUND 时工具自动返回最接近候选行 + 精确差异字位提示（形如 `<< 差异#n: old「x」≠ 该行「y」`）——长中文锚点抄错字/字序也能一眼定位。仍建议优先用短 ASCII 唯一片段或 git 真实字节做锚点最稳。
 - **old_sha**（可选）：带则强校验「当前文件 sha 必须等于 old_sha」防用旧内容覆盖（乐观锁）；不带则工具读最新文件再改。
 - **dry_run=true**：预览改动不写入（先试后改）。
 - **写 main 会被 release_guard 拦**（与 push 同级，防幽灵入口）——先改 dev 再走正常发布。
