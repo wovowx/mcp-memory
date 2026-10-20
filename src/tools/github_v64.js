@@ -16,6 +16,43 @@ import { validatePatch, applyPatch } from '../modules/patch_engine.js';
 // 用于：自动注册 / 差异检测 / help() 展示
 // 原则：代码是权威，Supabase skills 表只是缓存
 // ============================================================
+// [github_edit 增强] ANCHOR_NOT_FOUND 时给出最接近候选+差异提示·治失败不可诊断（2026-10-20）
+function firstDiff(aArr, bArr) {
+    var n = Math.max(aArr.length, bArr.length);
+    for (var i = 0; i < n; i++) {
+        var a = aArr[i], b = bArr[i];
+        if (a !== b) return { pos: i, a: a == null ? '<end>' : a, b: b == null ? '<end>' : b };
+    }
+    return null;
+}
+function findSimilarCandidates(contentSrc, anchor, topN, minSim) {
+    if (topN == null) topN = 3;
+    if (minSim == null) minSim = 0.5;
+    var ac = Array.from(anchor);
+    var acSet = new Set(ac);
+    var lines = contentSrc.split('\n');
+    var scored = [];
+    for (var li = 0; li < lines.length; li++) {
+        var L = Array.from(lines[li]);
+        var hit = 0;
+        for (var k = 0; k < L.length; k++) if (acSet.has(L[k])) hit++;
+        var sim = L.length ? hit / Math.max(L.length, ac.length) : 0;
+        scored.push({ li: li, line: lines[li], sim: sim });
+    }
+    scored.sort(function (a, b) { return b.sim - a.sim; });
+    var hints = [];
+    for (var s2 = 0; s2 < scored.length && s2 < topN; s2++) {
+        var s = scored[s2];
+        if (s.sim < minSim) continue;
+        var d = firstDiff(ac, Array.from(s.line));
+        var pct = Math.round(s.sim * 100);
+        var msg = 'L' + (s.li + 1) + '(sim ' + pct + '%): ' + s.line.slice(0, 70);
+        if (d) msg += '  << 差异#' + d.pos + ': old「' + d.a + '」≠ 该行「' + d.b + '」';
+        hints.push(msg);
+    }
+    return hints.length ? hints.join('\n  ') : '';
+}
+
 export const GITHUB_TOOL_DEFS = [
     { name: 'github_push', description: '【创建入口】推送 NEW 文件到 GitHub 仓库（目标文件不存在时）。内容通过 content_url（我们自己的 Supabase 存储 url，先经 /upload）传入。如果文件已存在会被拒绝（GITHUB_PUSH_EXISTING_FILE）——修改已有文件请用 github_edit（读→改→写回一次完成，服务端精确替换，不用上传）。写入后自动 size 校验。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content_url: { type: 'string', description: '必填，文件内容来源：仅限我们自己的 Supabase 存储 url（*.supabase.co/storage/v1/object/public/files/...），先经 /upload 上传本地文件拿到 url 再传这里' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path', 'content_url'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
     { name: 'github_create_repo', description: '在 GitHub 创建新仓库。', input_schema: { type: 'object', properties: { repo: { type: 'string', description: '仓库名称' }, private: { type: 'boolean', description: '是否私有（默认false）' }, description: { type: 'string', description: '仓库描述' } }, required: ['repo'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '仓库'] },
