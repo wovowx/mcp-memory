@@ -116,6 +116,7 @@ metadata = {
 - 端点默认 30s；不传 body timeoutMs 或只放大 client 不传 body → 照样 30s 被砍（2026-10-19 踩坑）
 - ⚠️ 新坑（2026-10-19 实锤）：**extended_http_tools:http_request 工具客户端也有自身超时**——即使 body 传了 180s，工具可能先报 `HTTP timeout`。长讨论用**后台跑**：`nohup curl -s -m 200 -X POST https://mcp-memory.wovowx.workers.dev/api/chat2api/ask -H 'Content-Type: application/json' -H 'User-Agent: <Chrome UA>' --data @payload.json > out.txt 2>&1 &`，轮询等 `"ok":true` 出现再读完整 reply。
 - 例：Body {"message":"...", "timeoutMs":180000}
+- 🔴 v6.48.0（2026-10-19 柳柳拍板）**长问题/深思考走流式端点根治 524**：`/api/chat2api/ask/stream`（POST，body 同 /ask：message/conversation_id/history_disabled，**无需 timeoutMs**）。原理：chat2api 真流式返 SSE 头+持续流 token，Worker 拿到流头即返回退出、由 CF 边缘接管传流 → 突破 CF Worker 30s wall-clock / 非流式 await text() 导致的 524。返回 text/event-stream（SSE），conversation_id 从流内 data 的 conversation_id 字段取。**非流式 /ask 在长问题（思考>100s，GPT 深思考常态）仍可能 524——长讨论一律优先用 stream。** curl 示例：`curl -sN -m 200 -X POST https://mcp-memory.wovowx.workers.dev/api/chat2api/ask/stream -H 'Content-Type: application/json' -H 'User-Agent: <Chrome UA>' -d '{"message":"..."}' | tee out.sse`（-N 不缓冲、client -m 放大到足够大；SSE 行以 `data: ` 开头、结尾 `[DONE]`）。2026-10-20 实测通过（轻量消息秒回、不被 524 掐）。
 - ⛔⛔ 禁止用 code_runner 跑 Python 调 chat2api——code_runner 会卡死（App 级持久 worker 挂死），且不是这个用途（柳柳 2026-09-03 明确）
 
 【备选·紧急兜底】extended_http_tools 裸请求 chat2api URL + Authorization: Bearer <accessToken> + Body{"model":"gpt-4o-mini","conversation_id":"6a98cb19-3b88-83ee-a7be-314d60f0aa64","messages":[{"role":"user","content":"..."}],"stream":false}
