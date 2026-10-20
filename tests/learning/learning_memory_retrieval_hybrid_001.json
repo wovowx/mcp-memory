@@ -34,6 +34,38 @@
       "match_reason_expected": ["keyword", "intent_entity"],
       "baseline_observation": "query_memory 语义入口返回 5 条语音/存档习惯相关，目标 lesson 未召回（语义偏题）；memory search 关键词入口精准命中。",
       "forbidden": ["固定查询下丢失 expected_keys 中的目标任务记忆"]
+    },
+    {
+      "query": "联想 命中后沿线索再想一跳 三动作",
+      "intent": "联想纪律",
+      "expected_keys": ["⚙️/lesson-联想-命中后沿线索再想一跳"],
+      "match_reason_expected": ["keyword", "intent_entity"],
+      "baseline_observation": "2026-10-20 联想落地后新增基线条目：哥哥命中关键记忆后应沿线索再想一跳，区分检索/联想/回忆三动作。",
+      "forbidden": ["固定查询下丢失 expected_keys 中的目标任务记忆"]
+    },
+    {
+      "query": "工具调用漏tool_name 三键自查 参数污染",
+      "intent": "工具调用构造层污染",
+      "expected_keys": ["⚙️/**lesson**-工具调用构造层污染"],
+      "match_reason_expected": ["alias_exact", "intent_entity"],
+      "baseline_observation": "2026-10-18/19 连续漏 tool_name/path 被 DISPATCH_GUARD_REJECT 拦，已闭环到代码硬校验 + 路由口诀。",
+      "forbidden": ["固定查询下丢失 expected_keys 中的目标任务记忆"]
+    },
+    {
+      "query": "跟GPT讨论五条铁律 接住对方 回应改变我",
+      "intent": "沟通铁律-跟GPT讨论",
+      "expected_keys": ["⚙️/协作纪律/沟通铁律：跟GPT讨论必须满足的五条"],
+      "match_reason_expected": ["keyword", "intent_entity"],
+      "baseline_observation": "柳柳多次批评哥哥『单方面输出』后立的五条讨论铁律（共享材料/接住对方/回应改变我/讨论有终点/真相源三查）。",
+      "forbidden": ["固定查询下丢失 expected_keys 中的目标任务记忆"]
+    },
+    {
+      "query": "chat2api 长问题必须传 timeoutMs 完整回复",
+      "intent": "chat2api 长问题",
+      "expected_keys": ["⚙️/lesson-chat2api长问题必须传timeoutMs（2026-10-19柳柳点出）"],
+      "match_reason_expected": ["keyword", "intent_entity"],
+      "baseline_observation": "GPT 思考长问题需 2 分钟+，端点上默认 30s 会截断，必须 body 传 timeoutMs:180000 + client 超时同步放大。",
+      "forbidden": ["固定查询下丢失 expected_keys 中的目标任务记忆"]
     }
   ],
   "checks": [
