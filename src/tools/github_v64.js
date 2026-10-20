@@ -390,7 +390,11 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 const op = safeArgs.operations[i];
                 if (typeof op.old !== 'string' || typeof op.new !== 'string') return 'ERROR: each operation must be {old: string, new: string}';
                 const count = content.split(op.old).length - 1;
-                if (count === 0) return `ERROR: ANCHOR_NOT_FOUND (op #${i + 1}): ${op.old.slice(0, 80)}`;
+                if (count === 0) {
+                    var _hint = findSimilarCandidates(content, op.old);
+                    var _base = 'ERROR: ANCHOR_NOT_FOUND (op #' + (i + 1) + '): ' + op.old.slice(0, 80);
+                    return _base + (_hint ? '\n  [候选提示] 最接近的几行：\n  ' + _hint : '');
+                }
                 if (count > 1) return `ERROR: ANCHOR_AMBIGUOUS (op #${i + 1}) matches ${count} times: ${op.old.slice(0, 80)}`;
                 content = content.replace(op.old, op.new);
                 details.push(`op#${i + 1}: ${op.old.slice(0, 40)}… → ${op.new.slice(0, 40)}…`);
