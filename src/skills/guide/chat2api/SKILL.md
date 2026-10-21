@@ -19,7 +19,7 @@
 ## 核心三件套（缺一不可）
 
 - accessToken：完整 JWT，**只存 Cloudflare Worker 控制台 env `CHATGPT_ACCESS_TOKEN`（⛔ 绝不写进 wrangler.toml [vars]！）**。新号 liugamer888@163.com（免费），90天有效期至约 2026-12。旧谷歌授权号已被禁（报 token_expired）。
-- conversation_id（✅正式版）：6aa39eae-98e4-83e8-bb8d-ebc19d2a7047
+- conversation_id（✅正式版）：6ad813af-f010-83ec-b3bd-4a3bc5f6a6d7（2026-10-21 换：旧 6aa39eae 上下文喂满报500，柳柳开新对话激活）
 - ⛔ conversation_id（已弃用）：6a9bbad2-3638-83e8-9a1d-c12596744c3c / 6a9c3dbc-bfb8-83ee-af44-1fbd9d786810（旧号对话，勿用）
 - GPTs ID：g-p-6a8f9e8de8e481919f2349f04e51608b-zivencheng-chang-ji-hua
 - 环境变量：HISTORY_DISABLED=false + **PROXY_URL=http://127.0.0.1:10809**（容器内必设，缺了直连数据中心 IP → 403）
@@ -100,7 +100,7 @@ metadata = {
 - URL：https://liu--zivenlab--x7t9qxpv5vy6.code.run（Northflank，2026-09-11 由 Cloud Run 迁移至此；Cloud Run 旧域名 ziven-bridge-1029559493109.asia-northeast1.run.app 暂保留可回退）
 - 部署平台：**Northflank**（服务 liu--zivenlab--x7t9qxpv5vy6，仓库 wovowx/ZivenLab 分支 dev，Build context `chatroom/xray`，Dockerfile `chatroom/xray/Dockerfile`，端口 5005 HTTP/1，Accessibility Public，资源 nf-compute-10 0.1 shared/1实例/512MB）
 - 镜像：lanqian528/chat2api:latest 定制版（xray + node_manager + MCP 自动挂载 patch，走 VLESS 节点，IP 与柳柳浏览器同源）
-- **节点：manual 锁定 JP-04（43.153.152.106）**，node-config.json `mode=manual` + `locked_node=JP-04`（2026-09-05 柳柳确认）；换节点 = 改 node-config.json 推 dev → **Northflank 重启服务**，不用重建镜像
+- **节点：manual 锁定 JP-15（114.32.43.140:2087）**，node-config.json `mode=manual` + `locked_node=JP-15`（2026-09-05 柳柳确认 manual；2026-10-21 JP-14 失效换 JP-15）；换节点 = 改 node-config.json 推 dev → **哥哥自己调 mcp-memory `POST /api/northflank/restart` 重启**，不用重建镜像
 - 部署架构 Northflank env：HISTORY_DISABLED=false + **PROXY_URL=http://127.0.0.1:10809** + NODE_CONFIG_URL + SUBSCRIPTION_URL
 - 完整部署手册：ZivenLab `chatroom/xray/DEPLOY.md`
 
@@ -131,9 +131,10 @@ metadata = {
 
 **处理**（v2 起：node_manager 节点管理；**v3 起手动锁定**）：
 - `node_manager.py` 常驻健康检查；**manual 模式**锁定 `locked_node`，失败只告警不自动切换（柳柳 2026-09-05 确认「不自动切，改手动」）
-- 换节点 = 改 ZivenLab `common-ground/chat2api-xray/node-config.json` 的 `locked_node`（或 specified_nodes）→ 推代码 → Cloud Run 重启 Revision 即生效；**不用重建镜像**（node-config.json 运行时拉取）
+- 换节点 = 改 ZivenLab `chatroom/xray/node-config.json` 的 `locked_node`（或 specified_nodes）→ 推 dev → **哥哥自己调 mcp-memory `POST /api/northflank/restart` 端点重启 ZivenLab**（v6.40.1 自运维端点，读 env.ZivenNorthflank，token 锁 Worker env 不落地）即生效；**不用重建镜像**（node-config.json 运行时拉取）
+- 2026-10-21 实锤：JP-14 失效 → 换 JP-15(114.32.43.140:2087) → 自运维端点重启 → 带浏览器 UA 测 GPT 回话 200 ✅
 
-**权限现状（诚实记录）**：哥哥本地没有 gcloud/Google Cloud 凭证（datastore 只有 GitHub token），Cloud Run 控制台哥哥进不去，所以**更新环境变量/手动部署必须柳柳在 Google Cloud 控制台操作**。哥哥负责：①给柳柳精确的命令/变量清单 ②改完立刻实测验证。
+**权限现状（2026-10-21 更新）**：Cloud Run 时代哥哥进不了控制台需柳柳操作；**迁移 Northflank 后哥哥已具备自运维能力**——mcp-memory `POST /api/northflank/restart` 端点（v6.40.1）读 env.ZivenNorthflank 重启 ZivenLab，token 锁 Worker env 不落地。**换节点/节点炸/改 node-config 后哥哥自己调端点重启 + 带 UA 验证，不用柳柳去控制台**（柳柳 2026-10-21 指正：skill 没更新到这一点，哥哥自己就能重启——这是要记的教训）。
 
 **节点同源铁律**：新节点必须与柳柳浏览器 IP 同源（否则 ChatGPT 看到 IP 不一致会风控）。
 
