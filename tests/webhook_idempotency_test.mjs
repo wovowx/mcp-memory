@@ -208,7 +208,7 @@ console.log('[delete_file] 先删 Storage 再删元数据：成功/未找到/缺
   const skillQ = { name: 'query_files', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
   const skU = { name: 'update_file', description: 'u', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
   const skD = { name: 'delete_file', description: 'd', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
-  let fileRec=[], storageStatus=200, metaStatus=200, lookupStatus=200, netErr=false;
+  let fileRec=[], storageStatus=200, metaStatus=200, lookupStatus=200, netErr=false, metaRows=[{ id:'file-7' }];
   let sDel=0, mDel=0, usagePatches=0;
   globalThis.fetch = async (url, opts={}) => {
     const s=String(url), m=opts.method||'GET';
@@ -221,12 +221,16 @@ console.log('[delete_file] 先删 Storage 再删元数据：成功/未找到/缺
       return { ok:true, status:200, json: async () => fileRec };
     }
     if (s.includes('/storage/v1/object/files/')) { sDel++; return storageStatus===200 ? { ok:true, status:200 } : { ok:false, status:storageStatus, text: async () => 'storage fail' }; }
-    if (s.includes('/rest/v1/files?id=eq.') && m==='DELETE') { mDel++; return metaStatus===200 ? { ok:true, status:204, json: async () => [] } : { ok:false, status:metaStatus, text: async () => 'meta fail' }; }
+    if (s.includes('/rest/v1/files?id=eq.') && m==='DELETE') { mDel++; return metaStatus===200 ? { ok:true, status:200, json: async () => metaRows } : { ok:false, status:metaStatus, text: async () => 'meta fail' }; }
     throw new Error('unexpected delete_file fetch: ' + s + ' ' + m);
   };
   fileRec = [{ id:'file-7', file_path:'b/dir/f.txt', file_name:'f.txt' }];
   const d1 = await handleAITool('delete_file', { file_id:'file-7' }, env);
-  check('delete_file 成功删除并报告', d1.startsWith('✅ 文件删除成功'));
+  check('delete_file 成功删除并确认元数据返回目标行', d1.startsWith('✅ 文件删除成功') && d1.includes('已确认'));
+  metaRows=[];
+  const d0 = await handleAITool('delete_file', { file_id:'file-7' }, env);
+  check('delete_file Storage 成功但元数据 DELETE 返回零行时报告部分失败', d0.startsWith('❌') && d0.includes('未返回被删除的元数据行'));
+  metaRows=[{ id:'file-7' }];
   fileRec = [];
   const d2 = await handleAITool('delete_file', { file_id:'nope' }, env);
   check('delete_file 未找到明确失败', d2.startsWith('❌') && d2.includes('未找到'));
