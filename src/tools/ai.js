@@ -5,7 +5,7 @@
 //       ④ 精准错误分析（不盲重试） ⑤ verbose 诊断信息 ⑥ help场景置顶
 // ============================================================
 import { getEnabledSkills } from '../utils/skills.js';
-import { uploadFileToSupabase } from '../utils/storage.js';
+import { uploadFileToSupabase, queryFiles } from '../utils/storage.js';
 
 // ---------- 常量 ----------
 const AGNES_ENDPOINT = 'https://apihub.agnes-ai.com/v1';
@@ -289,6 +289,32 @@ export async function handleAITool(name, safeArgs, env) {
       }
       return '⚠️ 余额查询失败：HTTP ' + balanceResp.status;
     } catch (e) { return '❌ 查询失败：' + e.message; }
+  }
+
+  // ---- 文件查询工具：复用 storage.js 的唯一查询实现 ----
+  if (name === 'query_files') {
+    if (safeArgs.category !== undefined && typeof safeArgs.category !== 'string') return '❌ query_files 参数错误：category 必须是字符串';
+    if (safeArgs.content_type !== undefined && !['image', 'video', 'audio', 'document', 'archive', 'text', 'other'].includes(safeArgs.content_type)) return '❌ query_files 参数错误：content_type 必须是 image/video/audio/document/archive/text/other 之一';
+    if (safeArgs.keyword !== undefined && typeof safeArgs.keyword !== 'string') return '❌ query_files 参数错误：keyword 必须是字符串';
+    if (safeArgs.tags !== undefined && (!Array.isArray(safeArgs.tags) || !safeArgs.tags.every(tag => typeof tag === 'string'))) return '❌ query_files 参数错误：tags 必须是字符串数组';
+    if (safeArgs.limit !== undefined && (!Number.isInteger(safeArgs.limit) || safeArgs.limit < 1 || safeArgs.limit > 100)) return '❌ query_files 参数错误：limit 必须是 1–100 的整数';
+    if (safeArgs.offset !== undefined && (!Number.isInteger(safeArgs.offset) || safeArgs.offset < 0)) return '❌ query_files 参数错误：offset 必须是非负整数';
+
+    try {
+      const files = await queryFiles(env, {
+        category: safeArgs.category,
+        content_type: safeArgs.content_type,
+        tags: safeArgs.tags,
+        keyword: safeArgs.keyword,
+        limit: safeArgs.limit ?? 20,
+        offset: safeArgs.offset ?? 0,
+      });
+      if (!Array.isArray(files)) throw new Error('文件查询返回了非列表结果');
+      if (files.length === 0) return '📂 没有找到符合条件的文件。';
+      return `📂 找到 ${files.length} 个文件：\\n` + JSON.stringify(files, null, 2);
+    } catch (e) {
+      return '❌ query_files 查询失败：' + (e?.message || String(e));
+    }
   }
 
   // ---- Agnes 工具（新入口 agnes + 旧名兼容）----
