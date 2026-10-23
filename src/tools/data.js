@@ -15,19 +15,24 @@ export async function handleDataTool(name, safeArgs, env) {
                 if (!Array.isArray(dataArray)) {
                     text = '❌ 数据格式错误：需要 JSON 数组';
                 } else {
-                    let added = 0, skipped = 0, updated = 0;
+                    let added = 0, skipped = 0, updated = 0, failed = 0;
                     for (const item of dataArray) {
-                        if (!item.key || !item.value) continue;
-                        const existing = await getMemoryByKey(env, item.key);
-                        if (existing) {
-                            if (existing.value === item.value) { skipped++; }
-                            else { const data = { value: item.value, updated_at: now() }; await putMemory(env, item.key, data); updated++; }
-                        } else {
-                            const data = { value: item.value, created_at: item.created_at || now(), updated_at: now() };
-                            await putMemory(env, item.key, data); added++;
-                        }
+                        if (!item.key || !item.value) { failed++; continue; }
+                        try {
+                            const existing = await getMemoryByKey(env, item.key);
+                            if (existing) {
+                                if (existing.value === item.value) { skipped++; }
+                                else {
+                                    const result = await putMemory(env, item.key, { value: item.value, updated_at: now() });
+                                    if (result.ok) updated++; else failed++;
+                                }
+                            } else {
+                                const result = await putMemory(env, item.key, { value: item.value, created_at: item.created_at || now(), updated_at: now() });
+                                if (result.ok) added++; else failed++;
+                            }
+                        } catch { failed++; }
                     }
-                    text = '💡 导入完成：新增 ' + added + ' 条，更新 ' + updated + ' 条，跳过 ' + skipped + ' 条（数据相同）';
+                    text = '💡 导入结束：新增 ' + added + ' 条，更新 ' + updated + ' 条，跳过 ' + skipped + ' 条（数据相同），失败 ' + failed + ' 条';
                 }
             } catch (e) {
                 text = '❌ JSON 解析失败：' + e.message;
