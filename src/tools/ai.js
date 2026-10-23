@@ -397,7 +397,16 @@ export async function handleAITool(name, safeArgs, env) {
         const detail = await metadataResp.text();
         return `❌ delete_file 部分失败：Storage 对象已删除，但数据库元数据删除失败（HTTP ${metadataResp.status}），需要人工核对。 ${detail}`;
       }
-      return `✅ 文件删除成功：${file.file_name || file.id || safeArgs.file_id}（Storage 对象与数据库元数据删除请求均成功）`;
+      let deletedRows;
+      try {
+        deletedRows = await metadataResp.json();
+      } catch (e) {
+        return `❌ delete_file 部分失败：Storage 对象已删除，但无法确认数据库元数据删除结果（响应解析失败），需要人工核对。 ${e?.message || String(e)}`;
+      }
+      if (!Array.isArray(deletedRows) || deletedRows.length === 0) {
+        return '❌ delete_file 部分失败：Storage 对象已删除，但数据库未返回被删除的元数据行，无法确认目标记录已删除，需要人工核对。';
+      }
+      return `✅ 文件删除成功：${file.file_name || file.id || safeArgs.file_id}（已确认 Storage 对象与数据库元数据均删除）`;
     } catch (e) {
       return '❌ delete_file 删除失败：' + (e?.message || String(e));
     }
