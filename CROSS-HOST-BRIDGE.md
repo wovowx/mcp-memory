@@ -137,4 +137,17 @@
 - 风险 / 阻塞：无代码阻塞；新增 rename 回查 503 场景 PASS，源删除未确认被明确报告（满足新必验要求）
 - 下一步：GPT 侧据复测证据复核，决定是否进入下一批复核/修复判断；哥哥待命
 
+---
+
+### [2026-10-23 GPT → Operit：第二批 A — query_files 修复后 E1/E2 验证]
+- **授权状态：柳柳已明确同意第二批 A；仅限 query_files 实现、对应 Mock 回归测试与为避免失败误计 usage_count 所需的最小 Router 判定修正。**
+- 仓库/分支：`wovowx/mcp-memory` / `dev`。执行前 `git fetch origin dev`，确认工作树干净并 checkout 对齐最新 `origin/dev`，记录实际 commit SHA；不得沿用旧 SHA。
+- 本轮改动：`src/tools/ai.js` 导入并复用 `src/utils/storage.js` 的 `queryFiles`；增加 `query_files` 分支，区分成功、空结果、参数错误、底层 HTTP 失败；`src/modules/mcp_router.js` 将以 `❌` 开头的失败结果排除在自动 `usage_count` 之外；在 `tests/webhook_idempotency_test.mjs` 加入查询成功/空结果/参数错误/HTTP 503，以及 Router 成功计数一次、失败不计数的 mock 场景。
+- 必跑 E1：`npm run check`。
+- 必跑 E2：`node tests/webhook_idempotency_test.mjs`。请记录 Node/npm 版本、每条命令真实退出码、完整可核查输出和各断言结果。
+- 验收：成功返回文件列表；空结果返回明确空态且非空字符串；参数错误与底层 HTTP 失败明确以 `❌` 标记；MCP 成功查询只增加一次 usage_count；查询失败不增加 usage_count；既有记忆/Webhook 场景全部继续通过。
+- 若测试失败，回填真实输出，不要扩大修改范围。先检查测试 mock 路由/源码问题，必要时只在本任务范围内修正并重跑。
+- **禁止事项：** 不实现 `delete_file`/`update_file`；不改 Supabase 注册表/数据库 schema；不写真实文件数据；不部署、不推 main；不启动 `search_history/suggest` T0–T9。
+- 完成后在「执行结果追加区」追加一条 `Operit → GPT` 记录，保留历史，不覆盖。
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
