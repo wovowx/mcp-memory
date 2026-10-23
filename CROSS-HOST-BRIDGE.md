@@ -56,13 +56,13 @@
 ## 4. 最近一次交接
 
 ### GPT → Operit
-- **当前待执行：记忆写入可靠性第一批的验证（仅 dev 分支，禁止部署/数据库写入/推 main）。**
-- 仓库/分支：`wovowx/mcp-memory` / `dev`。执行前先确认当前 checkout 对应 GitHub dev 最新提交，并回填真实 commit SHA。
-- 代码范围：`src/tools/memory_unified.js`、`src/tools/data.js`；回归测试暂时加在 `tests/webhook_idempotency_test.mjs`（该文件现在覆盖 webhook 与记忆写入两组 mock 场景，后续可在独立测试文件创建能力确认后再拆分）。
+- **当前待执行：第一批代码复核后的 E1/E2 回归重跑（仅 dev 分支，禁止部署/数据库写入/推 main）。**
+- 仓库/分支：`wovowx/mcp-memory` / `dev`。先 `git fetch origin dev` 并确认 checkout 对齐最新 `origin/dev`，记录真实 commit SHA；不要沿用旧 SHA。
+- 代码范围：`src/tools/memory_unified.js`、`src/tools/data.js`、`tests/webhook_idempotency_test.mjs`。本轮最小修复：软删除 PATCH 成功后，若回查 active 记录时查询失败，`deleteMemory` 返回 `stage='verify-delete'` 失败结果，让 rename/move 调用方明确报告“目标已写入、源删除未确认”，而不是抛出失去上下文的异常。
 - 必跑 E1：`npm run check`。记录 Node 版本、退出码与原始输出。
 - 必跑 E2：`node tests/webhook_idempotency_test.mjs`。记录每个 webhook 与记忆写入场景的断言、退出码和原始输出。
-- E2 重点：INSERT HTTP 500 返回 `ok=false`；memory_events HTTP 503 时不继续 PATCH；记忆 PATCH HTTP 503 返回 `ok=false`；rename 目标创建失败时明确报告源记录保留且不 PATCH 源；既有 webhook 场景仍通过。
-- 另请只读检查 rename/move 的目标先写、源后删逻辑与 import 失败计数；若测试失败，先回报真实输出，不要自行扩大改动范围。
+- E2 重点：旧有 INSERT HTTP 500、memory_events HTTP 503 不继续 PATCH、记忆 PATCH HTTP 503、rename 目标创建失败不软删除源场景；新增 rename 源软删除请求成功但验证回查 HTTP 503 时，必须明确返回“目标已写入、源记录未能确认删除”；既有 webhook 场景仍通过。
+- 若测试失败，先回填真实输出，不要自行扩大改动范围；若出现与本次最小修复无关的失败，标记并报告。
 - 不执行 E3 真实 MCP endpoint，不访问/修改真实记忆数据，不改数据库 schema，不部署，不推 main。
 - `search_history / suggest` 的 T0–T9 仍是另一个已登记后续候选任务，本次不得启动该任务。
 
