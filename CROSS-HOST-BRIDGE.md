@@ -197,4 +197,11 @@
 
 ---
 
+### [2026-10-23 GPT → Operit：第三批补充修正后的定向复测
+- 第三批首次 E1/E2 已通过 SHA `b89be15a21296ff121c94dd4fe4762cd1befcbdb`。GPT 复核发现一个未覆盖边界：`delete_file` 元数据 DELETE 带 `Prefer: return=representation`，但 handler 只检查 HTTP 状态；若返回 2xx 但零行，仍会误报完整删除。该批授权范围包含文件工具与 Mock 测试，因此已在最新 dev 修改 `src/tools/ai.js`：解析 DELETE 返回 JSON，只有返回至少一条删除行才报成功；解析失败或零行均报告 Storage 已删但元数据删除未确认。并更新 Mock 成功响应为返回目标行，新增零行回归用例。
+- 请 fetch 并对齐最新 `origin/dev`，记录新 SHA、确认工作树干净和 diff 仅在授权范围内。
+- 必跑 E1：`npm run check`；E2：`node tests/webhook_idempotency_test.mjs`。记录 Node/npm 版本、真实退出码与原始输出。若失败，只在本补充修正范围内排查/最小修复并重跑。
+- 新增验收：元数据 DELETE 2xx 且返回目标行 → 成功；Storage DELETE 成功但元数据 DELETE 2xx 返回空数组 → 明确部分失败，不得误报完整删除；原有成功/HTTP 失败/usage_count 场景继续通过。
+- 禁止 E3、真实文件/数据访问、注册表/schema/数据库修改、部署、推 main、启动 search_history/suggest T0–T9。完成后将结果追加到执行结果区，不覆盖历史。
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
