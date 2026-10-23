@@ -3,6 +3,12 @@
 所有重要变更将记录在此文件中。
 
 ## [Unreleased · dev] - 2026-10-23
+### Fixed（query_files 工具契约 · E1/E2 待 Operit 验证）
+- 将已注册的 `query_files` 接入 `ai.js`，复用 `storage.js` 的 `queryFiles`，不新建平行查询实现；明确成功列表、空结果、参数错误和底层 HTTP 失败的返回。
+- MCP Router 不再将以 `❌` 开头的工具失败结果计入 `usage_count`；新增 mock 场景覆盖成功调用计数一次、HTTP 503 失败调用不增加计数。
+- 新增/扩展隔离 mock 回归断言覆盖查询成功、空结果、参数错误、HTTP 503 与 MCP Router 使用计数契约。当前仅完成 dev 源码/测试/文档修改，等待 Operit 对齐最新 dev SHA 后运行 `npm run check` 和 `node tests/webhook_idempotency_test.mjs`；在真实命令与退出码回填前不宣称测试通过。
+- 本批不实现 `delete_file`/`update_file`，不改 Supabase 注册表或数据库 schema，不部署、不推 main。
+
 ### Fixed（记忆写入/迁移失败反馈 · E1/E2 已验证）
 - `getMemoryByKey` / `getAllMemories` 遇 HTTP 非 2xx 时不再伪装成空/不存在结果，改为抛出可识别错误。
 - `putMemory` 检查历史事件、新建和更新请求的 HTTP 响应，并返回结构化成功/失败结果；上层 remember/update 不再无条件报成功。
