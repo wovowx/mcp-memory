@@ -311,7 +311,7 @@ export async function handleAITool(name, safeArgs, env) {
       });
       if (!Array.isArray(files)) throw new Error('文件查询返回了非列表结果');
       if (files.length === 0) return '📂 没有找到符合条件的文件。';
-      return `📂 找到 ${files.length} 个文件：\\n` + JSON.stringify(files, null, 2);
+      return `📂 找到 ${files.length} 个文件：\n` + JSON.stringify(files, null, 2);
     } catch (e) {
       return '❌ query_files 查询失败：' + (e?.message || String(e));
     }
