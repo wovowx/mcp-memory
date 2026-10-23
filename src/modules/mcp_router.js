@@ -86,6 +86,68 @@ async function getToolSchema(env, name) {
 // v6.35.7：dispatchGuard 改 async + 接收 env，前缀未匹配查注册表兜底
 // v6.35.8：加参数 schema 校验——input_schema.required 里的字段缺一个都拒（定稿验收#1），
 //   这是真正拦"漏 path/tool_name/必需参数"这类构造层污染的硬约束，不只信封层面。
+function matchesSchemaType(value, type) {
+    if (Array.isArray(type)) return type.some(t => matchesSchemaType(value, t));
+    switch (type) {
+        case 'object': return value !== null && typeof value === 'object' && !Array.isArray(value);
+        case 'array': return Array.isArray(value);
+        case 'string': return typeof value === 'string';
+        case 'number': return typeof value === 'number' && Number.isFinite(value);
+        case 'integer': return typeof value === 'number' && Number.isInteger(value);
+        case 'boolean': return typeof value === 'boolean';
+        case 'null': return value === null;
+        default: return true; // 未支持/未声明的 type 不擅自拒绝，避免误伤旧 schema
+    }
+}
+
+function schemaValueEquals(a, b) {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    const aKeys = Object.keys(a), bKeys = Object.keys(b);
+    return aKeys.length === bKeys.length && aKeys.every(k => Object.prototype.hasOwnProperty.call(b, k) && schemaValueEquals(a[k], b[k]));
+}
+
+// 有边界的 JSON Schema 子集：type / enum / required / properties / items / minimum / maximum。
+// 不声称完整实现 JSON Schema；遇到未支持关键字时不据此拒绝调用。
+function validateSchemaSubset(schema, value, path = 'arguments') {
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return null;
+    if (schema.type !== undefined && !matchesSchemaType(value, schema.type)) {
+        return path + ' 类型错误，期望 ' + (Array.isArray(schema.type) ? schema.type.join(' | ') : schema.type);
+    }
+    if (Array.isArray(schema.enum) && !schema.enum.some(option => schemaValueEquals(value, option))) {
+        return path + ' 不在允许的枚举值中';
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        if (typeof schema.minimum === 'number' && value < schema.minimum) return path + ' 小于最小值 ' + schema.minimum;
+        if (typeof schema.maximum === 'number' && value > schema.maximum) return path + ' 大于最大值 ' + schema.maximum;
+    }
+    if (Array.isArray(value) && schema.items && typeof schema.items === 'object') {
+        for (let i = 0; i < value.length; i++) {
+            const issue = validateSchemaSubset(schema.items, value[i], path + '[' + i + ']');
+            if (issue) return issue;
+        }
+    }
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        if (Array.isArray(schema.required)) {
+            const missing = schema.required.filter(key => {
+                const v = value[key];
+                return v === undefined || v === null || v === '';
+            });
+            if (missing.length) return path + ' 缺少必需参数: ' + missing.join(', ');
+        }
+        if (schema.properties && typeof schema.properties === 'object') {
+            for (const [key, childSchema] of Object.entries(schema.properties)) {
+                if (Object.prototype.hasOwnProperty.call(value, key)) {
+                    const issue = validateSchemaSubset(childSchema, value[key], path + '.' + key);
+                    if (issue) return issue;
+                }
+            }
+        }
+    }
+    return null;
+}
+
 async function dispatchGuard(env, name, args) {
     // 1. 调用信封校验
     if (!name || typeof name !== 'string') {
@@ -99,16 +161,18 @@ async function dispatchGuard(env, name, args) {
     if (args !== undefined && args !== null && typeof args !== 'object') {
         return { allowed: false, code: 'INVALID_ARGS', reason: 'arguments 必须是对象', expected: 'arguments 为 JSON 对象' };
     }
-    // 3. 参数 schema 校验（v6.35.8）：required 字段缺一个都拒（若该工具有规范 schema）
+    // 3. 参数 schema 校验：只执行明确支持的 JSON Schema 子集；schema 缺失时维持兼容放行。
     const schema = await getToolSchema(env, name);
-    if (schema && Array.isArray(schema.required) && schema.required.length > 0) {
-        const missing = schema.required.filter(req => {
-            // args 缺字段 或 值为空字符串/undefined/null 都算"未提供"
-            const v = args?.[req];
-            return v === undefined || v === null || v === '';
-        });
-        if (missing.length > 0) {
-            return { allowed: false, code: 'MISSING_REQUIRED_PARAM', reason: '缺少必需参数: ' + missing.join(', '), expected: '必填: ' + schema.required.join(', ') };
+    if (schema) {
+        const issue = validateSchemaSubset(schema, args ?? {}, 'arguments');
+        if (issue) {
+            const isRequired = issue.includes('缺少必需参数:');
+            return {
+                allowed: false,
+                code: isRequired ? 'MISSING_REQUIRED_PARAM' : 'INVALID_ARGS_SCHEMA',
+                reason: issue,
+                expected: '参数需符合已声明的 schema 子集（required/type/enum/items/minimum/maximum）'
+            };
         }
     }
     return { allowed: true };
