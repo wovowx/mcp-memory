@@ -56,7 +56,8 @@ Ziven 的 MCP 记忆库 & 技能库。
 
 ### 数据存储现状（只读核对）
 
-- **Supabase skills**：工具/技能注册元数据，字段包含 name、description、input_schema、handler_type、handler_config、enabled、file_path、usage_count 等。运行时抽样已看到 text 与 js 类型并存；部分条目没有 schema 或 file_path，需在后续清点中分类，不能直接批量删除。
+- **Supabase skills**：工具/技能注册元数据，字段包含 name、description、input_schema、handler_type、handler_config、enabled、file_path、usage_count 等。只读分页查询得到 69 条记录：66 条 enabled（45 条 js、21 条 text），3 条 disabled js。部分代码工具没有 file_path 是当前数据模型的常见情况，不能单凭该字段判断失效。
+- **已确认的文档/注册漂移**：启用的 text 记录 dev-protection 的 file_path 为空，且 main 的 src/skills/process/ 下没有对应目录；与此同时，src/skills/architecture/SKILL.md 仍声称 hasCalledHelp 是 tools/call 的硬门禁，但 main 的 MCP router 源码没有该门禁，index.js 注释反而记录它已移除。这两处先列入清理清单，不在本轮直接删注册项或改路由行为。
 - **Supabase 记忆**：已核实 memories 含 key/value、category、title、type、status、version、valid_from/valid_to、trigger_intents、entities、related_memory_ids 等字段；memory_events 保存事件记录；另有 memory_aliases。
 - **Supabase 其他业务表**：当前表清单共 25 张，涉及聊天室/线程、执行与治理、系统配置、文件及测试表等。旧文档中的“21 张表”已过时；本轮不改表、不清数据，后续再逐表确认现役状态。
 - **GitHub**：保存 Worker 源码、skills 文档、版本记录、测试和配置。
