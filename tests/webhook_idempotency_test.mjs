@@ -162,7 +162,7 @@ console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报
   check('回查失败场景确实执行过源软删除与后续验证', verifyCalls.some(c => c.method === 'PATCH' && c.url.includes('test%2Fsource')) && verifyCalls.some(c => c.method === 'GET' && c.url.includes('test%2Fsource')));
 }
 
-console.log('\\n[query_files] 查询成功、空结果、参数错误与 HTTP 失败契约');
+console.log('\n[query_files] 查询成功、空结果、参数错误与 HTTP 失败契约');
 {
   const queryEnv = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
   let fileRows = [{ id: 'file-1', file_name: 'note.txt', description: 'test file', content_type: 'text' }];
@@ -208,5 +208,5 @@ console.log('\\n[query_files] 查询成功、空结果、参数错误与 HTTP �
   check('MCP 查询失败不增加 usage_count', failedCall.data.result.content[0].text.startsWith('❌') && usagePatches === 1, JSON.stringify({ text: failedCall.data.result.content[0].text, usagePatches }));
 }
 
-console.log(`\\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
+console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail ? 1 : 0);
