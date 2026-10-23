@@ -162,6 +162,48 @@ console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报
   check('回查失败场景确实执行过源软删除与后续验证', verifyCalls.some(c => c.method === 'PATCH' && c.url.includes('test%2Fsource')) && verifyCalls.some(c => c.method === 'GET' && c.url.includes('test%2Fsource')));
 }
 
+console.log('[update_file] 元数据更新：成功/未找到/HTTP失败/参数错误/网络异常/usage 契约');
+{
+  const skillQ = { name: 'query_files', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
+  const skU = { name: 'update_file', description: 'u', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
+  const skD = { name: 'delete_file', description: 'd', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
+  let patchRows=[], patchStatus=200, netErr=false, usagePatches=0;
+  globalThis.fetch = async (url, opts={}) => {
+    const s=String(url), m=opts.method||'GET';
+    if (s.includes('/rest/v1/skills?enabled=eq.true&select=*')) return { ok:true, status:200, json: async () => [skU, skD, skillQ] };
+    if (s.includes('/rest/v1/skills?name=eq.update_file&select=*')) return { ok:true, status:200, json: async () => [skU] };
+    if (s.includes('/rest/v1/skills?name=eq.update_file') && m==='PATCH') { usagePatches++; return { ok:true, status:204, json: async () => [] }; }
+    if (s.includes('/rest/v1/files?id=eq.')) {
+      if (netErr) throw new Error('network down');
+      if (patchStatus!==200) return { ok:false, status:patchStatus, text: async () => 'mock patch fail' };
+      return { ok:true, status:200, json: async () => patchRows };
+    }
+    throw new Error('unexpected update_file fetch: ' + s + ' ' + m);
+  };
+  patchRows = [{ id:'file-9', file_name:'doc.txt' }];
+  const u1 = await handleAITool('update_file', { file_id:'file-9', category:'x' }, env);
+  check('update_file 成功返回更新信息', u1.startsWith('✅ 文件元数据更新成功') && u1.includes('doc.txt'));
+  patchRows = [];
+  const u2 = await handleAITool('update_file', { file_id:'nope', category:'x' }, env);
+  check('update_file 未找到明确失败', u2.startsWith('❌') && u2.includes('未找到'));
+  patchRows = [{ id:'file-9' }]; patchStatus = 500;
+  const u3 = await handleAITool('update_file', { file_id:'file-9', tags:['t'] }, env);
+  check('update_file HTTP 失败明确标记', u3.startsWith('❌') && u3.includes('HTTP 500'));
+  patchStatus = 200;
+  const u4 = await handleAITool('update_file', { file_id:'', category:'x' }, env);
+  check('update_file 参数错误明确标记', u4.startsWith('❌') && u4.includes('file_id'));
+  const u5 = await handleAITool('update_file', { file_id:'file-9' }, env);
+  check('update_file 无字段明确标记', u5.startsWith('❌') && u5.includes('至少提供'));
+  netErr = true;
+  const u6 = await handleAITool('update_file', { file_id:'file-9', category:'x' }, env);
+  check('update_file 网络异常明确标记', u6.startsWith('❌') && u6.includes('更新失败'));
+  netErr = false; patchRows = [{ id:'file-9', file_name:'doc.txt' }];
+  const um = await handleMCPRequest({ method:'tools/call', id:910, params:{ name:'update_file', arguments:{ file_id:'file-9', category:'x' } } }, env);
+  check('update_file MCP 成功增加一次 usage_count', um.data.result.content[0].text.startsWith('✅') && usagePatches === 1);
+  const umb = await handleMCPRequest({ method:'tools/call', id:911, params:{ name:'update_file', arguments:{ file_id:'' } } }, env);
+  check('update_file MCP 参数错误不增加 usage_count', umb.data.result.content[0].text.startsWith('❌') && usagePatches === 1);
+}
+// @@DELBLK@@
 console.log('\n[query_files] 查询成功、空结果、参数错误与 HTTP 失败契约');
 {
   const queryEnv = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
