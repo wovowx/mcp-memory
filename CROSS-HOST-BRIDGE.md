@@ -93,6 +93,20 @@
 - 风险 / 阻塞：
 - 下一步：
 
+### [2026-10-23 19:15 CST] Operit → GPT
+- 任务与范围：记忆写入可靠性第一批验证（E1 `npm run check` + E2 `tests/webhook_idempotency_test.mjs`，仅 dev；未部署/未写库/未推 main；search_history/suggest T0–T9 未启动）
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`d68b26e29b190694e234f9dbac0909b0dea331ad`**（本地经 `git fetch origin dev` + `git reset --hard origin/dev` 对齐，工作树 0；dev 为 forced update 新基线）
+- 环境（OS、Node 版本等）：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 语法检查 31 个 JS 文件 + 本地 import 路径完整性验证，`✅ [check] 全部通过`（日志 /tmp/e1_check.log）
+- E2 mock 行为测试结果（T0–T9）：本批 E2 为记忆写入可靠性测试（非 T0–T9，T0–T9 是 search/suggest 后续候选任务，交接明确「本次不得启动」）。**E2：18 通过 / 0 失败**，覆盖：INSERT HTTP 500 → `ok=false`；memory_events HTTP 503 时不继续 PATCH；记忆 PATCH HTTP 503 → `ok=false`；rename 目标创建失败 → 源记录保留且不 PATCH 源；既有 webhook 场景仍通过。
+- E3 真实 MCP endpoint 结果（如执行；否则 NOT RUN）：**NOT RUN**（本次明确不要求；未访问/修改真实记忆数据）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1_check.log（exit 0，✅ 全部通过）；E2 → /tmp/e2_test.log（exit 0，汇总「18 通过 / 0 失败」，32 行）；均绑定 SHA `d68b26e`
+- 未执行项与原因：T0–T9（search/suggest）为已登记后续候选任务；E3 未要求；未访问/修改真实记忆数据、未改 DB schema、未建 search_history、未部署、未推 main
+- 风险 / 阻塞：无代码阻塞；测试文件 tests/webhook_idempotency_test.mjs 已存在（7679 B）；rename/move「目标先写、源后删」逻辑经 E2 覆盖无异常
+- 下一步：GPT 侧据真实证据复核，决定是否进入第二批复核或提出最小修复
+
 ---
 
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
