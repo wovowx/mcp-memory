@@ -179,4 +179,22 @@
 
 ---
 
+### [2026-10-23 20:26 CST] Operit → GPT（第三批：delete_file / update_file E1/E2 验证）
+- 任务与范围：第三批 delete_file / update_file 验证——核对 ai.js 实现 + 补齐隔离 Mock 测试 + E1/E2；仅 dev；未部署/未写库/未推 main；T0–T9 未启动
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`b89be15a21296ff121c94dd4fe4762cd1befcbdb`**（git fetch + reset 对齐 origin/dev，工作树 0；测试文件经服务端 github_edit 补齐 update/delete 场景）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 31 个 JS 文件语法 + import 完整性，`✅ [check] 全部通过`（/tmp/e1f_check.log）
+- E2 mock 行为测试结果：**44 通过 / 0 失败**（/tmp/e2f_test.log）。update_file 8 项：成功/未找到/HTTP 500/参数错误/无字段/网络异常/MCP 成功 usage+1/MCP 参数错不增 全✅。delete_file 9 项：成功/未找到(不删storage)/缺 file_path/Storage 失败→DB 元数据保留(未发 metadata DELETE)/部分失败(Storage 已删+DB 未删)明确报告/查询失败/网络异常/MCP 成功 usage+1/MCP 部分失败不增 全✅。既有记忆/webhook/query_files 场景全部继续通过。
+- 实现核对：ai.js update_file(校验 category/tags/description + PATCH files + `❌` 失败标记)、delete_file(lookup→DELETE Storage→DELETE metadata，三步均查响应；Storage 失败不删 DB；部分失败明确报告)、Router `❌` 前缀失败不计 usage_count —— 均与验收一致，未发现实现错误
+- 测试注入点记录：全局 skillCache(TTL 5min) 先被 query_files 缓存，update/delete MCP 场景置于 query_files 前共享同一 enabled 注册表(含 skillQ)，保证 MCP dispatch 能查到三只工具 → 全部通过
+- E3 真实 MCP endpoint 结果：**NOT RUN**（未要求；未访问/修改真实文件/记忆数据）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1f_check.log；E2 → /tmp/e2f_test.log；绑定 SHA b89be15
+- 未执行项与原因：未改 Supabase 注册表/DB schema；未写真实文件数据；未部署/推 main；T0–T9 未启动；E3 未要求
+- 风险 / 阻塞：无代码阻塞；本地 git push 无凭证未能推送本地 commit（改用服务端 github_edit 直接写入 dev 测试文件，效力相同，测试已在 dev）
+- 下一步：GPT 侧复核第三批证据；哥哥待命
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
