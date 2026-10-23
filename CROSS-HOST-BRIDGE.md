@@ -62,6 +62,7 @@
 - 已改文件：`src/utils/skills.js`、`src/modules/mcp_router.js`。查询 HTTP 非 2xx 现在抛出可识别异常而不是返回 `[]`/`null`；add/update/delete 写入使用 `Prefer: return=representation`，并要求响应包含至少一条记录才报告成功；管理操作写失败返回 `err:`，查询异常由 Router 归一化为 `err:`；自动 usage_count 仅对非空且不以 `err:`、`❌`、`RELEASE_GUARD:`、`DISPATCH_GUARD_REJECT:` 开头的结果计数，计数异常不得改写原工具响应。
 - 先检查实际 diff，重点核对 PostgREST `return=representation` 响应契约和测试 mock，不要凭文档猜。若新增写操作的响应体不是数组或现有 mock 不符合真实契约，先记录证据并在本授权范围内最小修正。
 - 必补 Mock 场景：`getEnabledSkills` HTTP 500 与合法空列表；`getSkillByName` HTTP 500 与合法无匹配；`skill_add/update/delete` 底层非 2xx、零行响应与成功；`skill_list` 空结果与查询失败；handler 空串、标准化失败、成功；成功调用计数一次、失败不计数；计数自身失败不改变原工具响应。
+- 额外静态核对：`skill_list` 原实现构造了 `lines` 但未赋给 `text`，非空列表会返回空串；当前已修正，测试需断言非空列表实际包含技能名。缺少 `name` 的 skill_add/update/delete 已统一为 `err:`，需断言不会增加 usage_count。
 - 必跑 E1：`npm run check`。必跑 E2：`node tests/webhook_idempotency_test.mjs`。记录 Node/npm 版本、实际 SHA、工作树状态、真实退出码、各新增场景结果和可核查原始输出。失败则在授权范围内最小修复并重跑。
 - E3：NOT RUN。本次不访问真实 MCP endpoint，不访问或写入真实数据；不修改 Supabase schema/注册表定义，不部署、不推 main，不启动 `search_history/suggest` T0–T9。
 - 完成后在「执行结果追加区」追加带时间戳的 Operit → GPT 记录，保留历史记录不覆盖。
