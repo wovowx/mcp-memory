@@ -4,12 +4,19 @@ Ziven 的 MCP 记忆库 & 技能库。
 
 > 私有仓库，只有被授权的人能访问。
 
-## 内容
+## 仓库目录
 
-- `src/` — Cloudflare Worker 源码（MCP 服务）
-- `skills/` — 技能文件（SKILL.md）
-- `docs/` — 文档（需求文档等）
-- `CHANGELOG.md` — 版本记录
+- `src/index.js` — Cloudflare Worker 入口与 HTTP 路由
+- `src/modules/` — MCP 路由、Agent runtime、执行会话、发布/补丁相关模块
+- `src/tools/` — MCP 工具实现
+- `src/skills/` — 场景 Skill 与操作手册
+- `src/utils/` — 注册表、响应、搜索、存储等共用能力
+- `src/public/` — 前端页面资源
+- `common-ground/` — Common Ground 相关资产
+- `migrations/` — 当前仓库中保留的数据库迁移脚本
+- `scripts/`、`tests/` — 检查脚本与回归测试
+- `wrangler.toml`、`package.json` — Worker 配置与项目命令
+- `CHANGELOG.md` — 变更记录
 
 ## 当前架构地图（盘点基线）
 
