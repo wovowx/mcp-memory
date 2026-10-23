@@ -140,16 +140,19 @@ console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报
 
   // 源软删除请求成功但回查失败时，不能把整个 rename 变成无上下文异常。
   const verifyCalls = [];
+  let sourceReadCount = 0;
   globalThis.fetch = async (url, opts = {}) => {
     const s = String(url), method = opts.method || 'GET';
     verifyCalls.push({ url: s, method });
     if (method === 'PATCH' && s.includes('/rest/v1/memories?key=eq.')) return { ok: true, status: 204 };
-    if (s.includes('/rest/v1/memories?key=eq.')) {
-      if (s.includes('key=eq.test%2Fsource')) return { ok: true, status: 200, json: async () => [source] };
-      if (s.includes('key=eq.test%2Ftarget')) return { ok: true, status: 200, json: async () => [] };
+    if (method === 'GET' && s.includes('/rest/v1/memories?key=eq.test%2Fsource')) {
+      sourceReadCount++;
+      return sourceReadCount === 1
+        ? { ok: true, status: 200, json: async () => [source] }
+        : { ok: false, status: 503 };
     }
-    if (s.endsWith('/rest/v1/memories')) return { ok: true, status: 201 };
-    if (method === 'GET' && s.includes('key=eq.test%2Fsource')) return { ok: false, status: 503 };
+    if (method === 'GET' && s.includes('/rest/v1/memories?key=eq.test%2Ftarget')) return { ok: true, status: 200, json: async () => [] };
+    if (method === 'POST' && s.endsWith('/rest/v1/memories')) return { ok: true, status: 201 };
     throw new Error('unexpected verification fetch: ' + s + ' ' + method);
   };
   const verifyText = await handleMemoryTool('memory_rename', { old_key: 'test/source', new_key: 'test/target' }, writeEnv);
