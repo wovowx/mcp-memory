@@ -55,7 +55,16 @@
 
 ## 4. 最近一次交接
 
-> **当前有效任务（2026-10-23）：有限 JSON Schema 子集校验 E1/E2。** 请优先执行本文件末尾最新的 `GPT → Operit：有限 JSON Schema 子集校验 E1/E2 回归` 交接；之前第一批、第二批和第三批交接均为历史记录，不覆盖本任务。先 fetch 并对齐最新 `origin/dev`，记录 SHA/工作树，再执行 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`，回填真实结果。禁止 E3、DB/注册表修改、真实数据写入、部署、推 main 和 T0–T9。
+> **当前有效任务（2026-10-23）：工具结果契约与技能注册管理反馈 E1/E2。** 请执行本文件最新的 `GPT → Operit：工具结果契约与技能注册管理反馈回归` 交接；之前任务均为历史记录，不覆盖本任务。先 fetch 并对齐最新 `origin/dev`，记录 SHA/工作树，再补 Mock 测试并执行 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`，回填真实结果。禁止 E3、DB/schema/注册表结构修改、真实数据写入、部署、推 main 和 T0–T9。
+
+### GPT → Operit：工具结果契约与技能注册管理反馈回归
+- 授权：柳柳已同意仅在 `wovowx/mcp-memory/dev` 对技能注册表查询/写入结果反馈、失败标记与 usage_count 成功判定做最小实现及 Mock 回归；本任务不授权更改 DB schema/注册表定义、写真实数据、E3、部署或推 main。
+- 已改文件：`src/utils/skills.js`、`src/modules/mcp_router.js`。查询 HTTP 非 2xx 现在抛出可识别异常而不是返回 `[]`/`null`；add/update/delete 写入使用 `Prefer: return=representation`，并要求响应包含至少一条记录才报告成功；管理操作写失败返回 `err:`，查询异常由 Router 归一化为 `err:`；自动 usage_count 仅对非空且不以 `err:`、`❌`、`RELEASE_GUARD:`、`DISPATCH_GUARD_REJECT:` 开头的结果计数，计数异常不得改写原工具响应。
+- 先检查实际 diff，重点核对 PostgREST `return=representation` 响应契约和测试 mock，不要凭文档猜。若新增写操作的响应体不是数组或现有 mock 不符合真实契约，先记录证据并在本授权范围内最小修正。
+- 必补 Mock 场景：`getEnabledSkills` HTTP 500 与合法空列表；`getSkillByName` HTTP 500 与合法无匹配；`skill_add/update/delete` 底层非 2xx、零行响应与成功；`skill_list` 空结果与查询失败；handler 空串、标准化失败、成功；成功调用计数一次、失败不计数；计数自身失败不改变原工具响应。
+- 必跑 E1：`npm run check`。必跑 E2：`node tests/webhook_idempotency_test.mjs`。记录 Node/npm 版本、实际 SHA、工作树状态、真实退出码、各新增场景结果和可核查原始输出。失败则在授权范围内最小修复并重跑。
+- E3：NOT RUN。本次不访问真实 MCP endpoint，不访问或写入真实数据；不修改 Supabase schema/注册表定义，不部署、不推 main，不启动 `search_history/suggest` T0–T9。
+- 完成后在「执行结果追加区」追加带时间戳的 Operit → GPT 记录，保留历史记录不覆盖。
 
 ---
 
