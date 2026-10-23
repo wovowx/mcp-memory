@@ -203,7 +203,55 @@ console.log('[update_file] 元数据更新：成功/未找到/HTTP失败/参数�
   const umb = await handleMCPRequest({ method:'tools/call', id:911, params:{ name:'update_file', arguments:{ file_id:'' } } }, env);
   check('update_file MCP 参数错误不增加 usage_count', umb.data.result.content[0].text.startsWith('❌') && usagePatches === 1);
 }
-// @@DELBLK@@
+console.log('[delete_file] 先删 Storage 再删元数据：成功/未找到/缺路径/Storage失败/部分失败/网络异常/usage 契约');
+{
+  const skillQ = { name: 'query_files', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
+  const skU = { name: 'update_file', description: 'u', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
+  const skD = { name: 'delete_file', description: 'd', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
+  let fileRec=[], storageStatus=200, metaStatus=200, lookupStatus=200, netErr=false;
+  let sDel=0, mDel=0, usagePatches=0;
+  globalThis.fetch = async (url, opts={}) => {
+    const s=String(url), m=opts.method||'GET';
+    if (s.includes('/rest/v1/skills?enabled=eq.true&select=*')) return { ok:true, status:200, json: async () => [skU, skD, skillQ] };
+    if (s.includes('/rest/v1/skills?name=eq.delete_file&select=*')) return { ok:true, status:200, json: async () => [skD] };
+    if (s.includes('/rest/v1/skills?name=eq.delete_file') && m==='PATCH') { usagePatches++; return { ok:true, status:204, json: async () => [] }; }
+    if (s.includes('/rest/v1/files?select=id,file_path,file_name')) {
+      if (netErr) throw new Error('network down');
+      if (lookupStatus!==200) return { ok:false, status:lookupStatus, text: async () => 'lookup fail' };
+      return { ok:true, status:200, json: async () => fileRec };
+    }
+    if (s.includes('/storage/v1/object/files/')) { sDel++; return storageStatus===200 ? { ok:true, status:200 } : { ok:false, status:storageStatus, text: async () => 'storage fail' }; }
+    if (s.includes('/rest/v1/files?id=eq.') && m==='DELETE') { mDel++; return metaStatus===200 ? { ok:true, status:204, json: async () => [] } : { ok:false, status:metaStatus, text: async () => 'meta fail' }; }
+    throw new Error('unexpected delete_file fetch: ' + s + ' ' + m);
+  };
+  fileRec = [{ id:'file-7', file_path:'b/dir/f.txt', file_name:'f.txt' }];
+  const d1 = await handleAITool('delete_file', { file_id:'file-7' }, env);
+  check('delete_file 成功删除并报告', d1.startsWith('✅ 文件删除成功'));
+  fileRec = [];
+  const d2 = await handleAITool('delete_file', { file_id:'nope' }, env);
+  check('delete_file 未找到明确失败', d2.startsWith('❌') && d2.includes('未找到'));
+  fileRec = [{ id:'file-7', file_path:'', file_name:'f' }];
+  const d3 = await handleAITool('delete_file', { file_id:'file-7' }, env);
+  check('delete_file 缺 file_path 明确不执行删除', d3.startsWith('❌') && d3.includes('缺少有效 file_path'));
+  fileRec = [{ id:'file-7', file_path:'b/f.txt', file_name:'f' }]; storageStatus=500; sDel=0; mDel=0;
+  const d4 = await handleAITool('delete_file', { file_id:'file-7' }, env);
+  check('delete_file Storage失败→DB元数据保留(未发 metadata DELETE)', d4.startsWith('❌') && d4.includes('Storage 对象未确认删除') && mDel===0);
+  storageStatus=200; metaStatus=500; sDel=0; mDel=0;
+  const d5 = await handleAITool('delete_file', { file_id:'file-7' }, env);
+  check('delete_file 部分失败明确报告', d5.startsWith('❌') && d5.includes('部分失败') && sDel===1 && mDel===1);
+  storageStatus=200; metaStatus=200; lookupStatus=500;
+  const d6 = await handleAITool('delete_file', { file_id:'file-7' }, env);
+  check('delete_file 查询元数据失败明确标记', d6.startsWith('❌') && d6.includes('查询文件元数据'));
+  lookupStatus=200; netErr=true;
+  const d7 = await handleAITool('delete_file', { file_id:'file-7' }, env);
+  check('delete_file 网络异常明确标记', d7.startsWith('❌') && d7.includes('删除失败'));
+  netErr=false; storageStatus=200; metaStatus=200; fileRec=[{ id:'file-7', file_path:'b/f.txt', file_name:'f' }];
+  const dm = await handleMCPRequest({ method:'tools/call', id:912, params:{ name:'delete_file', arguments:{ file_id:'file-7' } } }, env);
+  check('delete_file MCP 成功增加一次 usage_count', dm.data.result.content[0].text.startsWith('✅') && usagePatches===1);
+  metaStatus=500; const before=usagePatches;
+  const dmb = await handleMCPRequest({ method:'tools/call', id:913, params:{ name:'delete_file', arguments:{ file_id:'file-7' } } }, env);
+  check('delete_file MCP 部分失败不增加 usage_count', dmb.data.result.content[0].text.startsWith('❌') && dmb.data.result.content[0].text.includes('部分失败') && usagePatches===before);
+}
 console.log('\n[query_files] 查询成功、空结果、参数错误与 HTTP 失败契约');
 {
   const queryEnv = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
