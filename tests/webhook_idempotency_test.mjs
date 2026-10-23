@@ -203,6 +203,9 @@ console.log('\n[query_files] 查询成功、空结果、参数错误与 HTTP 失
   const successCall = await handleMCPRequest({ method: 'tools/call', id: 801, params: { name: 'query_files', arguments: { keyword: 'note' } } }, queryEnv);
   check('MCP 成功调用正常返回并增加一次 usage_count', successCall.data.result.content[0].text.includes('找到 1 个文件') && usagePatches === 1, JSON.stringify({ text: successCall.data.result.content[0].text, usagePatches }));
 
+  const invalidCall = await handleMCPRequest({ method: 'tools/call', id: 803, params: { name: 'query_files', arguments: { limit: 0 } } }, queryEnv);
+  check('MCP 参数错误不增加 usage_count', invalidCall.data.result.content[0].text.startsWith('❌') && usagePatches === 1, JSON.stringify({ text: invalidCall.data.result.content[0].text, usagePatches }));
+
   fileQueryStatus = 503;
   const failedCall = await handleMCPRequest({ method: 'tools/call', id: 802, params: { name: 'query_files', arguments: { keyword: 'note' } } }, queryEnv);
   check('MCP 查询失败不增加 usage_count', failedCall.data.result.content[0].text.startsWith('❌') && usagePatches === 1, JSON.stringify({ text: failedCall.data.result.content[0].text, usagePatches }));
