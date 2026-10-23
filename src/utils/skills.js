@@ -67,18 +67,22 @@ export async function addSkill(env, skill) {
         method: 'PATCH',
         headers: {
             'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json', 'Prefer': 'return=representation'
         },
         body: JSON.stringify({ ...updates, updated_at: new Date().toISOString() })
     });
-    return resp.ok;
+    if (!resp.ok) return false;
+    try { const rows = await resp.json(); return Array.isArray(rows) && rows.length > 0; }
+    catch (e) { return false; }
 }
 export async function deleteSkill(env, name) {
     const supabaseUrl = env.SUPABASE_URL;
     const supabaseKey = env.SUPABASE_ANON_KEY;
     const resp = await fetch(`${supabaseUrl}/rest/v1/skills?name=eq.${encodeURIComponent(name)}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
+        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey, 'Prefer': 'return=representation' }
     });
-    return resp.ok;
+    if (!resp.ok) return false;
+    try { const rows = await resp.json(); return Array.isArray(rows) && rows.length > 0; }
+    catch (e) { return false; }
 }
