@@ -301,7 +301,7 @@ async function syncChatTools(env) {
 async function autoIncrementUsage(env, name) {
     // v6.38.0 自动使用打点：工具执行成功后分发层自动+1（②自动技能沉淀数据源修复，不再靠 AI 自觉调 increment_usage）
     if (!name || name === 'increment_usage') return;
-    try { await handleIncrementUsage(name, { name }, env); } catch (e) { /* 静默，不污染回复 */ }
+    try { await handleIncrementUsage(name, { name }, env); } catch (e) { /* 计数失败不得改写原工具响应 */ }
 }
 
 export async function handleMCPRequest(body, env) {
@@ -373,7 +373,12 @@ export async function handleMCPRequest(body, env) {
                 }
             }
         } catch (e) { text = 'err: ' + e.message; }
-        const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:');
+        const normalizedText = typeof text === 'string' ? text.trim() : '';
+        const toolOk = normalizedText.length > 0
+            && !normalizedText.startsWith('err:')
+            && !normalizedText.startsWith('❌')
+            && !normalizedText.startsWith('RELEASE_GUARD:')
+            && !normalizedText.startsWith('DISPATCH_GUARD_REJECT:');
         if (toolOk) await autoIncrementUsage(env, name);
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
@@ -389,13 +394,13 @@ async function handleSkillManagement(name, safeArgs, env) {
         else { let lines = 'skills (' + skills.length + '):' + '\n\n'; for (const s of skills) { const status = s.enabled ? 'ok' : 'off'; lines += '- ' + s.name + ' (' + status + '): ' + (s.description || '') + '\n'; } }
     } else if (name === 'skill_add') {
         if (!safeArgs.name) text = 'need name';
-        else { try { await addSkill(env, { name: safeArgs.name, description: safeArgs.description || '', input_schema: safeArgs.input_schema || {}, handler_type: safeArgs.handler_type || 'js', handler_config: safeArgs.handler_config || {} }); text = 'added: ' + safeArgs.name; } catch (e) { text = 'add fail: ' + e.message; } }
+        else { try { const ok = await addSkill(env, { name: safeArgs.name, description: safeArgs.description || '', input_schema: safeArgs.input_schema || {}, handler_type: safeArgs.handler_type || 'js', handler_config: safeArgs.handler_config || {} }); text = ok ? 'added: ' + safeArgs.name : 'err: skill_add write failed: ' + safeArgs.name; } catch (e) { text = 'err: skill_add failed: ' + e.message; } }
     } else if (name === 'skill_update') {
         if (!safeArgs.name) text = 'need name';
-        else { try { const updates = {}; if (safeArgs.description) updates.description = safeArgs.description; if (safeArgs.input_schema) updates.input_schema = safeArgs.input_schema; if (safeArgs.handler_config) updates.handler_config = safeArgs.handler_config; await updateSkill(env, safeArgs.name, updates); text = 'updated: ' + safeArgs.name; } catch (e) { text = 'update fail: ' + e.message; } }
+        else { try { const updates = {}; if (safeArgs.description) updates.description = safeArgs.description; if (safeArgs.input_schema) updates.input_schema = safeArgs.input_schema; if (safeArgs.handler_config) updates.handler_config = safeArgs.handler_config; const ok = await updateSkill(env, safeArgs.name, updates); text = ok ? 'updated: ' + safeArgs.name : 'err: skill_update write failed or skill not found: ' + safeArgs.name; } catch (e) { text = 'err: skill_update failed: ' + e.message; } }
     } else if (name === 'skill_delete') {
         if (!safeArgs.name) text = 'need name';
-        else { await deleteSkill(env, safeArgs.name); text = 'deleted: ' + safeArgs.name; }
+        else { const ok = await deleteSkill(env, safeArgs.name); text = ok ? 'deleted: ' + safeArgs.name : 'err: skill_delete failed or skill not found: ' + safeArgs.name; }
     }
     return text;
 }
