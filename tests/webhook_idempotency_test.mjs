@@ -4,7 +4,7 @@
 import { handleChatWebhook } from '../src/tools/chat_webhook.js';
 import { handleMemoryTool, putMemory } from '../src/tools/memory_unified.js';
 import { handleAITool } from '../src/tools/ai.js';
-import { handleMCPRequest } from '../src/modules/mcp_router.js';
+import { handleMCPRequest, validateSchemaSubset } from '../src/modules/mcp_router.js';
 
 const env = {
   SUPABASE_URL: 'https://mock.supabase.co',
@@ -303,6 +303,30 @@ console.log('\n[query_files] 查询成功、空结果、参数错误与 HTTP 失
   fileQueryStatus = 503;
   const failedCall = await handleMCPRequest({ method: 'tools/call', id: 802, params: { name: 'query_files', arguments: { keyword: 'note' } } }, queryEnv);
   check('MCP 查询失败不增加 usage_count', failedCall.data.result.content[0].text.startsWith('❌') && usagePatches === 1, JSON.stringify({ text: failedCall.data.result.content[0].text, usagePatches }));
+}
+
+console.log('\n[dispatch schema] 有边界的 JSON Schema 子集校验');
+{
+  const schema = {
+    type: 'object',
+    required: ['name'],
+    properties: {
+      name: { type: 'string' },
+      mode: { type: 'string', enum: ['brief', 'full'] },
+      tags: { type: 'array', items: { type: 'string' } },
+      score: { type: 'number', minimum: 1, maximum: 5 },
+      count: { type: 'integer' }
+    }
+  };
+  check('schema required 缺失被识别', validateSchemaSubset(schema, { mode: 'brief' })?.includes('缺少必需参数: name'));
+  check('schema type 错误被识别', validateSchemaSubset(schema, { name: 42 })?.includes('arguments.name 类型错误'));
+  check('schema enum 非法值被识别', validateSchemaSubset(schema, { name: 'ok', mode: 'verbose' })?.includes('arguments.mode 不在允许的枚举值中'));
+  check('schema array items 类型错误被识别', validateSchemaSubset(schema, { name: 'ok', tags: ['valid', 2] })?.includes('arguments.tags[1] 类型错误'));
+  check('schema minimum 越界被识别', validateSchemaSubset(schema, { name: 'ok', score: 0 })?.includes('小于最小值 1'));
+  check('schema maximum 越界被识别', validateSchemaSubset(schema, { name: 'ok', score: 6 })?.includes('大于最大值 5'));
+  check('schema integer 类型正确', validateSchemaSubset(schema, { name: 'ok', count: 2 }) === null);
+  check('符合已声明子集的参数放行', validateSchemaSubset(schema, { name: 'ok', mode: 'brief', tags: ['a'], score: 3, count: 2 }) === null);
+  check('未声明的 schema 关键字不擅自拒绝', validateSchemaSubset({ type: 'object', patternProperties: { x: {} } }, { x: true }) === null);
 }
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
