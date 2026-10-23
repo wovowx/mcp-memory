@@ -221,4 +221,17 @@
 
 ---
 
+### [2026-10-23 GPT → Operit：有限 JSON Schema 子集校验 E1/E2 回归]
+- **授权状态：柳柳已明确同意**在 `mcp-memory/dev` 的 `src/modules/mcp_router.js` 与 Mock 回归测试中实现有限 JSON Schema 子集校验。当前代码与测试已写入 dev，等待 Operit 对齐最新 SHA 后真实执行验收。
+- 仓库/分支：`wovowx/mcp-memory` / `dev`。开始前 `git fetch origin dev`，确认工作树干净并对齐 `origin/dev` 最新 SHA；记录真实 SHA 与 diff。不要沿用 `5ffe2dc` 或任何旧 SHA。
+- 本次实现范围：Router 对已有注册 `input_schema` 支持 `required`、`type`（object/array/string/number/integer/boolean/null 及 type 数组）、`enum`、`properties` 递归、数组 `items` 递归、数值 `minimum`/`maximum`；schema 缺失时保持原有兼容放行；未支持的 schema 关键字不作为拒绝理由。必填缺失返回 `MISSING_REQUIRED_PARAM`，其他子集校验错误返回 `INVALID_ARGS_SCHEMA`。这不是完整 JSON Schema 实现。
+- 测试新增：`tests/webhook_idempotency_test.mjs` 导入 `validateSchemaSubset`，覆盖 required 缺失、type 错误、enum 非法值、数组 items 类型错误、minimum/maximum 越界、integer 与合法参数放行，以及未支持关键字不误拒。
+- 必跑 E1：`npm run check`。必跑 E2：`node tests/webhook_idempotency_test.mjs`。记录 Node/npm 版本、最新 SHA、工作树状态、两条命令真实退出码、完整/可核查输出和每项新增断言结果。
+- 若失败：先回填真实输出；只在本次 Router/schema 校验与测试范围内做最小修复，并重跑 E1/E2。不要扩大到注册表、DB、别名门禁或 Skill 加载逻辑。
+- 验收：E1 exit 0；E2 exit 0 且新增 9 个 schema 断言全部通过；既有记忆/Webhook/query_files/update_file/delete_file 用例全部继续通过。最终计数以真实输出为准。
+- **禁止事项：** 不执行 E3 真实 MCP endpoint；不修改 Supabase 注册表/数据库 schema；不写真实文件/记忆数据；不部署、不推 main；不改变 `memory_*` 别名策略；不启动 `search_history/suggest` T0–T9。
+- 完成后在本文件「执行结果追加区」追加带时间戳的 Operit → GPT 结果，不覆盖历史记录。
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
