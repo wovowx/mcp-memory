@@ -2,6 +2,15 @@
 
 所有重要变更将记录在此文件中。
 
+## [Unreleased · dev] - 2026-10-23
+### Fixed（记忆写入/迁移失败反馈 · 待验证）
+- `getMemoryByKey` / `getAllMemories` 遇 HTTP 非 2xx 时不再伪装成空/不存在结果，改为抛出可识别错误。
+- `putMemory` 检查历史事件、新建和更新请求的 HTTP 响应，并返回结构化成功/失败结果；上层 remember/update 不再无条件报成功。
+- 软删除检查 HTTP 结果并回查 active 状态；rename/move 改为先写目标，确认写入成功后再软删除源，删除未确认时明确提示可能存在重复记录。
+- 统一记忆 import 与 data 工具 import 仅按确认的写入结果计数，并显示失败数量。
+- 增加 mock 回归断言覆盖 INSERT HTTP 500、历史事件 HTTP 503 阻止后续 PATCH、UPDATE HTTP 503。E1/E2 尚待 Operit 执行；不代表测试已通过。
+- 仅修改 dev 分支源码、测试与变更记录；未改数据库/schema/注册表，未部署，未推 main。此条是未发布开发记录，不构成软件版本发布。
+
 ## [v6.34.0] - 2026-10-17
 ### Added（CF API 代理工具 cf_proxy · 柳柳2026-10-17拍板）
 - 新增 MCP 工具 `cf_proxy`：用 Worker 环境变量 `CLOUDFLARE_API_TOKEN` 代调 Cloudflare API（只执行、不暴露 token 明文）
