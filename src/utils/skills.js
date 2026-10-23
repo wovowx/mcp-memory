@@ -60,7 +60,9 @@ export async function addSkill(env, skill) {
     });
     if (!resp.ok) return false;
     try { const rows = await resp.json(); return Array.isArray(rows) && rows.length > 0; }
-    catch (e) { return false; }(env, name, updates) {
+    catch (e) { return false; }
+}
+export async function updateSkill(env, name, updates) {
     const supabaseUrl = env.SUPABASE_URL;
     const supabaseKey = env.SUPABASE_ANON_KEY;
     const resp = await fetch(`${supabaseUrl}/rest/v1/skills?name=eq.${encodeURIComponent(name)}`, {
