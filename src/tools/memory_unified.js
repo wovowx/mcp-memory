@@ -74,7 +74,12 @@ async function deleteMemory(env, key) {
         body: JSON.stringify({ status: 'deleted', valid_to: new Date().toISOString(), updated_at: new Date().toISOString() })
     });
     if (!resp.ok) return { ok: false, stage: 'delete', status: resp.status, error: 'memory soft-delete failed' };
-    const remaining = await getMemoryByKey(env, key);
+    let remaining;
+    try {
+        remaining = await getMemoryByKey(env, key);
+    } catch (error) {
+        return { ok: false, stage: 'verify-delete', error: 'soft-delete request succeeded but verification failed: ' + error.message };
+    }
     if (remaining) return { ok: false, stage: 'verify-delete', error: 'memory remains active after soft-delete' };
     return { ok: true };
 }
