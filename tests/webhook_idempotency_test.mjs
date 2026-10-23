@@ -1,7 +1,7 @@
 // webhook 三行为验证测试 · 2026-10-20 · 待办③（幂等+重试）
 // 验证 chat_webhook.js 的 A 正常到达 / B 重复投递幂等 / C 失败重试不破坏状态
-// 运行：cd /tmp && node webhook_behavior_test.mjs
-import { handleChatWebhook } from '/tmp/mm2/src/tools/chat_webhook.js';
+// 运行：node tests/webhook_idempotency_test.mjs
+import { handleChatWebhook } from '../src/tools/chat_webhook.js';
 import { putMemory } from '../src/tools/memory_unified.js';
 
 const env = {
