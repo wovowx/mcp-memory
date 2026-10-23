@@ -2,6 +2,7 @@
 // 验证 chat_webhook.js 的 A 正常到达 / B 重复投递幂等 / C 失败重试不破坏状态
 // 运行：cd /tmp && node webhook_behavior_test.mjs
 import { handleChatWebhook } from '/tmp/mm2/src/tools/chat_webhook.js';
+import { putMemory } from '../src/tools/memory_unified.js';
 
 const env = {
   SUPABASE_URL: 'https://mock.supabase.co',
@@ -89,6 +90,37 @@ console.log('\n[用例 C] 查询失败（upstream 500/网络）→ 返回 500，
   check('audit 记 error（decision=error 且可重试提示）', auditRows.some(r => r.decision === 'error' && /可重试/.test(r.reason)));
   check('日志里不含 delivered/duplicate（未破坏状态判定）', !auditRows.some(r => r.event_id === 'evt-C' && (r.decision === 'delivered' || r.decision === 'duplicate')));
   queryFail = false;
+}
+
+// ---------- 记忆写入失败契约回归 ----------
+console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报成功');
+{
+  const writeEnv = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
+  let existing = null;
+  let insertStatus = 500, eventStatus = 201, patchStatus = 204;
+  const writeCalls = [];
+  globalThis.fetch = async (url, opts = {}) => {
+    const s = String(url); writeCalls.push({ url: s, method: opts.method || 'GET' });
+    if (s.includes('/rest/v1/memories?key=eq.')) return { ok: true, status: 200, json: async () => existing ? [existing] : [] };
+    if (s.includes('/rest/v1/memory_events')) return { ok: eventStatus >= 200 && eventStatus < 300, status: eventStatus };
+    if (s.includes('/rest/v1/memories?id=eq.')) return { ok: patchStatus >= 200 && patchStatus < 300, status: patchStatus };
+    if (s.endsWith('/rest/v1/memories')) return { ok: insertStatus >= 200 && insertStatus < 300, status: insertStatus };
+    throw new Error('unexpected memory fetch: ' + s);
+  };
+
+  existing = null; insertStatus = 500;
+  let result = await putMemory(writeEnv, 'test/write-fail', { value: 'sample' });
+  check('INSERT HTTP 500 → ok=false', result.ok === false && result.stage === 'insert');
+
+  existing = { id: 'memory-1', key: 'test/update-event-fail', value: 'old', version: 1 };
+  eventStatus = 503; patchStatus = 204; writeCalls.length = 0;
+  result = await putMemory(writeEnv, existing.key, { value: 'new' });
+  check('历史事件 HTTP 503 → ok=false', result.ok === false && result.stage === 'history');
+  check('历史事件失败后不 PATCH 当前记忆', !writeCalls.some(c => c.method === 'PATCH'));
+
+  eventStatus = 201; patchStatus = 503; writeCalls.length = 0;
+  result = await putMemory(writeEnv, existing.key, { value: 'new' });
+  check('UPDATE HTTP 503 → ok=false', result.ok === false && result.stage === 'update');
 }
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
