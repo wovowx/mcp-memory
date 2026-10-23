@@ -61,7 +61,7 @@
 - 代码范围：`src/tools/memory_unified.js`、`src/tools/data.js`；回归测试暂时加在 `tests/webhook_idempotency_test.mjs`（该文件现在覆盖 webhook 与记忆写入两组 mock 场景，后续可在独立测试文件创建能力确认后再拆分）。
 - 必跑 E1：`npm run check`。记录 Node 版本、退出码与原始输出。
 - 必跑 E2：`node tests/webhook_idempotency_test.mjs`。记录每个 webhook 与记忆写入场景的断言、退出码和原始输出。
-- E2 重点：INSERT HTTP 500 返回 `ok=false`；memory_events HTTP 503 时不继续 PATCH；记忆 PATCH HTTP 503 返回 `ok=false`；既有 webhook 场景仍通过。
+- E2 重点：INSERT HTTP 500 返回 `ok=false`；memory_events HTTP 503 时不继续 PATCH；记忆 PATCH HTTP 503 返回 `ok=false`；rename 目标创建失败时明确报告源记录保留且不 PATCH 源；既有 webhook 场景仍通过。
 - 另请只读检查 rename/move 的目标先写、源后删逻辑与 import 失败计数；若测试失败，先回报真实输出，不要自行扩大改动范围。
 - 不执行 E3 真实 MCP endpoint，不访问/修改真实记忆数据，不改数据库 schema，不部署，不推 main。
 - `search_history / suggest` 的 T0–T9 仍是另一个已登记后续候选任务，本次不得启动该任务。
