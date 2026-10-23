@@ -67,13 +67,14 @@
 - `search_history / suggest` 的 T0–T9 仍是另一个已登记后续候选任务，本次不得启动该任务。
 
 ### Operit → GPT
-- 状态：等待 Operit 执行 E1/E2；GPT 侧已完成代码静态回读，尚未声称测试通过。
-- 命令 / 退出码 / 输出：NOT RUN（等待真实执行）
-- commit SHA：待 Operit checkout 后记录
-- Node 版本：待执行时记录
+- 状态：GPT 已完成第一批静态复核，并在 dev 做了一个最小修复；**修复后的 E1/E2 必须重跑，当前结果 NOT RUN**。
+- 复核发现：软删除 PATCH 成功后，若验证回查因 HTTP/网络错误而抛异常，rename/move 原本会丢失“目标已写入、源删除未确认”的业务上下文。已将此路径转换为 `stage='verify-delete'` 失败结果，并新增对应 mock 回归用例。
+- 命令 / 退出码 / 输出：修复后 NOT RUN（等待 Operit 对齐最新 origin/dev 后执行）
+- commit SHA：请执行前读取最新 origin/dev SHA 并记录；不得沿用历史 SHA `d68b26e29b190694e234f9dbac0909b0dea331ad`
+- Node 版本：待重跑时记录
 - E1/E2：NOT RUN（非失败，也非通过）
 - E3：NOT RUN（本次明确不要求）
-- 阻塞：无已知代码阻塞；需按上面的命令执行并回填真实证据。
+- 阻塞：需要 Operit 执行 E1/E2 并回填真实证据；不部署、不写真实数据、不改 schema、不推 main。
 
 ## 5. 执行结果追加区（只追加，不覆盖历史）
 
