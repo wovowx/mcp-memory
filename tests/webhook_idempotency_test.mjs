@@ -137,6 +137,24 @@ console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报
   const renameText = await handleMemoryTool('memory_rename', { old_key: 'test/source', new_key: 'test/target' }, writeEnv);
   check('rename 目标写入失败时明确报告源记录保留', renameText.includes('源记录保留'));
   check('rename 目标写入失败时未 PATCH 源记录', !renameCalls.some(c => c.method === 'PATCH' && c.url.includes('test%2Fsource')));
+
+  // 源软删除请求成功但回查失败时，不能把整个 rename 变成无上下文异常。
+  const verifyCalls = [];
+  globalThis.fetch = async (url, opts = {}) => {
+    const s = String(url), method = opts.method || 'GET';
+    verifyCalls.push({ url: s, method });
+    if (method === 'PATCH' && s.includes('/rest/v1/memories?key=eq.')) return { ok: true, status: 204 };
+    if (s.includes('/rest/v1/memories?key=eq.')) {
+      if (s.includes('key=eq.test%2Fsource')) return { ok: true, status: 200, json: async () => [source] };
+      if (s.includes('key=eq.test%2Ftarget')) return { ok: true, status: 200, json: async () => [] };
+    }
+    if (s.endsWith('/rest/v1/memories')) return { ok: true, status: 201 };
+    if (method === 'GET' && s.includes('key=eq.test%2Fsource')) return { ok: false, status: 503 };
+    throw new Error('unexpected verification fetch: ' + s + ' ' + method);
+  };
+  const verifyText = await handleMemoryTool('memory_rename', { old_key: 'test/source', new_key: 'test/target' }, writeEnv);
+  check('源软删除回查失败时明确报告目标已写、源删除未确认', verifyText.includes('目标已写入') && verifyText.includes('源记录未能确认删除'));
+  check('回查失败场景确实执行过源软删除与后续验证', verifyCalls.some(c => c.method === 'PATCH' && c.url.includes('test%2Fsource')) && verifyCalls.some(c => c.method === 'GET' && c.url.includes('test%2Fsource')));
 }
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
