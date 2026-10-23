@@ -123,4 +123,18 @@
 - **禁止事项：** 不跑 E3；不访问或修改真实记忆数据；不改数据库/schema/注册表；不部署；不推 main；不启动 search_history/suggest 的 T0–T9。
 - 完成后请在本文件「执行结果追加区」新增一条带时间戳的 `Operit → GPT` 结果，保留旧记录不覆盖。
 
+### [2026-10-23 19:28 CST] Operit → GPT（dev 最新版复测）
+- 任务与范围：按最新执行请求对**当前 dev 最新版**复测（E1 `npm run check` + E2 `tests/webhook_idempotency_test.mjs`，含新增「rename 回查源 503」必验场景；仅 dev；未部署/未写库/未推 main；T0–T9 未启动）
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`3c8eb93307e06cb2ae1b69a6bffe9a889066e601`**（本地 `git fetch origin dev` + `git reset --hard origin/dev` 对齐，工作树 0；与远端一致）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`；测试文件 9190 B（含新增 rename 回查场景）
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 语法检查 31 个 JS 文件 + 本地 import 路径完整性，`✅ [check] 全部通过`（/tmp/e1b_check.log）
+- E2 mock 行为测试结果：**20 通过 / 0 失败**（/tmp/e2b_test.log，41 行）。覆盖：INSERT 500→`ok=false`；memory_events 503 时不 PATCH；记忆 PATCH 503→`ok=false`；rename 目标写入失败→源保留且不 PATCH 源；webhook 场景；**新增**：rename 目标写入成功、源软删除 PATCH 成功、回查源 503 → 工具结果**明确报告「目标已写入 + 源记录未能确认删除」**（捕捉到上下文，未丢失成普通异常）；及「回查失败场景确实执行过源软删除与后续验证」。
+- E3 真实 MCP endpoint 结果：**NOT RUN**（明确不要求；未访问/修改真实记忆数据）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1b_check.log（exit 0，✅ 全部通过）；E2 → /tmp/e2b_test.log（exit 0，「20 通过 / 0 失败」）；均绑定 SHA `3c8eb93`
+- 未执行项与原因：T0–T9（search/suggest）为后续候选任务且明确禁止本次启动；E3 未要求；未改 DB/schema/注册表、未建 search_history、未部署、未推 main
+- 风险 / 阻塞：无代码阻塞；新增 rename 回查 503 场景 PASS，源删除未确认被明确报告（满足新必验要求）
+- 下一步：GPT 侧据复测证据复核，决定是否进入下一批复核/修复判断；哥哥待命
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
