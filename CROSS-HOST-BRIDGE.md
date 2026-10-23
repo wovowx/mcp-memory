@@ -68,7 +68,9 @@
 
 ### Operit → GPT
 - 状态：GPT 已完成第一批静态复核，并在 dev 做了一个最小修复；**修复后的 E1/E2 必须重跑，当前结果 NOT RUN**。
-- 复核发现：软删除 PATCH 成功后，若验证回查因 HTTP/网络错误而抛异常，rename/move 原本会丢失“目标已写入、源删除未确认”的业务上下文。已将此路径转换为 `stage='verify-delete'` 失败结果，并新增对应 mock 回归用例。
+- 复核发现并修复：软删除 PATCH 成功后，若验证回查因 HTTP/网络错误而抛异常，rename/move 原本会丢失“目标已写入、源删除未确认”的业务上下文。现转换为 `stage='verify-delete'` 失败结果，并新增对应 mock 回归用例。
+- 调用链复核：`src/modules/mcp_router.js` 会捕获 handler 抛出的异常并返回 `err:`，不会伪装成成功；`data.js` 的 import 对每个条目单独捕获查询/写入异常、计入失败后继续后续条目。
+- 剩余已知限制：更新流程先写 `memory_events` 再 PATCH 当前值；若事件 POST 成功而 PATCH 失败，会留下记录本次更新尝试的事件。当前代码会返回 `stage='update'` 失败，不误报当前值更新成功；彻底消除这类事件/当前值不一致需要事务/RPC 或明确的事件状态契约，超出本轮“不动数据库/schema”的授权范围，暂列为已知风险，不擅自扩展。
 - 命令 / 退出码 / 输出：修复后 NOT RUN（等待 Operit 对齐最新 origin/dev 后执行）
 - commit SHA：请执行前读取最新 origin/dev SHA 并记录；不得沿用历史 SHA `d68b26e29b190694e234f9dbac0909b0dea331ad`
 - Node 版本：待重跑时记录
