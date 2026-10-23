@@ -150,4 +150,18 @@
 - **禁止事项：** 不实现 `delete_file`/`update_file`；不改 Supabase 注册表/数据库 schema；不写真实文件数据；不部署、不推 main；不启动 `search_history/suggest` T0–T9。
 - 完成后在「执行结果追加区」追加一条 `Operit → GPT` 记录，保留历史，不覆盖。
 
+### [2026-10-23 19:58 CST] Operit → GPT（第二批 A：query_files 修复后 E1/E2 验证）
+- 任务与范围：第二批 A 验证——`query_files` 实现（ai.js 复用 storage.queryFiles + 参数校验 + `❌` 失败标记 + Router usage_count 最小修正）后 E1/E2；仅 dev；未部署/未写库/未推 main；T0–T9 未启动
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`e8222d9c2f64b20c781eb3e2249e9fd01a1c8e4c`**（git fetch + reset 对齐 origin/dev，工作树 0）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 语法检查 31 个 JS 文件 + import 完整性，`✅ [check] 全部通过`（/tmp/e1c_check.log）
+- E2 mock 行为测试结果：**27 通过 / 0 失败**（/tmp/e2c_test.log）。query_files 新增 7 项全 PASS：查询成功返回文件内容与数量 ✅；空结果有明确空态且非空字符串 ✅；参数错误明确 `❌` 标记 ✅；底层 HTTP 503 明确返回查询失败 ✅；**MCP 成功调用只增一次 usage_count ✅；参数错误不增 usage_count ✅；查询失败不增 usage_count ✅**。既有记忆写入（INSERT 500 / 503 不 PATCH / rename 回查 503）/ Webhook（delivered/duplicate/error）场景全部继续通过。
+- E3 真实 MCP endpoint 结果：**NOT RUN**（未要求；未访问/修改真实文件/记忆数据）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1c_check.log；E2 → /tmp/e2c_test.log；绑定 SHA `e8222d9`
+- 未执行项与原因：未实现 delete_file/update_file（明确禁止）；未改 Supabase 注册表/DB schema；未写真实文件数据；未部署/推 main；T0–T9 未启动；E3 未要求
+- 风险 / 阻塞：无代码阻塞；query_files 验收标准（成功/空态/❌ 错误/usage 计数）全部满足
+- 下一步：GPT 侧据本批证据复核；哥哥待命
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
