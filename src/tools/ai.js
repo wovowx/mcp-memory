@@ -317,6 +317,92 @@ export async function handleAITool(name, safeArgs, env) {
     }
   }
 
+  // ---- 文件元数据更新：只更新注册契约允许的字段，不改文件本体 ----
+  if (name === 'update_file') {
+    if (typeof safeArgs.file_id !== 'string' || !safeArgs.file_id.trim()) return '❌ update_file 参数错误：file_id 必须是非空字符串';
+    const patch = {};
+    if (safeArgs.category !== undefined) {
+      if (typeof safeArgs.category !== 'string') return '❌ update_file 参数错误：category 必须是字符串';
+      patch.category = safeArgs.category;
+    }
+    if (safeArgs.description !== undefined) {
+      if (typeof safeArgs.description !== 'string') return '❌ update_file 参数错误：description 必须是字符串';
+      patch.description = safeArgs.description;
+    }
+    if (safeArgs.tags !== undefined) {
+      if (!Array.isArray(safeArgs.tags) || !safeArgs.tags.every(tag => typeof tag === 'string')) return '❌ update_file 参数错误：tags 必须是字符串数组';
+      patch.tags = safeArgs.tags;
+    }
+    if (Object.keys(patch).length === 0) return '❌ update_file 参数错误：至少提供 category、tags、description 其中一个字段';
+
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return '❌ update_file 更新失败：Supabase 未配置';
+    try {
+      const resp = await fetch(`${supabaseUrl}/rest/v1/files?id=eq.${encodeURIComponent(safeArgs.file_id.trim())}&select=id,file_name,category,tags,description`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(patch)
+      });
+      if (!resp.ok) {
+        const detail = await resp.text();
+        return `❌ update_file 更新失败：HTTP ${resp.status} ${detail}`;
+      }
+      const rows = await resp.json();
+      if (!Array.isArray(rows) || rows.length === 0) return '❌ update_file 更新失败：未找到该 file_id 对应的文件';
+      return `✅ 文件元数据更新成功：${rows[0].file_name || rows[0].id || safeArgs.file_id}
+` + JSON.stringify(rows[0], null, 2);
+    } catch (e) {
+      return '❌ update_file 更新失败：' + (e?.message || String(e));
+    }
+  }
+
+  // ---- 文件删除：先删除 Storage 对象，再删除元数据；部分失败必须明确报告 ----
+  if (name === 'delete_file') {
+    if (typeof safeArgs.file_id !== 'string' || !safeArgs.file_id.trim()) return '❌ delete_file 参数错误：file_id 必须是非空字符串';
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return '❌ delete_file 删除失败：Supabase 未配置';
+    const headers = { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey };
+    try {
+      const lookup = await fetch(`${supabaseUrl}/rest/v1/files?select=id,file_path,file_name&id=eq.${encodeURIComponent(safeArgs.file_id.trim())}`, { headers });
+      if (!lookup.ok) {
+        const detail = await lookup.text();
+        return `❌ delete_file 删除失败：查询文件元数据 HTTP ${lookup.status} ${detail}`;
+      }
+      const rows = await lookup.json();
+      if (!Array.isArray(rows) || rows.length === 0) return '❌ delete_file 删除失败：未找到该 file_id 对应的文件';
+      const file = rows[0];
+      if (typeof file.file_path !== 'string' || !file.file_path.trim()) return '❌ delete_file 删除失败：文件记录缺少有效 file_path，未执行删除';
+
+      const storageResp = await fetch(`${supabaseUrl}/storage/v1/object/files/${file.file_path.split('/').map(encodeURIComponent).join('/')}`, {
+        method: 'DELETE',
+        headers
+      });
+      if (!storageResp.ok) {
+        const detail = await storageResp.text();
+        return `❌ delete_file 删除失败：Storage 对象未确认删除（HTTP ${storageResp.status}），数据库元数据保留。 ${detail}`;
+      }
+
+      const metadataResp = await fetch(`${supabaseUrl}/rest/v1/files?id=eq.${encodeURIComponent(safeArgs.file_id.trim())}`, {
+        method: 'DELETE',
+        headers: { ...headers, 'Prefer': 'return=representation' }
+      });
+      if (!metadataResp.ok) {
+        const detail = await metadataResp.text();
+        return `❌ delete_file 部分失败：Storage 对象已删除，但数据库元数据删除失败（HTTP ${metadataResp.status}），需要人工核对。 ${detail}`;
+      }
+      return `✅ 文件删除成功：${file.file_name || file.id || safeArgs.file_id}（Storage 对象与数据库元数据删除请求均成功）`;
+    } catch (e) {
+      return '❌ delete_file 删除失败：' + (e?.message || String(e));
+    }
+  }
+
   // ---- Agnes 工具（新入口 agnes + 旧名兼容）----
   const isAgnes = name === 'agnes' || LEGACY_MAP.hasOwnProperty(name);
   if (!isAgnes) return '';
