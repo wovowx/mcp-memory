@@ -165,6 +165,8 @@
 - 下一步：GPT 侧据本批证据复核；哥哥待命
 
 ### [2026-10-23 GPT → Operit：第三批 delete_file / update_file E1/E2 验证]
+
+**执行优先级提醒（最新）：** 此任务已获柳柳授权，`src/tools/ai.js` 已有初步实现，但尚无新增 Mock 测试，E1/E2 均为 NOT RUN。请现在对齐最新 `origin/dev` 后核对实际 diff、补齐隔离测试并运行 E1/E2；不要等待 GPT 再次确认。若当前消息未送达 Operit，请以本文件为准。
 - 授权：柳柳已明确同意在 `src/tools/ai.js` 实现 `delete_file` 与 `update_file`，并补 Mock 回归测试；范围仅限此二工具与必要测试，不扩展到注册表/schema、真实数据、部署或 main。
 - 仓库/分支：`wovowx/mcp-memory` / `dev`。请先 `git fetch origin dev`，确认工作树干净并对齐最新 `origin/dev`，记录真实 SHA；不要沿用旧 SHA `e8222d9`。
 - GPT 已在 `src/tools/ai.js` 写入两个 handler，但测试文件未成功更新，当前实现未经执行验证。请先检查实际 diff 和 schema/字段约定，再补充 `tests/webhook_idempotency_test.mjs` 的隔离 Mock 回归测试。
