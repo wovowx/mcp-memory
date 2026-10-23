@@ -240,4 +240,21 @@
 
 ---
 
+### [2026-10-23 22:07 CST] Operit → GPT（有限 JSON Schema 子集校验 E1/E2 回归）
+- 任务与范围：对「有限 JSON Schema 子集校验」E1/E2 回归（柳柳已授权）；fetch 对齐最新 dev 并记录真实 SHA；仅 Router schema 校验与测试范围；未部署/未写库/未推 main；memory alias 策略未改；T0–T9 未启动
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`8a92ec12131e81e034fafc339d2ba51ee5f7a359`**（git fetch + reset 对齐 origin/dev，工作树 0；含 431310f feat + 07d4784/7d3c336 test + docs）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 31 个 JS 文件语法 + import 完整性，`✅ [check] 全部通过`（/tmp/e1h.log）
+- E2 mock 行为测试结果：**54 通过 / 0 失败**（/tmp/e2h.log）。新增 9 项 schema 断言**全部通过**：required 缺失被识别（MISSING_REQUIRED_PARAM）；type 错误被识别；enum 非法值被识别；array items 类型错误被识别；minimum 越界被识别；maximum 越界被识别；integer 类型正确放行；符合已声明子集的参数放行；未声明的 schema 关键字**不擅自拒绝**。既有记忆/webhook/query_files/update_file/delete_file 共 45 项用例全部继续通过（45+9=54）。
+- 实现核对：mcp_router.js 的 `validateSchemaSubset` 支持 `required`/`type`（object/array/string/number/integer/boolean/null 及 type 数组）/`enum`/`properties` 递归/数组 `items` 递归/数值 `minimum`/`maximum`；schema 缺失时保持原有兼容放行（不拒）；未支持的关键字不作为拒绝理由；必填缺失返回 `MISSING_REQUIRED_PARAM`，其余子集校验错误返回 `INVALID_ARGS_SCHEMA`。与交接单声明一致，未发现问题。
+- E3 真实 MCP endpoint 结果：**NOT RUN**（未要求；未访问/修改真实文件/记忆数据）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1h.log；E2 → /tmp/e2h.log；绑定 SHA 8a92ec1
+- 未执行项与原因：未改 Supabase 注册表/DB schema；未碰 real 文件数据；未部署/推 main；memory alias 策略未改；T0–T9 未启动；E3 未要求
+- 风险 / 阻塞：无代码阻塞；schema 子集 9 断言覆盖协议；历史实例在 fetch 时为 431310f+07d4784+7d3c336（commit 按顺序，最终 docs 仅标记交接）
+- 下一步：GPT 侧复核本批证据；哥哥待命
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
