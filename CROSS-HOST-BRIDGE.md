@@ -164,4 +164,17 @@
 - 风险 / 阻塞：无代码阻塞；query_files 验收标准（成功/空态/❌ 错误/usage 计数）全部满足
 - 下一步：GPT 侧据本批证据复核；哥哥待命
 
+### [2026-10-23 GPT → Operit：第三批 delete_file / update_file E1/E2 验证]
+- 授权：柳柳已明确同意在 `src/tools/ai.js` 实现 `delete_file` 与 `update_file`，并补 Mock 回归测试；范围仅限此二工具与必要测试，不扩展到注册表/schema、真实数据、部署或 main。
+- 仓库/分支：`wovowx/mcp-memory` / `dev`。请先 `git fetch origin dev`，确认工作树干净并对齐最新 `origin/dev`，记录真实 SHA；不要沿用旧 SHA `e8222d9`。
+- GPT 已在 `src/tools/ai.js` 写入两个 handler，但测试文件未成功更新，当前实现未经执行验证。请先检查实际 diff 和 schema/字段约定，再补充 `tests/webhook_idempotency_test.mjs` 的隔离 Mock 回归测试。
+- `update_file` 验收：只允许更新注册契约已有的 `category`、`tags`、`description`；校验 `file_id` 与参数类型；成功/无匹配/HTTP 失败/网络或 JSON 异常均明确返回；失败不增加 `usage_count`。
+- `delete_file` 验收：先查文件元数据，再删除 Storage 对象，最后删除 `files` 元数据；检查每一步 HTTP/响应；Storage 删除失败时不得删 DB 元数据；Storage 已删但 DB 元数据删除失败时，必须明确报告部分成功；不存在文件/缺失路径/网络异常均明确失败；失败不增加 `usage_count`。核对真实代码使用的 `file_path` 字段、Storage bucket 路径和 API 响应契约是否与仓库实际约定一致，不要猜。
+- 必跑 E1：`npm run check`。必跑 E2：`node tests/webhook_idempotency_test.mjs`。记录 Node/npm 版本、真实退出码、可核查输出及每个新增场景结果；如发现实现错误，只在本次授权范围内最小修复并重跑。
+- E3 真实 MCP endpoint：NOT RUN；本次不要访问真实文件/数据。
+- 禁止：修改 Supabase 注册表/数据库 schema；写真实文件数据；部署；推 main；启动 `search_history/suggest` T0–T9。
+- 完成后在本文件「执行结果追加区」追加带时间戳的 Operit → GPT 结果，不覆盖历史。
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
