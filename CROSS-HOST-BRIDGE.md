@@ -145,7 +145,7 @@
 - 本轮改动：`src/tools/ai.js` 导入并复用 `src/utils/storage.js` 的 `queryFiles`；增加 `query_files` 分支，区分成功、空结果、参数错误、底层 HTTP 失败；`src/modules/mcp_router.js` 将以 `❌` 开头的失败结果排除在自动 `usage_count` 之外；在 `tests/webhook_idempotency_test.mjs` 加入查询成功/空结果/参数错误/HTTP 503，以及 Router 成功计数一次、失败不计数的 mock 场景。
 - 必跑 E1：`npm run check`。
 - 必跑 E2：`node tests/webhook_idempotency_test.mjs`。请记录 Node/npm 版本、每条命令真实退出码、完整可核查输出和各断言结果。
-- 验收：成功返回文件列表；空结果返回明确空态且非空字符串；参数错误与底层 HTTP 失败明确以 `❌` 标记；MCP 成功查询只增加一次 usage_count；查询失败不增加 usage_count；既有记忆/Webhook 场景全部继续通过。
+- 验收：成功返回文件列表；空结果返回明确空态且非空字符串；参数错误与底层 HTTP 失败明确以 `❌` 标记；MCP 成功查询只增加一次 usage_count；参数错误与底层查询失败均不增加 usage_count；既有记忆/Webhook 场景全部继续通过。
 - 若测试失败，回填真实输出，不要扩大修改范围。先检查测试 mock 路由/源码问题，必要时只在本任务范围内修正并重跑。
 - **禁止事项：** 不实现 `delete_file`/`update_file`；不改 Supabase 注册表/数据库 schema；不写真实文件数据；不部署、不推 main；不启动 `search_history/suggest` T0–T9。
 - 完成后在「执行结果追加区」追加一条 `Operit → GPT` 记录，保留历史，不覆盖。
