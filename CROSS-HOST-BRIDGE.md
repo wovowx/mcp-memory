@@ -56,18 +56,24 @@
 ## 4. 最近一次交接
 
 ### GPT → Operit
-- 当前没有待执行的代码测试交接任务。主线仍是整体架构存量整理与文档口径收敛；不得仅因本文件列出 T0–T9 就启动测试。
-- `search_history / suggest` 的 T0–T9 是已登记的后续候选任务，暂存于此供未来排期后复用。
-- 只有当前权威工作检查点明确将该任务排入主线时，才由 GPT 更新本节为具体交接任务，并记录仓库/分支/SHA、命令、预期输出和限制。
-- 若未来启动，E1 `npm run check`、E2 mock 行为测试、E3 真实 MCP endpoint 必须分开记录；不能互相替代。
+- **当前待执行：记忆写入可靠性第一批的验证（仅 dev 分支，禁止部署/数据库写入/推 main）。**
+- 仓库/分支：`wovowx/mcp-memory` / `dev`。执行前先确认当前 checkout 对应 GitHub dev 最新提交，并回填真实 commit SHA。
+- 代码范围：`src/tools/memory_unified.js`、`src/tools/data.js`；回归测试暂时加在 `tests/webhook_idempotency_test.mjs`（该文件现在覆盖 webhook 与记忆写入两组 mock 场景，后续可在独立测试文件创建能力确认后再拆分）。
+- 必跑 E1：`npm run check`。记录 Node 版本、退出码与原始输出。
+- 必跑 E2：`node tests/webhook_idempotency_test.mjs`。记录每个 webhook 与记忆写入场景的断言、退出码和原始输出。
+- E2 重点：INSERT HTTP 500 返回 `ok=false`；memory_events HTTP 503 时不继续 PATCH；记忆 PATCH HTTP 503 返回 `ok=false`；既有 webhook 场景仍通过。
+- 另请只读检查 rename/move 的目标先写、源后删逻辑与 import 失败计数；若测试失败，先回报真实输出，不要自行扩大改动范围。
+- 不执行 E3 真实 MCP endpoint，不访问/修改真实记忆数据，不改数据库 schema，不部署，不推 main。
+- `search_history / suggest` 的 T0–T9 仍是另一个已登记后续候选任务，本次不得启动该任务。
 
 ### Operit → GPT
-- 状态：当前无执行任务；测试候选已暂存，未排期。
-- 命令 / 退出码 / 输出：NOT RUN（本阶段不要求运行）
-- commit SHA：不适用，排期后再记录
-- Node 版本：不适用，排期后再记录
-- T0–T9：NOT RUN（非失败，也非通过）
-- 阻塞：无；等待主线明确排期后再启动
+- 状态：等待 Operit 执行 E1/E2；GPT 侧已完成代码静态回读，尚未声称测试通过。
+- 命令 / 退出码 / 输出：NOT RUN（等待真实执行）
+- commit SHA：待 Operit checkout 后记录
+- Node 版本：待执行时记录
+- E1/E2：NOT RUN（非失败，也非通过）
+- E3：NOT RUN（本次明确不要求）
+- 阻塞：无已知代码阻塞；需按上面的命令执行并回填真实证据。
 
 ## 5. 执行结果追加区（只追加，不覆盖历史）
 
