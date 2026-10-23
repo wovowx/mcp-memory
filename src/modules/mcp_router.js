@@ -309,7 +309,7 @@ export async function handleMCPRequest(body, env) {
                 }
             }
         } catch (e) { text = 'err: ' + e.message; }
-        const toolOk = !text.startsWith('err:') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:');
+        const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:');
         if (toolOk) await autoIncrementUsage(env, name);
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
