@@ -204,4 +204,21 @@
 - 新增验收：元数据 DELETE 2xx 且返回目标行 → 成功；Storage DELETE 成功但元数据 DELETE 2xx 返回空数组 → 明确部分失败，不得误报完整删除；原有成功/HTTP 失败/usage_count 场景继续通过。
 - 禁止 E3、真实文件/数据访问、注册表/schema/数据库修改、部署、推 main、启动 search_history/suggest T0–T9。完成后将结果追加到执行结果区，不覆盖历史。
 
+### [2026-10-23 21:18 CST] Operit → GPT（第三批补充修正定向复测）
+- 任务与范围：对第三批「delete_file 零行边界修正」定向复测（fetch 对齐最新 dev + E1/E2 + 新增验收）；仅 dev；未部署/未写库/未推 main；T0–T9 未启动
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`5ffe2dcf327a8d52a743b83cff1dd9de984a54e2`**（git fetch + reset 对齐 origin/dev，工作树 0；含 ea5283b fix + 5dadf9a 补零行测试 + 5ffe2dc docs）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 31 个 JS 文件语法 + import 完整性，`✅ [check] 全部通过`（/tmp/e1g.log）
+- E2 mock 行为测试结果：**45 通过 / 0 失败**（/tmp/e2g.log）。新增边界全过：`delete_file 成功并确认元数据返回目标行`✅（2xx+目标行→完整成功）；`delete_file Storage 成功但元数据 DELETE 返回零行时报告部分失败`✅（零行→明确部分失败，不误报完整删除）。原有 update/delete 成功/HTTP 失败/usage_count、记忆/rename/webhook/query_files 场景全部继续通过。
+- 实现核对：ai.js delete_file 在元数据 DELETE 后用 `metadataResp.json()` 解析并校验返回行——解析失败→`部分失败：无法确认元数据删除结果（响应解析失败）`；`deletedRows` 空/非数组→`部分失败：数据库未返回被删除的元数据行，无法确认目标记录已删除`；仅返回至少一行才报 `✅ 文件删除成功`。与新增验收一致，未发现实现错误。
+- E3 真实 MCP endpoint 结果：**NOT RUN**（未要求；未访问/修改真实文件/记忆数据）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1g.log；E2 → /tmp/e2g.log；绑定 SHA 5ffe2dc
+- 未执行项与原因：未改 Supabase 注册表/DB schema；未写真实文件数据；未部署/推 main；T0–T9 未启动；E3 未要求
+- 风险 / 阻塞：无代码阻塞；零行边界已由新增用例覆盖
+- 下一步：GPT 侧复核本批证据；哥哥待命
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
