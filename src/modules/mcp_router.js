@@ -391,7 +391,7 @@ async function handleSkillManagement(name, safeArgs, env) {
     if (name === 'skill_list') {
         const skills = await getEnabledSkills(env);
         if (skills.length === 0) text = 'no skills';
-        else { let lines = 'skills (' + skills.length + '):' + '\n\n'; for (const s of skills) { const status = s.enabled ? 'ok' : 'off'; lines += '- ' + s.name + ' (' + status + '): ' + (s.description || '') + '\n'; } }
+        else { let lines = 'skills (' + skills.length + '):' + '\n\n'; for (const s of skills) { const status = s.enabled ? 'ok' : 'off'; lines += '- ' + s.name + ' (' + status + '): ' + (s.description || '') + '\n'; } text = lines; }
     } else if (name === 'skill_add') {
         if (!safeArgs.name) text = 'need name';
         else { try { const ok = await addSkill(env, { name: safeArgs.name, description: safeArgs.description || '', input_schema: safeArgs.input_schema || {}, handler_type: safeArgs.handler_type || 'js', handler_config: safeArgs.handler_config || {} }); text = ok ? 'added: ' + safeArgs.name : 'err: skill_add write failed: ' + safeArgs.name; } catch (e) { text = 'err: skill_add failed: ' + e.message; } }
