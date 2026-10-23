@@ -2,7 +2,7 @@
 // 验证 chat_webhook.js 的 A 正常到达 / B 重复投递幂等 / C 失败重试不破坏状态
 // 运行：node tests/webhook_idempotency_test.mjs
 import { handleChatWebhook } from '../src/tools/chat_webhook.js';
-import { putMemory } from '../src/tools/memory_unified.js';
+import { handleMemoryTool, putMemory } from '../src/tools/memory_unified.js';
 
 const env = {
   SUPABASE_URL: 'https://mock.supabase.co',
@@ -121,6 +121,22 @@ console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报
   eventStatus = 201; patchStatus = 503; writeCalls.length = 0;
   result = await putMemory(writeEnv, existing.key, { value: 'new' });
   check('UPDATE HTTP 503 → ok=false', result.ok === false && result.stage === 'update');
+
+  // 目标创建失败时，rename 不得先软删除源记录。
+  const source = { id: 'source-1', key: 'test/source', value: 'keep me', version: 1, created_at: '2026-10-23T00:00:00Z' };
+  const renameCalls = [];
+  globalThis.fetch = async (url, opts = {}) => {
+    const s = String(url); renameCalls.push({ url: s, method: opts.method || 'GET' });
+    if (s.includes('/rest/v1/memories?key=eq.')) {
+      const isSource = s.includes('key=eq.test%2Fsource');
+      return { ok: true, status: 200, json: async () => isSource ? [source] : [] };
+    }
+    if (s.endsWith('/rest/v1/memories')) return { ok: false, status: 500 };
+    throw new Error('unexpected rename fetch: ' + s);
+  };
+  const renameText = await handleMemoryTool('memory_rename', { old_key: 'test/source', new_key: 'test/target' }, writeEnv);
+  check('rename 目标写入失败时明确报告源记录保留', renameText.includes('源记录保留'));
+  check('rename 目标写入失败时未 PATCH 源记录', !renameCalls.some(c => c.method === 'PATCH' && c.url.includes('test%2Fsource')));
 }
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
