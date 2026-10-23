@@ -3,6 +3,8 @@
 // 运行：node tests/webhook_idempotency_test.mjs
 import { handleChatWebhook } from '../src/tools/chat_webhook.js';
 import { handleMemoryTool, putMemory } from '../src/tools/memory_unified.js';
+import { handleAITool } from '../src/tools/ai.js';
+import { handleMCPRequest } from '../src/modules/mcp_router.js';
 
 const env = {
   SUPABASE_URL: 'https://mock.supabase.co',
@@ -160,5 +162,51 @@ console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报
   check('回查失败场景确实执行过源软删除与后续验证', verifyCalls.some(c => c.method === 'PATCH' && c.url.includes('test%2Fsource')) && verifyCalls.some(c => c.method === 'GET' && c.url.includes('test%2Fsource')));
 }
 
-console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
+console.log('\\n[query_files] 查询成功、空结果、参数错误与 HTTP 失败契约');
+{
+  const queryEnv = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
+  let fileRows = [{ id: 'file-1', file_name: 'note.txt', description: 'test file', content_type: 'text' }];
+  let fileQueryStatus = 200;
+  let usagePatches = 0;
+  const skillRow = {
+    name: 'query_files', description: '查询文件', enabled: true, usage_count: 2,
+    input_schema: { type: 'object', properties: { keyword: { type: 'string' } } },
+    handler_config: { handler: 'ai' }, handler_type: 'js'
+  };
+  globalThis.fetch = async (url, opts = {}) => {
+    const s = String(url), method = opts.method || 'GET';
+    if (s.includes('/rest/v1/skills?enabled=eq.true&select=*')) return { ok: true, status: 200, json: async () => [skillRow] };
+    if (s.includes('/rest/v1/skills?name=eq.query_files&select=*')) return { ok: true, status: 200, json: async () => [skillRow] };
+    if (s.includes('/rest/v1/skills?name=eq.query_files') && method === 'PATCH') { usagePatches++; return { ok: true, status: 204, json: async () => [] }; }
+    if (s.includes('/rest/v1/files?select=*')) {
+      if (fileQueryStatus !== 200) return { ok: false, status: fileQueryStatus, text: async () => 'mock files upstream failure' };
+      return { ok: true, status: 200, json: async () => fileRows };
+    }
+    throw new Error('unexpected query_files test fetch: ' + s + ' ' + method);
+  };
+
+  const found = await handleAITool('query_files', { keyword: 'note' }, queryEnv);
+  check('查询成功返回文件内容与数量', found.includes('找到 1 个文件') && found.includes('note.txt'), found);
+
+  fileRows = [];
+  const empty = await handleAITool('query_files', {}, queryEnv);
+  check('空结果有明确空态，不返回空字符串', empty.includes('没有找到符合条件的文件') && empty.length > 0, empty);
+
+  const invalid = await handleAITool('query_files', { limit: 0 }, queryEnv);
+  check('参数错误明确返回失败标记', invalid.startsWith('❌') && invalid.includes('limit'), invalid);
+
+  fileQueryStatus = 503;
+  const failed = await handleAITool('query_files', { keyword: 'note' }, queryEnv);
+  check('底层 HTTP 503 明确返回查询失败', failed.startsWith('❌') && failed.includes('503'), failed);
+
+  fileQueryStatus = 200; fileRows = [{ id: 'file-1', file_name: 'note.txt' }];
+  const successCall = await handleMCPRequest({ method: 'tools/call', id: 801, params: { name: 'query_files', arguments: { keyword: 'note' } } }, queryEnv);
+  check('MCP 成功调用正常返回并增加一次 usage_count', successCall.data.result.content[0].text.includes('找到 1 个文件') && usagePatches === 1, JSON.stringify({ text: successCall.data.result.content[0].text, usagePatches }));
+
+  fileQueryStatus = 503;
+  const failedCall = await handleMCPRequest({ method: 'tools/call', id: 802, params: { name: 'query_files', arguments: { keyword: 'note' } } }, queryEnv);
+  check('MCP 查询失败不增加 usage_count', failedCall.data.result.content[0].text.startsWith('❌') && usagePatches === 1, JSON.stringify({ text: failedCall.data.result.content[0].text, usagePatches }));
+}
+
+console.log(`\\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail ? 1 : 0);
