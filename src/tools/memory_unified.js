@@ -104,8 +104,10 @@ export async function handleMemoryTool(name, safeArgs, env) {
                 if (authKey) text = '⚠️ 已有权威档「' + authKey + '」（标题同名）。请用这个完整 key 去 update，别新建默认分类副本（防冗余 · v6.39.0）';
                 else {
                     const data = { value: safeArgs.value, created_at: now(), updated_at: now() };
-                    await putMemory(env, safeArgs.key, data);
-                    text = '✅ 已新建记忆：' + safeArgs.key + '\n📂 分类：' + getCategory(safeArgs.key) + '\n📅 创建时间：' + formatTime(data.created_at);
+                    const result = await putMemory(env, safeArgs.key, data);
+                    text = result.ok
+                        ? '✅ 已新建记忆：' + safeArgs.key + '\n📂 分类：' + getCategory(safeArgs.key) + '\n📅 创建时间：' + formatTime(data.created_at)
+                        : '❌ 新建记忆失败（' + result.stage + '，HTTP ' + (result.status ?? '未知') + '）';
                 }
             }
         }
@@ -152,8 +154,10 @@ export async function handleMemoryTool(name, safeArgs, env) {
         else {
             const existing = await getMemoryByKey(env, safeArgs.key);
             if (existing) {
-                await putMemory(env, safeArgs.key, { ...existing, value: safeArgs.value, updated_at: now() });
-                text = '✏️ 已更新：' + safeArgs.key + '\n📅 创建：' + formatTime(existing.created_at) + '\n✏️ 更新：' + formatTime(now());
+                const result = await putMemory(env, safeArgs.key, { ...existing, value: safeArgs.value, updated_at: now() });
+                text = result.ok
+                    ? '✏️ 已更新：' + safeArgs.key + '\n📅 创建：' + formatTime(existing.created_at) + '\n✏️ 更新：' + formatTime(now())
+                    : '❌ 更新记忆失败（' + result.stage + '，HTTP ' + (result.status ?? '未知') + '）';
             } else {
                 const authKey = await findAuthoritativeKey(env, safeArgs.key);
                 if (authKey) text = '⚠️ 没找到「' + safeArgs.key + '」，但已有权威档「' + authKey + '」——请用这个完整 key 更新（防另建副本 · v6.39.0）';
@@ -169,9 +173,15 @@ export async function handleMemoryTool(name, safeArgs, env) {
             if (!existing) text = '❌ 没有找到 "' + safeArgs.old_key + '"';
             else if (await getMemoryByKey(env, safeArgs.new_key)) text = '⚠️ 目标 key 已存在';
             else {
-                await deleteMemory(env, safeArgs.old_key);
-                await putMemory(env, safeArgs.new_key, { value: existing.value, created_at: existing.created_at, updated_at: now() });
-                text = '✏️ 已重命名：' + safeArgs.old_key + ' → ' + safeArgs.new_key;
+                const writeResult = await putMemory(env, safeArgs.new_key, { value: existing.value, created_at: existing.created_at, updated_at: now() });
+                if (!writeResult.ok) {
+                    text = '❌ 重命名失败：目标写入未成功（' + writeResult.stage + '，HTTP ' + (writeResult.status ?? '未知') + '），源记录保留';
+                } else {
+                    const deleteResult = await deleteMemory(env, safeArgs.old_key);
+                    text = deleteResult.ok
+                        ? '✏️ 已重命名：' + safeArgs.old_key + ' → ' + safeArgs.new_key
+                        : '⚠️ 目标已写入，但源记录未能确认删除；当前可能存在两条记录。请先核查后再重试（' + deleteResult.stage + '）';
+                }
             }
         }
     }
@@ -180,7 +190,10 @@ export async function handleMemoryTool(name, safeArgs, env) {
         else {
             const existing = await getMemoryByKey(env, safeArgs.key);
             if (!existing) text = '❌ 没有找到 "' + safeArgs.key + '"';
-            else { await deleteMemory(env, safeArgs.key); text = '🗑️ 已删除：' + safeArgs.key; }
+            else {
+                const result = await deleteMemory(env, safeArgs.key);
+                text = result.ok ? '🗑️ 已删除：' + safeArgs.key : '❌ 删除未确认成功（' + result.stage + '，HTTP ' + (result.status ?? '未知') + '）';
+            }
         }
     }
     else if (action === 'list_categories') {
@@ -213,9 +226,15 @@ export async function handleMemoryTool(name, safeArgs, env) {
                 const newKey = safeArgs.newCategory + '/' + getTitle(safeArgs.key);
                 if (await getMemoryByKey(env, newKey)) text = '⚠️ 目标 key 已存在';
                 else {
-                    await deleteMemory(env, safeArgs.key);
-                    await putMemory(env, newKey, { value: existing.value, created_at: existing.created_at, updated_at: now() });
-                    text = '💡 已移动：' + safeArgs.key + ' → ' + newKey;
+                    const writeResult = await putMemory(env, newKey, { value: existing.value, created_at: existing.created_at, updated_at: now() });
+                    if (!writeResult.ok) {
+                        text = '❌ 移动失败：目标写入未成功（' + writeResult.stage + '，HTTP ' + (writeResult.status ?? '未知') + '），源记录保留';
+                    } else {
+                        const deleteResult = await deleteMemory(env, safeArgs.key);
+                        text = deleteResult.ok
+                            ? '💡 已移动：' + safeArgs.key + ' → ' + newKey
+                            : '⚠️ 目标已写入，但源记录未能确认删除；当前可能存在两条记录。请先核查后再重试（' + deleteResult.stage + '）';
+                    }
                 }
             }
         }
