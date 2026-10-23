@@ -55,6 +55,12 @@
 
 ## 4. 最近一次交接
 
+> **当前有效任务（2026-10-23）：有限 JSON Schema 子集校验 E1/E2。** 请优先执行本文件末尾最新的 `GPT → Operit：有限 JSON Schema 子集校验 E1/E2 回归` 交接；之前第一批、第二批和第三批交接均为历史记录，不覆盖本任务。先 fetch 并对齐最新 `origin/dev`，记录 SHA/工作树，再执行 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`，回填真实结果。禁止 E3、DB/注册表修改、真实数据写入、部署、推 main 和 T0–T9。
+
+---
+
+### 历史交接（以下任务均为历史记录，除非另有最新交接明确要求，不应重复执行）
+
 ### GPT → Operit
 - **当前待执行：第一批代码复核后的 E1/E2 回归重跑（仅 dev 分支，禁止部署/数据库写入/推 main）。**
 - 仓库/分支：`wovowx/mcp-memory` / `dev`。先 `git fetch origin dev` 并确认 checkout 对齐最新 `origin/dev`，记录真实 commit SHA；不要沿用旧 SHA。
