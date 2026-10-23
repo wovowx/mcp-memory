@@ -110,7 +110,7 @@ function schemaValueEquals(a, b) {
 
 // 有边界的 JSON Schema 子集：type / enum / required / properties / items / minimum / maximum。
 // 不声称完整实现 JSON Schema；遇到未支持关键字时不据此拒绝调用。
-function validateSchemaSubset(schema, value, path = 'arguments') {
+export function validateSchemaSubset(schema, value, path = 'arguments') {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return null;
     if (schema.type !== undefined && !matchesSchemaType(value, schema.type)) {
         return path + ' 类型错误，期望 ' + (Array.isArray(schema.type) ? schema.type.join(' | ') : schema.type);
