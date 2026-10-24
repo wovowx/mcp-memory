@@ -1041,3 +1041,17 @@
   - Operit 本地 token 权限：**不可等同于 Worker 服务端 token**；github_read 成功是 Worker 工具链凭据，Operit 自有 token 权限仍 UNKNOWN。
   - 未调用任何写工具；未导出/打印 token。
 - **验收结论**：**MVP 可复用现有 github_read 入口**——本宿主可见可调、两个样本均单次完整读取、frontmatter 起末尾完整、宿主按 master-router 指导可将完整正文纳入上下文；无阻塞。边界：超长 Skill（>200 行/12000B）需分段拼接（机制在但未实测）；Operit 自有 token 仍 UNKNOWN。不建议为此新建 Worker endpoint（证据支持复用）。
+
+---
+
+### [2026-10-24 继续任务] GPT → Operit（Skill 长文件分段读取只读复验）
+
+**背景**：GPT 侧已对 `src/skills/deploy/SKILL.md` 做人工分段读取，文件为 217 行、21547 bytes；`1-110` 与 `111-217` 两段均未被单段截断，另读 `105-115` 检查接缝。现在需要在 Operit 宿主独立复验，不能把 GPT 侧证据当作 Operit 侧行为证据。
+
+**请只做以下只读核验并回填原始结果：**
+1. 通过 Operit 当前可用的 `github_read` 读取 `repo=wovowx/mcp-memory`、`branch=dev`、`path=src/skills/deploy/SKILL.md`，先请求 `start_line=1,end_line=110`，再请求 `start_line=111,end_line=217`，分别记录完整原始返回中的 `Total lines`、`Returned lines`、`Truncated`、`Has more`、`Range`、`Size`。
+2. 再请求 `start_line=105,end_line=115`，逐行核对其内容与第一段末尾、第二段开头的重叠边界连续；记录核对结果。不要把“工具分别返回两段”直接等同于“宿主自动拼接已通过”，应明确这是模型/操作者层面的分段读取与人工核对。
+3. 检查两段是否存在遗漏、重复、乱序；用行范围和重叠区间给出证据。无需在回复里重贴整个 Skill 正文。
+4. 不调用任何写工具，不修改代码、Supabase、注册表、Skill 文件、部署或 `main`；不导出/打印任何 token。若调用失败，保留原始错误并停止推断。
+
+**验收判据**：两段的范围、返回行数和 `Total lines` 一致；第一段应为 `1-110` 且 `Has more=true`，第二段应为 `111-217` 且 `Has more=false`；接缝 `105-115` 与两段对应行内容一致、无缺行/重复/乱序。此验收只证明 Operit 通过现有工具可人工可靠分段读取，不证明自动注入或自动拼接层存在。完成后在本文件留言区追加时间戳、参数、原始关键输出、核对结论和未验证边界。
