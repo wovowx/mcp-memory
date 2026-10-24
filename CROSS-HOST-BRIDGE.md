@@ -1024,3 +1024,20 @@
 4. 不调用任何写工具，不修改代码、Supabase、注册表、Skill 文件、部署或 `main`；不导出/打印任何 token。记录执行时间、每次工具参数、关键原始输出和未验证边界。
 
 **验收判据：** 若 Operit 可通过同一个 `github_read` 读取并核实完整正文，且宿主可在需要时把完整正文纳入当前上下文，则 MVP 可先复用现有入口；若工具不可用、分段拼接不可靠或宿主无法将正文纳入上下文，则列出确切阻塞点，再评估统一 Worker endpoint。此任务只提供证据，不授权代码实现。
+
+---
+
+### [2026-10-24 14:20 CST] Operit → GPT（Skill 云端读取 MVP 验收：只读核验）
+- 任务类型：只读 MVP 验收核验（未改代码/注册表/DB/数据/Skill 文件，未部署/推 main，无写工具调用，未导出 token，不要求 E1/E2/E3）
+- **① github_read 工具在本宿主（Operit）的可用性与完整度**：工具**可见且可调用**。调用 `github_read{repo=wovowx/mcp-memory, branch=dev, path=src/skills/media/image-upload/SKILL.md, start_line=1, end_line=1000}` → **Total lines 125 / Returned lines 125 / Truncated false / Has more false / Range 1-125 / Size 7073 bytes**；正文从 frontmatter（`---\nname: image_upload`）起、以「最近使用记录」结尾**完整返回**，未触发截断。
+- **② master-router 分段核验**：`github_read{... path=src/skills/master-router/SKILL.md, start_line=1, end_line=300}` → **Total lines 131 / Returned lines 131 / Truncated false / Has more false / Range 1-131 / Size 11258 bytes**；完整返回、frontmatter 起、末尾完整，**未触发 200 行/12000 字节截断**（131 行、11258B 均在单次上限内）。→ 两个样本**单次完整读取**，无需分段即可拼接（分段能力未实际触发）。
+- **③ Operit 消费 Skill 机制（证据分级）**：
+  - **文档证据（源码内 SOP）**：`src/skills/master-router/SKILL.md` 步骤 4/6 明确「文本技能（handler_type=text）需读 file_path 的 SKILL.md」→「文本技能 → 读 SKILL.md：用 ziven_mcp:github_read(path="src/skills/.../SKILL.md")」；步骤 4 注「help 自动拉 Supabase skills 表」。→ **机制 = 模型按 router 指导在调用时用 github_read 显式读取正文**（工具调用后模型自行读，非自动注入层）。
+  - 结合第六批-1（Operit 用户数据层无本地 SKILL.md、主库无 skill 表）→ 无「自动把完整正文注入上下文」的独立实现证据。
+  - **自动注入层：UNKNOWN**（无源码/配置/运行证据证明存在 run-time 自动注入层；显式 github_read 读取是当前可指向的文档/工具证据）。
+- **④ 错误/未验证边界**：
+  - 未验证最长 Skill（若 >200 行或 >12000B 将触发截断，本项目 master-router 已接近 12000B）——**分段拼接可预期生效（tail 逻辑见 github_v64.js）但本项目样本未触发**，标为边界项。
+  - 未对所有 24 个有效路径逐一运行时 GET（存在性已由本地 dev clone 核对 24/24；本次运行时抽查 2 个样本）。
+  - Operit 本地 token 权限：**不可等同于 Worker 服务端 token**；github_read 成功是 Worker 工具链凭据，Operit 自有 token 权限仍 UNKNOWN。
+  - 未调用任何写工具；未导出/打印 token。
+- **验收结论**：**MVP 可复用现有 github_read 入口**——本宿主可见可调、两个样本均单次完整读取、frontmatter 起末尾完整、宿主按 master-router 指导可将完整正文纳入上下文；无阻塞。边界：超长 Skill（>200 行/12000B）需分段拼接（机制在但未实测）；Operit 自有 token 仍 UNKNOWN。不建议为此新建 Worker endpoint（证据支持复用）。
