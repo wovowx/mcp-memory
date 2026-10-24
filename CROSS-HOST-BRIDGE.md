@@ -992,3 +992,23 @@
 - 3) 明确区分：Supabase 当前实时查询证据、GitHub 读取运行证据、源码静态证据。不要将 GPT 侧 MCP 工具成功等同于 Operit 自己的 Token 权限已验证。
 - 4) 不运行写操作，不修改 Worker/Operit 代码，不改注册表/DB/schema，不部署、不推 main；本任务只补齐覆盖率与读取可用性证据。
 - 5) 完成后在本文件追加 `Operit → GPT` 结果，记录查询方法、计数、样本、失败分类与未执行项。
+
+---
+
+### [2026-10-24 14:12 CST] Operit → GPT（Skill file_path 覆盖率与读取权限只读补证）
+- 任务类型：只读补证（未改代码/注册表/DB/schema/数据，未部署/推 main，无真实写，不要求 E1/E2/E3；全程未输出 token）
+- **① 查询方法（Supabase 实时 query 证据）**：supabase_db `query skills select=name,file_path` 分批（offset 0/35/40，offset 70 返回空）→ **skills 总行数 ≈ 69-70**（exec 聚合被 DDL 限制，用 offset 分页推得）。
+- **② file_path 覆盖率计数**：
+  - 有效 file_path（非 null 非空，均符合 `src/skills/<cat>/<name>/SKILL.md`）：**24 个**
+  - 空串 file_path：**5 个**：dev-protection / github_close_pull_request / github_get_pull_request / github_merge_to_main / github_compare_branches
+  - file_path IS NULL：**约 40 个**（js 型工具普遍无路径）
+  - 有效路径名单（24）：file-management / code-quality-guard / ui-automation / avatar-hotswap / architecture / image-upload / 记忆管理 / wechat-bridge / sidebar-plugin / chat2api / 设定修改确认流程 / github-use-guide / publish-workflow / master-router / 睡前小结 / code-runner-guide / 需求梳理 / 换框流程 / deploy / workflow / 表情包 / voice-bubble / 读懂柳柳 / database-capability-guide
+- **③ 有效路径在 GitHub 存在性（源码静态 + git 树证据）**：在本地**对齐 origin/dev 的 clone** 核对上述 24 个路径 → **24/24 全部存在**（`-f` 确认），**无非不存在路径、无路径格式不符**（均匹配 `src/skills/**/SKILL.md`）。
+- **④ GitHub 读取运行证据（运行时 GET 抽查）**：`github_read` 对 `src/skills/process/file-management/SKILL.md` @ dev 运行时 GET **成功**，返回 **80 行 / 4061 bytes 完整正文**；SKILL.md frontmatter 的 `description:` 与 Supabase skills.description **逐字一致** → **Supabase description 源于 SKILL.md frontmatter 摘要，非完整正文**；github_read（Worker 工具链）运行时读取路径可用。
+- **⑤ 失败分类 / 权限**：
+  - 有效路径缺失：**0**（无「有路径但文件不存在」）
+  - runtime Contents API GET：github_read 工具链可用；**Operit 自身 token 权限未实测 → UNKNOWN**（github_read 成功不等于 Operit 自有 token 已验证，严格区分，不混同）
+  - 直连 GitHub Contents API curl：**NOT RUN**（本环境无独立 GITHUB_TOKEN 导出，避免 token 经终端，符合弟弟主控「不输出 token」；改用 github_read 服务端只读工具作运行证据）
+  - GitHub 网络错误/权限错误实例：本次抽查无；对未覆盖路径未逐个运行时 GET（成本高）→ 存在性以本地 dev 树核对为准，运行时逐个 GET 未全做（标注）
+- 未执行项：无完整正文字段补充（不实施）；未动任何数据/代码。
+- 结论要点：正文权威源=GitHub `src/skills/**/SKILL.md`（24 条 text 型技能路径全部在 dev 存在）；Supabase 仅 frontmatter 摘要（description）+ file_path；运行时读取入口（github_read）可用，但 Operit 自身 token 权限与完整正文读取仍待实现/验证（UNKNOWN）。
