@@ -227,6 +227,29 @@ async function getBranchHeadCommitTitle(env, branch) {
     } catch (e) { return ''; }
 }
 
+// v6.40.0：非发布流程禁止直接修改 main（柳柳批准 · 2026-10-24）
+// 只保护非发布写工具的 main 直写；发布签发的 push/edit/merge 仍走 githubReleaseGuard，不重写发布流程。
+function githubMainWriteGuard(name, args) {
+    const a = args || {};
+    const isMain = (v) => typeof v === 'string' && v.trim() === 'main';
+    const block = (reason, expected) => ({ allowed: false, code: 'MAIN_WRITE_BLOCKED', reason, expected });
+    if (name === 'github_delete') {
+        const branch = a.branch || 'main';
+        if (isMain(branch)) return block('github_delete 目标分支为 main（branch 缺省即 main），非发布流程禁止直接写 main', '不要删除 main 上的文件；如需删除请显式指定非 main 分支');
+    } else if (name === 'github_copy') {
+        const targetBranch = a.target_branch || 'main';
+        if (isMain(targetBranch)) return block('github_copy 目标分支 target_branch 为 main（缺省即 main），禁止直接写 main', '请显式指定非 main 的 target_branch');
+    } else if (name === 'github_move') {
+        const sourceBranch = a.source_branch || 'main';
+        const targetBranch = a.target_branch || 'dev';
+        if (isMain(sourceBranch)) return block('github_move 源分支 source_branch 为 main（缺省即 main），禁止以 main 为搬动源', '请显式选择非 main 的 source_branch');
+        if (isMain(targetBranch)) return block('github_move 目标分支 target_branch 为 main，禁止直接写 main', '请显式选择非 main 的 target_branch');
+    } else if (name === 'github_sync_branch') {
+        const targetBranch = a.name || a.branch || 'dev';
+        if (isMain(targetBranch)) return block('github_sync_branch 目标分支 name/branch 为 main，禁止将 main 作为同步目标', '同步目标须为非 main 分支；from/base 可保持 main（只读源）');
+    }
+    return { allowed: true };
+}
 async function githubReleaseGuard(name, safeArgs, env) {
     if (name !== 'github_push' && name !== 'github_merge_to_main' && name !== 'github_merge_pull_request' && name !== 'github_edit') {
         return { allowed: true };
@@ -341,14 +364,21 @@ export async function handleMCPRequest(body, env) {
             } else if (name === 'memory' || name?.startsWith('memory_')) {
                 text = await handleMemoryTool(name, safeArgs, env);
             } else if (name?.startsWith('github_')) {
-                const syncNote = await passiveSyncGithubTool(env, name);
-                const guard = await githubReleaseGuard(name, safeArgs, env);
-                if (!guard.allowed) {
-                    text = 'RELEASE_GUARD: ' + guard.reason + ' Expected: ' + guard.expected;
+                // v6.40.0：非发布流程禁止直接修改 main（柳柳批准 · 2026-10-24）
+                // 在任何 GitHub 远端读写副作用（含 passiveSyncGithubTool）之前执行 main 写守卫
+                const mainGuard = githubMainWriteGuard(name, safeArgs);
+                if (!mainGuard.allowed) {
+                    text = 'MAIN_WRITE_BLOCKED: ' + mainGuard.reason + ' Expected: ' + mainGuard.expected;
                 } else {
-                    text = await handleGitHubTool(name, safeArgs, env);
+                    const syncNote = await passiveSyncGithubTool(env, name);
+                    const guard = await githubReleaseGuard(name, safeArgs, env);
+                    if (!guard.allowed) {
+                        text = 'RELEASE_GUARD: ' + guard.reason + ' Expected: ' + guard.expected;
+                    } else {
+                        text = await handleGitHubTool(name, safeArgs, env);
+                    }
+                    if (syncNote) text += '\n\n' + syncNote;
                 }
-                if (syncNote) text += '\n\n' + syncNote;
             } else if (name === 'cf_proxy') {
                 // v6.34.0：CF API 代理——用 env.CLOUDFLARE_API_TOKEN 代调 Cloudflare API（只执行不暴露）
                 text = await handleCfProxyTool(safeArgs, env);
@@ -378,7 +408,8 @@ export async function handleMCPRequest(body, env) {
             && !normalizedText.startsWith('err:')
             && !normalizedText.startsWith('❌')
             && !normalizedText.startsWith('RELEASE_GUARD:')
-            && !normalizedText.startsWith('DISPATCH_GUARD_REJECT:');
+            && !normalizedText.startsWith('DISPATCH_GUARD_REJECT:')
+            && !normalizedText.startsWith('MAIN_WRITE_BLOCKED');
         if (toolOk) await autoIncrementUsage(env, name);
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
