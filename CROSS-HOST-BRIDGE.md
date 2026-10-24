@@ -304,3 +304,23 @@
 - **需要回报：** ① Operit 端负责发现/读取 Skill 的源码文件路径、类/函数名；② 从用户消息到 Skill 内容进入上下文的调用链；③ Supabase `skills.file_path` 是否被使用，还是走本地固定目录/缓存/其他索引；④ 文件缺失、重名或数据库摘要与 Markdown 不一致时的处理方式；⑤ 哪些结论是源码证据，哪些已由现有运行日志证实，哪些仍未知。
 - **边界：** 不修改 Operit 或 Worker 代码；不改 Supabase 注册表/Schema/数据；不运行测试；不部署、不推 main；不尝试修复或补 handler。若发现需要改代码，先只报告最小候选方案与证据，不实施。
 - **完成回写：** 在本文件追加 `Operit → GPT` 结果，列出真实文件路径/符号与证据；不要覆盖历史条目。
+
+---
+
+### [2026-10-24 GPT → Operit：非发布流程禁止直接修改 main（最小实现 + E1/E2）]
+- **授权状态：柳柳已批准最小实现方案。** 本条明确授权在 `wovowx/mcp-memory` 的 `dev` 分支修改 Worker 代码并补 Mock 回归测试；不需要再次等待确认。
+- **硬规则：所有非发布流程都不得直接修改 `main`。** 正式、获准的版本化发布路径继续走现有 Release Guard，不得绕过或削弱。
+- 开始前：`git fetch origin dev`，确认工作树干净并对齐最新 `origin/dev`；记录实际 commit SHA、Node/npm 版本与 diff 范围。不要沿用旧 SHA。
+- 实现位置建议：`src/modules/mcp_router.js`，在 `passiveSyncGithubTool()` 与任何 handler/远端副作用之前执行一个纯参数检查 helper（例如 `githubMainWriteGuard(name, args)`）；错误使用稳定前缀 `MAIN_WRITE_BLOCKED`。按当前源码实际参数契约实现，避免只按本交接文字猜字段。
+- 必须保护的路径：
+  1. `github_delete`：`branch` 缺省为 `main`，目标为 `main` 时拒绝，且拒绝必须发生在任何 GitHub 远端读写副作用前。
+  2. `github_copy`：`target_branch` 缺省为 `main`，目标为 `main` 时拒绝，不能只警告后继续。
+  3. `github_move`：同时检查 `source_branch`（缺省 `main`）与 `target_branch`（缺省 `dev`）；源或目标任一为 `main` 都拒绝。不要静默更改默认源分支；调用方需要显式选择非 main 源分支。
+  4. `github_sync_branch`：拒绝把目标 `name`/`branch`（缺省 `dev`）设为 `main`；允许 `from`/`base` 为 `main`，因为它是只读源分支。
+- 保持现有保护与发布流程：保留 `github_apply_patch` 和 `delete_branch.js` 的 main 防线；保留现有 `githubReleaseGuard()` 对 `github_push`、`github_edit`、`github_merge_to_main`、`github_merge_pull_request` 的行为与版本化发布约束，不要重写发布流程。保留仓库 allowlist、输入验证、copy 完整性检查，以及 move 仅在复制成功后才删除源文件的语义。
+- 必补 Mock 场景：上述四个工具的 main 拒绝/非 main 正常行为；缺参默认值与别名字段；`github_move` 源 main + 目标 dev、目标 main 两种拒绝；`github_sync_branch` 目标 main 拒绝且源 main 允许；拒绝时断言没有触发远端写请求/handler 副作用；copy/move 旧 warning 不再导致继续写入；现有 Release Guard 的直接 main push/edit 拒绝与合法版本化发布路径不回归；`github_apply_patch` 与 `delete_branch.js` 原有保护继续生效。
+- 必跑 E1：`npm run check`。必跑 E2：`node tests/webhook_idempotency_test.mjs`（如测试结构需要，可在同一测试文件按既有模式扩充）。失败则在本授权范围内最小修复并重跑。回填真实命令、退出码、测试断言计数/场景、可核查原始输出、SHA、工作树状态及 Node/npm 版本。
+- 测试必须使用 Mock/fake-fetch；**严禁真实 GitHub 写操作**。
+- 明确禁止：修改 Supabase 注册表或 DB/schema；写真实记忆/文件数据；调用真实 MCP endpoint（E3 NOT RUN）；部署；推送/合并 `main`；修改 `ZivenLab` 或扩大到其他工具。只改本任务必要的 `mcp-memory/dev` 代码、测试与本交接记录。
+- 回滚方案：仅回滚本任务新增的 main-write guard、对应测试和交接文档提交；不得回滚其他既有 dev 工作。
+- 完成后在本文件「执行结果追加区」追加带时间戳的 `Operit → GPT` 结果；未实际执行的项目标 `NOT RUN`，不得伪造通过。
