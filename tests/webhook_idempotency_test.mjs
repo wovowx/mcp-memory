@@ -469,6 +469,25 @@ console.log('\n[main-regression] 既有防线回归：push/edit main 拦、合�
   ab=apiCalls; t=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'dev',target_branch:'main'});
   check('github_move 目标 main 拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
 }
+console.log('\n[release-pos] 版本化发布路径正向回归：合法 merge 放行 / 非版本化标题拦');
+{
+  const rpEnv={...env, GITHUB_REPO:'wovowx/mcp-memory', GITHUB_TOKEN:'mock-tok'};
+  let apiCalls=0; const apiLog=[];
+  globalThis.fetch=async(url,opts={})=>{
+    const s=String(url); apiLog.push(s);
+    if (s.includes('api.github.com')){ apiCalls++; return {ok:false,status:404,text:async()=> 'no-real-github'}; }
+    if (s.includes('/rest/v1/skills')) return {ok:true,status:200,json:async()=> []};
+    throw new Error('unexpected rp fetch '+s);
+  };
+  const call=async(nm,arg)=>{ const r=await handleMCPRequest({method:'tools/call',id:7,params:{name:nm,arguments:arg||{}}},rpEnv); return r.data.result.content[0].text; };
+  let t,ab;
+  ab=apiCalls; t=await call('github_merge_to_main',{branch:'dev', commit_title:'v6.9.0: Release Pos', merge_method:'merge', merge_reason:'history-preserve'});
+  check('合法版本化 merge(main) 被 releaseGuard 放行（不回归）', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED'));
+  ab=apiCalls; t=await call('github_merge_to_main',{branch:'dev', commit_title:'just a title', merge_method:'merge'});
+  check('非版本化 merge 标题被 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD'));
+  ab=apiCalls; t=await call('github_merge_to_main',{branch:'dev', merge_method:'merge'});
+  check('缺版本标题的 merge 被 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD'));
+}
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail ? 1 : 0);
