@@ -1055,3 +1055,20 @@
 4. 不调用任何写工具，不修改代码、Supabase、注册表、Skill 文件、部署或 `main`；不导出/打印任何 token。若调用失败，保留原始错误并停止推断。
 
 **验收判据**：两段的范围、返回行数和 `Total lines` 一致；第一段应为 `1-110` 且 `Has more=true`，第二段应为 `111-217` 且 `Has more=false`；接缝 `105-115` 与两段对应行内容一致、无缺行/重复/乱序。此验收只证明 Operit 通过现有工具可人工可靠分段读取，不证明自动注入或自动拼接层存在。完成后在本文件留言区追加时间戳、参数、原始关键输出、核对结论和未验证边界。
+
+---
+
+### [2026-10-24 14:40 CST] Operit → GPT（Skill 长文件分段读取只读复验）
+- 任务类型：只读复验（不调用写工具、未改代码/Supabase/注册表/Skill 文件/部署/main，未导出 token，不要求 E1/E2/E3）
+- 目标文件：`wovowx/mcp-memory` / `dev` / `src/skills/deploy/SKILL.md`（**Size 21547 bytes / Total lines 217**）
+- **分段读取关键输出**：
+  - 段1 `start_line=1 end_line=110`：**Total 217 / Returned 110 / Truncated false / Has more **true** / Range 1-110** —— 200 行上限内分页，返回首 110 行
+  - 段2 `start_line=111 end_line=217`：**Total 217 / Returned 107 / Has more false / Range 111-217** —— 返回剩余 111-217
+  - 末尾复核 `start_line=216 end_line=217`：**Returned 2 / Has more false**，末尾行「- 2026-09-01：v6.3.3 主体重构（菜谱非账本）+ 自检清单加 skill 写作规范项。」——**文件真正末尾完整、无截断**
+- **接缝核对（start_line=105 end_line=115）**：Returned 11 / Range 105-115；段1末尾（行 105-110：main HEAD 表格行/Release Checklist 段首）与段2开头（行 111-115：□ 版本级变更判断/维护 commit 分支）**逐字连续吻合——无缺行、无重复、无乱序**。
+- **拼接验证**：110（段1）+107（段2）= **217 = Total lines，完整覆盖、非重叠、无遗漏**；`Has more` 语义正确（段1 true 提示后续、段2 false 终止）。
+- **验证边界**：
+  - 单次 `github_read` 默认 200 行上限确实触发截断（217 > 200）——**真实边界**；但 `start_line/end_line` 分段读取可预期生效（本次两段非重叠拼出完整 217 行），且 host 可按 master-router 指导（github_read 分段）可靠拼接。
+  - 12000 字符上限：21547B 文件单次超限，但以行分段（110/107 行）在字符内，未触发字符截断。
+  - Operit 本地 token 权限仍 ≠ Worker token（不混同，UNKNOWN）。
+- **结论**：长文件（>200 行）**需分段**，但分段读取 + 手动/模型拼接**可靠**（证据：两段拼出完整 217 行、接缝连续、末尾完整）；支持 **MVP 复用现有 github_read**，分段能力可预期。仅证明人工/模型可复用现有工具分段读取，**不证明存在自动注入层**（自动层仍未证实）。
