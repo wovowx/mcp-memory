@@ -438,6 +438,37 @@ console.log('\n[main-guard] 非发布流程禁止直接修改 main：四个工�
   r=await call('github_sync_branch',{name:'dev',from:'main'});
   check('github_sync_branch from=main(只读源) 允许', !r.startsWith('MAIN_WRITE_BLOCKED'));
 }
+console.log('\n[main-regression] 既有防线回归：push/edit main 拦、合法 push dev 放行、apply_patch/delete_branch 原防线、copy/move 无旧 warning');
+{
+  const rgEnv={...env, GITHUB_REPO:'wovowx/mcp-memory', GITHUB_TOKEN:'mock-tok'};
+  const dbRow={name:'delete_branch',enabled:true,usage_count:0,input_schema:{},handler_config:{handler:'delete_branch'},handler_type:'js'};
+  let apiCalls=0; const apiLog=[];
+  globalThis.fetch=async(url,opts={})=>{
+    const s=String(url); apiLog.push(s);
+    if (s.includes('api.github.com')){ apiCalls++; return {ok:false,status:404,text:async()=> 'no-real-github'}; }
+    if (s.includes('/rest/v1/skills')) return {ok:true,status:200,json:async()=> [dbRow]};
+    if (s.includes('/upload')) return {ok:true,status:200,json:async()=>({url:'http://mock.upload/x'})};
+    throw new Error('unexpected rg fetch '+s);
+  };
+  const call=async(nm,arg)=>{ const r=await handleMCPRequest({method:'tools/call',id:7,params:{name:nm,arguments:arg||{}}},rgEnv); return r.data.result.content[0].text; };
+  let t,ab;
+  t=await call('github_push',{path:'x',content_url:'http://u'});
+  check('github_push 缺省 branch(main) 被 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD') && t.includes('push_to_main_blocked'));
+  t=await call('github_edit',{path:'x',operations:[{old:'a',new:'b'}]});
+  check('github_edit 缺省 branch(main) 被 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD'));
+  ab=apiCalls; t=await call('github_push',{path:'x',branch:'dev',content_url:'http://mock.upload/x'});
+  check('github_push 到 dev 非 main 仍由 releaseGuard 放行（合法路径不回归）', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED') && apiCalls===ab);
+  t=await call('github_apply_patch',{proposal_id:'p1',branch:'main'});
+  check('github_apply_patch 指定 main 被原防线拒绝', t.includes('禁止 main'));
+  ab=apiCalls; t=await call('delete_branch',{name:'main'});
+  check('delete_branch 删除 main 被原防线拒绝且无 GitHub 远端写', t.includes('不能删除 main') && apiCalls===ab);
+  t=await call('delete_branch',{name:'feat/x'});
+  check('delete_branch 非 main 放行（原防线仅拦 main）', !t.includes('不能删除 main'));
+  ab=apiCalls; t=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t'});
+  check('github_copy 目标 main 拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
+  ab=apiCalls; t=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'dev',target_branch:'main'});
+  check('github_move 目标 main 拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
+}
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail ? 1 : 0);
