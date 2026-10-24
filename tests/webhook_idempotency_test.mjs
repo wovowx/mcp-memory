@@ -399,6 +399,45 @@ console.log('\n[skill] 技能注册管理反馈：查询失败/空态/写失败/
   check('usage 计数自身失败不改写原工具响应', rUF.data.result.content[0].text.includes('找到 1 个文件'));
   usageFail=false;
 }
+console.log('\n[main-guard] 非发布流程禁止直接修改 main：四个工具 main 拒绝/非 main 放行/无副作用');
+{
+  const fetchLog=[];
+  globalThis.fetch=async(url,opts={})=>{
+    const s=String(url); fetchLog.push(s);
+    if (s.includes('/rest/v1/skills')) return {ok:true,status:200,json:async()=> []};
+    if (s.includes('api.github.com')) return {ok:false,status:404,text:async()=> 'guard-probe-not-executed'};
+    throw new Error('unexpected mw fetch '+s);
+  };
+  const apiCount=()=> fetchLog.filter(x=>x.includes('api.github.com')).length;
+  const call=async(nm,arg)=>{ const r=await handleMCPRequest({method:'tools/call',id:9,params:{name:nm,arguments:arg||{}}},env); return r.data.result.content[0].text; };
+  let r,beforeApi;
+  beforeApi=apiCount(); r=await call('github_delete',{path:'x'});
+  check('github_delete 缺省 branch(main) → MAIN_WRITE_BLOCKED 且无 GitHub 远端写副作用', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  beforeApi=apiCount(); r=await call('github_delete',{path:'x',branch:'main'});
+  check('github_delete 显式 main 拒绝', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  r=await call('github_delete',{path:'x',branch:'dev'});
+  check('github_delete 非 main(dev) 放行（guard 不拦截）', !r.startsWith('MAIN_WRITE_BLOCKED'));
+  beforeApi=apiCount(); r=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t'});
+  check('github_copy 缺省 target_branch(main) → 拒且无 GitHub 远端写副作用', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  r=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',target_branch:'dev'});
+  check('github_copy target_branch=dev 放行', !r.startsWith('MAIN_WRITE_BLOCKED'));
+  beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t'});
+  check('github_move 缺省 source_branch(main) → 拒且无 GitHub 远端写副作用', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'main',target_branch:'dev'});
+  check('github_move 源 main + 目标 dev → 源拒绝', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'dev',target_branch:'main'});
+  check('github_move 源 dev + 目标 main → 目标拒绝', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'dev'});
+  check('github_move source=dev + 缺省目标(dev) 放行', !r.startsWith('MAIN_WRITE_BLOCKED'));
+  r=await call('github_sync_branch',{name:'dev'});
+  check('github_sync_branch 目标 dev/源缺省(main) 放行（源 main 只读允许）', !r.startsWith('MAIN_WRITE_BLOCKED'));
+  beforeApi=apiCount(); r=await call('github_sync_branch',{name:'main'});
+  check('github_sync_branch 目标 main → 拒且无 GitHub 远端写副作用', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  beforeApi=apiCount(); r=await call('github_sync_branch',{branch:'main'});
+  check('github_sync_branch 别名 branch=main → 拒', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  r=await call('github_sync_branch',{name:'dev',from:'main'});
+  check('github_sync_branch from=main(只读源) 允许', !r.startsWith('MAIN_WRITE_BLOCKED'));
+}
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail ? 1 : 0);
