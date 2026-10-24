@@ -293,6 +293,32 @@
 
 ---
 
+### [2026-10-24 12:30 CST] Operit → GPT（非发布流程禁止直接修改 main：最小实现 + E1/E2 回归）
+- 任务与范围：实现并验证「非发布流程禁止直接修改 main」——在 mcp_router.js 加 githubMainWriteGuard + 补 13 项隔离 Mock 场景 + E1/E2；柳柳已批准实现；仅 dev；未部署/未推 main/未碰真实 GitHub 写/T0–T9 未启动
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`99c604fac437f0f684a085f49c72b506363c5bb3`**（fetch + reset 对齐 origin/dev，工作树 0；guard 代码 c8413d2 + 测试 99c604f）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 32 个 JS 文件语法 + import 完整性，`✅ [check] 全部通过`（/tmp/e1l.log）
+- E2 mock 行为测试结果：**81 通过 / 0 失败**（/tmp/e2l.log）= 既有 68 项全部继续通过 + **新增 13 项 main-guard 场景全过**：
+  - github_delete：缺省 branch(main)→MAIN_WRITE_BLOCKED 且无 GitHub 远端写副作用；显式 main 拒绝；dev 放行
+  - github_copy：缺省 target_branch(main)→拒且无远端写；target_branch=dev 放行
+  - github_move：缺省 source(main)→拒；源 main+目标 dev→拒；源 dev+目标 main→拒；源 dev+缺省目标(dev)→放行
+  - github_sync_branch：目标 dev/源缺省(main) 放行（源 main 只读允许）；目标 main 拒；别名 branch=main 拒；from=main(只读源) 允许
+- 实现（src/modules/mcp_router.js）：
+  1) `githubMainWriteGuard(name, args)` 定义——按真实默认值（delete/copy 目标缺省 main；move 源缺省 main/目标缺省 **dev**，依 github_v64.js 实际实现；sync 目标缺省 dev/源缺省 main）逐工具判 main 直写，返回 `MAIN_WRITE_BLOCKED`
+  2) 在 github_ 分支**passiveSyncGithubTool() 之前**执行 guard，拒绝时不触发任何 handler/passiveSync/远端副作用；拒绝 text 用 `MAIN_WRITE_BLOCKED:` 前缀
+  3) toolOk 判定追加 `!startsWith('MAIN_WRITE_BLOCKED')`，被阻断调用**不计 usage_count**（失败不计数）
+  4) 保留 githubReleaseGuard（push/edit/merge 发布路径）行为；保留 github_apply_patch / delete_branch.js 原 main 防线；未改 allowlist/输入验证/copy 完整性/move 复制成功后才删源
+- 默认值核对：github_v64.js github_move 目标分支**实际默认 dev**（注释：柳柳 2026-09-07 别默认 main 危险），与交接单一致；github_copy/delete 目标默认 main；sync 目标默认 dev、源默认 main（只读允许）
+- E3 真实 MCP endpoint 结果：**NOT RUN**（未要求；严格禁止真实 GitHub 写操作，全部 mock/fake-fetch）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1l.log；E2 → /tmp/e2l.log；绑定 SHA 99c604f
+- 未执行项与原因：未改 Supabase 注册表/DB schema；未写真实数据；未部署/未拿真实 GitHub 写；未推 main；T0–T9 未启动；E3 未要求
+- 风险 / 阻塞：无代码阻塞；`MAIN_WRITE_BLOCKED` 已加入 usage 排除（阻断不误计）；发布路径（releaseGuard 保护工具）不受影响（guard 仅针对 delete/copy/move/sync_branch）
+- 下一步：GPT 侧复核本批证据；第六批-1（只读确认宿主 Markdown Skill 加载链）另条待做；哥哥待命
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
 
 ---
