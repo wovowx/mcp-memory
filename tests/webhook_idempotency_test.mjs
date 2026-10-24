@@ -328,6 +328,77 @@ console.log('\n[dispatch schema] 有边界的 JSON Schema 子集校验');
   check('符合已声明子集的参数放行', validateSchemaSubset(schema, { name: 'ok', mode: 'brief', tags: ['a'], score: 3, count: 2 }) === null);
   check('未声明的 schema 关键字不擅自拒绝', validateSchemaSubset({ type: 'object', patternProperties: { x: {} } }, { x: true }) === null);
 }
+console.log('\n[skill] 技能注册管理反馈：查询失败/空态/写失败/零行/usage 契约');
+{
+  const skL={name:'skill_list',enabled:true,usage_count:0,input_schema:{},handler_config:{handler:'skill'},handler_type:'js'};
+  const skA={name:'skill_add',enabled:true,usage_count:0,input_schema:{},handler_config:{handler:'skill'},handler_type:'js'};
+  const skU={name:'skill_update',enabled:true,usage_count:0,input_schema:{},handler_config:{handler:'skill'},handler_type:'js'};
+  const skD={name:'skill_delete',enabled:true,usage_count:0,input_schema:{},handler_config:{handler:'skill'},handler_type:'js'};
+  const queryRow={ name:'query_files',description:'q',enabled:true,usage_count:7,input_schema:{type:'object',properties:{keyword:{type:'string'}}},handler_config:{handler:'ai'},handler_type:'js' };
+  let list500=false, emptyEnabled=false, addStatus=201, addRows=[{id:1}], upStatus=200, upRows=[{id:1}], delStatus=200, delRows=[{id:1}];
+  let fileRows=[{id:'f1',file_name:'note.txt'}], fileStatus=200, usageFail=false;
+  const usageShots=[];
+  globalThis.fetch=async(url,opts={})=>{
+    const s=String(url), m=(opts.method||'GET').toUpperCase();
+    if (s.includes('/rest/v1/skills?enabled=eq.true&select=*')){ if(list500) return {ok:false,status:500,text:async()=> 'reg down'}; if(emptyEnabled) return {ok:true,status:200,json:async()=> []}; return {ok:true,status:200,json:async()=> [skL,skA,skU,skD,queryRow]}; }
+    for (const tn of ['skill_list','skill_add','skill_update','skill_delete']){
+      if (m==='GET' && s.includes('/rest/v1/skills?name=eq.'+tn+'&select=*')) return {ok:true,status:200,json:async()=> []};
+    }
+    if (m==='GET' && s.includes('/rest/v1/skills?name=eq.query_files&select=*')) return {ok:true,status:200,json:async()=> [queryRow]};
+    if (m==='PATCH' && s.includes('/rest/v1/skills?name=eq.query_files')){ usageShots.push('query_files'); if(usageFail) return {ok:false,status:500,text:async()=> 'usage down'}; return {ok:true,status:204,json:async()=> []}; }
+    if (m==='POST' && s.includes('/rest/v1/skills')){ if(addStatus!==201) return {ok:false,status:addStatus,text:async()=> 'add fail'}; return {ok:true,status:201,json:async()=> addRows}; }
+    if (m==='PATCH' && s.includes('/rest/v1/skills?name=eq.mySkill')){ if(upStatus!==200) return {ok:false,status:upStatus,text:async()=> 'up fail'}; return {ok:true,status:200,json:async()=> upRows}; }
+    if (m==='DELETE' && s.includes('/rest/v1/skills?name=eq.mySkill')){ if(delStatus!==200) return {ok:false,status:delStatus,text:async()=> 'del fail'}; return {ok:true,status:200,json:async()=> delRows}; }
+    if (s.includes('/rest/v1/files?select=*')){ if(fileStatus!==200) return {ok:false,status:fileStatus,text:async()=> 'files down'}; return {ok:true,status:200,json:async()=> fileRows}; }
+    throw new Error('unexpected fetch '+s+' '+m);
+  };
+  const v=async nm=>{ const r=await handleMCPRequest({method:'tools/call',id:1,params:{name:nm,arguments:{}}},env); return r.data.result.content[0].text; };
+  const va=async(nm,arg)=>{ const r=await handleMCPRequest({method:'tools/call',id:1,params:{name:nm,arguments:arg}},env); return r.data.result.content[0].text; };
+  let t;
+  list500=true;
+  t=await v('skill_list');
+  check('getEnabledSkills HTTP500 -> skill_list 归一化 err: 且不产生 usage PATCH', t.startsWith('err:') && !usageShots.some(x=>x.startsWith('skill')));
+  list500=false;
+  emptyEnabled=true;
+  t=await v('skill_list');
+  check('skill_list 空结果返回明确空态 no skills', t==='no skills');
+  emptyEnabled=false;
+  t=await v('skill_list');
+  check('skill_list 非空列表实际包含技能名', t.includes('skills (5)') && t.includes('skill_add'));
+  t=await va('skill_add',{name:'newSkill'});
+  check('skill_add 成功返回 added', t==='added: newSkill');
+  t=await v('skill_add');
+  check('skill_add 缺 name -> err: missing name', t==='err: missing name');
+  addStatus=500;
+  t=await va('skill_add',{name:'x'});
+  check('skill_add 底层非2xx -> err: write failed', t==='err: skill_add write failed: x');
+  addStatus=201; addRows=[];
+  t=await va('skill_add',{name:'x'});
+  check('skill_add 零行响应不误报成功', t.startsWith('err:'));
+  addRows=[{id:1}];
+  t=await va('skill_update',{name:'mySkill',description:'new'});
+  check('skill_update 成功返回 updated', t==='updated: mySkill');
+  upStatus=500;
+  t=await va('skill_update',{name:'mySkill'});
+  check('skill_update 底层失败 -> err: 且不误打点', t.startsWith('err:') && !usageShots.some(x=>x.startsWith('skill')));
+  upStatus=200;
+  t=await va('skill_delete',{name:'mySkill'});
+  check('skill_delete 成功返回 deleted、管理工具不误打点 usage', t==='deleted: mySkill' && !usageShots.some(x=>x.startsWith('skill')));
+  delStatus=500;
+  t=await va('skill_delete',{name:'mySkill'});
+  check('skill_delete 失败 -> err:', t.startsWith('err:'));
+  delStatus=200;
+  const rOK=await handleMCPRequest({method:'tools/call',id:2,params:{name:'query_files',arguments:{keyword:'note'}}},env);
+  check('query_files(ai) 成功调用增加一次 usage', rOK.data.result.content[0].text.includes('找到 1 个文件') && usageShots.filter(x=>x==='query_files').length===1);
+  fileStatus=503;
+  const rFail=await handleMCPRequest({method:'tools/call',id:3,params:{name:'query_files',arguments:{keyword:'note'}}},env);
+  check('query_files 查询失败不增加 usage', rFail.data.result.content[0].text.startsWith('\u274c') && usageShots.filter(x=>x==='query_files').length===1);
+  fileStatus=200;
+  usageFail=true;
+  const rUF=await handleMCPRequest({method:'tools/call',id:4,params:{name:'query_files',arguments:{keyword:'note'}}},env);
+  check('usage 计数自身失败不改写原工具响应', rUF.data.result.content[0].text.includes('找到 1 个文件'));
+  usageFail=false;
+}
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail ? 1 : 0);
