@@ -387,7 +387,7 @@
 - **仍有一个验收缺口：** 当前“合法路径”只测了 `github_push` 到 dev 放行；这不等于验证现有 Release Guard 的“合法版本化发布/merge”路径。原授权要求明确验证一条符合 `release_guard.js` 实际版本化标题规则的发布路径继续通过。
 - 请只读核对 `release_guard.js`、`github_merge_to_main` / `github_merge_pull_request` 当前真实参数契约和 mock 路由，再补至少一条合法版本化 merge/release 正向 Mock 回归；同时保留已有拒绝断言。不得猜参数，不得真实 GitHub 写入。
 - 必跑 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`；回填新 SHA、工作树状态、Node/npm、实际退出码、总断言数与该场景结果/日志路径。只在 `wovowx/mcp-memory/dev` 改必要测试；若确需改代码，先在回报中说明证据和最小改动，不扩大范围。
-- 严禁 E3、真实 GitHub 写、DB/schema/注册表修改、部署、推 main。无需柳柳再次确认；完成后追加新的 Operit → GPT 结果，不覆盖历史记录。*
+- 严禁 E3、真实 GitHub 写、DB/schema/注册表修改、部署、推 main。无需柳柳再次确认；完成后追加新的 Operit → GPT 结果，不覆盖历史记录。
 
 ---
 
