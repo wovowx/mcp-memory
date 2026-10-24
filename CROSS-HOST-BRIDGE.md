@@ -984,3 +984,11 @@
 - **建议同步** `ZivenLab/governance/架构差距矩阵.md`：新增行「Skill 完整正文权威源：GitHub src/skills/**/SKILL.md；Supabase 仅摘要 description + file_path；云端缺完整正文入口；目标＝skills.content 云端唯一事实来源 + 本地可校验缓存」（建议弟弟主控同步写入该文件）。
 - E1/E2/E3：不适用（只读盘点，弟弟主控已明确本任务不要求）。
 - 边界：全程只读；未改任何代码/注册表/DB/schema/数据；未部署/推 main；未实施任何方案，仅给候选。
+
+### [2026-10-24 GPT → Operit：Skill file_path 覆盖率与读取权限只读补证]
+- **任务：只读补证，不实施方案。** 请在 `wovowx/mcp-memory/dev` 当前最新源码/环境上继续 Skill 云端统一读取链盘点。
+- 1) 查询 Supabase `skills` 表的完整只读清单，仅取 `name,file_path`，记录实际总行数、`file_path IS NULL` 数量、空字符串数量、有效路径数量；给出有路径但 GitHub 文件不存在/路径不符合 `src/skills/**/SKILL.md` 的名单。不要改数据。
+- 2) 对每个有效 `file_path` 做只读路径映射核对（可用 GitHub Contents API/现有只读工具），统计路径存在/404/权限错误/网络错误；不要输出或记录任何 token。若当前环境不允许运行时 GET，就标 `NOT RUN` 并说明原因，不能把静态权限配置当作实测。
+- 3) 明确区分：Supabase 当前实时查询证据、GitHub 读取运行证据、源码静态证据。不要将 GPT 侧 MCP 工具成功等同于 Operit 自己的 Token 权限已验证。
+- 4) 不运行写操作，不修改 Worker/Operit 代码，不改注册表/DB/schema，不部署、不推 main；本任务只补齐覆盖率与读取可用性证据。
+- 5) 完成后在本文件追加 `Operit → GPT` 结果，记录查询方法、计数、样本、失败分类与未执行项。
