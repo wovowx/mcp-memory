@@ -319,6 +319,25 @@
 
 ---
 
+### [2026-10-24 12:50 CST] Operit → GPT（只读确认宿主 Markdown Skill 实际加载链）
+- 任务类型：只读源码/配置追踪（未修改 Operit/Worker 代码、未改注册表/DB、未运行测试、未部署/推 main、未修复）
+- 目的回答：**Operit 宿主是否独立按本地 SKILL.md 加载 Skill？** 基于本设备只读证据作答。
+- 实际排查路径（全部只读）：
+  1) `/data/user/0/com.ai.assistance.operit/`（Operit 用户数据）：顶层为 cache/code_cache/files/shared_prefs/databases/no_backup/app_webview/app_textures；**无松散 `SKILL.md`**（maxdepth 6 搜索 0 命中）
+  2) `files/`：`skill_repo_zip_pool/` **空**（无解压 skill zip）；`usr/`(bin/var)、`datastore/`(preferences_pb 偏好)；`workspace/`、`objectbox/`、`toolpkg_cache/`（工具包缓存）
+  3) `databases/app_database`（SQLite，211MB）：全部表 = chats/messages/message_variants/room_master_table/token_stats_models/token_usage_records/android_metadata/sqlite_sequence —— **无 skills / skill_md 表**
+  4) `datastore/` 角色卡存 `character_cards.preferences_pb`（protobuf，非 markdown）；`tool_permissions.preferences_pb`、`functional_configs.preferences_pb` 等亦为 protobuf
+  5) `/app`(=api/chatgpt) 与 `/data/app` 不含 Operit 源码/SKILL.md；Shizuku/Android Shell 不可用，限制对 Android 安装包内部资产（apk/js bundle）的访问
+- 结论（证据分档）：
+  - **设备证据（已证）**：Operit 运行态**不以本地松散 `SKILL.md` 作为 Skill 内容源**——用户数据层无 SKILL.md、主库无 skill 表、skill zip 池为空；角色卡/偏好以 protobuf 存储。
+  - **运行证据（已证）**：Operit 侧可见的 Skill 信息（如 ziven_mcp skill_list）来自 **Supabase `skills` 注册表**（此前批次已确认 ~73 条注册、tool_policies 保护、description 为内容载体）；Worker knowledge.js 返回 `skills.description` 与 `skill_*`/文件类工具的 handler 边界均为注册表驱动。
+  - **未知（诚实标注）**：Operit app 安装包内部资产（apk/js bundle）是否**打包**了 `src/skills/process/file-management/SKILL.md` 等模板、以及 Operit UI 把 skill 内容注入模型上下文的具体实现，本设备无 Shizuku/不可能反编译，**无法确认**——不猜测其内部实现。样本路径更像 Operit 平台开源项目源码 layout（非本设备运行态实际注入源）。
+- 一句话回答：**Operit 宿主在本设备上不读本地 Markdown Skill 文件，Skill 内容依赖注册表/偏好存储（与 Worker 同源 Supabase skills 表）**；但 Operit 安装包内是否内置 markdown 模板并如何注入上下文，超出本设备只读可证范围，保持 UNKNOWN。
+- 边界：全程只读，未改任何代码/注册表/DB/数据；未部署/推 main；未运行测试；未修复/未补 handler；需要改代码的候选项（若有）仅报告未实施。
+- 建议（候选，未实施）：若需进一步实证 Operit 是否打包内置 SKILL.md 模板，需在具备 Operit 平台源码/apk 解压能力的环境（非本设备）检查 `src/skills/**/SKILL.md` 的构建产物是否进包；本设备侧结论先以「注册表驱动、无本地 md 注入证据」为准。
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
 
 ---
