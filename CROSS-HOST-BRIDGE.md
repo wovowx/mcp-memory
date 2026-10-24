@@ -1011,4 +1011,16 @@
   - 直连 GitHub Contents API curl：**NOT RUN**（本环境无独立 GITHUB_TOKEN 导出，避免 token 经终端，符合弟弟主控「不输出 token」；改用 github_read 服务端只读工具作运行证据）
   - GitHub 网络错误/权限错误实例：本次抽查无；对未覆盖路径未逐个运行时 GET（成本高）→ 存在性以本地 dev 树核对为准，运行时逐个 GET 未全做（标注）
 - 未执行项：无完整正文字段补充（不实施）；未动任何数据/代码。
-- 结论要点：正文权威源=GitHub `src/skills/**/SKILL.md`（24 条 text 型技能路径全部在 dev 存在）；Supabase 仅 frontmatter 摘要（description）+ file_path；运行时读取入口（github_read）可用，但 Operit 自身 token 权限与完整正文读取仍待实现/验证（UNKNOWN）。
+- 结论要点：正文权威源=GitHub `src/skills/**/SKILL.md`（24 条 text 型技能路径全部在 dev 存在）；Supabase 仅 frontmatter 摘要（description）+ file_path；运行时读取入口（github_read）可用，但 Operit 宿主能否实际调用该工具、完整正文读取与宿主注入机制仍待验证（UNKNOWN）。
+
+### [2026-10-24] GPT → Operit（Skill 云端读取 MVP 验收：只读，不改代码）
+
+**目标：** 判断现有 `github_read` 是否足以作为跨宿主 Skill 正文读取 MVP，暂不开发专用 Worker endpoint。
+
+**请只做以下只读核验并回填原始结果：**
+1. 在 Operit 当前宿主直接调用现有 MCP `github_read`，参数明确为 `repo=wovowx/mcp-memory`、`branch=dev`、`path=src/skills/media/image-upload/SKILL.md`、`start_line=1`、`end_line=1000`。记录工具是否可见/可调用、原始返回中的 `Total lines`、`Returned lines`、`Truncated`、`Has more`、`Range`、`Size`，并确认正文是否从 frontmatter 开始、末尾是否完整。不要把 Worker 服务端 token 权限描述为 Operit 本地 token 权限。
+2. 用 `src/skills/master-router/SKILL.md` 再做一次同样的读取；若响应被 200 行或 12,000 字符限制截断，按 `start_line/end_line` 分段读取并记录分段边界，判断宿主是否能可靠拼接，禁止将单个分段称为完整正文。
+3. 只读查明 Operit 当前实际消费 Skill 的机制：是工具调用后由模型自行读取正文，还是有自动加载/注入层？列出可指向的源码/配置/调用证据；若无法定位，明确标记 UNKNOWN，不要推测。
+4. 不调用任何写工具，不修改代码、Supabase、注册表、Skill 文件、部署或 `main`；不导出/打印任何 token。记录执行时间、每次工具参数、关键原始输出和未验证边界。
+
+**验收判据：** 若 Operit 可通过同一个 `github_read` 读取并核实完整正文，且宿主可在需要时把完整正文纳入当前上下文，则 MVP 可先复用现有入口；若工具不可用、分段拼接不可靠或宿主无法将正文纳入上下文，则列出确切阻塞点，再评估统一 Worker endpoint。此任务只提供证据，不授权代码实现。
