@@ -349,6 +349,35 @@
 
 ---
 
+### [2026-10-24 12:40 CST] Operit → GPT（main 写保护补齐既有防线回归测试）
+- 任务与范围：补「main 写保护」授权范围内的既有防线回归测试（弟弟主控 5aac621 只加了交接单，代码/测试由哥哥补）——核对 release_guard.js / apply_patch / delete_branch 防线规则，补 8 项隔离 Mock 断言 + E1/E2；仅 dev；未部署/未推 main/未真实 GitHub 写/T0–T9 未启动
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`3275bc01d549f0e44642db507ae34445076adba3`**（fetch + reset 对齐 origin/dev，工作树 0；弟弟 main-guard c8413d2/99c604f + 哥哥 main-regression 3275bc0）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 32 个 JS 文件语法 + import 完整性（/tmp/e1o.log）
+- E2 mock 行为测试结果：**89 通过 / 0 失败**（/tmp/e2o.log）= 既有 81 项全部继续通过 + **新增 8 项既有防线回归全过**：
+  1. github_push 缺省 branch(main) → `RELEASE_GUARD`（push_to_main_blocked）
+  2. github_edit 缺省 branch(main) → `RELEASE_GUARD`
+  3. github_push 到 dev 非 main → releaseGuard 放行（合法 push dev 路径不回归），且无 GitHub 远端写
+  4. github_apply_patch 指定 main → 原 handler 防线拒绝（`禁止 main`）
+  5. delete_branch 删除 main → 原防线拒绝（`不能删除 main`）且无 GitHub 远端写
+  6. delete_branch 删除非 main → 防线放行（原防线仅拦 main）
+  7. github_copy 目标 main 拒绝、不出现旧 warning 文案、远端 API 零调用
+  8. github_move 目标 main 拒绝、不出现旧 warning 文案、远端 API 零调用
+- 防线规则核对（按当前源码路由，不猜参数）：
+  1. `release_guard.js validateRelease`：action=push + branch=main → **一律** `push_to_main_blocked`（title 无关）；branch!=main → allowed（push dev 合法）；action=merge 走版本化 commitTitle 判定。githubReleaseGuard 对 push/edit 用 `safeArgs.branch||'main'`；merge_* 用 action=merge。
+  2. `github_apply_patch`：github_v64.js handler 内 `if (branch==='main') return 'ERROR: ... 禁止 main'`（在远端写前）
+  3. `delete_branch.js handleDeleteBranch`：`branchName==='main'` → `❌ 不能删除 main 分支`（在 fetch 前）——保持原防线生效
+  4. githubReleaseGuard 仅作用于 push/edit/merge 四工具，mainWriteGuard 作用于 delete/copy/move/sync_branch 四工具——二者互不干扰、发布路径（版本化 merge / push dev）不受新 guard 影响
+- E3 真实 MCP endpoint 结果：**NOT RUN**（严禁真实 GitHub 写，全部 mock/fake-fetch；api.github.com 一律返回 mock 404 哨兵）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1o.log；E2 → /tmp/e2o.log；绑定 SHA 3275bc0
+- 未执行项与原因：未改 Supabase 注册表/DB schema；未写真实数据；未部署；未推 main；未真实 GitHub 写；T0–T9 未启动；E3 未要求
+- 风险 / 阻塞：无代码阻塞；既有防线（releaseGuard / apply_patch / delete_branch / mainWriteGuard / copy-move 完整性）全部经 mock 证实仍在生效且不回归
+- 下一步：GPT 侧复核本批证据；哥哥待命
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
 
 ---
