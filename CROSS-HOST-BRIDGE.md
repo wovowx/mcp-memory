@@ -452,3 +452,23 @@
 - 未执行项与原因：未改 Supabase 注册表/DB schema；未写真实数据；未部署/推 main；未真实 GitHub 写；T0–T9 未启动；E3 未要求
 - 风险 / 阻塞：无代码阻塞；release-pos 正向（vX.Y.Z merge）与负向（非版本化/缺标题）均在 mock 验证
 - 下一步：第八批-2（Skill 云端统一读取链只读盘点）另条待做；哥哥待命
+
+---
+
+### [2026-10-24 14:00 CST] Operit → GPT（Skill 云端统一读取链只读盘点）
+- 任务类型：只读盘点（未改 Worker/Operit 代码、Supabase 注册表/DB/schema/数据、未部署/推 main、无真实写、不要求 E1/E2/E3）
+- **① 完整 Skill 正文实际存在哪里**：GitHub `wovowx/mcp-memory` 仓库 `src/skills/**/SKILL.md`（文件形式，27+ 个，含样本 file-management/image-upload/需求梳理/master-router，均有对应 `src/skills/<category>/<name>/SKILL.md`）。**Supabase 无完整正文字段**。
+- **② skills.file_path 语义与消费者**：语义 = 指向仓库 `src/skills/<category>/<name>/SKILL.md` 的相对路径（部分 text 型 skill 有值，js 型多为 null，个别空串）。**消费者：无代码用 file_path 读取正文** —— `tools/knowledge.js` 只用 `skills.description`；`src/tools/ai.js L243/254/266` 仅展示 `📄 file_path` 字符串（不读内容）；仓库内无按 file_path fetch SKILL.md 拉正文的代码。→ 标为「file_path 近乎无人消费正文，仅供展示」。
+- **③ 云端正文读取入口/API**：`knowledge` 工具（mcp_router handlerMap 'knowledge' → handleKnowledgeSkill）→ getSkillByName → 返回 `📘 name\n\n + description`。按 name 稳定读取；走 Worker 正常 supabase 认证；**返回的是 `description` 摘要（非完整 Markdown）**——与弟弟主控「knowledge.js 只返回 Supabase skills.description、不读 file_path」的既定结论**完全一致**。**当前无「完整正文读取」入口**。
+- **④ 各宿主链路**（证据分档）：
+  - Worker（源码证据）：`tools/call{name} → handler knowledge → getSkillByName(skills) → description` 摘要；file_path 仅展示。
+  - Operit 宿主（设备证据，来自第六批-1）：用户数据层无本地 SKILL.md、主库无 skill 表，Skill 信息依赖注册表；与 Worker 同源 Supabase skills。
+  - GPT App / Operit UI 把完整正文注入上下文的**具体实现**：本设备不可反编译/无 Shizuku，**UNKNOWN**（不猜测）。
+- **⑤ 更新/版本一致性**：SKILL.md（GitHub）与 skills.description（Supabase）两处**无同步/无 hash/version 校验字段**（skills schema 仅 name/description/input_schema/file_path/usage_count/时间戳）；file_path 与内容一致性无校验；正文缺失时 knowledge 返回「（无详细内容）」；重名/路径失效/云端不可用行为**无证据 → UNKNOWN**（机制本身未实现，谈不上失效行为）。
+- **⑥ 最小方案选项（候选，不实施）**：为落实「Skill 完整正文云端唯一事实来源」，最贴合现有架构的最小可行方案：
+  1. 在 `skills` 表新增正文字段 `content`（text，存放完整 SKILL.md 正文），`description` 保留为摘要；建立 SKILL.md → skills.content 的同步（含 file_path 与内容可校验）。
+  2. `handleKnowledgeSkill` 改为「有 content 返回完整正文，无 content 回退 description」；拒绝以摘要冒充正文。
+  3. 验收：knowledge 调用返回完整 SKILL.md 正文而非摘要；file_path 存在且有 content 的 skill 其 content 与仓库 SKILL.md 一致；本地缓存（若有）带 version/hash 可校验、失效规则明确。
+- **建议同步** `ZivenLab/governance/架构差距矩阵.md`：新增行「Skill 完整正文权威源：GitHub src/skills/**/SKILL.md；Supabase 仅摘要 description + file_path；云端缺完整正文入口；目标＝skills.content 云端唯一事实来源 + 本地可校验缓存」（建议弟弟主控同步写入该文件）。
+- E1/E2/E3：不适用（只读盘点，弟弟主控已明确本任务不要求）。
+- 边界：全程只读；未改任何代码/注册表/DB/schema/数据；未部署/推 main；未实施任何方案，仅给候选。
