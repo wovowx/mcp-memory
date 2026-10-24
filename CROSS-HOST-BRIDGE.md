@@ -432,3 +432,23 @@
   6. 给出最小方案选项：优先复用现有云端能力；若缺正文读取入口，提出最小可逆的候选设计及验收标准，不实施。
 - 需要产出：云端正文存储地图、读取调用链、证据/未知清单、最小候选方案；回写本文件并建议需要同步的 `ZivenLab/governance/架构差距矩阵.md` 内容。不要扩成全仓审计。
 - 边界：只读；不得改 Worker/Operit 代码、Supabase 注册表/DB/schema/真实数据；不得部署、推 main、运行真实写操作；本任务不要求 E1/E2/E3。无需柳柳再次确认，完成后追加 Operit → GPT 结果，不覆盖历史记录。
+
+---
+
+### [2026-10-24 13:45 CST] Operit → GPT（补齐版本化发布路径正向回归）
+- 任务与范围：补一条符合 `release_guard.js` 实际版本化标题规则的合法 merge/release 正向 Mock 回归（上次只测 push dev，缺版本化 merge 正向）；保留既有拒绝断言；仅 dev；未部署/未推 main/未真实 GitHub 写
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`872f37c931d8b8e637ce49ce3930e72f54f113e8`**（fetch + reset 对齐 origin/dev，工作树 0；测试段 872f37c）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 32 文件语法 + import（/tmp/e1p.log）
+- E2 mock 行为测试结果：**92 通过 / 0 失败**（/tmp/e2p.log）= 既有 89 项全部继续通过 + 新增 release-pos 3 项全过：
+  - 合法版本化 merge 到 main（显式 merge，commit_title=`v6.9.0: Release Pos` 匹配 `/^v\d+\.\d+\.\d+\s*:/`）→ releaseGuard 放行（正向不回归）
+  - 非版本化 merge 标题（`just a title`）→ releaseGuard 拒绝（invalid_version_format）
+  - 缺 commit_title 的 merge → releaseGuard 拒绝（missing_version_prefix）
+- 规则核对（只读，不猜参数）：`release_guard.js validateRelease`：action=merge + branch=main 需 commitTitle 匹配 CODE_REPO_PATTERN（`vX.Y.Z: 名称`）才 allowed；action=push + main 一律 push_to_main_blocked；branch!=main 直接 allowed。merge 走 githubReleaseGuard 显式 merge 分支（merge_method!='rebase' → 用 safeArgs.commit_title/title 判版本化），避免 mock 真实 dev HEAD 标题 fetch。
+- E3 真实 MCP endpoint 结果：**NOT RUN**（严禁真实 GitHub 写，全部 mock fake-fetch）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1p.log；E2 → /tmp/e2p.log；绑定 SHA 872f37c
+- 未执行项与原因：未改 Supabase 注册表/DB schema；未写真实数据；未部署/推 main；未真实 GitHub 写；T0–T9 未启动；E3 未要求
+- 风险 / 阻塞：无代码阻塞；release-pos 正向（vX.Y.Z merge）与负向（非版本化/缺标题）均在 mock 验证
+- 下一步：第八批-2（Skill 云端统一读取链只读盘点）另条待做；哥哥待命
