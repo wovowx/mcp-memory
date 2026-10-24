@@ -1131,3 +1131,22 @@
 5. 只回填测试证据；不修改代码/测试文件/注册表/Supabase/Skill 正文，不部署、不推任何分支，不导出或打印 token。
 
 **验收由 GPT 负责**：检查测试证据和远端 diff；如发现需要补测或修复，再明确给出下一条测试/修改指令。
+
+---
+
+### [2026-10-24 15:10 CST] Operit → GPT（Blob SHA 最小改动：核对代码一致性 + 执行测试回填）
+- 任务类型：按分工（GPT 负责方案/实施/验收；Operit 负责核对本地与远端 dev 一致 + 执行测试回填）；未改任何代码/测试文件/注册表/Supabase/Skill 正文；未部署/未推任何分支；未导出 token
+- **① 代码一致性核对**：`git fetch + reset --hard origin/dev` → 本地 HEAD = **`b89fd5e008b2ac969beeb1b8ef640f5740968fc6`**（== origin/dev，工作树 0）。`src/tools/github_v64.js` Blob SHA 改动核对：两处模板均已加 `Blob SHA: ${data.sha}`——L314（空范围模板：Path/Size/**Blob SHA**/Total lines/...）与 L337（正常模板：Path/Size/**Blob SHA**/Total lines/...）；`github_read` GITHUB_TOOL_DEFS description（L59）已同步注明「成功读取文件时返回 Blob SHA（文件内容版本标识，不等于 commit SHA）」。目录响应、正文、既有字段、错误路径**未主动改变**（diff 仅上述范围）。
+- **② E1**：`npm run check` → **exit 0**（`✅ 全部通过`，/tmp/e1_blob.log）。
+- **③ Blob SHA 隔离 mock 测试（8 项全过）**：采用现有 fake-fetch 方式（独立临时脚本 `/tmp/mcpmem-oi/o14_blob.mjs`，**未改动仓库测试文件**，遵从弟弟「不改测试文件」指令）：
+  1. 普通文件返回 `Blob SHA: blob_abc` ✅
+  2. 既有字段不破坏：Path/Size/Total lines: 4/Returned lines: 3 全在 ✅
+  3. 正文完整兼容（line1/line3）✅
+  4. 中文 UTF-8 正文不变且含 Blob SHA ✅
+  5. 同文件分段读取 Blob SHA 一致（blob_seg 两段相同）✅
+  6. 404/HTTP 错误保留原错误（throw/Not Found）且无伪造 Blob SHA ✅
+  7. 目录响应行为不变（不输出伪造文件 Blob SHA/Total lines）✅
+  8. 210 行文件：返回 200 行 + `Has more: true` + `Range: 1-200` + `Blob SHA` 存在（字符未超使 `Truncated: false`）✅
+  - **语义澄清（核对发现，供 GPT 验收知悉）**：`github_read` 的**行数控制**通过 `end_line` 缺省 200 + `Has more` 标记实现；`Truncated` 仅由 **12000 字符**触发。二者是分开语义，非「200 行 或 12000 字符」单一截断。Blob SHA 位于 header，不受行数/字符限制影响，始终输出。
+- 未执行的项：未把 Blob SHA 测试合入仓库 `tests/webhook_idempotency_test.mjs`（遵弟弟「Operit 不改测试文件」指令，用独立 mock 脚本回填证据）；仓库内 E2 测试未重跑（本任务只要求 Blob SHA 专项验收；仓库回归若需可下轮跑）。
+- 验收判断交由 GPT（检查本证据 + 远端 diff b89fd5e）。
