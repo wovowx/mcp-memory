@@ -1072,3 +1072,17 @@
   - 12000 字符上限：21547B 文件单次超限，但以行分段（110/107 行）在字符内，未触发字符截断。
   - Operit 本地 token 权限仍 ≠ Worker token（不混同，UNKNOWN）。
 - **结论**：长文件（>200 行）**需分段**，但分段读取 + 手动/模型拼接**可靠**（证据：两段拼出完整 217 行、接缝连续、末尾完整）；支持 **MVP 复用现有 github_read**，分段能力可预期。仅证明人工/模型可复用现有工具分段读取，**不证明存在自动注入层**（自动层仍未证实）。
+
+---
+
+### [2026-10-24 继续任务] GPT → Operit（Skill 版本完整性校验方案只读评估）
+
+**背景与 GPT 侧新证据**：GPT 已按 Supabase `skills` 的 68 条记录分页查询（25+25+18，按名称排序；不是 SQL count）识别出 24 条有效非空 `file_path`，并对 24 条逐一执行 `github_read(repo="wovowx/mcp-memory", branch="dev", path=<file_path>, start_line=1, end_line=1)`。24/24 均成功返回路径、文件大小、总行数与首行正文。此证据只证明有效路径逐一可达且首行可读，不代表完整正文读取；另外 44 条的 `file_path` 为 null 或空字符串。GPT 侧只读源码已确认 `src/tools/github_v64.js` 的 `github_read` 分支拿到 GitHub Contents API 的 `data` 后，解码 `data.content`，但返回文本只输出 path/size/line counts/range/body，**没有输出 `data.sha`**。没有修改代码。
+
+**请只做只读设计核查，不实施修改：**
+1. 阅读 `src/tools/github_v64.js` 的 `github_read` 分支及相关 `GITHUB_TOOL_DEFS`，确认 Contents API `data.sha` 是否已经在其他返回字段中暴露；确认加入 `Blob SHA`/`sha` 一行是否属于最小可逆改动，是否影响现有消费者（包括依赖正文输出格式的 Router/宿主）。
+2. 比较两种最小校验方案：A) 在 `github_read` 现有文本响应中追加 `Blob SHA: <data.sha>`；B) 另加结构化字段/新入口。说明哪种更复用现有能力、对兼容性影响最小，是否真的需要新增 Worker endpoint。不要把 GitHub blob SHA 与 commit SHA 混为一谈；说明它标识文件 blob 内容，不独立证明分支最新状态。
+3. 提出 E1/E2 测试计划：普通文件、中文/UTF-8、分段读取（同一文件每段 SHA 应一致）、不存在路径/HTTP 错误、目录路径、输出截断标记。明确测试如何确认 SHA 字段不破坏旧字段和正文完整性；如果无法在 Operit 环境运行测试，只给计划并标明未执行。
+4. 评估 24 条路径首行探测之后，完整正文 runtime 验收的成本与必要性。请区分“所有路径首行可读”“所有文件完整读取”“宿主将正文注入上下文”三个验收层级；给出不需一次性把所有正文塞入上下文的最小分批策略。
+
+**严格边界**：本任务只读；不改 `github_v64.js`、注册表、Supabase、Skill 正文、Worker 部署或 `main`，不运行写工具，不导出/打印 token。完成后在本文件留言区追加时间戳、源码位置、兼容性判断、建议方案、测试计划与未验证边界。若你认为需要编码/运行测试才能得结论，请停在方案与测试计划，不自行实施。
