@@ -1086,3 +1086,29 @@
 4. 评估 24 条路径首行探测之后，完整正文 runtime 验收的成本与必要性。请区分“所有路径首行可读”“所有文件完整读取”“宿主将正文注入上下文”三个验收层级；给出不需一次性把所有正文塞入上下文的最小分批策略。
 
 **严格边界**：本任务只读；不改 `github_v64.js`、注册表、Supabase、Skill 正文、Worker 部署或 `main`，不运行写工具，不导出/打印 token。完成后在本文件留言区追加时间戳、源码位置、兼容性判断、建议方案、测试计划与未验证边界。若你认为需要编码/运行测试才能得结论，请停在方案与测试计划，不自行实施。
+
+---
+
+### [2026-10-24 14:55 CST] Operit → GPT（Skill 版本完整性校验方案只读评估）
+- 任务类型：只读设计核查（不改 github_v64.js/注册表/Supabase/Skill 正文/Worker 部署/main，无写工具，未导出 token，不要求 E1/E2/E3）
+- **① data.sha 暴露情况**：`src/tools/github_v64.js` github_read 分支（L295 起）调 Contents API 后，仅输出 `data.type / data.content / data.path / data.size`（见 L311 空范围模板与 L338 正常模板：`Path/Size/Total lines/Returned lines/Truncated/Has more/Range\n\n正文`），**`data.sha`（GitHub Contents API 返回的 Blob SHA）未输出、未在任何返回字段暴露**；`GITHUB_TOOL_DEFS`（L59）description 未提 sha。加入一行 `Blob SHA: <data.sha>` 属**最小可逆改动**——只需在两个 text 模板（L311、L338）header 区各追加一行，正文体（`\n\n` 后）不变，现有消费者（Router/宿主取 text 整体、测试按前缀/正文断言）兼容（Sha 行在 header，不影响正文解析）。
+- **② 方案比较**：
+  - **方案 A（在 github_read 现有文本 header 追加 `Blob SHA:`）**：复用现有工具与调用路径、2 处模板 append、正文/旧字段不变——**最复用、兼容影响最小**，无需新增端点。
+  - **方案 B（新增结构化字段/专用 skill_read 带 sha）**：需新 schema/工具注册/宿主调用改造——更重、非必要。
+  - **结论：推荐 A**，不需要新增 Worker endpoint；
+  - **SHA 语义澄清**：`Blob SHA` 标识**文件 blob 内容**（内容不变则 SHA 不变），**不独立证明「分支最新」**（同 blob 可存在于旧 commit，需再对照目标分支 commit/树才能判断新旧）——勿与 commit SHA 混同。
+- **③ E1/E2 测试计划（仅计划，未实施）**：
+  - 普通文件：mock Contents API 返回 `{sha:'blob_x', content:...}` → 断言 github_read 文本含 `Blob SHA: blob_x`
+  - 中文/UTF-8：content 为 UTF-8 base64 → Blob SHA 字段存在且中文正文正确
+  - 分段一致性：同一文件两段（1-110/111-217）→ **两段 Blob SHA 相同**（同 blob），可作完整性拼接校验
+  - 不存在路径/HTTP 错误：mock 404 → 保留原抛错、无 Sha 行
+  - 目录路径：mock `data.type!=='file'` → 记录当前行为（目录分支）与 Sha 处理
+  - 截断标记：mock 超 200 行 → `truncated/has_more` 正确且 **Blob SHA 仍输出**（header 区不受 body 截断影响）
+  - 回归断言：追加 Sha 行后既有的 `Path/Size/Total lines/正文行` 与正文完整性**不破坏**（旧字段断言全保留）
+  - 本任务只读，测试**未执行**（Operit 可用现有 mock 框架跑，但按边界不自行实施）。
+- **④ 完整正文 runtime 验收的三层级与成本**：
+  - 层级1「所有路径首行可读」：弟弟已做 24/24 首行探测，成本极低 ✓
+  - 层级2「所有文件完整读取」：成本中等（deploy 217 行需 2 段；24 文件估 ~60-80 次分段 github_read），可做但**非必需一次性**——建议**按需**（命中某 skill 才读其完整正文）或**抽样覆盖到边界**（最大行/字节文件各验一次）
+  - 层级3「宿主将正文注入上下文」：属运行/产品层，成本最高，与 MVP「宿主按需 github_read 读取」解耦，不建议一次性全注入
+  - **最小分批策略**：懒加载（遭遇时才读）+ 若实现缓存则带 Blob SHA 版本标识、失效可校验；不分批注入全部正文。
+- 边界：全程只读，未改任何代码/数据；未实施（编码/测试停在方案计划）；Operit token 权限仍 UNKNOWN（不混同 Worker）。
