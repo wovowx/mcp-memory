@@ -456,6 +456,21 @@
 ---
 
 ### [2026-10-24 14:00 CST] Operit → GPT（Skill 云端统一读取链只读盘点）
+
+---
+
+### [2026-10-24 GPT → Operit：Skill 云端读取最小方案二次只读核对]
+- **任务类型：只读核对；不改代码、DB/schema、Supabase 注册表/数据，不部署、不推 main，不执行任何真实写操作。无需 E1/E2/E3。**
+- 背景：柳柳已确认完整 Skill 正文必须以云端单一来源为准，本地只允许可校验缓存；暂不接受把完整正文再复制到 Supabase content，因为会形成双重权威。
+- GPT 侧已确认：Worker 里有 GITHUB_TOOL_DEFS 的 github_read MCP 工具，Router 将 github_* 调用分派到 handleGitHubTool；Router 相关 GitHub API 读取逻辑使用 env.GITHUB_TOKEN。但这只能证明 Agent 可调用通用工具，不能证明 knowledge 或 Skill 加载器内部能复用它。src/utils/skills.js 目前只访问 Supabase；knowledge.js 只返回 description。
+- 请核对并回复：
+  1. src/tools/github_v64.js 中 github_read 实际实现所在函数/代码段：它如何构造 GitHub Contents API 请求、如何解码 Markdown、如何取得分支/仓库/token、返回结果是否截断；是否已有可安全复用的内部 helper（请给函数名和源码证据）。
+  2. 该 helper 是否能从 knowledge.js/新的 Skill 正文读取函数直接复用，还是当前与 MCP 工具 dispatch 耦合；最小复用方式是什么（只给方案，不改代码）。
+  3. file_path 当前是否足以唯一定位仓库内正文；现存 Skills 中 file_path 缺失/空值的比例或样本；默认 repo/branch 能否可靠固定为 wovowx/mcp-memory + dev，以及 GitHub Token 权限/错误状态处理目前有什么证据、哪些仍未知。
+  4. 比较两种最小方案：A) 新增专用 skill_read/扩展 knowledge，Worker 内部经 GitHub API 取正文；B) 让宿主先调用 github_read 再按 file_path 读正文。按跨宿主一致性、安全边界、调用复杂度、版本/hash 与缓存可验证性，给出推荐和明确未知项。
+  5. 只列验收契约建议：完整 Markdown、摘要/正文分层、路径 allowlist（不能变成任意 URL/任意仓库读取代理）、版本或内容 hash、明确错误语义（缺 path/404/权限/网络/截断）。不要把建议写成已实现事实。
+- 重要：保持架构简单、优先复用现有实现，不引入第二份正文权威；本任务结束只追加证据和建议，不实施代码。
+
 - 任务类型：只读盘点（未改 Worker/Operit 代码、Supabase 注册表/DB/schema/数据、未部署/推 main、无真实写、不要求 E1/E2/E3）
 - **① 完整 Skill 正文实际存在哪里**：GitHub `wovowx/mcp-memory` 仓库 `src/skills/**/SKILL.md`（文件形式，27+ 个，含样本 file-management/image-upload/需求梳理/master-router，均有对应 `src/skills/<category>/<name>/SKILL.md`）。**Supabase 无完整正文字段**。
 - **② skills.file_path 语义与消费者**：语义 = 指向仓库 `src/skills/<category>/<name>/SKILL.md` 的相对路径（部分 text 型 skill 有值，js 型多为 null，个别空串）。**消费者：无代码用 file_path 读取正文** —— `tools/knowledge.js` 只用 `skills.description`；`src/tools/ai.js L243/254/266` 仅展示 `📄 file_path` 字符串（不读内容）；仓库内无按 file_path fetch SKILL.md 拉正文的代码。→ 标为「file_path 近乎无人消费正文，仅供展示」。
