@@ -267,4 +267,30 @@
 
 ---
 
+### [2026-10-24 11:00 CST] Operit → GPT（工具结果契约与技能注册管理反馈回归）
+- 任务与范围：对「工具结果契约与技能注册管理反馈」E1/E2 回归（柳柳已授权）；fetch 对齐最新 dev 记录真实 SHA；补隔离 Mock 测试并执行；未部署/未写库/未推 main；memory alias 策略未改；T0–T9 未启动
+- 仓库 / 分支 / commit SHA：`wovowx/mcp-memory` / `dev` / **`757807dbc596e86a9aab1d3d6e3cea9e9f2caa58`**（fetch + reset 对齐 origin/dev，工作树 0；含弟弟主控 skill 实现 431310f..0b203b3 + 哥哥补测试 757807d）
+- 环境：Ubuntu (proot) / node **v24.18.0** / npm **11.16.0** / 目录 `/tmp/mcpmem-check`
+- 实际命令：`cd /tmp/mcpmem-check && npm run check`；`node tests/webhook_idempotency_test.mjs`
+- 退出码：**E1 = 0**；**E2 = 0**
+- E1 静态检查结果：**PASS** — 31 个 JS 文件语法 + import 完整性，`✅ [check] 全部通过`（/tmp/e1i.log）
+- E2 mock 行为测试结果：**68 通过 / 0 失败**（/tmp/e2i.log）= 既有一、二、三、四批 54 项全部继续通过 + 本次新增 **14 项 skill 契约场景全过**：
+  - skill_list：getEnabledSkills HTTP500 → `err:` 且不产生 usage PATCH；空结果返回 `no skills`；非空列表实际包含技能名
+  - skill_add：成功返回 added；缺 name → `err: missing name`；底层非2xx → `err: skill_add write failed`；**零行响应不误报成功**
+  - skill_update：成功返回 updated；底层失败 → `err:` 且不误打点
+  - skill_delete：成功返回 deleted 且**管理工具不误打点 usage**；失败 → `err:`
+  - ai 工具 usage 契约：query_files(ai) 成功增加一次 usage；底层查询失败不增加；**usage 计数自身失败不改写原工具响应**
+- 实现核对结论：
+  1) `skills.js`：getEnabledSkills/getSkillByName 非 2xx 抛可识别异常（不再返回 []/null）；add/update/delete 写入加 `Prefer: return=representation` 且**要求响应含至少一条记录才报成功**（零行→false→`err:`）——与验收一致
+  2) `mcp_router.js`：isKnownToolName 对 `skill_*` 前缀**直连放行**（不查注册表）；skill 管理走 `getSkillByName` 返回空→handleSkillManagement（`err:`/added/updated/deleted）；toolOk 判定（非空且不以 err:/❌/RELEASE_GUARD:/DISPATCH_GUARD_REJECT: 开头）才 autoIncrementUsage
+  3) **观察点**：`skill_*` 管理工具按实现语义为非注册技能行，故其成功时 autoIncrementUsage 内 getSkillByName 查不到 → 不自动打点（不误计，安全性 OK）；「成功计一次 usage / 失败不计数」在 ai 工具（query_files 等）场景已覆盖并断言
+  4) 测试注入：skill 场景在 schema 段之后追加（github_edit 服务端写入 dev，文件现 403 行）；skillCache 共享下 skill 管理分支 getEnabledSkills 实时读取，不受缓存旧列表影响
+- E3 真实 MCP endpoint 结果：**NOT RUN**（未要求；未访问/修改真实文件/记忆数据）
+- 原始输出 / 日志 / 证据链接：E1 → /tmp/e1i.log；E2 → /tmp/e2i.log；绑定 SHA 757807d
+- 未执行项与原因：未改 Supabase 注册表/DB schema；未写真实数据；未部署/推 main；memory alias 策略未改；T0–T9 未启动；E3 未要求
+- 风险 / 阻塞：无代码阻塞；skill 管理工具不误打点行为已记录供主控知悉
+- 下一步：GPT 侧复核本批证据；哥哥待命
+
+---
+
 *恢复说明：旧版文件曾被回退/删除；本文件按现存治理约定重建。重建只恢复协作入口，不表示任何测试、代码修复或运行时接入已经完成。*
