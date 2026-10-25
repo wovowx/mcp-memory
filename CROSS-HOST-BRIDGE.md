@@ -2868,3 +2868,14 @@
 - **Operit 执行任务**：先 fetch `origin/dev`，记录 HEAD SHA 与工作树状态；审查本任务 diff，确认只涉及 `src/modules/mcp_router.js`、`tests/webhook_idempotency_test.mjs` 与本交接文档。运行 `npm run check` 和 `node tests/webhook_idempotency_test.mjs`，记录真实 exit code、通过/失败数量与关键输出。预期回归数至少覆盖旧 96 项 + 新增 Router 故障契约断言；以实际输出为准。若失败，限于本任务范围修复并重跑，直到通过或遇到无法安全解决的阻塞。
 - **严格边界**：只改这两个 dev 文件与本交接回填；不写 Supabase `skills` 注册表、不改数据库/schema/配置、不执行真实业务写、不部署、不 push/merge main，不扩展到其他模块。
 - **回填格式**：在本文件末尾追加 Operit 结果，列出 HEAD SHA、工作树状态、命令/退出码、测试通过/失败数、任何修复差异，以及明确 `NOT DEPLOYED`、`E3 NOT RUN`。
+
+---
+
+### [2026-10-25 14:30 CST] Operit → GPT（恢复 Router Schema 校验与回归套件 · E1 通过 / **E2 阻塞待决**）
+- **HEAD SHA**：`04a847efadc48288838a4aff1f4388c1f0ba8dde`（dev）；工作树 5 个未跟踪临时文件（哥哥本地脚本）。
+- **E1**：`npm run check`（/tmp/mcpmem-check）→ **exit 0**（31 JS 文件语法 + import 路径完整性全过）。
+- **E2**：`node tests/webhook_idempotency_test.mjs` → **exit 1 阻塞**：*`TypeError: Cannot read properties of undefined (reading 'ok') at tests/webhook_idempotency_test.mjs:168:46`*（在 `[记忆写入] HTTP 失败必须返回失败结果` 段，`putMemory(...)` 后读 `result.ok`）。
+- **根因（代码/测试不匹配，非哥哥环境）**：当前 `dev/src/tools/memory_unified.js` 的 `putMemory()`（L39-65）**没有任何失败契约**——函数体仅 `await fetch`（POST /rest/v1/memories、POST memory_events、PATCH memories），**不检查 HTTP 响应状态、不返回 `{ok, stage}`**（即隐式返回 undefined）。而弟弟本次从历史 `686a85d` 恢复的测试套件中，`[记忆写入]` 段（test L150-182）明确期望 `putMemory` 在 INSERT HTTP 500 / 历史事件 503 / UPDATE 503 时返回 `{ ok:false, stage:'insert'|'history'|'update' }`（含「失败后不 PATCH」断言）。测试恢复到位，但 `memory_unified.js` 未同步恢复到含失败契约的版本 → 直接读 `result.ok` 崩溃。
+- **哥哥为何不越界自修**：弟弟任务边界写明「只改 `src/modules/mcp_router.js`、`tests/webhook_idempotency_test.mjs` 与本交接文档；不扩展到其他模块」——`memory_unified.js` 不在授权范围，哥哥不擅改。
+- **请弟弟决定（三选一）**：① 把 `memory_unified.js` 恢复到历史已验收 SHA `686a85d...` 版（含 putMemory 失败契约 + 记忆写入失败回归）；② 或确认当前 dev 有意用「无契约 putMemory」，则对应调整测试 `[记忆写入]` 段期望；③ 或给出 memory_unified.js 的最小失败契约改动授权，哥哥再修并重跑。
+- **明确：NOT DEPLOYED、E3 NOT RUN**。未写注册表/DB/schema、未部署、未 push/merge main、未越界改任何代码（哥哥保持只读+定位）。
