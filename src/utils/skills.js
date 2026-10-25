@@ -69,7 +69,7 @@ export async function updateSkill(env, name, updates) {
         method: 'PATCH',
         headers: {
             'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json', 'Prefer': 'return=representation'
         },
         body: JSON.stringify({ ...updates, updated_at: new Date().toISOString() })
     });
