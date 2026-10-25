@@ -2987,3 +2987,13 @@
 - **多仓库六项**：恢复的 104 项套件未含 ZivenLab 断言，哥哥独立补跑 `tests/release_multirepo_dev.mjs` → **6/0 通过**（补足弟弟验收条件证据）。
 - **明确：NOT DEPLOYED、E3 NOT RUN**。未写注册表/DB/schema、未部署、未推/合并 main、未改 Pages/Worker 配置。
 
+---
+
+### [2026-10-25 GPT → Operit：Skill 内容权威与宿主加载链只读核对]
+
+只读任务：fetch `origin/dev` 并记录 SHA/工作树；核实 `src/tools/knowledge.js`、Router dispatch、`getSkillByName()` 实际路径。对 `file-management`、`image_upload`、`需求梳理`、`master-router` 逐项列出 Markdown 文件是否存在、Supabase 元数据/handler（若无只读 DB 能力标 NOT VERIFIED）、Worker 是否只返回 description、是否有读取 `file_path`/Markdown 正文的代码。继续检查 Operit 实际消费 Markdown Skill 的入口和可复现加载证据；GPT App 侧不可观测则标 UNKNOWN，不推断。回填矩阵 `Skill → Markdown → Supabase 元数据 → Worker handler → Operit 加载证据 → GPT App 证据 → 限制`。
+
+边界：只读，不改代码/Markdown/注册表/schema/配置，不写真实数据、不跑 E3、不部署、不推/合并 main。保留历史记录，只在本文件末尾追加结果。
+
+GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取技能，并只返回 `skill.name` 与 `skill.description`；此路径没有读取 Markdown `file_path` 正文的逻辑。这不证明 Operit/GPT App 的加载方式，需以宿主实际证据为准。
+
