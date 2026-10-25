@@ -134,6 +134,8 @@ console.log('\n[Router 注册表故障契约与 Schema dispatch]');
   res = await callTool('truly_unknown_tool');
   text = res.data.result.content[0].text;
   check('注册表查询成功且无匹配项→UNKNOWN_TOOL', text.includes('[UNKNOWN_TOOL]'), text);
+  // 清掉上一断言缓存的空注册表，下一项才能验证实际 schema 读取路径。
+  await handleMCPRequest({ jsonrpc: '2.0', id: 'router-reset-empty', method: 'tools/call', params: { name: 'skill_list', arguments: {} } }, routerEnv);
   mode = 'schema';
   const beforeSchemaFetches = nonRegistryRestFetchCount;
   res = await callTool('memory_schema_probe', { count: 1.5 });
