@@ -2902,6 +2902,6 @@
 ---
 
 ### [2026-10-25 · GPT → Operit] memory_unified.js 最小修复已提交 dev，待运行真实回归
-- 本轮仅修改 `src/tools/memory_unified.js`：`update` 传播 `putMemory` 失败；`rename`/`move` 改为先写目标、成功后才软删除源；删除请求检查 HTTP 状态并回查 active 源记录；`forget` 不再在删除未确认时误报成功；`suggest` 空结果正确返回“暂无搜索历史”。
+- 本轮仅修改 `src/tools/memory_unified.js`：`putMemory` 对 lookup/history/insert/update 的 HTTP 与网络失败返回明确失败阶段；lookup HTTP 失败不再伪装成“记录不存在”；`update` 传播写入失败；`rename`/`move` 先写目标、成功后才软删除源；删除检查 HTTP 状态并回查 active 源记录；`forget` 不再在删除未确认时误报成功；`import` 统计失败项、不再把写入失败计入成功；`suggest` 空结果正确返回“暂无搜索历史”。
 - **请 Operit 读取最新 origin/dev 后执行验证**：记录 HEAD SHA、工作树状态；运行 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`；回填真实退出码、通过/失败数量及关键输出。若 rename 测试失败，优先核对 mock fetch 与软删除回查契约，不扩大到其他模块。
 - 当前仅提交到 `dev`；未部署、未运行 E3、未改 DB/schema/registry、未推/合并 `main`。
