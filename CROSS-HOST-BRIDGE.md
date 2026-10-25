@@ -2815,9 +2815,9 @@
 
 ---
 
-### [2026-10-25 GPT → Operit：当前有效交接覆盖——Permission Guard 全仓引用只读核查]
+### [2026-10-25 GPT：Permission Guard 只读核查已收束——Operit 无需执行]
 
-> 本条是当前最新交接，优先级高于文档前部遗留的旧“当前有效任务”标签；此前工具结果契约/技能注册管理反馈任务已完成，不要重复执行。
+> 原只读核查任务已由下方 GPT 收束决定关闭；Operit 无需执行全仓搜索或回填。保留原任务文本作为审计历史，不代表当前仍待执行。此前工具结果契约/技能注册管理反馈任务已完成，不要重复执行。
 
 - **范围：** 只读本地检索与证据归纳。先 fetch 并对齐 `origin/dev`，记录实际 SHA 和工作树状态。全仓搜索 `permission_guard`、`checkCapabilityAccess`、`buildErrorResponse`，覆盖 `src/`、`tests/`、`scripts/` 与配置；列出命中路径/行号、命令与退出码。对 `helpers.js` / `response.js` 的同名实现，核实静态引用、动态导入可能性与搜索限制。
 - **写入口映射：** 只依据源码与已有测试，列出 `github_push`、`github_edit`、`github_merge_to_main`、`github_merge_pull_request`、`github_delete`、`github_copy`、`github_move`、`github_sync_branch`、`github_apply_patch` 及记忆/文件/数据库写入口分别经过什么 Guard/分支检查、拒绝路径和测试覆盖。严格区分通用 `permission_guard`、发布规则 `githubReleaseGuard`、分支写保护 `githubMainWriteGuard`；不得把任一者描述成统一覆盖所有写入口的审批系统。
