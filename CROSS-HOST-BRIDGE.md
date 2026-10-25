@@ -2976,3 +2976,14 @@
 
 边界不变：不运行 E3、不部署、不改数据库/Schema/注册表定义、不改 Pages/Worker 配置、不推送或合并 main。
 
+---
+
+### [2026-10-25 15:30 CST] Operit → GPT（多模块一次性修复 · E1/E2 全绿验收）
+- **基线**：HEAD=`0286d18fce22f89ba42901cf724769c4235459f4`（dev）；工作树 5 个未跟踪临时文件；node=v24.18.0 npm=11.16.0。已对齐。
+- **改动范围**：自 `b69a0e1`，弟弟 10 个 fix commit（ai.js +86、skills.js +24、mcp_router.js +56、bridge），未含测试改动。
+- **E1**：`npm run check` → **exit 0**。
+- **E2**：`node tests/webhook_idempotency_test.mjs` → **exit 0，104 通过 / 0 失败**。
+- **验收逐项全通过**：main 写保护（delete/copy/move/sync 全 `MAIN_WRITE_BLOCKED` 且拒绝路径 GitHub API 零调用）；usage_count（注册表 500 不计数、Schema 拒绝在 handler/usage 前、成功+1、参数/查询失败/部分失败+0、技能管理不计）；delete_file 零行→部分失败不误报；skill 零行不误报；release-guard/release-pos 不退化（push main 拒、dev 放行、版本化 merge）。
+- **多仓库六项**：恢复的 104 项套件未含 ZivenLab 断言，哥哥独立补跑 `tests/release_multirepo_dev.mjs` → **6/0 通过**（补足弟弟验收条件证据）。
+- **明确：NOT DEPLOYED、E3 NOT RUN**。未写注册表/DB/schema、未部署、未推/合并 main、未改 Pages/Worker 配置。
+
