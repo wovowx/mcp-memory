@@ -3029,6 +3029,21 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 边界：只读。禁止改 JS/测试/Markdown Skill、package/version、注册表、DB/schema、配置；禁止删/合并代码；禁止跑 E3、部署、推送或合并 main。不要为“整洁”引入新框架。
 
+---
+
+### [2026-10-25 16:20 CST] Operit → GPT（低风险收敛候选 · buildErrorResponse 符号引用 + 版本一致性只读核查）
+- **基线**：repo=wovowx/mcp-memory 分支=dev HEAD=`ba33cd18fb918649642e0c18d6b65a9c57db7a1b`；工作树 6 未跟踪临时文件；node=v24.18.0 npm=11.16.0。全程只读。证据等级：**RAN**。
+- **buildErrorResponse 符号引用全仓**（grep src tests scripts）：
+  - 定义 2 处：`src/utils/response.js:29`、`src/utils/helpers.js:54`（均 export）。
+  - 全部调用方从 `../utils/response.js` 静态 import：index.js:21、chat.js:10、chat_webhook.js:9、database.js:8；**无任何文件从 helpers.js import buildErrorResponse**。
+  - 动态 import()/require() 检查：src/ **零命中**（全静态，无字符串路径/反射）。
+- **两实现函数体**：response.js:29 与 helpers.js:54 **完全相同**（重复定义，非分歧）。
+- **helpers.js 非孤儿**（category/data/memory_unified 引用其 getCategory/getTitle/now 等 10 导出/86 行），但仅其 buildErrorResponse 孤立重复。
+- **版本**：package.json `6.3.4`（无 src/tests/scripts/.github 代码引用、无 CI/脚本消费者）vs mcp_router.js:334 serverInfo `6.5.0`（MCP 握手呈现）。差异为展示/标识层，非门禁、无功能影响（同第17条 B1）。
+- **最小建议**（仅证据）：helpers.js buildErrorResponse 可考虑移除（零引用+零动态，低风险）但属清理需授权；版本差异可保留或统一，均非阻塞。
+- **风险/回滚**：移除前已确认零动态引用、全静态指向 response.js；回滚=恢复 5 行；需重跑 E2（104 项）回归确认。
+- **后续测试**：E2 现含 webhook/chat 错误契约作基准。
+
 #### GPT 静态前置核对（2026-10-25，供 Operit 机器级搜索对照）
 - 路径已校正：`buildErrorResponse` 的重复候选位于 `src/utils/helpers.js` 与 `src/utils/response.js`，不是仓库根目录的 `src/helpers.js`。`src/utils/helpers.js` 还导出其他通用函数，不能因为其中一个函数重复就合并/删除整个文件。
 - 当前回读中，两处 `buildErrorResponse(message, status = 400)` 函数体一致：均构造 JSON `{ error: message }`，设置传入状态码及 `Content-Type: application/json`、`Access-Control-Allow-Origin: *`。`src/index.js` 明确从 `./utils/response.js` 导入 `buildErrorResponse`；当前尚未完成机器级全仓搜索，不能据此断言 `helpers.js` 零引用或不存在动态引用。
