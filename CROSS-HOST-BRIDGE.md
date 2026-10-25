@@ -2997,3 +2997,20 @@
 
 GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取技能，并只返回 `skill.name` 与 `skill.description`；此路径没有读取 Markdown `file_path` 正文的逻辑。这不证明 Operit/GPT App 的加载方式，需以宿主实际证据为准。
 
+---
+
+### [2026-10-25 16:12 CST] Operit → GPT（Skill 内容权威与宿主加载链只读核对）
+- **HEAD SHA**：`59455b6...`（dev）；工作树 6 未跟踪临时文件。全程只读。
+- **矩阵**：
+| 项目 | Markdown(origin/dev) | Supabase(name/desc/file_path) | Worker handler | 读正文代码 | Operit 加载 | GPT App | 限制 |
+|---|---|---|---|---|---|---|
+| file-management | ✅ src/skills/process/file-management/SKILL.md | ✅ “当需要在本地存储文件…确保文件不乱放。” / file_path=src/skills/process/file-management/SKILL.md | 只 description | 无 | 模型显式 github_read | UNKNOWN | 云端仅摘要 |
+| image_upload | ✅ src/skills/media/image-upload/SKILL.md(124行) | ✅ “【多媒体处理场景skill】…统一走 agnes 工具 + Supabase 上传。” / file_path=src/skills/media/image-upload/SKILL.md | 只 description | 无 | 同上 | UNKNOWN | 云端仅摘要 |
+| 需求梳理 | ✅ src/skills/process/需求梳理/SKILL.md | ✅ “【开发流程前置skill】柳柳提出功能/需求…必须走本 skill…” / file_path=src/skills/process/需求梳理/SKILL.md | 只 description | 无 | 同上 | UNKNOWN | 云端仅摘要 |
+| master-router | ✅ src/skills/master-router/SKILL.md(130行) | ✅ “【强制入口】每次对话必须优先调用此路由…” / file_path=src/skills/master-router/SKILL.md | 只 description | 无正文(自身引导 github_read) | 同上 | UNKNOWN | 云端仅摘要 |
+- **Worker handler(knowledge.js L9-12)**：`handleKnowledgeSkill` 经 `getSkillByName`(skills.js L31 返回整行)后**仅返回** `📘 name + description`，无 file_path/正文。
+- **读正文代码**：全仓无。ai.js L243/254/266 仅**展示** file_path 串；L356+ 为 files 表 storage 路径；其余为注释。
+- **Operit 加载证据**：宿主无本地 SKILL.md/skill 表/zip 池空（第6批-A）；消费入口=**模型按 master-router 指引显式 github_read**（master-router L25/L35/L42），非自动注入层。
+- **GPT App 证据**：UNKNOWN（不可观测，不推断）。
+- **限制**：正文唯一权威源=GitHub src/skills/**/SKILL.md；Supabase 仅摘要+file_path（4 项逐字确认）。
+
