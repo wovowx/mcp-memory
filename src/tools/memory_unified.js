@@ -349,13 +349,22 @@ export async function handleMemoryTool(name, safeArgs, env) {
             if (!Array.isArray(dataArray)) text = '❌ 需要 JSON 数组';
             else {
                 let added = 0, skipped = 0, updated = 0;
+                let failed = 0;
                 for (const item of dataArray) {
-                    if (!item.key || !item.value) continue;
+                    if (!item.key || !item.value) { failed++; continue; }
                     const existing = await getMemoryByKey(env, item.key);
-                    if (existing) { if (existing.value === item.value) skipped++; else { await putMemory(env, item.key, { value: item.value, updated_at: now() }); updated++; } }
-                    else { await putMemory(env, item.key, { value: item.value, created_at: now(), updated_at: now() }); added++; }
+                    if (existing) {
+                        if (existing.value === item.value) skipped++;
+                        else {
+                            const result = await putMemory(env, item.key, { value: item.value, updated_at: now() });
+                            if (result?.ok) updated++; else failed++;
+                        }
+                    } else {
+                        const result = await putMemory(env, item.key, { value: item.value, created_at: now(), updated_at: now() });
+                        if (result?.ok) added++; else failed++;
+                    }
                 }
-                text = '💡 导入完成：新增 ' + added + '，更新 ' + updated + '，跳过 ' + skipped;
+                text = '💡 导入完成：新增 ' + added + '，更新 ' + updated + '，跳过 ' + skipped + '，失败 ' + failed;
             }
         } catch (e) { text = '❌ JSON 解析失败：' + e.message; }
     }
