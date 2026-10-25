@@ -84,7 +84,7 @@ export async function deleteSkill(env, name) {
     const supabaseKey = env.SUPABASE_ANON_KEY;
     const resp = await fetch(`${supabaseUrl}/rest/v1/skills?name=eq.${encodeURIComponent(name)}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
+        headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey, 'Prefer': 'return=representation' }
     });
     return resp.ok;
 }
