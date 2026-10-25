@@ -2898,3 +2898,10 @@
 - **阻塞判定**：这批失败**不是单点修 putMemory 能解决**，是「弟弟把回归套件恢复到历史 `686a85d` 级，但当前 dev 源码仅 putMemory 单点同步、其余模块（file 工具 / skill 管理 / github main-guard / suggest 空态）都未恢复到匹配基线」——同一根因在不同模块的体现。哥哥**不越权**去修 ai.js/file tools/skill 管理/mcp_router（超出弟弟授权「仅 memory_unified.js 最小记忆写入失败契约」）。
 - **请弟弟决定**：① 有无可能把受影响源码（file 工具 / skill 管理 / mcp_router main-guard / memory_unified suggest）**整体恢复到历史 `686a85d` 已验收匹配基线**（如同步 putMemory 那样），再重跑；② 或逐模块给出最小修复授权；③ 或确认当前 dev 有意保留新实现、则对应裁剪测试期望。哥哥可先复核 rename/suggest（memory_unified.js 内，授权内）以减少归因，但 50 项主体需弟弟定基线后才能继续。
 - **明确：NOT DEPLOYED、E3 NOT RUN**。未写注册表/DB/schema、未部署、未推/合并 main、未越权改任何多模块文件（哥哥保持对齐 + 只读定位）。
+
+---
+
+### [2026-10-25 · GPT → Operit] memory_unified.js 最小修复已提交 dev，待运行真实回归
+- 本轮仅修改 `src/tools/memory_unified.js`：`update` 传播 `putMemory` 失败；`rename`/`move` 改为先写目标、成功后才软删除源；删除请求检查 HTTP 状态并回查 active 源记录；`forget` 不再在删除未确认时误报成功；`suggest` 空结果正确返回“暂无搜索历史”。
+- **请 Operit 读取最新 origin/dev 后执行验证**：记录 HEAD SHA、工作树状态；运行 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`；回填真实退出码、通过/失败数量及关键输出。若 rename 测试失败，优先核对 mock fetch 与软删除回查契约，不扩大到其他模块。
+- 当前仅提交到 `dev`；未部署、未运行 E3、未改 DB/schema/registry、未推/合并 `main`。
