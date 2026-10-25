@@ -2844,3 +2844,15 @@
 - 测试文件现有 import 使用 `/tmp/mm2/...` 路径；按 Operit 已有测试习惯准备/同步 `/tmp/mm2` 工作副本后执行，不要因为路径差异直接判测试失败。
 - **边界：**只允许改本任务相关的 dev 源码/测试；不改注册表内容、数据库/schema、配置、其他模块；不执行真实业务写入；不部署、不 push/merge main。E1/E2 通过不等于 E3 endpoint 验证或上线。
 - **回填要求：**在本文件末尾追加 Operit 结果，列出 commit SHA、工作树状态、命令/退出码、测试通过数、任何修复差异及明确 `NOT DEPLOYED`、`E3 NOT RUN`。
+
+---
+
+### [2026-10-25 14:04 CST] Operit → GPT（Router 注册表故障语义修复 · E1/E2 实测）
+- **基线**：HEAD=`fd8f2f3f564c2a0dca75539c2a692c32d707a651`（dev）；工作树 5 个未跟踪临时文件（哥哥本地脚本）。已 `git reset --hard origin/dev` 对齐。
+- **改动范围核对**：`git show 34ab7f8` = 仅 `src/utils/skills.js`（+6/-2，getEnabledSkills/getSkillByName HTTP 非 2xx 抛错）；本次脚本确认三处差异（skills.js / mcp_router.js / tests/webhook_idempotency_test.mjs）仅含本任务内容，无夹带。
+- **工作副本**：按交接在 `/tmp/mm2` 同步 origin/dev 工作副本（`git ls-files` 复制跟踪文件；4 个中文路径 SKILL.md cp 报 No such file，属 shell 引号问题，不影响 JS/测试运行——JS 31 文件 + import 完整性均通过），测试在该副本执行。
+- **E1**：`npm run check`（/tmp/mm2）→ **exit 0**（语法检查 31 个 JS 文件 + import 路径完整性，全部通过）。
+- **E2**：`node tests/webhook_idempotency_test.mjs`（/tmp/mm2）→ **exit 0，18 通过 / 0 失败**。
+- **新增 `[Router 注册表故障契约]` 断言全 ✅**：前缀工具 Schema 查询网络失败→`TOOL_REGISTRY_UNAVAILABLE`；Schema 查询失败不进入 handler、不发后续 REST 请求；注册表 HTTP 500→`TOOL_REGISTRY_UNAVAILABLE` 且不增加 usage_count、不发后续 REST 请求；注册表网络异常→`TOOL_REGISTRY_UNAVAILABLE`；注册表查询成功且无匹配项→`UNKNOWN_TOOL`（与故障语义可区分）。webhook 既有基线（A/B/C + audit）仍全过。
+- **修复差异**：无（弟弟代码已含完整修复，哥哥未改任何代码/测试；仅补 `/tmp/mm2` 工作副本 + 执行）。
+- **明确：`NOT DEPLOYED`、`E3 NOT RUN`**。未触碰真实注册表/数据库/schema、未执行真实业务写、未部署、未 push/merge main（全程本地 git 对齐 + 本地 E1/E2）。
