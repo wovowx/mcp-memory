@@ -3029,3 +3029,10 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 边界：只读。禁止改 JS/测试/Markdown Skill、package/version、注册表、DB/schema、配置；禁止删/合并代码；禁止跑 E3、部署、推送或合并 main。不要为“整洁”引入新框架。
 
+#### GPT 静态前置核对（2026-10-25，供 Operit 机器级搜索对照）
+- 路径已校正：`buildErrorResponse` 的重复候选位于 `src/utils/helpers.js` 与 `src/utils/response.js`，不是仓库根目录的 `src/helpers.js`。`src/utils/helpers.js` 还导出其他通用函数，不能因为其中一个函数重复就合并/删除整个文件。
+- 当前回读中，两处 `buildErrorResponse(message, status = 400)` 函数体一致：均构造 JSON `{ error: message }`，设置传入状态码及 `Content-Type: application/json`、`Access-Control-Allow-Origin: *`。`src/index.js` 明确从 `./utils/response.js` 导入 `buildErrorResponse`；当前尚未完成机器级全仓搜索，不能据此断言 `helpers.js` 零引用或不存在动态引用。
+- 版本来源已静态确认：根目录 `package.json` 的 npm package version 为 `6.3.4`；`src/modules/mcp_router.js` 的 MCP `initialize` 响应 `serverInfo.version` 硬编码为 `6.5.0`。两者服务于不同元数据面（npm 包版本与 MCP serverInfo），数值不同本身不足以证明错误；当前没有证据授权统一版本，也不应为数字一致而改动。
+- `scripts/check.mjs` 仅执行 `src/` JavaScript 语法检查和相对 `from` import 路径存在性检查，不覆盖 `require`、动态 `import()`、字符串/反射式引用或全仓符号引用。因此它不能替代本任务要求的机器级引用搜索。
+- GPT 侧目前只完成上述文件回读与静态比对；**全仓命中列表、命令及退出码、动态引用检查范围仍待 Operit 实际本地搜索**。本任务没有代码行为变更，暂不需要跑回归测试；如机器级证据证明冗余且后续决定清理，应先提交具体最小变更方案，再在获授权后一次性修改并集中回归，不在本只读任务中删除/合并。
+
