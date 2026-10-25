@@ -194,7 +194,10 @@ export async function handleMemoryTool(name, safeArgs, env) {
         else {
             const existing = await getMemoryByKey(env, safeArgs.key);
             if (!existing) text = '❌ 没有找到 "' + safeArgs.key + '"';
-            else { await deleteMemory(env, safeArgs.key); text = '🗑️ 已删除：' + safeArgs.key; }
+            else {
+                const deleteResult = await deleteMemory(env, safeArgs.key);
+                text = deleteResult?.ok ? '🗑️ 已删除：' + safeArgs.key : '❌ 删除未能确认（' + (deleteResult?.stage || 'delete') + '）：' + safeArgs.key;
+            }
         }
     }
     else if (action === 'list_categories') {
@@ -227,9 +230,13 @@ export async function handleMemoryTool(name, safeArgs, env) {
                 const newKey = safeArgs.newCategory + '/' + getTitle(safeArgs.key);
                 if (await getMemoryByKey(env, newKey)) text = '⚠️ 目标 key 已存在';
                 else {
-                    await deleteMemory(env, safeArgs.key);
-                    await putMemory(env, newKey, { value: existing.value, created_at: existing.created_at, updated_at: now() });
-                    text = '💡 已移动：' + safeArgs.key + ' → ' + newKey;
+                    const writeResult = await putMemory(env, newKey, { value: existing.value, created_at: existing.created_at, updated_at: now() });
+                    if (!writeResult?.ok) text = '❌ 移动失败（目标写入失败），源记录保留：' + safeArgs.key;
+                    else {
+                        const deleteResult = await deleteMemory(env, safeArgs.key);
+                        if (!deleteResult?.ok) text = '⚠️ 目标已写入：' + newKey + '；源记录未能确认删除（' + (deleteResult?.stage || 'delete') + '），请核查源记录：' + safeArgs.key;
+                        else text = '💡 已移动：' + safeArgs.key + ' → ' + newKey;
+                    }
                 }
             }
         }
