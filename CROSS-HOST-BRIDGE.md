@@ -2812,3 +2812,14 @@
 - **部署状态：NOT DEPLOYED。** 尝试确认 Wrangler 身份时，`wrangler whoami` 因未认证/缺少有效凭证而受阻；未执行 `npm run deploy`，没有线上部署版本可报告。验证通过不等于部署成功。
 - **证据边界：** 以上是隔离 worktree 中的本地 E1/E2 与 Mock 行为测试，不代表真实 MCP endpoint（E3）验证；E3 **NOT RUN**。
 - **下一步：** 如需上线，须在具备有效 Wrangler 认证、且再次核对 Worker/账户/环境的环境中，按既定授权执行部署并单独核验线上版本。
+
+---
+
+### [2026-10-25 GPT → Operit：当前有效交接覆盖——Permission Guard 全仓引用只读核查]
+
+> 本条是当前最新交接，优先级高于文档前部遗留的旧“当前有效任务”标签；此前工具结果契约/技能注册管理反馈任务已完成，不要重复执行。
+
+- **范围：** 只读本地检索与证据归纳。先 fetch 并对齐 `origin/dev`，记录实际 SHA 和工作树状态。全仓搜索 `permission_guard`、`checkCapabilityAccess`、`buildErrorResponse`，覆盖 `src/`、`tests/`、`scripts/` 与配置；列出命中路径/行号、命令与退出码。对 `helpers.js` / `response.js` 的同名实现，核实静态引用、动态导入可能性与搜索限制。
+- **写入口映射：** 只依据源码与已有测试，列出 `github_push`、`github_edit`、`github_merge_to_main`、`github_merge_pull_request`、`github_delete`、`github_copy`、`github_move`、`github_sync_branch`、`github_apply_patch` 及记忆/文件/数据库写入口分别经过什么 Guard/分支检查、拒绝路径和测试覆盖。严格区分通用 `permission_guard`、发布规则 `githubReleaseGuard`、分支写保护 `githubMainWriteGuard`；不得把任一者描述成统一覆盖所有写入口的审批系统。
+- **输出：** 实际 SHA、工作树状态、搜索命令/退出码、命中结果、覆盖范围与限制、Guard 分类证据表，以及是否足以进入最小方案设计的结论。完成后在本文件执行结果追加区写入时间戳回填，保留历史原文。
+- **禁止：** 修改代码/测试/配置/注册表/数据库；真实 GitHub 写操作；部署；push/merge main；启动 `search_history/suggest` T0–T9。该任务无需跑回归测试，不需要做任何代码改动。
