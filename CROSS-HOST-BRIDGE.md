@@ -2866,7 +2866,7 @@
   1. 在 `src/modules/mcp_router.js` 恢复有边界的 `validateSchemaSubset()` 与递归类型/枚举/required/数组 items/数值边界校验，并让 `dispatchGuard()` 使用它；保留 schema 缺失时兼容放行、保留当前 `TOOL_REGISTRY_UNAVAILABLE` 故障语义，不声称完整 JSON Schema。
   2. 将 `tests/webhook_idempotency_test.mjs` 从历史已验收 SHA `686a85dd75abd57f394fe08673b2553127634d2a` 恢复（含先前 96 项回归：memory write/migration、query/update/delete file、skill registry feedback、main/release guard、suggest 空态及 schema 子集测试），再追加 6 项 Router 注册表故障断言与 2 项真实 `tools/call` dispatch schema 拒绝断言；并在 Router mock 测试前后清空模块级 skills cache，避免污染后续测试。测试使用相对 import，不依赖 `/tmp/mm2` 硬编码路径。预期 104 项左右，以 Operit 实际运行输出为准。
 - **Operit 执行任务**：先 fetch `origin/dev`，记录 HEAD SHA 与工作树状态；审查本任务 diff，确认只涉及 `src/modules/mcp_router.js`、`tests/webhook_idempotency_test.mjs` 与本交接文档。运行 `npm run check` 和 `node tests/webhook_idempotency_test.mjs`，记录真实 exit code、通过/失败数量与关键输出。预期回归数至少覆盖旧 96 项 + 新增 Router 故障契约断言；以实际输出为准。若失败，限于本任务范围修复并重跑，直到通过或遇到无法安全解决的阻塞。
-- **严格边界**：只改这两个 dev 文件与本交接回填；不写 Supabase `skills` 注册表、不改数据库/schema/配置、不执行真实业务写、不部署、不 push/merge main，不扩展到其他模块。
+- **严格边界（经柳柳于 2026-10-25 同意扩展）**：允许改 `src/modules/mcp_router.js`、`src/tools/memory_unified.js`、`tests/webhook_idempotency_test.mjs` 与本交接回填；`memory_unified.js` 仅做最小记忆写入失败契约与必要结果传播，不整体回退、不重构。不得写 Supabase `skills` 注册表、不改数据库/schema/配置、不执行真实业务写、不部署、不 push/merge main。
 - **回填格式**：在本文件末尾追加 Operit 结果，列出 HEAD SHA、工作树状态、命令/退出码、测试通过/失败数、任何修复差异，以及明确 `NOT DEPLOYED`、`E3 NOT RUN`。
 
 ---
