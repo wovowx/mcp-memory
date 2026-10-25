@@ -188,14 +188,14 @@ export async function githubReleaseGuard(name, safeArgs, env) {
                     }
                 }
                 // 查不到 PR head / 标题——保守拒绝，不静默放行
-                return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
+                return validateRelease({ repo: targetRepo, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
             }
             const headTitle = await getBranchHeadCommitTitle(env, srcBranch, targetRepo);
             if (headTitle) {
                 return validateRelease({ repo: targetRepo, branch, commitTitle: headTitle, action });
             }
             // 查不到 dev HEAD 标题（网络/权限）——fallback 到参数校验，不静默放行
-            return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
+            return validateRelease({ repo: targetRepo, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
         }
     }
 
