@@ -2823,3 +2823,8 @@
 - **写入口映射：** 只依据源码与已有测试，列出 `github_push`、`github_edit`、`github_merge_to_main`、`github_merge_pull_request`、`github_delete`、`github_copy`、`github_move`、`github_sync_branch`、`github_apply_patch` 及记忆/文件/数据库写入口分别经过什么 Guard/分支检查、拒绝路径和测试覆盖。严格区分通用 `permission_guard`、发布规则 `githubReleaseGuard`、分支写保护 `githubMainWriteGuard`；不得把任一者描述成统一覆盖所有写入口的审批系统。
 - **输出：** 实际 SHA、工作树状态、搜索命令/退出码、命中结果、覆盖范围与限制、Guard 分类证据表，以及是否足以进入最小方案设计的结论。完成后在本文件执行结果追加区写入时间戳回填，保留历史原文。
 - **禁止：** 修改代码/测试/配置/注册表/数据库；真实 GitHub 写操作；部署；push/merge main；启动 `search_history/suggest` T0–T9。该任务无需跑回归测试，不需要做任何代码改动。
+
+#### GPT 收束决定（2026-10-25）
+- **本地全仓核查不再是当前阻塞项，Operit 无需为此追加搜索。** GPT 已回读 `permission_guard.js`、`index.js`、`mcp_router.js`、`github_v64.js` 与 `release_guard.js`。源码事实：通用 `checkCapabilityAccess()` 未见接入已检查的 MCP 核心路径；Router 实际使用 `dispatchGuard()` 与独立 `githubReleaseGuard()`，后者是发布规则，不是统一审批系统；通用策略本身也未覆盖所有写入口。
+- **决策：保留 `permission_guard.js`，不删除、不接入统一审批链。** 对个人项目，不为了“把每个 Guard 都接上”引入额外审批和维护负担。若未来出现具体权限需求，再只针对对应入口做最小保护。
+- 本决定仅为源码级架构判断，不宣称全仓零引用，也不改变任何运行时行为。后续若要修改工具行为，先向柳柳说明具体差异与风险；本条不授权代码改动。
