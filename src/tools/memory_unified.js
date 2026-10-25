@@ -14,7 +14,7 @@ export async function getMemoryByKey(env, key) {
     const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?key=eq.${encodeURIComponent(key)}&status=eq.active&select=*`, {
         headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) throw new Error('memory lookup HTTP ' + resp.status);
     const data = await resp.json();
     return data && data.length > 0 ? data[0] : null;
 }
