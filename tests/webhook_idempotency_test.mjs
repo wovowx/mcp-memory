@@ -94,7 +94,7 @@ console.log('\n[用例 C] 查询失败（upstream 500/网络）→ 返回 500，
   queryFail = false;
 }
 
-console.log('\\n[Router 注册表故障契约]');
+console.log('\n[Router 注册表故障契约与 Schema dispatch]');
 {
   let mode = 'network';
   let nonRegistryRestFetchCount = 0;
@@ -105,6 +105,7 @@ console.log('\\n[Router 注册表故障契约]');
     if (s.includes('/rest/v1/skills')) {
       if (mode === 'http500') return { ok: false, status: 500, text: async () => 'mock registry HTTP 500' };
       if (mode === 'network') throw new Error('mock registry network failure');
+      if (mode === 'schema') return { ok: true, status: 200, json: async () => [{ name: 'memory_schema_probe', enabled: true, input_schema: { type: 'object', properties: { count: { type: 'integer' } } }, handler_type: 'js', handler_config: { handler: 'memory' } }] };
       return { ok: true, status: 200, json: async () => [] };
     }
     if (s.includes('/rest/v1/')) {
@@ -114,7 +115,7 @@ console.log('\\n[Router 注册表故障契约]');
     }
     throw new Error('unexpected Router mock fetch: ' + s);
   };
-  const callTool = async name => handleMCPRequest({ jsonrpc: '2.0', id: 'router-test', method: 'tools/call', params: { name, arguments: {} } }, routerEnv);
+  const callTool = async (name, args = {}) => handleMCPRequest({ jsonrpc: '2.0', id: 'router-test', method: 'tools/call', params: { name, arguments: args } }, routerEnv);
   mode = 'network';
   let res = await callTool('memory_test_schema_failure');
   let text = res.data.result.content[0].text;
@@ -133,7 +134,14 @@ console.log('\\n[Router 注册表故障契约]');
   res = await callTool('truly_unknown_tool');
   text = res.data.result.content[0].text;
   check('注册表查询成功且无匹配项→UNKNOWN_TOOL', text.includes('[UNKNOWN_TOOL]'), text);
-  // Router 的 skills 缓存是模块级共享状态；清掉空注册表缓存，避免污染后续批次测试。
+  mode = 'schema';
+  const beforeSchemaFetches = nonRegistryRestFetchCount;
+  res = await callTool('memory_schema_probe', { count: 1.5 });
+  text = res.data.result.content[0].text;
+  check('Router dispatch 实际应用 Schema type/integer 校验', text.includes('[INVALID_ARGS_SCHEMA]') && text.includes('arguments.count 类型错误'), text);
+  check('Schema 拒绝发生在 handler/usage 之前', nonRegistryRestFetchCount === beforeSchemaFetches && usageFetchCount === 0, 'nonRegistryRestFetchCount=' + nonRegistryRestFetchCount + ', usageFetchCount=' + usageFetchCount);
+  // Router 的 skills 缓存是模块级共享状态；清掉测试缓存，避免污染后续批次测试。
+  mode = 'empty';
   await handleMCPRequest({ jsonrpc: '2.0', id: 'router-reset', method: 'tools/call', params: { name: 'skill_list', arguments: {} } }, routerEnv);
 }
 
