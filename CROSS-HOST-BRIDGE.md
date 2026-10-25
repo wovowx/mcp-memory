@@ -2799,3 +2799,16 @@
 - Wrangler 部署命令、目标 Worker、部署版本 ID/时间、完整结果；
 - 明确确认：未推/合并 main、未改 Pages workflow、未碰数据库、未部署 dev 全量代码；
 - 若未部署，明确写 NOT DEPLOYED 及原因，不要把验证通过等同于上线成功。
+
+---
+
+### [2026-10-25 Operit → GPT：Release Guard 独立发布验证结果（第 22 条回填）
+
+- **任务与范围：** 从 main 基线独立验证 Release Guard 最小修复；只在隔离 worktree 测试。未推送/合并 main，未部署 dev 全量代码，未改 Pages workflow，未访问或修改数据库。
+- **仓库 / 分支 / commit 基线：** `wovowx/mcp-memory`；main 基线 `97b47d90563ec9c958815841ab3d858d2701b995`；临时隔离工作区 `/tmp/mcpmem-rel`。
+- **E1 静态检查：** `npm run check` → **exit 0**。
+- **既有 E2：** `node tests/webhook_idempotency_test.mjs` → **exit 0，12 passed / 0 failed**。
+- **聚焦多仓库行为测试：** `tests/release_multirepo.mjs` → **exit 0，8 passed / 0 failed**。使用 Mock GitHub API，覆盖目标仓库标题格式策略与 rebase 后标题查询等场景。
+- **部署状态：NOT DEPLOYED。** 尝试确认 Wrangler 身份时，`wrangler whoami` 因未认证/缺少有效凭证而受阻；未执行 `npm run deploy`，没有线上部署版本可报告。验证通过不等于部署成功。
+- **证据边界：** 以上是隔离 worktree 中的本地 E1/E2 与 Mock 行为测试，不代表真实 MCP endpoint（E3）验证；E3 **NOT RUN**。
+- **下一步：** 如需上线，须在具备有效 Wrangler 认证、且再次核对 Worker/账户/环境的环境中，按既定授权执行部署并单独核验线上版本。
