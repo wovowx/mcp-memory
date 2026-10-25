@@ -94,6 +94,47 @@ console.log('\n[用例 C] 查询失败（upstream 500/网络）→ 返回 500，
   queryFail = false;
 }
 
+console.log('\\n[Router 注册表故障契约]');
+{
+  let mode = 'network';
+  let nonRegistryRestFetchCount = 0;
+  let usageFetchCount = 0;
+  const routerEnv = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
+  globalThis.fetch = async (url, opts = {}) => {
+    const s = String(url);
+    if (s.includes('/rest/v1/skills')) {
+      if (mode === 'http500') return { ok: false, status: 500, text: async () => 'mock registry HTTP 500' };
+      if (mode === 'network') throw new Error('mock registry network failure');
+      return { ok: true, status: 200, json: async () => [] };
+    }
+    if (s.includes('/rest/v1/')) {
+      nonRegistryRestFetchCount++;
+      if (s.includes('usage_count') || s.includes('last_used')) usageFetchCount++;
+      return { ok: true, status: 200, json: async () => [] };
+    }
+    throw new Error('unexpected Router mock fetch: ' + s);
+  };
+  const callTool = async name => handleMCPRequest({ jsonrpc: '2.0', id: 'router-test', method: 'tools/call', params: { name, arguments: {} } }, routerEnv);
+  mode = 'network';
+  let res = await callTool('memory_test_schema_failure');
+  let text = res.data.result.content[0].text;
+  check('前缀工具 Schema 查询网络失败→TOOL_REGISTRY_UNAVAILABLE', text.includes('[TOOL_REGISTRY_UNAVAILABLE]'), text);
+  check('Schema 查询失败不进入 handler、不发后续 REST 请求', nonRegistryRestFetchCount === 0, 'nonRegistryRestFetchCount=' + nonRegistryRestFetchCount);
+  mode = 'http500';
+  res = await callTool('truly_unknown_tool');
+  text = res.data.result.content[0].text;
+  check('注册表 HTTP 500→TOOL_REGISTRY_UNAVAILABLE', text.includes('[TOOL_REGISTRY_UNAVAILABLE]'), text);
+  check('注册表 HTTP 500 不增加 usage_count、不发后续 REST 请求', usageFetchCount === 0 && nonRegistryRestFetchCount === 0, 'usageFetchCount=' + usageFetchCount + ', nonRegistryRestFetchCount=' + nonRegistryRestFetchCount);
+  mode = 'network';
+  res = await callTool('another_unknown_tool');
+  text = res.data.result.content[0].text;
+  check('注册表网络异常→TOOL_REGISTRY_UNAVAILABLE', text.includes('[TOOL_REGISTRY_UNAVAILABLE]'), text);
+  mode = 'empty';
+  res = await callTool('truly_unknown_tool');
+  text = res.data.result.content[0].text;
+  check('注册表查询成功且无匹配项→UNKNOWN_TOOL', text.includes('[UNKNOWN_TOOL]'), text);
+}
+
 // ---------- 记忆写入失败契约回归 ----------
 console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报成功');
 {
