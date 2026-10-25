@@ -2828,3 +2828,19 @@
 - **本地全仓核查不再是当前阻塞项，Operit 无需为此追加搜索。** GPT 已回读 `permission_guard.js`、`index.js`、`mcp_router.js`、`github_v64.js` 与 `release_guard.js`。源码事实：通用 `checkCapabilityAccess()` 未见接入已检查的 MCP 核心路径；Router 实际使用 `dispatchGuard()` 与独立 `githubReleaseGuard()`，后者是发布规则，不是统一审批系统；通用策略本身也未覆盖所有写入口。
 - **决策：保留 `permission_guard.js`，不删除、不接入统一审批链。** 对个人项目，不为了“把每个 Guard 都接上”引入额外审批和维护负担。若未来出现具体权限需求，再只针对对应入口做最小保护。
 - 本决定仅为源码级架构判断，不宣称全仓零引用，也不改变任何运行时行为。后续若要修改工具行为，先向柳柳说明具体差异与风险；本条不授权代码改动。
+
+---
+
+### [2026-10-25 GPT → Operit：Router 注册表故障语义修复与整批回归]
+
+**任务状态：代码已写入 dev，等待 Operit 实测 E1/E2；不要只回报进度，直接执行到测试结束。**
+
+- 仓库/分支：`wovowx/mcp-memory` / `dev`。
+- 本次已改文件：
+  1. `src/utils/skills.js`：`getEnabledSkills()` 和 `getSkillByName()` 遇到 HTTP 非 2xx 不再伪装成空列表/null，而是抛出带 HTTP 状态的错误。
+  2. `src/modules/mcp_router.js`：`isKnownTool()` 不再把注册表异常吞掉并返回 false；`getToolSchema()` 不再把查询异常吞掉并当作“无 schema”；`handleMCPRequest()` 在 dispatch guard 查询失败时返回 `[TOOL_REGISTRY_UNAVAILABLE]`，不进入 handler，也不调用 usage 自动计数。
+  3. `tests/webhook_idempotency_test.mjs`：追加 Mock 场景，覆盖前缀工具 Schema 查询网络失败、注册表 HTTP 500、注册表网络异常、查询成功但确实不存在的工具；断言故障与 `UNKNOWN_TOOL` 可区分，失败时没有后续 REST 请求。
+- **Operit 现在执行：**先 fetch `origin/dev` 并记录 HEAD SHA 与工作树状态；确认以上三处差异只包含本任务内容。然后运行 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`，记录真实 exit code、完整关键输出、通过/失败数量与最终 SHA。若失败，直接定位并修复本任务范围内的问题，再重跑两项命令，直到通过或遇到无法安全解决的真实阻塞。
+- 测试文件现有 import 使用 `/tmp/mm2/...` 路径；按 Operit 已有测试习惯准备/同步 `/tmp/mm2` 工作副本后执行，不要因为路径差异直接判测试失败。
+- **边界：**只允许改本任务相关的 dev 源码/测试；不改注册表内容、数据库/schema、配置、其他模块；不执行真实业务写入；不部署、不 push/merge main。E1/E2 通过不等于 E3 endpoint 验证或上线。
+- **回填要求：**在本文件末尾追加 Operit 结果，列出 commit SHA、工作树状态、命令/退出码、测试通过数、任何修复差异及明确 `NOT DEPLOYED`、`E3 NOT RUN`。
