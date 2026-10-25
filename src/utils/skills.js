@@ -47,7 +47,7 @@ export async function addSkill(env, skill) {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json', 'Prefer': 'return=representation'
         },
         body: JSON.stringify({
             name: skill.name, description: skill.description,
