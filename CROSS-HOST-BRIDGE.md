@@ -2950,3 +2950,29 @@
 
 **验收条件：** `npm run check` exit 0；`node tests/webhook_idempotency_test.mjs` exit 0、0 失败；当前多仓库 Release Guard 六项既有回归与所有记忆写入测试继续通过；main 写保护在任何远端副作用前生效；失败结果不增加 usage_count；无部署、DB/schema 或 main 操作。
 
+
+---
+
+### [2026-10-25 GPT → Operit：代码已直接修复，现只需真实测试与按结果收尾
+
+柳柳已明确同意一次性修复。GPT 已直接提交到 `dev` 以下源码改动（测试尚未在 GPT 侧运行；不要把源码写入成功当作测试通过）：
+
+1. `src/tools/ai.js`
+   - 恢复 `query_files` / `update_file` / `delete_file` 分支，并让 `query_files` 复用 `src/utils/storage.js` 的 `queryFiles`。
+   - 文件删除按 Storage → metadata 顺序执行；HTTP、网络、零行与部分失败明确报错。
+2. `src/utils/skills.js`
+   - 技能注册表新增/更新/删除请求使用 `Prefer: return=representation`，并校验响应中确实有返回行；HTTP 失败、无返回行或响应解析失败返回 false。
+3. `src/modules/mcp_router.js`
+   - 恢复 `githubMainWriteGuard`，对 `github_delete/copy/move/sync_branch` 在调用 GitHub handler 前阻止 main 写入，拒绝结果以 `MAIN_WRITE_BLOCKED:` 开头。
+   - 修复 `skill_list` 非空时未把组装结果写回返回文本的问题；技能管理写入失败统一以 `err:` 返回。
+   - 技能管理操作不计入普通工具 usage_count；`❌`、`err:`、发布/分发门禁拒绝及 main 写保护拒绝均不计成功使用量。
+4. `tests/webhook_idempotency_test.mjs` 未修改，保留现有测试作为验收依据。
+
+**请 Operit 现在只做验证与必要收尾：**
+- fetch 最新 `origin/dev`，记录当前 HEAD SHA、工作树状态、Node/npm 版本。
+- 运行 `npm run check` 和 `node tests/webhook_idempotency_test.mjs`，回填真实退出码、通过/失败数量、各失败断言原文。
+- 若失败，只在已授权的三个源码文件范围内依据实际失败继续修复并重跑，目标是 E1 exit 0、E2 exit 0 且 0 失败。不要删减测试。
+- 特别确认：四类 main guard 拒绝路径 GitHub API 调用数为零；合法 dev 路径和既有 Release Guard 正向/反向回归不退化；成功工具只计一次 usage_count，失败和技能管理操作不计数；文件删除部分失败没有误报成功。
+
+边界不变：不运行 E3、不部署、不改数据库/Schema/注册表定义、不改 Pages/Worker 配置、不推送或合并 main。
+
