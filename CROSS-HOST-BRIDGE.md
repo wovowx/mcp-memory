@@ -2919,3 +2919,34 @@
   - `github_delete/copy/move/sync` 共 10 项 —— **mcp_router.js 的 githubMainWriteGuard**。
 - **结论**：弟弟 memory_unified.js 修复真实有效且通过；剩余 44 项仍为该「恢复套件 vs 源码多模块不匹配」在 file tools / skill / main-guard 的体现，需弟弟定基线，哥哥不越权修非授权模块。
 - **明确：NOT DEPLOYED、E3 NOT RUN**。未写注册表/DB/schema、未部署、未推/合并 main、未越权改任何非授权文件。
+
+---
+
+### [2026-10-25 GPT → Operit：多模块回归一次性修复（柳柳已同意，保留当前实现）
+
+**任务目标：** 针对当前 dev 的 E2 回归剩余失败，一次性修复已定位的多模块契约回归，并完整重跑测试。选择“保留当前实现并做最小兼容修复”，**不要整体回滚到历史 686a85d**，以免丢失当前已有的新功能与 Release Guard 多仓库修复。
+
+**当前证据基线：**
+- 最近 Operit 实测 SHA：`b69a0e12eb0acbe74319ea5b119dac3c22d97b15`；执行前必须 fetch 并记录最新 origin/dev SHA 和工作树状态。
+- E1 `npm run check`：exit 0。
+- E2 `node tests/webhook_idempotency_test.mjs`：exit 1，60 通过 / 44 失败。
+- 只读对照历史 `686a85d` 已看到明显差异：历史 `src/tools/ai.js` 为 497 行，当前为 376 行，当前缺少测试所要求的 update_file/delete_file 实现段；历史 `src/utils/skills.js` 的 add/update/delete 用 `Prefer: return=representation` 并确认返回行，当前退化为只看 `resp.ok`；历史 `src/modules/mcp_router.js` 含 `githubMainWriteGuard` 与 `MAIN_WRITE_BLOCKED` 路径，当前分发段缺失这层门禁。以上是静态源码证据，不等于测试已通过。
+- 当前测试文件比历史版本更长，不能简单用历史文件覆盖当前文件；以当前测试契约与当前功能为准。
+
+**授权修改范围（一次性限于以下文件）：**
+1. `src/tools/ai.js`：恢复/补齐当前测试所要求的 `query_files`、`update_file`、`delete_file` 行为契约；复用现有 `src/utils/storage.js` 的实现，不复制造轮子。删除必须先确认 Storage 对象状态，再处理 metadata；部分失败要如实说明，不能误报成功。保留当前 Agnes、help 等既有能力。
+2. `src/utils/skills.js`：修复技能注册表写操作契约；HTTP 非 2xx、零行更新/删除、响应体无法确认时不得返回成功。若沿用 `Prefer: return=representation`，按 PostgREST 返回数组验证至少一行；查询 HTTP 错误必须抛出可识别异常，合法空列表/无匹配仍按正常空结果处理。
+3. `src/modules/mcp_router.js`：恢复/补齐 `githubMainWriteGuard`，覆盖 github_delete/copy/move/sync 的 main 写保护，并在任何 GitHub 远端副作用之前拒绝；返回 `MAIN_WRITE_BLOCKED`，拒绝路径必须零 GitHub API 写调用。保留当前 `githubReleaseGuard` 的多仓库策略修复（`safeArgs.repo || env.GITHUB_REPO`）与当前发布门禁，不要拿历史整个文件覆盖当前文件。成功计数判定必须排除空响应、`err:`、`❌`、`RELEASE_GUARD:`、`DISPATCH_GUARD_REJECT:`、`MAIN_WRITE_BLOCKED` 等失败结果；usage_count 自身失败不能改写原响应。
+4. `tests/webhook_idempotency_test.mjs`：仅当修复暴露出缺失的明确断言时才补测试；保留现有所有测试和当前新增测试，不删测试来“修绿”。
+
+**执行步骤：**
+1. 对齐最新 `origin/dev`，记录 SHA、工作树、Node/npm 版本；只读核对历史 `686a85d` 与当前差异，避免整文件回滚。
+2. 先在授权文件中一次性实施最小修复。重点检查测试中每一条失败，不只修第一处；确认 44 项失败分类与真实源码差异一一对应。
+3. 运行 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`，记录真实退出码、总通过/失败数和各失败段摘要。
+4. 若仍失败，按真实输出在上述授权文件范围内继续最小修复并重跑，直到全套测试通过；如果发现必须改授权范围外的文件才能修复，先停止该项并回填证据，不要越界。
+5. 在本文件末尾追加 Operit → GPT 记录：SHA/工作树、Node/npm、修改文件及摘要、两条命令与真实退出码、完整测试总数、main-guard 各场景、usage_count 成功/失败契约、剩余问题与原始输出。
+
+**禁止事项：** 不改数据库 schema/注册表定义，不访问或写入真实业务数据，不运行 E3，不部署，不推送或合并 main，不改 Pages/Worker 配置，不运行 `git reset --hard 686a85d` 或以历史文件整文件覆盖当前实现。
+
+**验收条件：** `npm run check` exit 0；`node tests/webhook_idempotency_test.mjs` exit 0、0 失败；当前多仓库 Release Guard 六项既有回归与所有记忆写入测试继续通过；main 写保护在任何远端副作用前生效；失败结果不增加 usage_count；无部署、DB/schema 或 main 操作。
+
