@@ -7,7 +7,9 @@ export async function getEnabledSkills(env) {
     const resp = await fetch(`${supabaseUrl}/rest/v1/skills?enabled=eq.true&select=*`, {
         headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
     });
-    if (!resp.ok) return [];
+    if (!resp.ok) {
+        throw new Error(`Skill registry query failed: HTTP ${resp.status}`);
+    }
     const skills = await resp.json();
     
     // 双因子评分：usage_count + recency
@@ -32,7 +34,9 @@ export async function getSkillByName(env, name) {
     const resp = await fetch(`${supabaseUrl}/rest/v1/skills?name=eq.${encodeURIComponent(name)}&select=*`, {
         headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey }
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+        throw new Error(`Skill registry lookup failed: HTTP ${resp.status}`);
+    }
     const data = await resp.json();
     return data && data.length > 0 ? data[0] : null;
 }
