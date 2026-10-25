@@ -3085,8 +3085,8 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 **目的：** GPT 侧已通过 Ziven MCP 完成 GitHub compare、文件级范围核对、Cloudflare main 部署状态核验与 Pages workflow 静态检查。由于当前 MCP `github_compare_branches` 只返回 ahead/behind 与文件列表，不返回完整 patch，阶段 5 还缺本地 Git 的逐行 diff/提交历史证据。请 Operit 只读完成这一次核查并集中回填；这不是测试任务，不要重跑任何 E1/E2。
 
 **仓库与已知基线：**
-- `wovowx/ZivenLab`：main...dev ahead 423 / behind 0，12 个差异文件，均在 `governance/`。PR #76 仍 open；GPT 侧查询得到 `mergeable=null`、状态 unknown，标题 `docs-2026.10.2: 架构收尾证据与治理口径校正`。请查询当前 head/base SHA 与文件清单，不能合并或关闭 PR。
-- `wovowx/mcp-memory`：main...dev ahead 61 / behind 0，7 个差异文件：新增 `CROSS-HOST-BRIDGE.md`；修改 `src/modules/mcp_router.js`、`src/tools/ai.js`、`src/tools/memory_unified.js`、`src/utils/helpers.js`、`src/utils/skills.js`、`tests/webhook_idempotency_test.mjs`。已知 dev E1 `npm run check` exit 0、E2 `node tests/webhook_idempotency_test.mjs` 104/104，SHA `5999aac265750f17a3140e05be0e7a7e710de4d5`；不要重跑。
+- `wovowx/ZivenLab`：main...dev ahead 449 / behind 0，12 个差异文件，均在 `governance/`。PR #76 仍 open；GPT 侧查询得到 `mergeable=null`、状态 unknown，标题 `docs-2026.10.2: 架构收尾证据与治理口径校正`。请查询当前 head/base SHA 与文件清单，不能合并或关闭 PR。
+- `wovowx/mcp-memory`：main...dev ahead 62 / behind 0，7 个差异文件：新增 `CROSS-HOST-BRIDGE.md`；修改 `src/modules/mcp_router.js`、`src/tools/ai.js`、`src/tools/memory_unified.js`、`src/utils/helpers.js`、`src/utils/skills.js`、`tests/webhook_idempotency_test.mjs`。已知 dev E1 `npm run check` exit 0、E2 `node tests/webhook_idempotency_test.mjs` 104/104，SHA `5999aac265750f17a3140e05be0e7a7e710de4d5`；不要重跑。
 - Cloudflare `mcp-memory` main HEAD `56cfbb9d7f8f` 与部署 `3286e00c` 已 VERIFIED；dev 未部署，E3 NOT RUN。
 
 **请一次性执行并回填：**
