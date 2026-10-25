@@ -169,9 +169,13 @@ export async function handleMemoryTool(name, safeArgs, env) {
             if (!existing) text = '❌ 没有找到 "' + safeArgs.old_key + '"';
             else if (await getMemoryByKey(env, safeArgs.new_key)) text = '⚠️ 目标 key 已存在';
             else {
-                await deleteMemory(env, safeArgs.old_key);
-                await putMemory(env, safeArgs.new_key, { value: existing.value, created_at: existing.created_at, updated_at: now() });
-                text = '✏️ 已重命名：' + safeArgs.old_key + ' → ' + safeArgs.new_key;
+                const writeResult = await putMemory(env, safeArgs.new_key, { value: existing.value, created_at: existing.created_at, updated_at: now() });
+                if (!writeResult?.ok) text = '❌ 重命名失败（目标写入失败），源记录保留：' + safeArgs.old_key;
+                else {
+                    const deleteResult = await deleteMemory(env, safeArgs.old_key);
+                    if (!deleteResult?.ok) text = '⚠️ 目标已写入：' + safeArgs.new_key + '；源记录未能确认删除（' + (deleteResult?.stage || 'delete') + '），请核查源记录：' + safeArgs.old_key;
+                    else text = '✏️ 已重命名：' + safeArgs.old_key + ' → ' + safeArgs.new_key;
+                }
             }
         }
     }
