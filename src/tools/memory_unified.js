@@ -151,8 +151,9 @@ export async function handleMemoryTool(name, safeArgs, env) {
         else {
             const existing = await getMemoryByKey(env, safeArgs.key);
             if (existing) {
-                await putMemory(env, safeArgs.key, { ...existing, value: safeArgs.value, updated_at: now() });
-                text = '✏️ 已更新：' + safeArgs.key + '\n📅 创建：' + formatTime(existing.created_at) + '\n✏️ 更新：' + formatTime(now());
+                const writeResult = await putMemory(env, safeArgs.key, { ...existing, value: safeArgs.value, updated_at: now() });
+                if (!writeResult?.ok) text = '❌ 更新失败（' + (writeResult?.stage || 'write') + '）：' + safeArgs.key;
+                else text = '✏️ 已更新：' + safeArgs.key + '\n📅 创建：' + formatTime(existing.created_at) + '\n✏️ 更新：' + formatTime(now());
             } else {
                 const authKey = await findAuthoritativeKey(env, safeArgs.key);
                 if (authKey) text = '⚠️ 没找到「' + safeArgs.key + '」，但已有权威档「' + authKey + '」——请用这个完整 key 更新（防另建副本 · v6.39.0）';
