@@ -67,20 +67,20 @@ async function isKnownTool(env, name) {
     try {
         const skills = await getCachedSkills(env);
         return Array.isArray(skills) && skills.some(s => s && s.name === name);
-    } catch (e) { return false; }
+    } catch (e) {
+        throw new Error('Skill registry unavailable: ' + e.message);
+    }
 }
 // v6.35.8 (2026-10-18)：从工具注册表取 input_schema（含 required）。
 // 对齐"踩肩+不重复造"：直接复用 skills 表/GITHUB_TOOL_DEFS 已有的参数契约，不自己定义。
 // 返回 null=查不到 schema（这种情况走信封校验放行，不误伤无 schema 的工具）。
 async function getToolSchema(env, name) {
-    // 前缀族直连工具——它们的 input_schema 在 GITHUB_TOOL_DEFS / skills 表
-    try {
-        const skills = await getCachedSkills(env);
-        const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
-        if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
-            return skill.input_schema;
-        }
-    } catch (e) { /* 查不到用信封校验兜底 */ }
+    // 注册表查询成功但没有 schema 时返回 null；查询失败必须向上传递，不能伪装成“未配置 schema”。
+    const skills = await getCachedSkills(env);
+    const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
+    if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
+        return skill.input_schema;
+    }
     return null;
 }
 // v6.35.7：dispatchGuard 改 async + 接收 env，前缀未匹配查注册表兜底
@@ -260,7 +260,13 @@ export async function handleMCPRequest(body, env) {
         const { name, arguments: args } = params || {};
         const safeArgs = args || {};
         // dispatch_tool 网关：执行前硬门禁（P0 · 2026-10-18，v6.35.7 async+注册表兜底）
-        const guard = await dispatchGuard(env, name, safeArgs);
+        let guard;
+        try {
+            guard = await dispatchGuard(env, name, safeArgs);
+        } catch (e) {
+            // 注册表/Schema 查询失败是基础设施故障，不得误报 UNKNOWN_TOOL，也不得进入 handler。
+            return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'DISPATCH_GUARD_REJECT: [TOOL_REGISTRY_UNAVAILABLE] ' + e.message + ' Expected: 注册表查询成功后再执行工具' }] } } };
+        }
         if (!guard.allowed) {
             return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'DISPATCH_GUARD_REJECT: [' + guard.code + '] ' + guard.reason + ' Expected: ' + guard.expected }] } } };
         }
