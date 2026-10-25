@@ -102,8 +102,9 @@ export async function handleMemoryTool(name, safeArgs, env) {
                 if (authKey) text = '⚠️ 已有权威档「' + authKey + '」（标题同名）。请用这个完整 key 去 update，别新建默认分类副本（防冗余 · v6.39.0）';
                 else {
                     const data = { value: safeArgs.value, created_at: now(), updated_at: now() };
-                    await putMemory(env, safeArgs.key, data);
-                    text = '✅ 已新建记忆：' + safeArgs.key + '\n📂 分类：' + getCategory(safeArgs.key) + '\n📅 创建时间：' + formatTime(data.created_at);
+                    const writeResult = await putMemory(env, safeArgs.key, data);
+                    if (!writeResult?.ok) text = '❌ 新建记忆失败（' + (writeResult?.stage || 'write') + '）：' + safeArgs.key;
+                    else text = '✅ 已新建记忆：' + safeArgs.key + '\n📂 分类：' + getCategory(safeArgs.key) + '\n📅 创建时间：' + formatTime(data.created_at);
                 }
             }
         }
