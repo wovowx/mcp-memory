@@ -265,6 +265,27 @@ export async function githubReleaseGuard(name, safeArgs, env) {
     return validateRelease({ repo: targetRepo, branch, commitTitle, action });
 }
 
+function githubMainWriteGuard(name, args = {}) {
+    const isMain = value => String(value || '').toLowerCase() === 'main';
+    let protectedBranches = [];
+    if (name === 'github_delete') {
+        protectedBranches = [args.branch || 'main'];
+    } else if (name === 'github_copy') {
+        protectedBranches = [args.target_branch || 'main'];
+    } else if (name === 'github_move') {
+        const sourceBranch = args.source_branch || 'main';
+        const targetBranch = args.target_branch || (sourceBranch === 'dev' ? 'dev' : 'main');
+        protectedBranches = [sourceBranch, targetBranch];
+    } else if (name === 'github_sync_branch') {
+        protectedBranches = [args.name || args.branch || 'dev'];
+    }
+    const blocked = protectedBranches.filter(isMain);
+    if (blocked.length) {
+        return { allowed: false, reason: '直接写入 main 被禁止；请写入 dev 并按版本化发布流程合并。阻止分支：' + [...new Set(blocked)].join(', ') };
+    }
+    return { allowed: true };
+}
+
 async function passiveSyncGithubTool(env, name) {
     try {
         const existing = await getSkillByName(env, name);
@@ -345,14 +366,19 @@ export async function handleMCPRequest(body, env) {
             } else if (name === 'memory' || name?.startsWith('memory_')) {
                 text = await handleMemoryTool(name, safeArgs, env);
             } else if (name?.startsWith('github_')) {
-                const syncNote = await passiveSyncGithubTool(env, name);
-                const guard = await githubReleaseGuard(name, safeArgs, env);
-                if (!guard.allowed) {
-                    text = 'RELEASE_GUARD: ' + guard.reason + ' Expected: ' + guard.expected;
+                const mainGuard = githubMainWriteGuard(name, safeArgs);
+                if (!mainGuard.allowed) {
+                    text = 'MAIN_WRITE_BLOCKED: ' + mainGuard.reason;
                 } else {
-                    text = await handleGitHubTool(name, safeArgs, env);
+                    const syncNote = await passiveSyncGithubTool(env, name);
+                    const guard = await githubReleaseGuard(name, safeArgs, env);
+                    if (!guard.allowed) {
+                        text = 'RELEASE_GUARD: ' + guard.reason + ' Expected: ' + guard.expected;
+                    } else {
+                        text = await handleGitHubTool(name, safeArgs, env);
+                    }
+                    if (syncNote) text += '\n\n' + syncNote;
                 }
-                if (syncNote) text += '\n\n' + syncNote;
             } else if (name === 'cf_proxy') {
                 // v6.34.0：CF API 代理——用 env.CLOUDFLARE_API_TOKEN 代调 Cloudflare API（只执行不暴露）
                 text = await handleCfProxyTool(safeArgs, env);
