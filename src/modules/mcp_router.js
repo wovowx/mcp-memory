@@ -180,19 +180,19 @@ export async function githubReleaseGuard(name, safeArgs, env) {
             if (name === 'github_merge_to_main') srcBranch = safeArgs.branch || 'dev';
             else if (name === 'github_merge_pull_request') {
                 // v6.34.1 FIX：PR rebase merge 也会真实落库 PR head 分支的原始 commit 标题，必须查真实标题校验
-                const prHead = await getPullRequestHeadBranch(env, safeArgs.pull_number);
+                const prHead = await getPullRequestHeadBranch(env, safeArgs.pull_number, targetRepo);
                 if (prHead) {
-                    const realTitle = await getBranchHeadCommitTitle(env, prHead);
+                    const realTitle = await getBranchHeadCommitTitle(env, prHead, targetRepo);
                     if (realTitle) {
-                        return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: realTitle, action });
+                        return validateRelease({ repo: targetRepo, branch, commitTitle: realTitle, action });
                     }
                 }
                 // 查不到 PR head / 标题——保守拒绝，不静默放行
                 return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
             }
-            const headTitle = await getBranchHeadCommitTitle(env, srcBranch);
+            const headTitle = await getBranchHeadCommitTitle(env, srcBranch, targetRepo);
             if (headTitle) {
-                return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: headTitle, action });
+                return validateRelease({ repo: targetRepo, branch, commitTitle: headTitle, action });
             }
             // 查不到 dev HEAD 标题（网络/权限）——fallback 到参数校验，不静默放行
             return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle: safeArgs.commit_title || safeArgs.title || undefined, action });
@@ -200,7 +200,7 @@ export async function githubReleaseGuard(name, safeArgs, env) {
     }
 
     const commitTitle = isPush ? (safeArgs.message || '') : (safeArgs.commit_title || safeArgs.title || undefined);
-    return validateRelease({ repo: env.GITHUB_REPO, branch, commitTitle, action });
+    return validateRelease({ repo: targetRepo, branch, commitTitle, action });
 }
 
 async function passiveSyncGithubTool(env, name) {
