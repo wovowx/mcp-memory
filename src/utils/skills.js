@@ -56,7 +56,11 @@ export async function addSkill(env, skill) {
             tags: skill.tags || [], enabled: true, created_by: skill.created_by || 'agent'
         })
     });
-    return resp.ok;
+    if (!resp.ok) return false;
+    try {
+        const rows = await resp.json();
+        return Array.isArray(rows) && rows.length > 0;
+    } catch (e) { return false; }
 }
 export async function updateSkill(env, name, updates) {
     const supabaseUrl = env.SUPABASE_URL;
