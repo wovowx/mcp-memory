@@ -317,7 +317,9 @@ export async function handleMemoryTool(name, safeArgs, env) {
     }
     else if (action === 'suggest') {
         const suggestions = await getSearchSuggestions(env, safeArgs.prefix || '');
-        text = '💡 联想词：\n' + suggestions.map(w => '- ' + w).join('\n') || '💡 暂无搜索历史';
+        text = suggestions.length
+            ? '💡 联想词：\n' + suggestions.map(w => '- ' + w).join('\n')
+            : '💡 暂无搜索历史';
     }
     else if (action === 'import') {
         try {
