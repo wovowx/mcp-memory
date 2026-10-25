@@ -2,6 +2,7 @@
 // 验证 chat_webhook.js 的 A 正常到达 / B 重复投递幂等 / C 失败重试不破坏状态
 // 运行：cd /tmp && node webhook_behavior_test.mjs
 import { handleChatWebhook } from '/tmp/mm2/src/tools/chat_webhook.js';
+import { handleMCPRequest } from '/tmp/mm2/src/modules/mcp_router.js';
 
 const env = {
   SUPABASE_URL: 'https://mock.supabase.co',
@@ -13,8 +14,20 @@ const env = {
 let mockQueryRows = [];
 let queryFail = false; // 模拟 C：查询失败（网络/500）
 const auditRows = [];
+let routerMockMode = false;
+let routerFetchMode = 'empty';
+let usageFetchCount = 0;
 globalThis.fetch = async (url, opts = {}) => {
   const s = String(url);
+  if (routerMockMode && s.includes('/rest/v1/skills')) {
+    if (routerFetchMode === 'http500') return { ok: false, status: 500, text: async () => 'mock registry HTTP 500' };
+    if (routerFetchMode === 'network') throw new Error('mock registry network failure');
+    return { ok: true, status: 200, json: async () => [] };
+  }
+  if (routerMockMode && s.includes('/rest/v1/')) {
+    if (s.includes('usage_count') || s.includes('last_used')) usageFetchCount++;
+    return { ok: true, status: 200, json: async () => [] };
+  }
   if (s.includes('/chat_agent_events?select')) {
     if (queryFail) return { ok: false, status: 503, text: async () => 'mock upstream down' };
     return { ok: true, json: async () => mockQueryRows };
@@ -89,6 +102,39 @@ console.log('\n[用例 C] 查询失败（upstream 500/网络）→ 返回 500，
   check('audit 记 error（decision=error 且可重试提示）', auditRows.some(r => r.decision === 'error' && /可重试/.test(r.reason)));
   check('日志里不含 delivered/duplicate（未破坏状态判定）', !auditRows.some(r => r.event_id === 'evt-C' && (r.decision === 'delivered' || r.decision === 'duplicate')));
   queryFail = false;
+}
+
+console.log('\n[Router 注册表故障契约]');
+routerMockMode = true;
+const routerEnv = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
+async function callTool(name) {
+  return handleMCPRequest({ jsonrpc: '2.0', id: 'router-test', method: 'tools/call', params: { name, arguments: {} } }, routerEnv);
+}
+{
+  routerFetchMode = 'network';
+  const res = await callTool('memory_test_schema_failure');
+  const text = res.data.result.content[0].text;
+  check('前缀工具 Schema 查询网络失败→TOOL_REGISTRY_UNAVAILABLE', text.includes('[TOOL_REGISTRY_UNAVAILABLE]'), text);
+  check('Schema 查询失败不进入工具、不增加 usage_count', usageFetchCount === 0, 'usageFetchCount=' + usageFetchCount);
+}
+{
+  routerFetchMode = 'http500';
+  const res = await callTool('truly_unknown_tool');
+  const text = res.data.result.content[0].text;
+  check('注册表 HTTP 500→TOOL_REGISTRY_UNAVAILABLE', text.includes('[TOOL_REGISTRY_UNAVAILABLE]'), text);
+  check('注册表 HTTP 500 不增加 usage_count', usageFetchCount === 0, 'usageFetchCount=' + usageFetchCount);
+}
+{
+  routerFetchMode = 'network';
+  const res = await callTool('another_unknown_tool');
+  const text = res.data.result.content[0].text;
+  check('注册表网络异常→TOOL_REGISTRY_UNAVAILABLE', text.includes('[TOOL_REGISTRY_UNAVAILABLE]'), text);
+}
+{
+  routerFetchMode = 'empty';
+  const res = await callTool('truly_unknown_tool');
+  const text = res.data.result.content[0].text;
+  check('注册表查询成功且无匹配项→UNKNOWN_TOOL', text.includes('[UNKNOWN_TOOL]'), text);
 }
 
 console.log(`\n===== 结果：${pass} 通过 / ${fail} 失败 =====`);
