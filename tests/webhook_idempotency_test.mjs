@@ -17,6 +17,7 @@ const auditRows = [];
 let routerMockMode = false;
 let routerFetchMode = 'empty';
 let usageFetchCount = 0;
+let nonRegistryRestFetchCount = 0;
 globalThis.fetch = async (url, opts = {}) => {
   const s = String(url);
   if (routerMockMode && s.includes('/rest/v1/skills')) {
@@ -25,6 +26,7 @@ globalThis.fetch = async (url, opts = {}) => {
     return { ok: true, status: 200, json: async () => [] };
   }
   if (routerMockMode && s.includes('/rest/v1/')) {
+    nonRegistryRestFetchCount++;
     if (s.includes('usage_count') || s.includes('last_used')) usageFetchCount++;
     return { ok: true, status: 200, json: async () => [] };
   }
@@ -115,14 +117,14 @@ async function callTool(name) {
   const res = await callTool('memory_test_schema_failure');
   const text = res.data.result.content[0].text;
   check('前缀工具 Schema 查询网络失败→TOOL_REGISTRY_UNAVAILABLE', text.includes('[TOOL_REGISTRY_UNAVAILABLE]'), text);
-  check('Schema 查询失败不进入工具、不增加 usage_count', usageFetchCount === 0, 'usageFetchCount=' + usageFetchCount);
+  check('Schema 查询失败不进入 handler、不发后续 REST 请求', nonRegistryRestFetchCount === 0, 'nonRegistryRestFetchCount=' + nonRegistryRestFetchCount);
 }
 {
   routerFetchMode = 'http500';
   const res = await callTool('truly_unknown_tool');
   const text = res.data.result.content[0].text;
   check('注册表 HTTP 500→TOOL_REGISTRY_UNAVAILABLE', text.includes('[TOOL_REGISTRY_UNAVAILABLE]'), text);
-  check('注册表 HTTP 500 不增加 usage_count', usageFetchCount === 0, 'usageFetchCount=' + usageFetchCount);
+  check('注册表 HTTP 500 不增加 usage_count、不发后续 REST 请求', usageFetchCount === 0 && nonRegistryRestFetchCount === 0, 'usageFetchCount=' + usageFetchCount + ', nonRegistryRestFetchCount=' + nonRegistryRestFetchCount);
 }
 {
   routerFetchMode = 'network';
