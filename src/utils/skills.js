@@ -86,5 +86,9 @@ export async function deleteSkill(env, name) {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${supabaseKey}`, 'apikey': supabaseKey, 'Prefer': 'return=representation' }
     });
-    return resp.ok;
+    if (!resp.ok) return false;
+    try {
+        const rows = await resp.json();
+        return Array.isArray(rows) && rows.length > 0;
+    } catch (e) { return false; }
 }
