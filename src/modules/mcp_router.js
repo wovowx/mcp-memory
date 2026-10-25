@@ -392,14 +392,14 @@ async function handleSkillManagement(name, safeArgs, env) {
         if (skills.length === 0) text = 'no skills';
         else { let lines = 'skills (' + skills.length + '):' + '\n\n'; for (const s of skills) { const status = s.enabled ? 'ok' : 'off'; lines += '- ' + s.name + ' (' + status + '): ' + (s.description || '') + '\n'; } }
     } else if (name === 'skill_add') {
-        if (!safeArgs.name) text = 'need name';
-        else { try { await addSkill(env, { name: safeArgs.name, description: safeArgs.description || '', input_schema: safeArgs.input_schema || {}, handler_type: safeArgs.handler_type || 'js', handler_config: safeArgs.handler_config || {} }); text = 'added: ' + safeArgs.name; } catch (e) { text = 'add fail: ' + e.message; } }
+        if (!safeArgs.name) text = 'err: missing name';
+        else { try { const ok = await addSkill(env, { name: safeArgs.name, description: safeArgs.description || '', input_schema: safeArgs.input_schema || {}, handler_type: safeArgs.handler_type || 'js', handler_config: safeArgs.handler_config || {} }); text = ok ? 'added: ' + safeArgs.name : 'err: skill_add write failed: ' + safeArgs.name; } catch (e) { text = 'err: skill_add write failed: ' + safeArgs.name; } }
     } else if (name === 'skill_update') {
-        if (!safeArgs.name) text = 'need name';
-        else { try { const updates = {}; if (safeArgs.description) updates.description = safeArgs.description; if (safeArgs.input_schema) updates.input_schema = safeArgs.input_schema; if (safeArgs.handler_config) updates.handler_config = safeArgs.handler_config; await updateSkill(env, safeArgs.name, updates); text = 'updated: ' + safeArgs.name; } catch (e) { text = 'update fail: ' + e.message; } }
+        if (!safeArgs.name) text = 'err: missing name';
+        else { try { const updates = {}; if (safeArgs.description) updates.description = safeArgs.description; if (safeArgs.input_schema) updates.input_schema = safeArgs.input_schema; if (safeArgs.handler_config) updates.handler_config = safeArgs.handler_config; const ok = await updateSkill(env, safeArgs.name, updates); text = ok ? 'updated: ' + safeArgs.name : 'err: skill_update write failed: ' + safeArgs.name; } catch (e) { text = 'err: skill_update write failed: ' + safeArgs.name; } }
     } else if (name === 'skill_delete') {
-        if (!safeArgs.name) text = 'need name';
-        else { await deleteSkill(env, safeArgs.name); text = 'deleted: ' + safeArgs.name; }
+        if (!safeArgs.name) text = 'err: missing name';
+        else { try { const ok = await deleteSkill(env, safeArgs.name); text = ok ? 'deleted: ' + safeArgs.name : 'err: skill_delete write failed: ' + safeArgs.name; } catch (e) { text = 'err: skill_delete write failed: ' + safeArgs.name; } }
     }
     return text;
 }
