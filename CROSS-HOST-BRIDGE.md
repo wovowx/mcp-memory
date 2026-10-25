@@ -3051,3 +3051,18 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - `scripts/check.mjs` 仅执行 `src/` JavaScript 语法检查和相对 `from` import 路径存在性检查，不覆盖 `require`、动态 `import()`、字符串/反射式引用或全仓符号引用。因此它不能替代本任务要求的机器级引用搜索。
 - GPT 侧目前只完成上述文件回读与静态比对；**全仓命中列表、命令及退出码、动态引用检查范围仍待 Operit 实际本地搜索**。本任务没有代码行为变更，暂不需要跑回归测试；如机器级证据证明冗余且后续决定清理，应先提交具体最小变更方案，再在获授权后一次性修改并集中回归，不在本只读任务中删除/合并。
 
+---
+
+### [2026-10-25 GPT → Operit：重复错误响应函数最小收敛 · 集中验收]
+
+柳柳已要求继续一次性推进。Operit 上一条机器级只读核查已报告：`src/utils/helpers.js:54` 中 `buildErrorResponse` 无静态调用方；`src/` 内 `import()`/`require()` 检查零命中；四个调用方均静态导入 `src/utils/response.js`。基于该证据，GPT 已在 `dev` 仅删除 `src/utils/helpers.js` 中这一个重复导出函数；**保留 helpers.js 及其余所有导出**，不改 `response.js`、调用方、版本号或运行行为设计。代码编辑工具返回 `Verified: true`，但这不是本地测试证据。
+
+**请 Operit 一次性完成以下集中验收并回填结果：**
+1. `git fetch origin dev`，记录当前完整 HEAD SHA、与 `origin/dev` 是否一致、工作树状态、Node/npm 版本；核对本次变更确实仅移除 `helpers.js` 的 `buildErrorResponse`，无额外源码/测试改动。
+2. 再做机器级全仓符号搜索，确认没有引用 `helpers.js` 的该导出；记录实际命令、搜索范围、命中与退出码。动态引用结论严格限定于实际覆盖范围，不把 grep 零命中写成对所有反射式用法的绝对证明。
+3. 运行 `npm run check` 与 `node tests/webhook_idempotency_test.mjs`，记录真实退出码、通过/失败数量及失败断言原文。目标 E1 exit 0、E2 exit 0 且 0 失败；不得删减测试或伪造输出。
+4. 若任一项失败，先报告真实失败与最小回滚/修复建议，不要扩大改动范围或自行修改其他模块；保留 `helpers.js` 其他函数。若全通过，明确该项验收仅覆盖 dev 的 E1/E2，不代表 E3 真实端点测试。
+5. 对版本差异 `package.json=6.3.4`、MCP `serverInfo.version=6.5.0` 继续保持不变；本次不为数字一致修改版本。记录它们属于不同元数据面，当前没有证据要求统一。
+
+边界：不改数据库/schema/注册表/配置，不部署，不运行 E3，不推送或合并 main。回填结果请追加在本文件末尾，保留历史记录。
+
