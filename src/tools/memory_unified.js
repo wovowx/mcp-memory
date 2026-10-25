@@ -36,19 +36,24 @@ export async function findAuthoritativeKey(env, key) {
     return hit ? hit.key : null;
 }
 
+async function memoryWriteFetch(url, options) {
+    try { return await fetch(url, options); }
+    catch (error) { return { ok: false, status: 0, networkError: error.message }; }
+}
+
 export async function putMemory(env, key, data) {
     const existing = await getMemoryByKey(env, key);
     if (existing) {
         // 先确保历史事件写入成功，再更新当前值；失败时返回明确阶段。
         const nowTs = now();
         const oldVersion = existing.version || 1;
-        const eventResp = await fetch(`${env.SUPABASE_URL}/rest/v1/memory_events`, {
+        const eventResp = await memoryWriteFetch(`${env.SUPABASE_URL}/rest/v1/memory_events`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ memory_id: existing.id, event_type: 'update', version: oldVersion, old_value: existing.value, actor: 'agent', reason: 'memory update (version chain)' })
         });
         if (!eventResp.ok) return { ok: false, stage: 'history', status: eventResp.status, error: 'history event write failed' };
-        const updateResp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?id=eq.${existing.id}`, {
+        const updateResp = await memoryWriteFetch(`${env.SUPABASE_URL}/rest/v1/memories?id=eq.${existing.id}`, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: data.value, version: oldVersion + 1, status: 'active', updated_at: data.updated_at || nowTs })
@@ -57,7 +62,7 @@ export async function putMemory(env, key, data) {
     } else {
         const category = getCategory(key);
         const title = getTitle(key);
-        const insertResp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories`, {
+        const insertResp = await memoryWriteFetch(`${env.SUPABASE_URL}/rest/v1/memories`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ key, value: data.value, category, title, created_at: data.created_at || now(), updated_at: data.updated_at || now(), version: 1, valid_from: now(), status: 'active' })
