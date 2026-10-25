@@ -3021,7 +3021,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 按 `wovowx/ZivenLab/dev/governance/资产盘点与整理升级计划.md` 阶段 3.2 顺序 6 执行；前置顺序 4（Skill 内容权威/宿主加载）已只读完成，顺序 5 Permission Guard 已决定保留、不接入、不删除。本任务只读，不做任何清理或版本修改。
 
 1. fetch `origin/dev`，记录仓库、分支、完整 HEAD SHA、工作树状态、Node/npm 版本（如可用）。
-2. 对 `src/helpers.js`、`src/utils/response.js` 中 `buildErrorResponse` 做机器级全仓符号引用搜索：包含静态 import/export、require、动态 import、字符串路径/反射式调用可合理识别的引用。记录搜索命令、命中路径/行号、排除项与工具覆盖限制；不要把“普通文本搜索零命中”夸大为证明所有动态引用不存在。
+2. 对 `src/utils/helpers.js`、`src/utils/response.js` 中 `buildErrorResponse` 做机器级全仓符号引用搜索：包含静态 import/export、require、动态 import、字符串路径/反射式调用可合理识别的引用。记录搜索命令、命中路径/行号、排除项与工具覆盖限制；不要把“普通文本搜索零命中”夸大为证明所有动态引用不存在。
 3. 核实两个实现的函数体是否仍相同；沿所有命中追踪调用方与实际导出入口。只产出证据和建议，不删除/合并任何文件或函数。
 4. 核实 `package.json` 的 npm package version 与 `src/modules/mcp_router.js` MCP `serverInfo.version` 的当前值、各自来源、是否被测试/发布脚本/文档引用；只说明差异和潜在兼容影响，不自动统一版本、不改版本号。
 5. 在报告中给出：证据等级、实际命中、动态引用检查范围、最小建议、风险/回滚思路、是否需要后续测试。若无法完成全仓搜索或命令不可用，明确标 `NOT VERIFIED` 并说明原因。
