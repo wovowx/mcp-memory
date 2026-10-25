@@ -319,7 +319,7 @@ async function syncChatTools(env) {
 
 async function autoIncrementUsage(env, name) {
     // v6.38.0 自动使用打点：工具执行成功后分发层自动+1（②自动技能沉淀数据源修复，不再靠 AI 自觉调 increment_usage）
-    if (!name || name === 'increment_usage') return;
+    if (!name || name === 'increment_usage' || ['skill_list', 'skill_add', 'skill_update', 'skill_delete'].includes(name)) return;
     try { await handleIncrementUsage(name, { name }, env); } catch (e) { /* 静默，不污染回复 */ }
 }
 
@@ -403,7 +403,7 @@ export async function handleMCPRequest(body, env) {
                 }
             }
         } catch (e) { text = 'err: ' + e.message; }
-        const toolOk = !text.startsWith('err:') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:');
+        const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:') && !text.startsWith('MAIN_WRITE_BLOCKED:') && !text.startsWith('unknown tool:');
         if (toolOk) await autoIncrementUsage(env, name);
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
