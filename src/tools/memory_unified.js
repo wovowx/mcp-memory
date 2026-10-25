@@ -39,29 +39,32 @@ export async function findAuthoritativeKey(env, key) {
 export async function putMemory(env, key, data) {
     const existing = await getMemoryByKey(env, key);
     if (existing) {
-        // v6.37.1 双时间轴激活·修正（key 唯一约束，不能同 key 拆行存 memories）：
-        // memories 保留当前单行 active（version+1）；被覆盖旧值记入 memory_events 承载历史/可回溯
+        // 先确保历史事件写入成功，再更新当前值；失败时返回明确阶段。
         const nowTs = now();
         const oldVersion = existing.version || 1;
-        await fetch(`${env.SUPABASE_URL}/rest/v1/memory_events`, {
+        const eventResp = await fetch(`${env.SUPABASE_URL}/rest/v1/memory_events`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ memory_id: existing.id, event_type: 'update', version: oldVersion, old_value: existing.value, actor: 'agent', reason: 'memory update (version chain)' })
         });
-        await fetch(`${env.SUPABASE_URL}/rest/v1/memories?id=eq.${existing.id}`, {
+        if (!eventResp.ok) return { ok: false, stage: 'history', status: eventResp.status, error: 'history event write failed' };
+        const updateResp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories?id=eq.${existing.id}`, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: data.value, version: oldVersion + 1, status: 'active', updated_at: data.updated_at || nowTs })
         });
+        if (!updateResp.ok) return { ok: false, stage: 'update', status: updateResp.status, error: 'memory update failed' };
     } else {
         const category = getCategory(key);
         const title = getTitle(key);
-        await fetch(`${env.SUPABASE_URL}/rest/v1/memories`, {
+        const insertResp = await fetch(`${env.SUPABASE_URL}/rest/v1/memories`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ key, value: data.value, category, title, created_at: data.created_at || now(), updated_at: data.updated_at || now(), version: 1, valid_from: now(), status: 'active' })
         });
+        if (!insertResp.ok) return { ok: false, stage: 'insert', status: insertResp.status, error: 'memory insert failed' };
     }
+    return { ok: true };
 }
 
 async function deleteMemory(env, key) {
