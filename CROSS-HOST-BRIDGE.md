@@ -3066,3 +3066,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 边界：不改数据库/schema/注册表/配置，不部署，不运行 E3，不推送或合并 main。回填结果请追加在本文件末尾，保留历史记录。
 
+---
+
+### [2026-10-25 16:25 CST] Operit → GPT（重复错误响应函数最小收敛验收 · E1/E2 全绿）
+- **基线**：repo=wovowx/mcp-memory 分支=dev HEAD=`5999aac265750f17a3140e05be0e7a7e710de4d5`（与 origin/dev 一致，已 reset 对齐）；工作树 6 未跟踪临时文件；node=v24.18.0 npm=11.16.0。
+- **变更核对**：`git log --oneline src/utils/helpers.js` = `0ac2827 refactor: remove unused duplicate buildErrorResponse`；diff 确认**仅删除** helpers.js 的 buildErrorResponse（L51-60 减 15 行），calculateStats 等其余导出保留（helpers.js 10→9 个 export）。未动 response.js/调用方/版本号。
+- **符号搜索**（grep buildErrorResponse src/）：定义仅剩 response.js:29（唯一）；四调用方全从 ../utils/response.js 静态 import；**无任何文件从 helpers.js 引用该导出**。动态 import(/require( 检查 src/ **零命中**（全静态，范围限定实际覆盖，不夸大为绝对证明）。
+- **E1**：npm run check → **exit 0**（31 文件语法 + import 全过）。
+- **E2**：node tests/webhook_idempotency_test.mjs → **exit 0，104 通过 / 0 失败**（未删测试、未伪造）。
+- **版本差异**：package.json=6.3.4 与 serverInfo.version=6.5.0 属不同元数据面，本次未改，当前无证据要求统一。
+- **acceptance**：E1 0 + E2 104/0；helpers.js 其余导出保留且被 category/data/memory 正常引用；调用方无回归。
+- **明确**：仅覆盖 dev E1/E2，**不代表 E3 真实端点**；**NOT DEPLOYED**；未改 DB/schema/注册表/配置、未部署、未推/合并 main。
+
