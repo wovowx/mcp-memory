@@ -73,7 +73,11 @@ export async function updateSkill(env, name, updates) {
         },
         body: JSON.stringify({ ...updates, updated_at: new Date().toISOString() })
     });
-    return resp.ok;
+    if (!resp.ok) return false;
+    try {
+        const rows = await resp.json();
+        return Array.isArray(rows) && rows.length > 0;
+    } catch (e) { return false; }
 }
 export async function deleteSkill(env, name) {
     const supabaseUrl = env.SUPABASE_URL;
