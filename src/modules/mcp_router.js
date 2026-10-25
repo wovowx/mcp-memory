@@ -135,10 +135,9 @@ async function invalidateCache() { skillCache.clear(); }
 //   只校验 merge 参数 commit_title 没意义（merge 时的 title 不会落到 main 上）。
 //   改为：rebase 模式校验源分支 HEAD commit 标题（rebase 后真实出现在 main 上的标题）；
 //   merge/squash 模式才校验 commit_title 参数（会真实落到 main）。
-async function getPullRequestHeadBranch(env, pullNumber) {
+async function getPullRequestHeadBranch(env, pullNumber, repo = env.GITHUB_REPO) {
     try {
         const token = env.GITHUB_TOKEN;
-        const repo = env.GITHUB_REPO;
         if (!token || !repo || !pullNumber) return '';
         const resp = await fetch(`https://api.github.com/repos/${repo}/pulls/${pullNumber}`, {
             headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'User-Agent': 'ziven-bridge' }
@@ -149,10 +148,9 @@ async function getPullRequestHeadBranch(env, pullNumber) {
     } catch (e) { return ''; }
 }
 
-async function getBranchHeadCommitTitle(env, branch) {
+async function getBranchHeadCommitTitle(env, branch, repo = env.GITHUB_REPO) {
     try {
         const token = env.GITHUB_TOKEN;
-        const repo = env.GITHUB_REPO;
         if (!token || !repo || !branch) return '';
         const resp = await fetch(`https://api.github.com/repos/${repo}/commits/${encodeURIComponent(branch)}`, {
             headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'User-Agent': 'ziven-bridge' }
@@ -163,10 +161,12 @@ async function getBranchHeadCommitTitle(env, branch) {
     } catch (e) { return ''; }
 }
 
-async function githubReleaseGuard(name, safeArgs, env) {
+export async function githubReleaseGuard(name, safeArgs, env) {
     if (name !== 'github_push' && name !== 'github_merge_to_main' && name !== 'github_merge_pull_request' && name !== 'github_edit') {
         return { allowed: true };
     }
+    // 多仓库调用按实际目标仓库选择发布策略；未指定目标仓库时兼容默认 GITHUB_REPO。
+    const targetRepo = safeArgs.repo || env.GITHUB_REPO;
     // v6.32.5: github_edit 按 push 处理（写操作）——写 dev 放行，写 main 拦（版本化）
     const isPush = name === 'github_push' || name === 'github_edit';
     const branch = isPush ? (safeArgs.branch || 'main') : 'main';
