@@ -133,6 +133,8 @@ console.log('\\n[Router 注册表故障契约]');
   res = await callTool('truly_unknown_tool');
   text = res.data.result.content[0].text;
   check('注册表查询成功且无匹配项→UNKNOWN_TOOL', text.includes('[UNKNOWN_TOOL]'), text);
+  // Router 的 skills 缓存是模块级共享状态；清掉空注册表缓存，避免污染后续批次测试。
+  await handleMCPRequest({ jsonrpc: '2.0', id: 'router-reset', method: 'tools/call', params: { name: 'skill_list', arguments: {} } }, routerEnv);
 }
 
 // ---------- 记忆写入失败契约回归 ----------
