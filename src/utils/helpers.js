@@ -51,15 +51,6 @@ export function highlightText(text, keywords) {
     }
     return result;
 }
-export function buildErrorResponse(message, status = 400) {
-    return new Response(JSON.stringify({ error: message }), {
-        status: status,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        }
-    });
-}
 export function calculateStats(usageData) {
     let count = 0;
     let prompt_tokens = 0;
