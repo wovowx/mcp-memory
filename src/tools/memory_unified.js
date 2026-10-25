@@ -42,7 +42,9 @@ async function memoryWriteFetch(url, options) {
 }
 
 export async function putMemory(env, key, data) {
-    const existing = await getMemoryByKey(env, key);
+    let existing;
+    try { existing = await getMemoryByKey(env, key); }
+    catch (error) { return { ok: false, stage: 'lookup', error: error.message }; }
     if (existing) {
         // 先确保历史事件写入成功，再更新当前值；失败时返回明确阶段。
         const nowTs = now();
