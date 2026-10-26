@@ -13,9 +13,10 @@ const fixture = [
   { name: 'supabase_schema', enabled: true, description: 'schema', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['create_table', 'drop_table', 'tables', 'exec', 'schema_dump'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' }, format: { type: 'string', enum: ['md', 'json'] }, rls: { type: 'boolean' } } } },
   { name: 'image_upload', enabled: true, description: 'media', handler_type: 'ai', handler_config: { handler: 'ai' } },
   { name: 'master-router', enabled: true, description: 'router', handler_type: 'text' }, // 无 handler_config.handler
-  { name: 'memory_remember', enabled: true, description: 'remember', handler_type: 'js', handler_config: { handler: 'memory' } }
+  { name: 'memory_remember', enabled: true, description: 'remember', handler_type: 'js', handler_config: { handler: 'memory' } },
+  { name: 'create_patch_proposal', enabled: true, description: 'create proposal', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: null }
 ];
-let registryMode = 'ok'; let memoriesRestCount = 0; let usagePatchCount = 0; let otherRestCount = 0;
+let registryMode = 'ok'; let memoriesRestCount = 0; let usagePatchCount = 0; let otherRestCount = 0; let patchProposalPostCount = 0;
 let ddlRpcCount = 0; let tableListCount = 0; let lastExecSql = '';
 const origFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts = {}) => {
@@ -30,6 +31,7 @@ globalThis.fetch = async (url, opts = {}) => {
     const hit = nm ? fixture.find(x => x.name === decodeURIComponent(nm)) : null;
     return { ok: true, status: 200, json: async () => hit ? [hit] : [] };
   }
+  if (s.includes('/rest/v1/patch_proposals') && m === 'POST') { patchProposalPostCount++; return { ok: true, status: 201, json: async () => [{ id: 'mock-proposal-id' }], text: async () => '' }; }
   if (s.includes('/rest/v1/rpc/exec_sql')) { ddlRpcCount++; lastExecSql = JSON.parse(opts.body || '{}').sql || ''; return { ok: true, status: 200, text: async () => '', json: async () => [] }; }
   if (s.endsWith('/rest/v1/')) { tableListCount++; return { ok: true, status: 200, json: async () => ({ definitions: { memories: {}, memory_events: {} } }) }; }
   if (s.includes('/rest/v1/memories') || s.includes('/rest/v1/memory_events')) { memoriesRestCount++; return { ok: true, status: 200, json: async () => [] }; }
@@ -64,6 +66,16 @@ try {
   check('tools/list 不额外开放 supabase_db drop_table action', !listedDbTool?.inputSchema?.properties?.action?.enum?.includes('drop_table'));
   check('tools/list 暴露 supabase_schema necessity 参数', listedSchemaTool?.inputSchema?.properties?.necessity?.type === 'string');
   check('tools/list 保留注册的 supabase_schema drop_table action', listedSchemaTool?.inputSchema?.properties?.action?.enum?.includes('drop_table'));
+
+  const listedProposalTool = listedTools.find(tool => tool.name === 'create_patch_proposal');
+  check('tools/list 为 create_patch_proposal 暴露必填 schema', listedProposalTool?.inputSchema?.required?.join(',') === 'target_file,change_summary,reason');
+  usagePatchCount = 0; patchProposalPostCount = 0;
+  t = await callTool('create_patch_proposal', {});
+  check('create_patch_proposal 缺参在 Router schema 层拒绝', t.includes('[MISSING_REQUIRED_PARAM]'));
+  check('缺参不写 proposal 且不计 usage', patchProposalPostCount === 0 && usagePatchCount === 0);
+  t = await callTool('create_patch_proposal', { target_file: 'src/mock.js', change_summary: 'mock change', reason: 'contract test' });
+  check('create_patch_proposal 成功写入隔离 mock', t.includes('✅ Patch Proposal 已创建') && patchProposalPostCount === 1);
+  check('create_patch_proposal 成功恰好计一次 usage', usagePatchCount === 1);
 
   ddlRpcCount = 0; tableListCount = 0;
   t = await callTool('supabase_exec', { action: 'exec', sql: 'DROP TABLE public.mock_probe' });
