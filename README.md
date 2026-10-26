@@ -4,28 +4,42 @@ Ziven 的 MCP 记忆库 & 技能库。
 
 > 私有仓库，只有被授权的人能访问。
 
-## 内容
+## 仓库目录
 
-- `src/` — Cloudflare Worker 源码（MCP 服务）
-- `skills/` — 技能文件（SKILL.md）
-- `docs/` — 文档（需求文档等）
-- `CHANGELOG.md` — 版本记录
+- `src/` — Cloudflare Worker 源码与 HTTP/MCP 入口。
+- `src/modules/` — MCP Router、权限/发布门禁、Patch Engine 等模块。
+- `src/tools/` — 具体工具实现；当前 GitHub 工具实现由 Router 导入 `src/tools/github_v64.js`。
+- `src/utils/` — Skill 注册、存储、搜索、响应等共享能力。
+- `src/skills/` — Markdown `SKILL.md` 能力说明与工作流程；它与 Supabase `skills` 工具注册表不是同一层。
+- `src/public/` — Worker 所用静态页面资源。
+- `scripts/`、`tests/`、`migrations/` — 检查脚本、回归测试与数据库迁移文件。
+- `common-ground/` — 保留的聊天室/跨会话历史材料，不是代码入口。
+- `CROSS-HOST-BRIDGE.md` — GPT App ↔ Operit 唯一共享执行交接入口；交接记录不自动授权改生产、数据库、部署或合并 main。
+- `CHANGELOG.md` — 代码仓版本记录。
+
+> 本仓当前根目录没有 `docs/` 或根级 `skills/` 目录；治理总览与数据库语义文档位于 `wovowx/ZivenLab/governance/`。
 
 ## Architecture
 
-mcp-memory acts as MCP Server.
+mcp-memory is the Worker-side runtime and MCP server, not the whole Ziven architecture.
 
-Flow:
+```text
+GPT App / Operit / Agent Runtime
+            ↓
+       MCP client
+            ↓
+Cloudflare Worker (`src/index.js`)
+            ├─ HTTP/API routes
+            └─ MCP Router (`src/modules/mcp_router.js`)
+                    ↓
+        tool handlers (`src/tools/`)
+                    ↓
+    shared utils / Skills registry / Supabase / GitHub
+```
 
-Agent Runtime
-    ↓
-MCP Client
-    ↓
-mcp-memory Worker
-    ↓
-Supabase Skills / GitHub / Memory
-
-> 本小节由 Patch Proposal #448de374 应用（2026-09-05，GPT #727 建议，Ziven review + 柳柳确认）。
+- This is the code-level entry map, not proof that every route/tool is registered or externally verified.
+- System-level architecture, truth-source navigation and the project cockpit are maintained in `wovowx/ZivenLab/governance/`.
+- Skill files describe workflows; the Supabase `skills` table stores tool/skill metadata and schemas. Check route, schema, registration and runtime evidence separately.
 
 ## 说明
 
