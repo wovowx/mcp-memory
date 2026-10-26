@@ -115,6 +115,12 @@ try {
   ddlRpcCount = 0;
   t = await handleDatabaseTool('supabase_db', { action: 'exec', sql: 'DROP TABLE public.mock_probe' }, env);
   check('exec DDL 空 necessity 被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED') && ddlRpcCount === 0);
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_db', { action: 'exec', sql: 'IMPORT FOREIGN SCHEMA public FROM SERVER mock_server INTO public' }, env);
+  check('exec IMPORT FOREIGN SCHEMA 缺 necessity 被拒绝且不调用 RPC', t.includes('TABLE_CHANGE_GUARD_REQUIRED') && ddlRpcCount === 0);
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_db', { action: 'exec', sql: "SECURITY LABEL FOR 'dummy' ON TABLE public.mock_probe IS 'fixture'" }, env);
+  check('exec SECURITY LABEL 缺 necessity 被拒绝且不调用 RPC', t.includes('TABLE_CHANGE_GUARD_REQUIRED') && ddlRpcCount === 0);
   t = await handleDatabaseTool('supabase_db', { action: 'exec', sql: 'SELECT 1' }, env);
   check('exec 只读 SQL 保持兼容', t.startsWith('✅ SQL执行成功') && ddlRpcCount === 1 && lastExecSql === 'SELECT 1');
   ddlRpcCount = 0;
