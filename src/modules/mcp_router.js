@@ -192,6 +192,22 @@ async function getCachedSkills(env) {
 
 async function invalidateCache() { skillCache.clear(); }
 
+function getExposedInputSchema(skill) {
+    const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : {};
+    if (skill?.name !== 'supabase_db') return schema;
+    // necessity is enforced by database.js for DDL hidden behind action=exec; expose it to clients without requiring it for read-only actions.
+    return {
+        ...schema,
+        properties: {
+            ...(schema.properties && typeof schema.properties === 'object' ? schema.properties : {}),
+            necessity: {
+                type: 'string',
+                description: 'DDL/结构变更时必填：说明为什么现有表或结构不能满足需求；只读 SQL 无需填写。'
+            }
+        }
+    };
+}
+
 // release_guard 前置闸：push/merge 到 main 必须版本化；非 main 分支放行
 // v6.32.3 (2026-09-08)：FIX rebase 标题失守——rebase 模式 GitHub 保留 dev 原始 commit 标题，
 //   只校验 merge 参数 commit_title 没意义（merge 时的 title 不会落到 main 上）。
@@ -336,7 +352,7 @@ export async function handleMCPRequest(body, env) {
     if (method === 'tools/list') {
         await syncChatTools(env);
         const skills = await getCachedSkills(env);
-        const tools = skills.map(s => ({ name: s.name, description: s.description, inputSchema: s.input_schema || {} }));
+        const tools = skills.map(s => ({ name: s.name, description: s.description, inputSchema: getExposedInputSchema(s) }));
         return { ok: true, data: { jsonrpc: '2.0', id, result: { tools } } };
     }
     if (method === 'tools/call') {
