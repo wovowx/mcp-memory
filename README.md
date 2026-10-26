@@ -14,7 +14,7 @@ Ziven 的 MCP 记忆库 & 技能库。
 - `src/public/` — Worker 所用静态页面资源。
 - `scripts/`、`tests/`、`migrations/` — 检查脚本、回归测试与数据库迁移文件。
 - `common-ground/` — 保留的聊天室/跨会话历史材料，不是代码入口。
-- `CROSS-HOST-BRIDGE.md` — GPT App ↔ Operit 唯一共享执行交接入口；交接记录不自动授权改生产、数据库、部署或合并 main。
+- `CROSS-HOST-BRIDGE.md` — GPT App ↔ Operit 唯一共享执行交接入口；交接记录不自动授权改生产、数据库、部署或合并 main。文件包含重复的历史状态块，顶部旧“当前任务”可能过期；`github_read` 默认只读前 200 行，需先取得 `total_lines` 再显式读取末尾最新时间戳记录。
 - `CHANGELOG.md` — 代码仓版本记录。
 
 > 本仓当前根目录没有 `docs/` 或根级 `skills/` 目录；治理总览与数据库语义文档位于 `wovowx/ZivenLab/governance/`。
