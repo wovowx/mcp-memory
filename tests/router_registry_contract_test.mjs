@@ -46,7 +46,8 @@ try {
   names = await listTools(); check('list 暴露 master-router', names.includes('master-router'));
   usagePatchCount = 0; t = await callTool('master-router', {});
   check('call→handler type not implemented', t.includes('handler type not implemented')); check('handler 缺失不再触发 usage PATCH（修复）', usagePatchCount === 0);
-  usagePatchCount = 0; t = await callTool('memory_move', {}); check('失败缺参不计数', usagePatchCount === 0);
+  usagePatchCount = 0; t = await callTool('memory_move', {}); check('memory_move 失败缺参不计数', usagePatchCount === 0);
+  t = await callTool('memory_remember', {}); check('已注册 handler 返回参数失败不计数', t.startsWith('❌') && usagePatchCount === 0);
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
 } finally { globalThis.fetch = origFetch; }
 console.log('===== ' + pass + ' 通过 / ' + fail + ' 失败 =====');
