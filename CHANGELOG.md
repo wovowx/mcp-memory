@@ -2,6 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.35.0] - 2026-10-26
+### Fixed / Changed（MCP 路由、记忆与工具契约收敛）
+- 恢复有边界的工具参数 schema 子集校验（type、enum、required、properties、items、minimum、maximum），由 Router dispatch guard 统一拦截无效参数；不宣称完整 JSON Schema 支持。
+- 修复记忆写入与 rename/move/delete/import 的失败结果传播；HTTP、网络或部分写入失败不再误报成功，联想空结果有稳定兜底。
+- 补齐文件查询/更新/删除和 skill 注册表写操作的响应校验，避免零行更新、部分失败或 HTTP 错误被误报为成功。
+- 恢复 GitHub delete/copy/move/sync 的 main 写保护，并避免门禁拒绝、工具失败及 skill 管理操作被记为成功 usage_count。
+- 移除 helpers.js 中无调用方的重复 buildErrorResponse 导出，保留其余辅助函数。
+
+### Regression evidence
+- `npm run check`: exit 0（31 个 JavaScript 文件语法与 import 路径检查通过）。
+- `node tests/webhook_idempotency_test.mjs`: exit 0，104 通过 / 0 失败。
+- `tests/release_multirepo_dev.mjs`: 6/6 通过。
+
 ## [v6.34.0] - 2026-10-17
 ### Added（CF API 代理工具 cf_proxy · 柳柳2026-10-17拍板）
 - 新增 MCP 工具 `cf_proxy`：用 Worker 环境变量 `CLOUDFLARE_API_TOKEN` 代调 Cloudflare API（只执行、不暴露 token 明文）
