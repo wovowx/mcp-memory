@@ -50,7 +50,7 @@ function isKnownToolName(name) {
     if (name === 'create_patch_proposal') return true;            // 专门 handler
     // 动态注册的前缀族（其余走 skills 表懒注册）
     if (name.startsWith('github_')) return true;                  // handleGitHubTool
-    if (name.startsWith('supabase_')) return true;                // handleDatabaseTool
+    if (name.startsWith('supabase_')) return null;                // handleDatabaseTool
     if (name.startsWith('memory_')) return true;                  // handleMemoryTool
     if (name.startsWith('database_')) return true;                // handleDatabaseTool
     if (name.startsWith('category_')) return true;                // handleCategoryTool
