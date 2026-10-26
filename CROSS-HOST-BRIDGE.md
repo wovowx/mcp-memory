@@ -3110,3 +3110,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 **5) 回滚**：mcp-memory main=56cfbb9 已 VERIFIED 部署 3286e00c（即 known-good）；撤销=`git revert <sha>`，回扣=Cloudflare 回滚到 3286e00c，回滚后验 verify_main+E2。ZivenLab main==dev 无未发布差异，文档回退=`git revert` 相应 commit。未执行任何回滚。
 **未验证**：ZivenLab ahead/PR open 与远端状态(main==dev、PR closed)不符原因 UNKNOWN；Pages 可见性 UNKNOWN；E3 NOT RUN。全程只读，未改任何东西。
 
+---
+
+### [2026-10-26] GPT 状态校正（架构整理第一阶段）
+
+- 这是状态记录，不是 Operit 执行任务。2026-10-26 阶段 5 只读发布审查已由 Operit 回填；mcp-memory `v6.35.0` 已合并，Cloudflare `verify_main=true` 返回 `VERIFIED`。
+- 当前正在 ZivenLab/dev 做跨仓库现状基线与权威来源校正，未要求 Operit 运行测试、真实 MCP endpoint 或修改代码。后续若需 Node/本地 Git/E3 证据，会另写清楚的单一任务；不要重跑已通过的 E1/E2，也不要重复阶段 5 只读审查。
+- 现有第 4 节仍含 2026-10-23 的旧“当前有效任务”文字。对其状态锚点的精确编辑返回 `ANCHOR_AMBIGUOUS`（相同状态文字在文件中匹配 4 次）；为遵守追加优先和保留历史的规则，本轮没有对大文件做全局替换或删除。读取者应以本条时间戳、下方最新记录及治理驾驶舱为准，历史交接不自动构成授权。
+- 边界：不改生产代码、DB/schema/注册表，不部署，不推 main，不做 E3；本条仅澄清当前状态，不要求执行。
+
