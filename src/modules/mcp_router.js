@@ -39,7 +39,7 @@ const handlerMap = {
 // 原则（GPT 确认）：让非法调用无法执行，不靠 Agent 自觉。
 // 最小切片只做两件事（可扩展，后续加 schema/角色权限/副作用策略）：
 //   1. 调用信封校验：name 必须为非空字符串
-//   2. 工具注册校验：name 必须在已知工具集合内（handlerMap + 动态前缀 + create_patch_proposal），未知拒
+//   2. 工具注册校验：直连 handler/明确前缀可直接判定；supabase_* 必须命中 skills 注册表，防止未注册别名绕过 schema；create_patch_proposal 保留专门入口。
 // 校验不通过 → 执行前返回结构化错误，绝不进入 handler。
 // ============================================================
 const KNOWN_HANDLERS = new Set(Object.keys(handlerMap));
@@ -48,7 +48,7 @@ function isKnownToolName(name) {
     if (!name || typeof name !== 'string') return false;
     if (KNOWN_HANDLERS.has(name)) return true;                    // handlerMap 直连工具
     if (name === 'create_patch_proposal') return true;            // 专门 handler
-    // 动态注册的前缀族（其余走 skills 表懒注册）
+    // 动态前缀族：Supabase 前缀也必须先查 skills 注册表，其余直连族保留既有兼容行为。
     if (name.startsWith('github_')) return true;                  // handleGitHubTool
     if (name.startsWith('supabase_')) return null;                // handleDatabaseTool
     if (name.startsWith('memory_')) return true;                  // handleMemoryTool
