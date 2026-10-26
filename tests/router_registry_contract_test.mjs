@@ -10,6 +10,7 @@ function check(name, cond, extra = '') { if (cond) { pass++; console.log('  ✅ 
 const fixture = [
   { name: 'memory', enabled: true, description: 'memory tool', handler_type: 'js', handler_config: { handler: 'memory' } },
   { name: 'supabase_db', enabled: true, description: 'database', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['query', 'insert', 'update', 'delete', 'tables', 'exec'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' } } } },
+  { name: 'supabase_schema', enabled: true, description: 'schema', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['create_table', 'drop_table', 'tables', 'exec', 'schema_dump'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' }, format: { type: 'string', enum: ['md', 'json'] }, rls: { type: 'boolean' } } } },
   { name: 'image_upload', enabled: true, description: 'media', handler_type: 'ai', handler_config: { handler: 'ai' } },
   { name: 'master-router', enabled: true, description: 'router', handler_type: 'text' }, // 无 handler_config.handler
   { name: 'memory_remember', enabled: true, description: 'remember', handler_type: 'js', handler_config: { handler: 'memory' } }
@@ -56,14 +57,30 @@ try {
   t = await callTool('memory_remember', {}); check('已注册 handler 返回参数失败不计数', t.startsWith('❌') && usagePatchCount === 0);
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
 
-  const listedDbTool = (await listToolDefs()).find(tool => tool.name === 'supabase_db');
-  check('tools/list 暴露可选 necessity 参数', listedDbTool?.inputSchema?.properties?.necessity?.type === 'string');
-  check('tools/list 不额外开放 drop_table action', !listedDbTool?.inputSchema?.properties?.action?.enum?.includes('drop_table'));
+  const listedTools = await listToolDefs();
+  const listedDbTool = listedTools.find(tool => tool.name === 'supabase_db');
+  const listedSchemaTool = listedTools.find(tool => tool.name === 'supabase_schema');
+  check('tools/list 暴露 supabase_db necessity 参数', listedDbTool?.inputSchema?.properties?.necessity?.type === 'string');
+  check('tools/list 不额外开放 supabase_db drop_table action', !listedDbTool?.inputSchema?.properties?.action?.enum?.includes('drop_table'));
+  check('tools/list 暴露 supabase_schema necessity 参数', listedSchemaTool?.inputSchema?.properties?.necessity?.type === 'string');
+  check('tools/list 保留注册的 supabase_schema drop_table action', listedSchemaTool?.inputSchema?.properties?.action?.enum?.includes('drop_table'));
 
   ddlRpcCount = 0; tableListCount = 0;
   t = await callTool('supabase_exec', { action: 'exec', sql: 'DROP TABLE public.mock_probe' });
   check('未注册 supabase_ 前缀拒绝', t.includes('[UNKNOWN_TOOL]'));
   check('未注册前缀不触达 exec_sql', ddlRpcCount === 0);
+
+  ddlRpcCount = 0; tableListCount = 0;
+  t = await callTool('supabase_schema', { action: 'create_table', table: 'mock_probe', columns: 'id uuid' });
+  check('注册的 supabase_schema create_table 缺 necessity 被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED'));
+  check('create_table 缺参拒绝不调用 RPC', ddlRpcCount === 0);
+
+  ddlRpcCount = 0; tableListCount = 0;
+  t = await callTool('supabase_schema', { action: 'drop_table', table: 'mock_probe' });
+  check('注册的 supabase_schema drop_table 缺 necessity 被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED'));
+  check('drop_table 缺参拒绝不调用 RPC', ddlRpcCount === 0);
+  t = await callTool('supabase_schema', { action: 'drop_table', table: 'mock_probe', necessity: 'fixture check' });
+  check('公开 necessity 后只进入隔离 RPC mock', t.startsWith('✅ 删表成功') && ddlRpcCount === 1 && lastExecSql.startsWith('DROP TABLE'));
 
   ddlRpcCount = 0; tableListCount = 0;
   t = await callTool('supabase_db', { action: 'exec', sql: 'ALTER TABLE public.mock_probe ADD COLUMN probe text' });
