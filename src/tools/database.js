@@ -9,7 +9,7 @@ import { buildErrorResponse, jsonResponse } from '../utils/response.js';
 
 // DDL through the generic exec action must obey the same necessity gate as create_table.
 // The conservative keyword match intentionally prefers false positives over an unguarded schema change.
-const TABLE_CHANGE_SQL_PATTERN = /\\b(?:CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|COMMENT|REINDEX|CLUSTER|VACUUM|DO|CALL|EXECUTE)\\b/i;
+const TABLE_CHANGE_SQL_PATTERN = /\b(?:CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|COMMENT|REINDEX|CLUSTER|VACUUM|DO|CALL|EXECUTE)\b/i;
 
 function hasTableChangeNecessity(args) {
     return typeof args?.necessity === 'string' && args.necessity.trim().length > 0;
