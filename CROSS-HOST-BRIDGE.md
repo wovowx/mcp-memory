@@ -3201,5 +3201,32 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 复核 `.github/workflows/pages.yml`：仅 push `main` 触发，`actions/upload-pages-artifact` 的 `path: .` 将整个仓库根目录打包为 Pages artifact。目标页面位于 `src/public/`，本轮未查 Actions runs/Pages settings，实际发布和可见性仍未知。
 - 复核 `src/public/memory-universe.html`：源码静态内嵌 12 条个人记忆样例，含身份约定与健康相关内容；`src/index.js` 的 `/memory-universe` 路由直接读取 `mcp-memory/main/src/public/memory-universe.html` 并返回，路由分支内无认证。该证据说明源文件含个人样例，不证明匿名外部可达；柳柳此前确认该功能未投入使用，因此继续暂停，不访问生产端点、不改页面/发布配置、不部署。
 - 已将精确证据补入 `ZivenLab/dev/governance/架构差距矩阵.md`、`现状架构.md`、`roadmap.md`、`当前项目状态.md`、`CHANGELOG.md`。该批仍为文档修改；无 Worker 源码/DB/schema/注册表/配置改动，无部署、未推/合并 main。
-- 阶段4下一步仍先处理可安全静态收敛项；P1 DDL 闸门潜在绕行需要柳柳明确授权才可改 Worker 源码。当前无待 Operit 执行任务；不得为静态证据重复委派 Operit 消耗 API token。
+- 阶段4下一步仍沿现有路线推进；下方 19:30 SGT 交接已取代“当前无待 Operit 执行任务”的历史状态。当前只委派一次本地 Node 回归，因为本轮已实际改变 Worker dev 源码与 Mock 测试，GPT App 的 Code Runner 返回 `handler type not implemented: js`，不能诚实声称测试通过。Operit API 会消耗柳柳 token，因此合并 E1/E2/新 Mock 为一个批次，不再单独重复确认旧的 16/16。
+
+### [2026-10-26 19:30 SGT] GPT → Operit：授权 DDL gate 修复后的一次性隔离回归（仅本地执行）
+
+**本任务已经得到柳柳授权；范围仅为读取最新 dev 并运行回归，不授权生产操作或 main 发布。**
+
+#### 基线与保护
+1. 在开始前 `git fetch origin dev`，记录 origin/dev 的 HEAD SHA、Node/npm 版本和工作树状态。不要 `reset --hard`、`git clean`，不要覆盖或删除既有未跟踪文件。
+2. 为避免 Operit 现有工作树中此前的临时脚本/e3b3bb6 与远端最新版混淆，优先基于 `origin/dev` 创建一个新的 detached 临时 worktree（例如 `mktemp -d` 返回路径后 `git worktree add --detach <path> origin/dev`），所有命令在这个新 worktree 的仓库根目录执行；不要动原工作树。若该办法不可用，先检查并回报阻塞，不要用 destructive reset/clean 来绕过。
+3. 运行前确认远端文件包含这些最新修改：`src/tools/database.js` 共享非空 necessity gate、`src/modules/mcp_router.js` 对 `supabase_*` 要求注册表命中并在 tools/list 暴露 `supabase_db.properties.necessity`、`tests/router_registry_contract_test.mjs` 的 DDL/mock 覆盖。记录运行测试所用的确切 HEAD SHA。
+
+#### 必跑命令与证据
+依序执行并保留原始输出/真实退出码：
+- `node --version` 与 `npm --version`
+- `git status --short` 与 `git rev-parse HEAD`
+- `npm run check`
+- `node tests/webhook_idempotency_test.mjs`
+- `node tests/router_registry_contract_test.mjs`
+
+当前远端 Router Mock 静态有 30 个 `check(...)` 调用点，包含注册表异常、memory alias、handler missing、usage_count、未注册 `supabase_*` 前缀拒绝、registered `supabase_db` 的 exec DDL 缺 necessity 拒绝、create/drop handler 缺/空 necessity 拒绝、提供 necessity 后只命中 fake `exec_sql`、只读 SELECT 兼容，以及 tools/list 暴露 necessity 且不扩大 action enum。预期结果是 E1 exit 0、E2 104/104、新 Mock 30/30；**预期不是证据**，必须依据真实终端输出填数。如果测试脚本实际 pass 数不同、任何命令失败或发现代码行为不符合上述描述，完整回填输出/失败点即可，不要扩大修改或自动进行第二次委派。
+
+#### 严禁范围
+- Mock 测试由 `globalThis.fetch` 接管所有网络；不得移除 mock、不得真实调用 Supabase REST/RPC 或 MCP endpoint。
+- 不执行真实 DDL/SQL，不写数据库，不改 schema/skills 注册表/环境配置，不部署，不推/合并 main，不 reset/clean 原工作树。
+- 本批只运行与回填证据；如发现需要修改代码才能通过，记录差异并交 GPT 处理，不要临时扩展修改。
+
+#### 回填要求
+任务完成后在本文末尾追加 `Operit → GPT` 记录：精确 HEAD SHA、worktree 路径/原工作树是否保持原样、Node/npm、每条命令退出码、测试摘要、原始失败/关键输出、确认无真实网络/数据库写入、`NOT DEPLOYED`、`E3 NOT RUN`、`main 未改`。本地工作完成即停止；不做额外探索或另开测试批次。
 
