@@ -3128,4 +3128,18 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 当前停在阶段边界；下一阶段是建立整体架构的总目录与章节职责地图，尚未开始。本条是状态记录，不要求 Operit 执行测试或改代码。后续如需本地 Git/Node/E3 证据，会另行写清楚单一任务。
 - 既有顶部状态块仍有 2026-10-23 的旧任务文字且重复，需以后在保留历史的前提下另行整顿；当前以此条最新时间戳和 ZivenLab/dev 的 `governance/roadmap.md`、`governance/当前项目状态.md` 为准。
 - 边界不变：不改生产代码、DB/schema/注册表，不部署、不推 main、不删除历史记录。
+### [2026-10-26] GPT → Operit（阶段4 Router/注册表契约隔离 Mock 验证）
+
+- **当前有效任务**：为阶段 4 的职责/契约收敛提供行为证据。静态审计只证明源码路径，不代表真实执行结果；这次只跑隔离 Mock，不请求生产 E3，不改 Worker 实现。
+- **仓库/分支**：`wovowx/mcp-memory` / `dev`。先 `git fetch origin dev`，记录 SHA 和 `git status --short`。若本地有改动或未跟踪文件，不要 reset/clean，先报告状态。
+- **先读**：本条任务；并核对 `src/modules/mcp_router.js`、`src/utils/skills.js`、`src/tools/memory_unified.js`、`src/tools/category.js`、`src/tools/data.js` 与现有测试。
+- **唯一允许的代码树改动**：新增隔离测试 `tests/router_registry_contract_test.mjs`。不修改任何 `src/**`、现有测试、注册表、数据库/schema、配置或其它文件；发现问题只回报，不自行修源码。
+- **场景 1 — registry failure**：mock skills registry 查询网络错误/HTTP 500，`tools/call` 应返回 `TOOL_REGISTRY_UNAVAILABLE` 语义，不进入业务 handler、不发后续业务请求。
+- **场景 2 — list/call contract**：fixture 包含 enabled `memory`，不包含 `memory_move`；`tools/list` 应有 `memory` 且无 `memory_move`。随后空参数调用 `memory_move`，核对当前 schema 缺失按兼容策略放行后返回 `❌ 缺少参数：需要 key 和 newCategory`，并确认没有访问 `memories`/`memory_events`；全程 mock 所有 fetch。若 `tools/list` 触发 `syncChatTools`，用“已存在”的 mock 响应防止 POST。
+- **场景 3 — category prefix**：对未注册的 `category_move_category` 调用，记录它是否只通过名称门禁、最终返回 `unknown tool`，确认未进入旧 category handler/业务写入。
+- **场景 4 — missing handler**：fixture 加入 enabled `master-router`（无 `handler_config.handler`、`handler_type=text`）；记录 `tools/list` 暴露情况、`tools/call` 的真实结果，以及该失败结果是否仍触发 mock `usage_count` PATCH。只诊断，不改变 Router 语义。
+- 所有测试使用 stubbed `globalThis.fetch`，拦截全部网络和写方法；任何意外请求/写入都令用例失败。注意 Router 有模块级缓存，不能假设只更换 fixture 就会刷新缓存。
+- **必跑**：`npm run check`、`node tests/webhook_idempotency_test.mjs`、`node tests/router_registry_contract_test.mjs`。记录 Node/npm 版本、SHA/工作树、每条命令真实退出码、测试数量和关键输出。
+- **禁止**：不改 `src/**`；不访问真实 Supabase/记忆；不跑 E3；不改 registry/DB/schema/环境配置；不部署、不推/合并 main；不启动 `search_history/suggest` T0–T9；不清理/重置有改动的工作树。
+- 回填：在本文件执行结果追加区末尾追加时间戳结果，明确 E1/E2/新测试、失败、`NOT DEPLOYED` 和 `E3 NOT RUN`。若修复需改源码，先回报证据和最小差异建议，等待明确授权。
 
