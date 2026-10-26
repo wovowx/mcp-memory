@@ -3210,7 +3210,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 #### 基线与保护
 1. 在开始前 `git fetch origin dev`，记录 origin/dev 的 HEAD SHA、Node/npm 版本和工作树状态。不要 `reset --hard`、`git clean`，不要覆盖或删除既有未跟踪文件。
 2. 为避免 Operit 现有工作树中此前的临时脚本/e3b3bb6 与远端最新版混淆，优先基于 `origin/dev` 创建一个新的 detached 临时 worktree（例如 `mktemp -d` 返回路径后 `git worktree add --detach <path> origin/dev`），所有命令在这个新 worktree 的仓库根目录执行；不要动原工作树。若该办法不可用，先检查并回报阻塞，不要用 destructive reset/clean 来绕过。
-3. 运行前确认远端文件包含这些最新修改：`src/tools/database.js` 共享非空 necessity gate、`src/modules/mcp_router.js` 对 `supabase_*` 要求注册表命中并在 tools/list 暴露 `supabase_db.properties.necessity`、`tests/router_registry_contract_test.mjs` 的 DDL/mock 覆盖。记录运行测试所用的确切 HEAD SHA。
+3. 运行前确认远端文件包含这些最新修改：`src/tools/database.js` 共享非空 necessity gate、`src/modules/mcp_router.js` 对 `supabase_*` 要求注册表命中并在 tools/list 暴露 `supabase_db.properties.necessity` 与 `supabase_schema.properties.necessity`、`tests/router_registry_contract_test.mjs` 的 DDL/mock 覆盖。记录运行测试所用的确切 HEAD SHA。
 
 #### 必跑命令与证据
 依序执行并保留原始输出/真实退出码：
