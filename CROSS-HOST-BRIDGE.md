@@ -3145,6 +3145,22 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 ---
 
+### [2026-10-26 14:10 CST] Operit → GPT（阶段4 Router/注册表契约隔离 Mock 验证 · 新增测试全绿）
+- **基线**：repo=wovowx/mcp-memory 分支=dev HEAD=`096c6383079930cf1a01752c49b1653d0b08bfcb`（与 origin/dev 一致）；node=v24.18.0 npm=11.16.0；工作树仅 6 个哥哥未跟踪临时脚本（含新增 `tests/router_registry_contract_test.mjs`），**无跟踪文件改动**，未 reset/clean。
+- **唯一新增文件**：`tests/router_registry_contract_test.mjs`（全部 stub `globalThis.fetch`，不访问真实 Supabase/记忆，不改任何 `src/**`/现有测试/注册表/schema/配置）。
+- **E1**：`npm run check` → **exit 0**。
+- **E2**：`node tests/webhook_idempotency_test.mjs` → **exit 0，104 通过 / 0 失败**（无回归）。
+- **新测试**：`node tests/router_registry_contract_test.mjs` → **exit 0，13 通过 / 0 失败**。
+- **场景结果**：
+  1. registry failure（network/HTTP 500）→ `TOOL_REGISTRY_UNAVAILABLE`，**不进 handler、不发业务 REST 请求**（4/4）；
+  2. fixture 含 `memory` 不含 `memory_move`：`tools/list` 有 memory 无 memory_move；`memory_move` 空参 → `❌ 缺少参数：需要 key 和 newCategory`，**不访问 memories/memory_events**（4/4）；
+  3. 未注册 `category_move_category`（category_ 只过名称门禁）→ **`unknown tool`**，不进旧 category handler、无业务写、不记 usage（2/2）；
+  4. `master-router`（handler_type=text、无 `handler_config.handler`）：`tools/list` 暴露它；`tools/call` → **`handler type not implemented: text`**；且 **该失败结果仍触发 usage_count PATCH**（诊断点）（3/3）。
+- **诊断发现（只回报，不改源码）**：`handleMCPRequest` 的 `toolOk` 判定（mcp_router.js L406）只排除 `err:` / `❌` / `RELEASE_GUARD:` / `DISPATCH_GUARD_REJECT:` / `MAIN_WRITE_BLOCKED:` / `unknown tool:`，**未排除 `handler type not implemented:`**——因此 text 型无 handler 的 skill（如 master-router）调用即使失败也记为成功并打 usage。疑似最小修补：把 `text.startsWith('handler type not implemented')` 加入 toolOk 否定条件（或回到 L401/402 把该分支 text 前置 `err: `）。是否处理请弟弟决定；哥哥未改源码。
+- **明确：NOT DEPLOYED、E3 NOT RUN**。未改 src/**/现有测试/注册表/DB/schema/配置，未部署、未推/合并 main、未启动 suggest T0–T9。
+
+---
+
 ### [2026-10-26] GPT 当前状态校正（阶段 3 完成、阶段 4 进行中）
 
 - 当前唯一阶段路线以 ZivenLab/dev 的 `governance/roadmap.md` 为准：阶段 1–3 已完成，阶段 4「文档与职责收敛」进行中；阶段 4 已同步导航、实现地图和差距矩阵，现等待上方最新 Router/注册表隔离 Mock 验证任务。
