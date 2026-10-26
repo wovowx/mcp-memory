@@ -3247,7 +3247,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 ### [2026-10-26] GPT → Operit（create_patch_proposal schema / usage_count 修复后的一次性回归；仅本地验证）
 
-**本任务只授权读取最新 dev 并运行测试，不授权再改代码。** 之前 DDL gate 批次已在 SHA `2833a94e08c23b45a0598256a486463ee5d4cf6e` 通过；之后 `src/modules/mcp_router.js` 新增 `create_patch_proposal` 专用 schema（`target_file`、`change_summary`、`reason` 必填），tools/list 和 dispatchGuard 共用该 schema，并移除专用 handler 的提前 return，使成功结果进入统一 usage_count 打点；`tests/router_registry_contract_test.mjs` 从37扩展到42个 `check(...)` 调用点。最新改动尚未运行。
+**本任务只授权读取最新 dev 并运行测试，不授权再改代码。** 之前 DDL gate 批次已在 SHA `2833a94e08c23b45a0598256a486463ee5d4cf6e` 通过；之后 `src/modules/mcp_router.js` 新增 `create_patch_proposal` 专用 schema（`target_file`、`change_summary`、`reason` 必填），tools/list 和 dispatchGuard 共用该 schema，并移除专用 handler 的提前 return，使成功结果进入统一 usage_count 打点；测试从37扩展到42个 `check(...)` 调用点。随后 `src/tools/database.js` 将 `IMPORT` 与 `SECURITY` 关键词纳入通用 DDL gate，并在隔离测试中增加 `IMPORT FOREIGN SCHEMA`、`SECURITY LABEL` 两项拒绝路径，当前共44个 `check(...)` 调用点。**以上 create_patch 与关键词补强合并后的最新版尚未运行**。
 
 #### 执行步骤
 1. 获取最新 `origin/dev`，记录精确 HEAD SHA。
@@ -3256,7 +3256,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
    - `npm run check`
    - `node tests/webhook_idempotency_test.mjs`
    - `node tests/router_registry_contract_test.mjs`
-4. 记录每条命令的真实退出码与原始相关输出。预期 E1 exit 0、E2 104/104、Router Mock 42/42；预期不是证据，必须按实际结果回填。若失败，记录失败并停止，不临时改代码、不另开第二批。
+4. 记录每条命令的真实退出码与原始相关输出。预期 E1 exit 0、E2 104/104、Router Mock 44/44；预期不是证据，必须按实际结果回填。若失败，记录失败并停止，不临时改代码、不另开第二批。
 
 #### 严禁范围
 - 不移除 `globalThis.fetch` mock，不调用真实 Supabase REST/RPC 或 MCP endpoint，不执行真实 DDL/SQL，不写数据库。
