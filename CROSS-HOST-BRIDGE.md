@@ -3195,4 +3195,5 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 已通过 GitHub 工具将 Operit 回填的同一份隔离 Mock 测试脚本写入 `dev/tests/router_registry_contract_test.mjs`，写入后回读核对成功，文件可从仓库根目录运行，无设备绝对路径。脚本以 `globalThis.fetch` 完全 mock 请求；不触达真实 Supabase/MCP endpoint。
 - `main...dev` 即时对比：ahead 12、behind 0，4 个文件差异：`CROSS-HOST-BRIDGE.md`、`README.md`、`src/modules/mcp_router.js`、`tests/router_registry_contract_test.mjs`。本条确认测试资产已存在于远端 dev；不代表 GPT 独立执行过 Node 测试。
 - 本批改动边界：仅修复 usage_count 成功判定并加入隔离测试；不改 DB/schema、注册表或配置。**NOT DEPLOYED；E3 NOT RUN；未推/合并 main。**
+- **后续静态复核发现一处证据对齐问题（2026-10-26）：** Operit 回报其本地测试输出为 16/16，但当前远端 `tests/router_registry_contract_test.mjs` 经静态计数仅有 15 个 `check(...)` 调用点（不含函数声明）。因此不能直接认定 Operit 的 16/16 输出严格对应当前远端文件字节内容；测试脚本本身已在 dev，但精确版本的回归证据仍需对齐。GPT 当前无法运行该 Node 测试，且不应为了重复执行默认消耗 Operit token；把“核对精确脚本版本并取得一次真实退出码”与后续需要本地 Node 验证的事项合并为一个批次，仅在确有必要时委派。此前的 16/16 作为 Operit 回报保留，不抹去历史，但当前远端文件的可复核运行状态暂标为 **NOT RE-RUN / exact-output alignment pending**。
 
