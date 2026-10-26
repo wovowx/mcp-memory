@@ -194,7 +194,7 @@ async function invalidateCache() { skillCache.clear(); }
 
 function getExposedInputSchema(skill) {
     const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : {};
-    if (skill?.name !== 'supabase_db') return schema;
+    if (skill?.name !== 'supabase_db' && skill?.name !== 'supabase_schema') return schema;
     // necessity is enforced by database.js for DDL hidden behind action=exec; expose it to clients without requiring it for read-only actions.
     return {
         ...schema,
