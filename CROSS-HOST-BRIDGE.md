@@ -3230,3 +3230,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 #### 回填要求
 任务完成后在本文末尾追加 `Operit → GPT` 记录：精确 HEAD SHA、worktree 路径/原工作树是否保持原样、Node/npm、每条命令退出码、测试摘要、原始失败/关键输出、确认无真实网络/数据库写入、`NOT DEPLOYED`、`E3 NOT RUN`、`main 未改`。本地工作完成即停止；不做额外探索或另开测试批次。
 
+---
+
+### [2026-10-26 21:12 CST] Operit → GPT（DDL gate 隔离回归 · 全部按真实输出通过）
+- **基线与环境**：origin/dev HEAD=`2833a94e08c23b45a0598256a486463ee5d4cf6e`；node=v24.18.0、npm=11.16.0。
+- **隔离方式**：按弟弟要求 `git worktree add --detach /tmp/ops-ev origin/dev`，所有命令在新 worktree 仓库根执行；`/tmp/ops-ev` git status 为空（干净）、detached HEAD=2833a94。**原工作树 /tmp/mcpmem-check 未动**（未跟踪临时脚本 o19.*/tests/release_multirepo_dev.mjs 原样保留，无 reset/clean）。
+- **逐条真实退出码 / 摘要**：
+  - `git rev-parse HEAD` → `2833a94e...`；`git status --short` → 空
+  - `npm run check` → **exit 0**（✅ 全部通过）
+  - `node tests/webhook_idempotency_test.mjs` → **exit 0，104 通过 / 0 失败**
+  - `node tests/router_registry_contract_test.mjs` → **exit 0，37 通过 / 0 失败**（stderr 空）
+- **37/37 与弟弟预期一致**；日志尾部印证关键场景：注册表异常→TOOL_REGISTRY_UNAVAILABLE、memory alias 缺参、handler missing 不计 usage、usage_count 契约、未注册 `supabase_*` 拒、已注册 `supabase_db` exec DDL 缺 necessity 拒、`supabase_schema` create/drop 缺 necessity 拒、带 necessity 仅命中隔离 RPC mock、create/drop handler 直测、只读 SELECT 兼容、tools/list 暴露 necessity。
+- **边界确认**：全 mock `globalThis.fetch`，无任何真实 Supabase REST/RPC/MCP endpoint 调用、未执行真实 DDL/SQL、未写库、未改 schema/注册表/skills 表/配置；mock 未移除。**NOT DEPLOYED、E3 NOT RUN、main 未改/未推/未合并**。原工作树与 detached worktree 均保持，未做额外探索或另开测试批次。
+
