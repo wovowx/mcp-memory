@@ -1,6 +1,7 @@
 // 阶段4：Router/注册表契约隔离 Mock 回归测试（Operit 独立测试 · 2026-10-26）
 // 运行：从仓库根目录执行 node tests/router_registry_contract_test.mjs
 import { handleMCPRequest } from '../src/modules/mcp_router.js';
+import { handleDatabaseTool } from '../src/tools/database.js';
 
 const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
 let pass = 0, fail = 0;
@@ -8,11 +9,13 @@ function check(name, cond, extra = '') { if (cond) { pass++; console.log('  ✅ 
 
 const fixture = [
   { name: 'memory', enabled: true, description: 'memory tool', handler_type: 'js', handler_config: { handler: 'memory' } },
+  { name: 'supabase_db', enabled: true, description: 'database', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['query', 'insert', 'update', 'delete', 'tables', 'exec'] }, sql: { type: 'string' }, necessity: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' } } } },
   { name: 'image_upload', enabled: true, description: 'media', handler_type: 'ai', handler_config: { handler: 'ai' } },
   { name: 'master-router', enabled: true, description: 'router', handler_type: 'text' }, // 无 handler_config.handler
   { name: 'memory_remember', enabled: true, description: 'remember', handler_type: 'js', handler_config: { handler: 'memory' } }
 ];
 let registryMode = 'ok'; let memoriesRestCount = 0; let usagePatchCount = 0; let otherRestCount = 0;
+let ddlRpcCount = 0; let tableListCount = 0; let lastExecSql = '';
 const origFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts = {}) => {
   const s = String(url); const m = (opts.method || 'GET').toUpperCase();
@@ -26,6 +29,8 @@ globalThis.fetch = async (url, opts = {}) => {
     const hit = nm ? fixture.find(x => x.name === decodeURIComponent(nm)) : null;
     return { ok: true, status: 200, json: async () => hit ? [hit] : [] };
   }
+  if (s.includes('/rest/v1/rpc/exec_sql')) { ddlRpcCount++; lastExecSql = JSON.parse(opts.body || '{}').sql || ''; return { ok: true, status: 200, text: async () => '', json: async () => [] }; }
+  if (s.endsWith('/rest/v1/')) { tableListCount++; return { ok: true, status: 200, json: async () => ({ definitions: { memories: {}, memory_events: {} } }) }; }
   if (s.includes('/rest/v1/memories') || s.includes('/rest/v1/memory_events')) { memoriesRestCount++; return { ok: true, status: 200, json: async () => [] }; }
   if (s.includes('/rest/v1/')) { otherRestCount++; return { ok: true, status: 200, json: async () => [] }; }
   throw new Error('unexpected mock fetch: ' + s);
@@ -49,6 +54,36 @@ try {
   usagePatchCount = 0; t = await callTool('memory_move', {}); check('memory_move 失败缺参不计数', usagePatchCount === 0);
   t = await callTool('memory_remember', {}); check('已注册 handler 返回参数失败不计数', t.startsWith('❌') && usagePatchCount === 0);
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
+
+  ddlRpcCount = 0; tableListCount = 0;
+  t = await callTool('supabase_exec', { action: 'exec', sql: 'DROP TABLE public.mock_probe' });
+  check('未注册 supabase_ 前缀拒绝', t.includes('[UNKNOWN_TOOL]'));
+  check('未注册前缀不触达 exec_sql', ddlRpcCount === 0);
+
+  ddlRpcCount = 0; tableListCount = 0;
+  t = await callTool('supabase_db', { action: 'exec', sql: 'ALTER TABLE public.mock_probe ADD COLUMN probe text' });
+  check('exec DDL 缺 necessity 被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED'));
+  check('exec DDL 被拒时不调用 RPC', ddlRpcCount === 0);
+  check('exec DDL 拒绝前尝试列出现有表', tableListCount === 1);
+
+  ddlRpcCount = 0; tableListCount = 0;
+  t = await handleDatabaseTool('supabase_db', { action: 'create_table', table: 'mock_probe', columns: 'id uuid' }, env);
+  check('create_table 空 necessity 仍被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED') && ddlRpcCount === 0);
+  t = await handleDatabaseTool('supabase_db', { action: 'drop_table', table: 'mock_probe', necessity: 'fixture check' }, env);
+  check('drop_table 空间要求独立测试通过 necessity 后到 RPC', t.startsWith('✅ 删表成功') && ddlRpcCount === 1 && lastExecSql.startsWith('DROP TABLE'));
+
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_db', { action: 'drop_table', table: 'mock_probe', necessity: '   ' }, env);
+  check('drop_table 空白 necessity 被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED') && ddlRpcCount === 0);
+
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_db', { action: 'exec', sql: 'DROP TABLE public.mock_probe' }, env);
+  check('exec DDL 空 necessity 被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED') && ddlRpcCount === 0);
+  t = await handleDatabaseTool('supabase_db', { action: 'exec', sql: 'SELECT 1' }, env);
+  check('exec 只读 SQL 保持兼容', t.startsWith('✅ SQL执行成功') && ddlRpcCount === 1 && lastExecSql === 'SELECT 1');
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_db', { action: 'exec', sql: 'CREATE TABLE public.mock_probe (id uuid)', necessity: 'fixture check' }, env);
+  check('exec DDL 提供 necessity 后仅命中隔离 RPC mock', t.startsWith('✅ SQL执行成功') && ddlRpcCount === 1 && lastExecSql.startsWith('CREATE TABLE'));
 } finally { globalThis.fetch = origFetch; }
 console.log('===== ' + pass + ' 通过 / ' + fail + ' 失败 =====');
 process.exit(fail ? 1 : 0);
