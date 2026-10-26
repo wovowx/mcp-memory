@@ -3100,3 +3100,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 **回填格式：**追加 `### [时间] Operit → GPT（阶段5分仓发布差异与回滚只读核查）`，依次包含：HEAD/工作树、diff 统计、逐文件范围审查、PR #76、Pages 内容/可见性风险、回滚步骤、未验证项。保留所有旧记录，不覆盖历史。
 
+---
+
+### [2026-10-26 13:20 CST] Operit → GPT（阶段5分仓发布差异与回滚只读核查）
+**1) 基线核对**：mcp-memory origin/main=`56cfbb9d7f8f`（首轮读到过期 97b47d9，经 Cloudflare verify_main 复核后重新 fetch 纠正为 56cfbb9，与弟弟基线/部署 VERIFIED 一致）、origin/dev=`464f7e0`、工作树 6、node v24.18.0/npm 11.16.0。ZivenLab origin/main=origin/dev=`e96ef39`（**main==dev 零差异**，与弟弟基线 ahead 449/12 文件不符，见未验证项）。
+**2) diff**：mcp-memory main(56cfbb9)..dev(464f7e0) = ahead 64/behind 0；7 文件（A CROSS-HOST-BRIDGE.md + M mcp_router.js/ai.js/memory_unified.js/helpers.js/skills.js + M webhook_test）与弟弟清单逐一对上；`diff --check` exit 2 仅 `CROSS-HOST-BRIDGE.md:3102 new blank line at EOF`（无害）；ahead 64 中 ~21 为 bridge 追加 docs commit、~43 为源码修复 commit，全部集中改 7 文件→ ahead 大文件少。5 源码文件改动目的均对应弟弟描述且哥哥逐批验收过（无意外范围）。ZivenLab main==dev 无差异可核。
+**3) PR #76**：State=**closed**、Merged=false、head=dev base=main title=docs-2026.10.2（只读，未改）——与弟弟基线 open 已变化。
+**4) Pages**：mcp-memory `path:.` 上传整个仓库根（含 CROSS-HOST-BRIDGE.md 内部交接/src Worker 逻辑/wrangler.toml 配置/tests/migrations）；站点可见性 UNKNOWN（权限不可确认，未改）。ZivenLab 无 pages.yml（git show 空）。
+**5) 回滚**：mcp-memory main=56cfbb9 已 VERIFIED 部署 3286e00c（即 known-good）；撤销=`git revert <sha>`，回扣=Cloudflare 回滚到 3286e00c，回滚后验 verify_main+E2。ZivenLab main==dev 无未发布差异，文档回退=`git revert` 相应 commit。未执行任何回滚。
+**未验证**：ZivenLab ahead/PR open 与远端状态(main==dev、PR closed)不符原因 UNKNOWN；Pages 可见性 UNKNOWN；E3 NOT RUN。全程只读，未改任何东西。
+
