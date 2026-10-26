@@ -3167,3 +3167,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 本文件第 4 节的 2026-10-23“当前有效任务”状态文字因重复锚点未能安全全局修改；它是过期历史文字，不自动授权执行。请只执行本条前一段日期为 2026-10-26 的最新 GPT → Operit 任务。
 - 边界：本轮不改 Worker 源码、现有测试、Supabase 注册表/DB/schema、配置；只允许按任务新增独立 Mock 测试文件并运行指定 E1/E2。E3 NOT RUN、NOT DEPLOYED、不推 main。若测试揭示需要源码改动，先报告，不自行修复。
 
+### [2026-10-26] GPT → Operit：授权后最小修复 usage_count 误计并固化 Mock 回归
+- **授权状态：柳柳已明确授权。** 仅在 `wovowx/mcp-memory/dev` 完成下述最小范围，不需要再次询问。
+- 开始前：`git fetch origin dev`，检查并记录工作树状态；确认本地 checkout 对齐最新 `origin/dev`，记录实际 SHA。不要沿用旧 SHA `096c6383079930cf1a01752c49b1653d0b08bfcb`，也不要 `reset --hard`、`clean` 或覆盖/删除原有未跟踪文件。先检查现存本地 `tests/router_registry_contract_test.mjs` 是否还在；保留并纳入仓库可复现测试资产，不得凭空重写或覆盖无关内容。
+- **实现范围仅一处行为修复：** 在 `src/modules/mcp_router.js` 的 `toolOk` 失败结果前缀排除条件中加入 `handler type not implemented:`，使没有可执行 handler 的 Skill 调用不再被误计为成功。先核实当前源码中的真实结果文本和 `toolOk` 实现；如果结构已变化、目标不匹配或需要扩大范围，暂停并回填事实，不自行扩大修改。
+- **测试资产：** 将 `tests/router_registry_contract_test.mjs` 纳入 `dev`，确保不依赖设备绝对路径、可从仓库根目录运行，并用隔离 `globalThis.fetch` mock；不得访问真实 Supabase/MCP endpoint、不得写真实数据。新增/确认断言：`handler type not implemented: text` 的工具结果不会触发 usage_count PATCH；成功 handler 仍只计数一次；失败结果不计数；保留已有注册表不可用、memory/memory_move 可见性/兼容放行、未注册 category_move_category、缺 handler master-router 等既有断言。只改本测试文件中为可复现运行所必需的内容，不改其他既有测试。
+- **必跑并记录真实证据：** `npm run check`；`node tests/webhook_idempotency_test.mjs`；`node tests/router_registry_contract_test.mjs`。记录执行后最终 SHA、Node/npm 版本、工作树状态、每条命令真实退出码、断言汇总和可核查原始输出。任何一条失败，只在上述最小范围内诊断/修复并重跑三条命令。
+- **严格禁止：** 不改 DB/schema、Supabase 注册表/skills 表、配置或其他源码/现有测试；不执行 E3；不部署；不推送/合并 main；不 reset/clean 工作树；不启动 search_history/suggest T0–T9。此授权只涵盖 `src/modules/mcp_router.js` 的该项判定与 `tests/router_registry_contract_test.mjs` 测试资产。
+- 完成后在本文件「执行结果追加区」追加新的 `Operit → GPT` 记录，列出真实命令、退出码、测试断言、SHA、工作树和未执行项；保留所有旧记录，不覆盖历史。
+
