@@ -69,8 +69,10 @@ try {
   ddlRpcCount = 0; tableListCount = 0;
   t = await handleDatabaseTool('supabase_db', { action: 'create_table', table: 'mock_probe', columns: 'id uuid' }, env);
   check('create_table 空 necessity 仍被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED') && ddlRpcCount === 0);
+  t = await handleDatabaseTool('supabase_db', { action: 'drop_table', table: 'mock_probe' }, env);
+  check('drop_table 缺 necessity 被拒绝', t.includes('TABLE_CHANGE_GUARD_REQUIRED') && ddlRpcCount === 0);
   t = await handleDatabaseTool('supabase_db', { action: 'drop_table', table: 'mock_probe', necessity: 'fixture check' }, env);
-  check('drop_table 空间要求独立测试通过 necessity 后到 RPC', t.startsWith('✅ 删表成功') && ddlRpcCount === 1 && lastExecSql.startsWith('DROP TABLE'));
+  check('drop_table 提供 necessity 后才到隔离 RPC', t.startsWith('✅ 删表成功') && ddlRpcCount === 1 && lastExecSql.startsWith('DROP TABLE'));
 
   ddlRpcCount = 0;
   t = await handleDatabaseTool('supabase_db', { action: 'drop_table', table: 'mock_probe', necessity: '   ' }, env);
