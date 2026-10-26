@@ -3220,7 +3220,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - `node tests/webhook_idempotency_test.mjs`
 - `node tests/router_registry_contract_test.mjs`
 
-当前远端 Router Mock 静态有 30 个 `check(...)` 调用点，包含注册表异常、memory alias、handler missing、usage_count、未注册 `supabase_*` 前缀拒绝、registered `supabase_db` 的 exec DDL 缺 necessity 拒绝、create/drop handler 缺/空 necessity 拒绝、提供 necessity 后只命中 fake `exec_sql`、只读 SELECT 兼容，以及 tools/list 暴露 necessity 且不扩大 action enum。预期结果是 E1 exit 0、E2 104/104、新 Mock 30/30；**预期不是证据**，必须依据真实终端输出填数。如果测试脚本实际 pass 数不同、任何命令失败或发现代码行为不符合上述描述，完整回填输出/失败点即可，不要扩大修改或自动进行第二次委派。
+当前远端 Router Mock 静态有 37 个 `check(...)` 调用点，包含注册表异常、memory alias、handler missing、usage_count、未注册 `supabase_*` 前缀拒绝、已注册 `supabase_db` 的 exec DDL 缺 necessity 拒绝、已注册 `supabase_schema` 的 create/drop 缺 necessity 拒绝及带 necessity 后只命中 fake `exec_sql`、create/drop handler 直测、只读 SELECT 兼容，以及 tools/list 为两个注册工具暴露 necessity 且不扩大 `supabase_db` action enum。预期结果是 E1 exit 0、E2 104/104、新 Mock 37/37；**预期不是证据**，必须依据真实终端输出填数。如果测试脚本实际 pass 数不同、任何命令失败或发现代码行为不符合上述描述，完整回填输出/失败点即可，不要扩大修改或自动进行第二次委派。
 
 #### 严禁范围
 - Mock 测试由 `globalThis.fetch` 接管所有网络；不得移除 mock、不得真实调用 Supabase REST/RPC 或 MCP endpoint。
