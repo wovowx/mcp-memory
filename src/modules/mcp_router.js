@@ -74,10 +74,25 @@ async function isKnownTool(env, name) {
 // v6.35.8 (2026-10-18)：从工具注册表取 input_schema（含 required）。
 // 对齐"踩肩+不重复造"：直接复用 skills 表/GITHUB_TOOL_DEFS 已有的参数契约，不自己定义。
 // 返回 null=查不到 schema（这种情况走信封校验放行，不误伤无 schema 的工具）。
+const CREATE_PATCH_PROPOSAL_SCHEMA = {
+    type: 'object',
+    required: ['target_file', 'change_summary', 'reason'],
+    properties: {
+        target_file: { type: 'string' },
+        change_summary: { type: 'string' },
+        reason: { type: 'string' },
+        evidence: { type: ['string', 'array'] },
+        diff: { type: ['string', 'object'] },
+        risk: { type: 'string' },
+        old_sha: { type: 'string' }
+    }
+};
+
 async function getToolSchema(env, name) {
-    // 注册表查询成功但没有 schema 时返回 null；查询失败必须向上传递，不能伪装成“未配置 schema”。
+    // 注册表查询失败必须向上传递，不能伪装成“未配置 schema”。
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
+    if (name === 'create_patch_proposal') return CREATE_PATCH_PROPOSAL_SCHEMA;
     if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
         return skill.input_schema;
     }
@@ -194,6 +209,7 @@ async function invalidateCache() { skillCache.clear(); }
 
 function getExposedInputSchema(skill) {
     const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : {};
+    if (skill?.name === 'create_patch_proposal') return CREATE_PATCH_PROPOSAL_SCHEMA;
     if (skill?.name !== 'supabase_db' && skill?.name !== 'supabase_schema') return schema;
     // necessity is enforced by database.js for DDL hidden behind action=exec; expose it to clients without requiring it for read-only actions.
     return {
@@ -371,12 +387,10 @@ export async function handleMCPRequest(body, env) {
         }
         let text = '';
         try {
-            // create_patch_proposal 提前拦截（无论 skills 注册与否）
+            // 专用 handler 保留，但不提前 return：成功/失败统一经过下方 toolOk 与 usage 打点。
             if (name === 'create_patch_proposal') {
                 text = await handleCreatePatchProposal(safeArgs, env);
-                return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
-            }
-            if (name?.startsWith('supabase_')) {
+            } else if (name?.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
                 await invalidateCache();
             } else if (name === 'memory' || name?.startsWith('memory_')) {
