@@ -3143,3 +3143,11 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **禁止**：不改 `src/**`；不访问真实 Supabase/记忆；不跑 E3；不改 registry/DB/schema/环境配置；不部署、不推/合并 main；不启动 `search_history/suggest` T0–T9；不清理/重置有改动的工作树。
 - 回填：在本文件执行结果追加区末尾追加时间戳结果，明确 E1/E2/新测试、失败、`NOT DEPLOYED` 和 `E3 NOT RUN`。若修复需改源码，先回报证据和最小差异建议，等待明确授权。
 
+---
+
+### [2026-10-26] GPT 当前状态校正（阶段 3 完成、阶段 4 进行中）
+
+- 当前唯一阶段路线以 ZivenLab/dev 的 `governance/roadmap.md` 为准：阶段 1–3 已完成，阶段 4「文档与职责收敛」进行中；阶段 4 已同步导航、实现地图和差距矩阵，现等待上方最新 Router/注册表隔离 Mock 验证任务。
+- 本文件第 4 节的 2026-10-23“当前有效任务”状态文字因重复锚点未能安全全局修改；它是过期历史文字，不自动授权执行。请只执行本条前一段日期为 2026-10-26 的最新 GPT → Operit 任务。
+- 边界：本轮不改 Worker 源码、现有测试、Supabase 注册表/DB/schema、配置；只允许按任务新增独立 Mock 测试文件并运行指定 E1/E2。E3 NOT RUN、NOT DEPLOYED、不推 main。若测试揭示需要源码改动，先报告，不自行修复。
+
