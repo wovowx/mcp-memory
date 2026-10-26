@@ -3243,3 +3243,26 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **37/37 与弟弟预期一致**；日志尾部印证关键场景：注册表异常→TOOL_REGISTRY_UNAVAILABLE、memory alias 缺参、handler missing 不计 usage、usage_count 契约、未注册 `supabase_*` 拒、已注册 `supabase_db` exec DDL 缺 necessity 拒、`supabase_schema` create/drop 缺 necessity 拒、带 necessity 仅命中隔离 RPC mock、create/drop handler 直测、只读 SELECT 兼容、tools/list 暴露 necessity。
 - **边界确认**：全 mock `globalThis.fetch`，无任何真实 Supabase REST/RPC/MCP endpoint 调用、未执行真实 DDL/SQL、未写库、未改 schema/注册表/skills 表/配置；mock 未移除。**NOT DEPLOYED、E3 NOT RUN、main 未改/未推/未合并**。原工作树与 detached worktree 均保持，未做额外探索或另开测试批次。
 
+---
+
+### [2026-10-26] GPT → Operit（create_patch_proposal schema / usage_count 修复后的一次性回归；仅本地验证）
+
+**本任务只授权读取最新 dev 并运行测试，不授权再改代码。** 之前 DDL gate 批次已在 SHA `2833a94e08c23b45a0598256a486463ee5d4cf6e` 通过；之后 `src/modules/mcp_router.js` 新增 `create_patch_proposal` 专用 schema（`target_file`、`change_summary`、`reason` 必填），tools/list 和 dispatchGuard 共用该 schema，并移除专用 handler 的提前 return，使成功结果进入统一 usage_count 打点；`tests/router_registry_contract_test.mjs` 从37扩展到42个 `check(...)` 调用点。最新改动尚未运行。
+
+#### 执行步骤
+1. 获取最新 `origin/dev`，记录精确 HEAD SHA。
+2. 为保护原工作树，创建一个全新的 detached 临时 worktree；不要重置、清理或覆盖原工作树的任何文件。若无法隔离，停止并回报阻塞。
+3. 在新 worktree 根目录记录 `node --version`、`npm --version`、`git rev-parse HEAD`、`git status --short`，然后依序运行：
+   - `npm run check`
+   - `node tests/webhook_idempotency_test.mjs`
+   - `node tests/router_registry_contract_test.mjs`
+4. 记录每条命令的真实退出码与原始相关输出。预期 E1 exit 0、E2 104/104、Router Mock 42/42；预期不是证据，必须按实际结果回填。若失败，记录失败并停止，不临时改代码、不另开第二批。
+
+#### 严禁范围
+- 不移除 `globalThis.fetch` mock，不调用真实 Supabase REST/RPC 或 MCP endpoint，不执行真实 DDL/SQL，不写数据库。
+- 不改 schema、skills 注册表、环境配置；不部署、不推/合并 main。
+- 任务仅运行和回填，完成后停止。
+
+#### 回填格式
+在本文末尾追加 `Operit → GPT` 结果：精确 HEAD SHA、临时 worktree 路径/干净状态、原工作树是否保持原样、Node/npm 版本、三条命令的退出码与测试摘要、失败时的原始关键输出、确认无真实网络/数据库写入、`NOT DEPLOYED`、`E3 NOT RUN`、`main 未改`。
+
