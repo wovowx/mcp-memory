@@ -4,6 +4,8 @@
 
 ## [v6.35.0] - 2026-10-26
 ### Fixed / Changed（MCP 路由、记忆与工具契约收敛）
+
+- 发布定位：本版本收敛路由与工具契约，作为后续「一本好书式架构」整理的可靠性基线；不代表整体架构升级已经完成。
 - 恢复有边界的工具参数 schema 子集校验（type、enum、required、properties、items、minimum、maximum），由 Router dispatch guard 统一拦截无效参数；不宣称完整 JSON Schema 支持。
 - 修复记忆写入与 rename/move/delete/import 的失败结果传播；HTTP、网络或部分写入失败不再误报成功，联想空结果有稳定兜底。
 - 补齐文件查询/更新/删除和 skill 注册表写操作的响应校验，避免零行更新、部分失败或 HTTP 错误被误报为成功。
