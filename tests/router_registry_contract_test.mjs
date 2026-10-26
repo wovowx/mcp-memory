@@ -9,7 +9,7 @@ function check(name, cond, extra = '') { if (cond) { pass++; console.log('  ✅ 
 
 const fixture = [
   { name: 'memory', enabled: true, description: 'memory tool', handler_type: 'js', handler_config: { handler: 'memory' } },
-  { name: 'supabase_db', enabled: true, description: 'database', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['query', 'insert', 'update', 'delete', 'tables', 'exec'] }, sql: { type: 'string' }, necessity: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' } } } },
+  { name: 'supabase_db', enabled: true, description: 'database', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['query', 'insert', 'update', 'delete', 'tables', 'exec'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' } } } },
   { name: 'image_upload', enabled: true, description: 'media', handler_type: 'ai', handler_config: { handler: 'ai' } },
   { name: 'master-router', enabled: true, description: 'router', handler_type: 'text' }, // 无 handler_config.handler
   { name: 'memory_remember', enabled: true, description: 'remember', handler_type: 'js', handler_config: { handler: 'memory' } }
@@ -36,7 +36,8 @@ globalThis.fetch = async (url, opts = {}) => {
   throw new Error('unexpected mock fetch: ' + s);
 };
 const callTool = async (name, args = {}) => (await handleMCPRequest({ jsonrpc: '2.0', id: 'c', method: 'tools/call', params: { name, arguments: args } }, env)).data.result.content[0].text;
-const listTools = async () => (await handleMCPRequest({ jsonrpc: '2.0', id: 'l', method: 'tools/list' }, env)).data.result.tools.map(t => t.name);
+const listToolDefs = async () => (await handleMCPRequest({ jsonrpc: '2.0', id: 'l', method: 'tools/list' }, env)).data.result.tools;
+const listTools = async () => (await listToolDefs()).map(t => t.name);
 try {
   registryMode = 'network'; memoriesRestCount = 0; otherRestCount = 0;
   let t = await callTool('memory_schema_probe_net'); check('net→TOOL_REGISTRY_UNAVAILABLE', t.includes('[TOOL_REGISTRY_UNAVAILABLE]')); check('net 不发业务 REST', memoriesRestCount === 0 && otherRestCount === 0);
@@ -54,6 +55,10 @@ try {
   usagePatchCount = 0; t = await callTool('memory_move', {}); check('memory_move 失败缺参不计数', usagePatchCount === 0);
   t = await callTool('memory_remember', {}); check('已注册 handler 返回参数失败不计数', t.startsWith('❌') && usagePatchCount === 0);
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
+
+  const listedDbTool = (await listToolDefs()).find(tool => tool.name === 'supabase_db');
+  check('tools/list 暴露可选 necessity 参数', listedDbTool?.inputSchema?.properties?.necessity?.type === 'string');
+  check('tools/list 不额外开放 drop_table action', !listedDbTool?.inputSchema?.properties?.action?.enum?.includes('drop_table'));
 
   ddlRpcCount = 0; tableListCount = 0;
   t = await callTool('supabase_exec', { action: 'exec', sql: 'DROP TABLE public.mock_probe' });
