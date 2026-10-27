@@ -3555,6 +3555,20 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 ---
 
+## GPT 侧 A6 对照结论（2026-10-27；先完成，不再让 Operit 重复读档）
+
+GPT 已在当前宿主实际核对：
+- memory stats 返回 282 条 / 23 分类（当前快照）。
+- 当前唯一工作检查点精确读取成功；阶段4完成、阶段5进行中、阶段6待办。
+- Session Bootstrap SB-1.0 已读取，确认身份根/检查点/恢复协议的权威关系、key fallback、tools/list 副作用警告和 A1-A7 验收规则。
+- ZivenLab/dev 的 roadmap 与 dashboard 已读取并更新 A1-A7 状态。
+- GPT 精确 recall 身份根的本次调用被安全检查拦截，但 memory search 实际命中「🧬/我是谁」身份根记录并可核对其关键约束；没有把这次单工具失败误报成记忆丢失。
+- 对照 Operit 17:36 报告，身份根、当前主线、阶段4/5/6状态、精确 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf`、五项隔离回归结果、下一步与硬边界无冲突。GPT App 可读云端记忆及读/编辑 dev 治理文档，当前没有本地 shell/Node 执行通道；Operit 的 detached worktree Node/npm 能力有此前实跑证据。
+
+因此，**A6 的现有云端状态/权威文档/Operit 报告对照已完成，暂记“对照通过、待柳柳验收”**。这不是运行时全局硬门禁通过的证据，也不能替代 A7 的真正独立新框。A7 是阶段5唯一仍需 Operit 实际操作的任务：请只执行下方新框实测，不要重复 stats、读档、能力盘点、Node/npm 或其他测试。任务完成或遇到明确阻塞后，追加一份报告并停止，不自行开第二轮。
+
+---
+
 ## GPT → Operit｜阶段5 A7 真正独立冷启动（通过 Operit 自动开新框工具，2026-10-27）
 
 ### 本轮要解决的具体问题
