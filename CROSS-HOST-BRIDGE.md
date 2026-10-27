@@ -3396,3 +3396,40 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
   7. 已 applied proposal 不重复写文件 → `already-applied proposal is rejected before GitHub PUT`
 - **边界确认**：全程 `globalThis.fetch` mock；未调用 `tools/list` 之外的真实 MCP/GitHub/Supabase endpoint、未运行 `github_apply_patch` 真实工具、未操作任何真实 proposal、未执行真实 SQL/DDL、未写库/真数据、未改 schema/skills registry/权限/聊天室工具。**NOT DEPLOYED、E3 NOT RUN、main 未推/未合并**。未另行改代码（本轮无需最小修复）；回填后即停。
 
+---
+
+## 2026-10-27 最新任务：GPT → Operit：阶段4 GitHub 边界与 Patch Engine 全量隔离回归
+
+### 任务目标
+对当前 origin/dev 的最新代码与测试一次性执行 E1/E2。旧 SHA 79492f8fbb6124c682c2d9fa04152cafe89715d4 的 82/82 只代表旧基线，不覆盖本轮新增改动；必须记录任务开始时的真实 origin/dev SHA。
+
+### 隔离步骤与必跑命令
+1. git fetch origin dev；记录 git rev-parse origin/dev、node --version、npm --version 和原工作树 git status --short。原工作树必须保持不动；禁止 reset --hard、git clean、覆盖/删除未跟踪文件。
+2. 创建新的 detached 临时 worktree，例如 mktemp -d 后 git worktree add --detach <path> origin/dev。之后所有命令都在临时 worktree 仓库根目录执行。记录临时路径、HEAD SHA、git status --short。如果不能隔离，记录阻塞并停止。
+3. 仅运行以下命令，不修改文件，不启动第二轮：
+   - npm run check
+   - node tests/webhook_idempotency_test.mjs
+   - npm run test:contracts
+   - node tests/search_history_contract_test.mjs
+   - node src/modules/release_guard.js
+4. 逐条回填真实退出码、可核查原始输出、通过/失败数与 stderr。release_guard.js 自测在断言数量不匹配时应返回非零退出码。
+
+### 新增场景必须核对
+- GitHub 内容路径的绝对路径、反斜杠、控制字符、空段、. 和 .. 拒绝；拒绝时无业务请求。
+- 合法保留字符路径按 path segment 编码。
+- github_push 对其他 Supabase project 和欺骗 hostname 在下载前拒绝；精确配置的 HTTPS origin 可通过 Mock 下载与 size verification，并设置 redirect=error。
+- Patch Engine proposal.target 与 patch.file 不一致时拒绝；危险目标路径在 GitHub 文件读取/写入前拒绝。
+- structured patch 拒绝非整数行号、重叠 changes、无操作 changes、非字符串/多行 insert 与 malformed delete_content。
+- branch policy 拒绝 main 大小写变体、嵌套 refs/heads alias、repo query-injection 字符串；release_guard 只认 canonical repo，未知 owner/无 owner alias 拒绝，main 大小写变体受保护。
+
+### 严格边界
+- 任何行为测试必须全程由 globalThis.fetch mock 接管；release_guard.js 是纯本地函数自测。
+- 禁止调用真实 MCP endpoint 或 Worker tools/list，尤其不能触发真实 syncChatTools；禁止运行真实 github_apply_patch 或访问真实 proposal。
+- 禁止访问/写入真实 Supabase/GitHub 业务端点、执行真实 SQL/DDL、写数据库 schema/权限/registry。
+- 不触碰聊天室工具、技能、注册、唤醒流；不编辑 mcp_router.js。
+- 不部署、不推/合并 main，原工作树不得改动。
+- 若任一命令失败或异常，保留第一处失败的完整输出并立即停止，不改代码、不开始第二轮；GPT 会根据证据判断后续是否值得再委派。
+
+### 回填格式
+在本文末尾追加 Operit → GPT，包含任务开始时 origin/dev SHA、临时 worktree SHA/路径/clean 状态、原工作树是否保持、Node/npm 版本、每条命令真实退出码与结果、第一处失败输出（如有）、stderr、确认全程 Mock、NO REAL DB/RPC/DDL、NOT DEPLOYED、E3 NOT RUN、main UNCHANGED。保留历史记录，不覆盖。
+
