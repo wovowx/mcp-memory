@@ -126,6 +126,103 @@ try {
   ddlRpcCount = 0;
   t = await handleDatabaseTool('supabase_db', { action: 'exec', sql: 'CREATE TABLE public.mock_probe (id uuid)', necessity: 'fixture check' }, env);
   check('exec DDL 提供 necessity 后仅命中隔离 RPC mock', t.startsWith('✅ SQL执行成功') && ddlRpcCount === 1 && lastExecSql.startsWith('CREATE TABLE'));
+
+  // Constrained DDL parser tests: all fetch calls remain isolated by the mock above.
+  ddlRpcCount = 0; tableListCount = 0;
+  t = await handleDatabaseTool('supabase_schema', {
+    action: 'create_table', table: 'mock_safe',
+    columns: 'id uuid PRIMARY KEY, name text NOT NULL',
+    necessity: 'isolated parser fixture'
+  }, env);
+  check('DDL parser accepts basic column definitions and safely quotes identifiers',
+    t.startsWith('✅ 建表成功') && ddlRpcCount === 1 &&
+    lastExecSql.includes('CREATE TABLE IF NOT EXISTS public."mock_safe" ("id" uuid PRIMARY KEY, "name" text NOT NULL)') &&
+    lastExecSql.includes('ALTER TABLE public."mock_safe" ENABLE ROW LEVEL SECURITY'));
+
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_schema', {
+    action: 'create_table', table: 'mock_defaults',
+    columns: "amount numeric(10,2) DEFAULT 12.34, aliases uuid[], display_name text DEFAULT 'O''Reilly, Jr.', active boolean DEFAULT true, created_at timestamptz DEFAULT CURRENT_TIMESTAMP, description text DEFAULT 'semi; DROP TABLE x --'",
+    necessity: 'isolated parser fixture'
+  }, env);
+  check('DDL parser accepts numeric(p,s), arrays, escaped string and safe defaults',
+    t.startsWith('✅ 建表成功') && ddlRpcCount === 1 &&
+    lastExecSql.includes('numeric(10,2) DEFAULT 12.34') &&
+    lastExecSql.includes("E'O''Reilly, Jr.'") &&
+    lastExecSql.includes("E'semi; DROP TABLE x --'") &&
+    lastExecSql.includes('uuid[]') && lastExecSql.includes('DEFAULT TRUE') &&
+    lastExecSql.includes('DEFAULT CURRENT_TIMESTAMP'));
+
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_schema', {
+    action: 'create_table', table: 'mock_no_rls',
+    columns: 'value varchar(40), code char(2), score double precision',
+    rls: false, necessity: 'isolated parser fixture'
+  }, env);
+  check('DDL parser accepts varchar/char/double precision and preserves rls=false',
+    t.startsWith('✅ 建表成功') && ddlRpcCount === 1 &&
+    lastExecSql.includes('"value" varchar(40)') &&
+    lastExecSql.includes('"code" char(2)') &&
+    lastExecSql.includes('"score" double precision') &&
+    !lastExecSql.includes('ENABLE ROW LEVEL SECURITY'));
+
+  const invalidTableNames = [
+    'BadName', 'public.mock_probe', 'mock_probe; DROP TABLE memories',
+    'mock probe', '"mock_probe"', 'x'.repeat(64)
+  ];
+  for (const invalidTable of invalidTableNames) {
+    ddlRpcCount = 0; tableListCount = 0;
+    t = await handleDatabaseTool('supabase_schema', {
+      action: 'create_table', table: invalidTable, columns: 'id uuid',
+      necessity: 'isolated parser fixture'
+    }, env);
+    check('rejects invalid table identifier without DDL RPC: ' + invalidTable,
+      t.startsWith('❌ 输入校验失败：') && ddlRpcCount === 0);
+  }
+
+  const invalidColumnDefinitions = [
+    'id uuid); DROP TABLE public.memories; --',
+    'id uuid; DROP TABLE public.memories',
+    'name text -- comment',
+    'id uuid /* comment */',
+    "name text DEFAULT 'unterminated",
+    'amount numeric(10,2',
+    'id uuid CHECK (true)',
+    'id custom_type',
+    'id integer DEFAULT 1 + 1',
+    'id uuid, id text',
+    'Name text',
+    'id uuid,',
+    'id uuid,, name text',
+    'id text[][]'
+  ];
+  for (const invalidColumns of invalidColumnDefinitions) {
+    ddlRpcCount = 0; tableListCount = 0;
+    t = await handleDatabaseTool('supabase_schema', {
+      action: 'create_table', table: 'mock_probe', columns: invalidColumns,
+      necessity: 'isolated parser fixture'
+    }, env);
+    check('rejects unsupported/injected column grammar without DDL RPC: ' + invalidColumns,
+      t.startsWith('❌ 输入校验失败：') && ddlRpcCount === 0);
+  }
+
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_schema', {
+    action: 'drop_table', table: 'mock_probe; DROP TABLE memories',
+    necessity: 'isolated parser fixture'
+  }, env);
+  check('drop_table rejects invalid identifier before RPC',
+    t.startsWith('❌ 输入校验失败：') && ddlRpcCount === 0);
+
+  ddlRpcCount = 0;
+  t = await handleDatabaseTool('supabase_schema', {
+    action: 'drop_table', table: 'mock_probe',
+    necessity: 'isolated parser fixture'
+  }, env);
+  check('drop_table valid identifier safely quoted and uses one isolated RPC',
+    t.startsWith('✅ 删表成功') && ddlRpcCount === 1 &&
+    lastExecSql === 'DROP TABLE IF EXISTS public."mock_probe" CASCADE');
+
 } finally { globalThis.fetch = origFetch; }
 console.log('===== ' + pass + ' 通过 / ' + fail + ' 失败 =====');
 process.exit(fail ? 1 : 0);
