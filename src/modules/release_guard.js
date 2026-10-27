@@ -174,4 +174,5 @@ if (typeof process !== 'undefined' && import.meta.url === `file://${process.argv
         if (ok) pass++;
     }
     console.log(`\n${pass}/${cases.length} passed`);
+    if (pass !== cases.length) process.exitCode = 1;
 }
