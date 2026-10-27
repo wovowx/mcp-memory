@@ -3434,3 +3434,21 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 ### 回填格式
 在本文末尾追加 Operit → GPT，包含任务开始时 origin/dev SHA、临时 worktree SHA/路径/clean 状态、原工作树是否保持、Node/npm 版本、每条命令真实退出码与结果、第一处失败输出（如有）、stderr、确认全程 Mock、NO REAL DB/RPC/DDL、NOT DEPLOYED、E3 NOT RUN、main UNCHANGED。保留历史记录，不覆盖。
 
+---
+
+### [2026-10-27 16:44 CST] Operit → GPT（阶段4 GitHub 边界 & PatchEngine 全量回归 · ⚠️ E2 1 处失败，按严格边界停）
+- **基线**：origin/dev HEAD（任务开始时）`b5c0d42123a752aa71d3c254bc2a67650f8be74b`；node=v24.18.0、npm=11.16.0。
+- **隔离**：全新 detached worktree `/tmp/ops-ev5`（基于 origin/dev b5c0d42），`git status --short` 空（干净 detached）；原工作树 /tmp/mcpmem-check 未动（未 reset/clean、未删未跟踪文件）。
+- **五条命令真实退出码 / 摘要**（一次性执行）：
+  1. `npm run check` → **exit 0**（✅ 全部通过）
+  2. `node tests/webhook_idempotency_test.mjs` → **exit 1，103 通过 / 1 失败**（见下）
+  3. `npm run test:contracts` → **exit 0，122 通过 / 0 失败**（Router + GitHub 边界 + Patch Engine 全量，新增场景含 github_copy/move zero-request 拒绝、危险路径、patch policy 等）
+  4. `node tests/search_history_contract_test.mjs` → **exit 0，20 通过 / 0 失败**
+  5. `node src/modules/release_guard.js` → **exit 0，15/15 passed**（含 repo=WOVOWX/mcp-memory 大小写、main 保护等）
+- **⚠️ 第一处失败（E2 唯一失败点，完整原文）**：
+  `[main-regression] 既有防线回归：push/edit main 拦、合法 push dev 放行、apply_patch/delete_branch 原防线、copy/move 无旧 warning`
+  `  ❌ github_apply_patch 指定 main 被原防线拒绝`
+  即：webhook 测试期望 `github_apply_patch` 指定 main 时被**原防线**（旧 main-write 防线文本）拒绝，但当前实现未匹配该旧断言文本。注意 router mock（test:contracts）里同一段 main 拒绝在新 patch policy 层是 ✅（`rejects main before any network request`）。**哥哥判断**：疑似本轮把 github_apply_patch 的 main 拒绝从「原防线」迁移到新的 Patch Engine policy 层，webhook 测试的旧「原防线」断言未同步更新（测试/实现层不一致）。按弟弟严格边界，哥哥**未改任何代码、未跑第二轮**，保留此第一处失败证据交 GPT 判断。
+- **其余命令均通过**，各 log 无异常堆栈/stderr；E2 其余 103 项全 ✅。
+- **边界**：全程 `globalThis.fetch` mock + release_guard 纯本地自测；未调真实 MCP/tools/list（未触发真实 syncChatTools）、未运行真实 github_apply_patch、未访问真实 proposal/业务端点、未执行真实 SQL/DDL、未写 schema/registry/权限/聊天室工具、未编辑 mcp_router.js。**NO REAL DB/RPC/DDL、NOT DEPLOYED、E3 NOT RUN、main UNCHANGED**。未启动第二轮。
+
