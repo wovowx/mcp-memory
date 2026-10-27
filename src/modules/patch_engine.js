@@ -53,19 +53,19 @@ export function applyPatch(fileContent, patch) {
 export function resolvePatchTargetPolicy(repo, branch, env = {}) {
   const targetRepo = String(repo || '').trim();
   const targetBranch = String(branch || '').trim();
-  if (!targetRepo || !/^[^/\s]+\/[^/\s]+$/.test(targetRepo)) {
-    return { ok: false, code: 'INVALID_REPOSITORY', reason: '目标仓库必须是 owner/repo 格式' };
+  if (!targetRepo || !/^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(targetRepo)) {
+    return { ok: false, code: 'INVALID_REPOSITORY', reason: '目标仓库必须是合法的 owner/repo 标识，不能包含 URL 查询或路径控制字符' };
   }
   if (!targetBranch || targetBranch.startsWith('-')) {
     return { ok: false, code: 'INVALID_BRANCH', reason: '目标分支无效' };
   }
   const canonicalBranch = targetBranch.replace(/^refs\/heads\//, '');
-  if (canonicalBranch === 'main') {
+  if (canonicalBranch.toLowerCase() === 'main') {
     return { ok: false, code: 'MAIN_PROTECTED', reason: 'github_apply_patch 禁止直接写入 main；请走独立发布审批流程' };
   }
   const configured = String(env.PATCH_ENGINE_ALLOWED_BRANCHES || 'dev')
     .split(',').map(s => s.trim()).filter(Boolean);
-  const allowedBranches = new Set(configured.map(s => s.replace(/^refs\/heads\//, '')).filter(s => s !== 'main'));
+  const allowedBranches = new Set(configured.map(s => s.replace(/^refs\/heads\//, '')).filter(s => s.toLowerCase() !== 'main'));
   if (!allowedBranches.has(canonicalBranch)) {
     return { ok: false, code: 'BRANCH_NOT_ALLOWED', reason: `目标分支未获授权：${canonicalBranch}。允许分支：${Array.from(allowedBranches).join(', ') || '(none)'}` };
   }
@@ -76,6 +76,22 @@ export function resolvePatchTargetPolicy(repo, branch, env = {}) {
     return { ok: false, code: 'REPOSITORY_NOT_ALLOWED', reason: `目标仓库未获授权：${targetRepo}。允许仓库：${[defaultRepo, ...configuredRepos].filter(Boolean).join(', ')}` };
   }
   return { ok: true, repo: targetRepo, branch: canonicalBranch };
+}
+
+// Validate an approved proposal's repository-relative target path before constructing a GitHub API URL.
+// GitHub path segments '.'/'..' are not escaped by encodeURIComponent and can normalize URL paths.
+export function validatePatchTargetFile(filePath) {
+  if (typeof filePath !== 'string' || !filePath || filePath !== filePath.trim()) {
+    return { ok: false, code: 'INVALID_TARGET_PATH', reason: '目标文件路径必须是非空且无首尾空白的相对路径' };
+  }
+  if (filePath.startsWith('/') || filePath.includes('\\') || /[\u0000-\u001f\u007f]/.test(filePath)) {
+    return { ok: false, code: 'INVALID_TARGET_PATH', reason: '目标文件路径不能是绝对路径，也不能含反斜杠或控制字符' };
+  }
+  const segments = filePath.split('/');
+  if (segments.some(segment => !segment || segment === '.' || segment === '..')) {
+    return { ok: false, code: 'INVALID_TARGET_PATH', reason: '目标文件路径不能包含空路径段、. 或 .. 段' };
+  }
+  return { ok: true, path: filePath };
 }
 
 // ============================================================
