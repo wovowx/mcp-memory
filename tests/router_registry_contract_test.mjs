@@ -262,6 +262,7 @@ try {
     let pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://another-project.supabase.co/storage/v1/object/public/files/demo.txt' }, pushEnv);
     const invalidPathCalls = [
       ['github_push', { path: '../outside.txt', branch: 'dev', content_url: 'https://mock.supabase.co/storage/v1/object/public/files/demo.txt' }],
+      ['github_push', { path: '   ', branch: 'dev', content_url: 'https://mock.supabase.co/storage/v1/object/public/files/demo.txt' }],
       ['github_read', { path: '../outside.txt', branch: 'dev' }],
       ['github_list', { path: 'src/../../outside', branch: 'dev' }],
       ['github_delete', { path: '../outside.txt', branch: 'dev' }],
@@ -269,6 +270,7 @@ try {
       ['github_copy', { source_repo: 'wovowx/mcp-memory', source_path: '../outside.txt', target_repo: 'wovowx/mcp-memory', target_path: 'copy.txt' }],
       ['github_copy', { source_repo: 'wovowx/mcp-memory', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_path: 'src/../../outside.txt' }],
       ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: '../outside.txt', target_repo: 'wovowx/mcp-memory', target_path: 'moved.txt' }],
+      ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: '   ', target_repo: 'wovowx/mcp-memory', target_path: 'moved.txt' }],
       ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_path: 'src/../../outside.txt' }]
     ];
     for (const [toolName, args] of invalidPathCalls) {
@@ -300,6 +302,7 @@ try {
   check('release guard blocks case-variant main branch', validateRelease({ repo: 'wovowx/mcp-memory', branch: 'MAIN', commitTitle: 'v1.0.0: test', action: 'push' }).allowed === false);
   check('Patch target validator rejects traversal segments', !validatePatchTargetFile('../outside.txt').ok && !validatePatchTargetFile('src/../../outside.txt').ok);
   check('Patch target validator rejects absolute/backslash/control paths', !validatePatchTargetFile('/root/file.txt').ok && !validatePatchTargetFile('src\\file.txt').ok && !validatePatchTargetFile('src/\u0000file.txt').ok);
+  check('shared path validator rejects blank and padded path segments', !validateRepoRelativePath('   ').ok && !validateRepoRelativePath('src/   /file.txt').ok && !validateRepoRelativePath(' src/file.txt').ok);
   check('Patch target validator permits ordinary repository-relative paths', validatePatchTargetFile('src/modules/example.js').ok);
   check('shared repository path helper returns segment-safe encoded paths', validateRepoRelativePath('src/a b/c#d.js').encodedPath === 'src/a%20b/c%23d.js');
   check('Patch validator rejects fractional line numbers', !validatePatch('a\nb', { file: 'f', changes: [{ start_line: 1.5, delete_lines: 0, insert_lines: ['x'] }] }).ok);
