@@ -250,6 +250,22 @@ try {
   const pushEnv = { GITHUB_TOKEN: 'mock-gh-token', GITHUB_REPO: 'wovowx/mcp-memory', SUPABASE_URL: 'https://mock.supabase.co' };
   try {
     let pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://another-project.supabase.co/storage/v1/object/public/files/demo.txt' }, pushEnv);
+    const invalidPathCalls = [
+      ['github_push', { path: '../outside.txt', branch: 'dev', content_url: 'https://mock.supabase.co/storage/v1/object/public/files/demo.txt' }],
+      ['github_read', { path: '../outside.txt', branch: 'dev' }],
+      ['github_list', { path: 'src/../../outside', branch: 'dev' }],
+      ['github_delete', { path: '../outside.txt', branch: 'dev' }],
+      ['github_edit', { path: '../outside.txt', branch: 'dev', operations: [{ old: 'a', new: 'b' }] }],
+      ['github_copy', { source_repo: 'wovowx/mcp-memory', source_path: '../outside.txt', target_repo: 'wovowx/mcp-memory', target_path: 'copy.txt' }],
+      ['github_copy', { source_repo: 'wovowx/mcp-memory', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_path: 'src/../../outside.txt' }],
+      ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: '../outside.txt', target_repo: 'wovowx/mcp-memory', target_path: 'moved.txt' }],
+      ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_path: 'src/../../outside.txt' }]
+    ];
+    for (const [toolName, args] of invalidPathCalls) {
+      const before = pushFetchCalls;
+      const rejected = await handleGitHubTool(toolName, args, pushEnv);
+      check(toolName + ' rejects traversal path before any request', rejected.includes('INVALID_REPO_PATH') && pushFetchCalls === before);
+    }
     check('github_push rejects a different Supabase project before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co.evil.example/storage/v1/object/public/files/demo.txt' }, pushEnv);
     check('github_push rejects deceptive Supabase hostname before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
