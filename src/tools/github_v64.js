@@ -880,6 +880,15 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     targetAbs: (mTargetPath === '' ? '' : mTargetPath + '/') + f.rel
                 }));
             }
+            // Paths returned by GitHub's tree API are still validated before any content is copied/deleted.
+            for (const item of plan) {
+                const sourceItemPath = validateRepoRelativePath(item.abs);
+                if (!sourceItemPath.ok) return (warn ? warn + '\\n\\n' : '') + 'ERROR: source tree path ' + sourceItemPath.code + ': ' + sourceItemPath.reason;
+                const targetItemPath = validateRepoRelativePath(item.targetAbs);
+                if (!targetItemPath.ok) return (warn ? warn + '\\n\\n' : '') + 'ERROR: target tree path ' + targetItemPath.code + ': ' + targetItemPath.reason;
+                item.encodedAbs = sourceItemPath.encodedPath;
+                item.encodedTargetAbs = targetItemPath.encodedPath;
+            }
 
             // 逐个 copy（带 size 校验），全部成功才进入删除阶段
             const copied = [];
