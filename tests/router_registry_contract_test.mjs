@@ -5,6 +5,7 @@ import { handleDatabaseTool } from '../src/tools/database.js';
 import { handleGitHubTool } from '../src/tools/github_v64.js';
 import { resolvePatchTargetPolicy, validatePatchTargetFile } from '../src/modules/patch_engine.js';
 import { detectRepoType, validateRelease } from '../src/modules/release_guard.js';
+import { validateRepoRelativePath } from '../src/utils/helpers.js';
 
 const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
 let pass = 0, fail = 0;
@@ -264,6 +265,7 @@ try {
   check('Patch target validator rejects traversal segments', !validatePatchTargetFile('../outside.txt').ok && !validatePatchTargetFile('src/../../outside.txt').ok);
   check('Patch target validator rejects absolute/backslash/control paths', !validatePatchTargetFile('/root/file.txt').ok && !validatePatchTargetFile('src\\file.txt').ok && !validatePatchTargetFile('src/\u0000file.txt').ok);
   check('Patch target validator permits ordinary repository-relative paths', validatePatchTargetFile('src/modules/example.js').ok);
+  check('shared repository path helper returns segment-safe encoded paths', validateRepoRelativePath('src/a b/c#d.js').encodedPath === 'src/a%20b/c%23d.js');
 
   check('Patch policy defaults to dev', resolvePatchTargetPolicy('wovowx/mcp-memory', 'dev', { GITHUB_REPO: 'wovowx/mcp-memory' }).ok);
   check('Patch policy blocks main alias refs/heads/main', !resolvePatchTargetPolicy('wovowx/mcp-memory', 'refs/heads/main', { GITHUB_REPO: 'wovowx/mcp-memory', PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/x,refs/heads/main' }).ok);
