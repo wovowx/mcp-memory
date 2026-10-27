@@ -3675,7 +3675,8 @@ GPT 已在当前宿主实际核对：
 
 #### 后续状态
 - 方案 A 已定案；A7 的验收标准已写入正式换框 Skill。
-- 静态回读正式初始化 message 后发现其步骤清单此前漏列「记忆位置导航」和 `⚙️/恢复协议·Session Bootstrap SB-1.0`，已在换框 Skill 中补齐，并明确精确 key 未命中时使用 memory search fallback。另更新 `master-router/SKILL.md`：裸密钥被定义为恢复提示，不等同于初始化成功；恢复协议优先读 `⚙️/恢复协议·Session Bootstrap SB-1.0`，旧 `/boot` key 不命中时 search fallback。只读检查发现 Supabase `skills` 表启用的 memory 工具 description 仍保留旧的“裸密钥→读取 `复苏协议·system://boot`”指示；这属于运行时注册 metadata，当前唤醒链/注册边界未解除，因此仅登记、未修改。完整初始化路径仍 UNKNOWN；没有调用 chat_with_agent/tools/list，也没有要求 Operit 重测。
+- 静态回读正式初始化 message 后发现其步骤清单此前漏列「记忆位置导航」和 `⚙️/恢复协议·Session Bootstrap SB-1.0`，已在换框 Skill 中补齐，并明确精确 key 未命中时使用 memory search fallback。另更新 `master-router/SKILL.md`：裸密钥被定义为恢复提示，不等同于初始化成功；恢复协议优先读 `⚙️/恢复协议·Session Bootstrap SB-1.0`，旧 `/boot` key 不命中时 search fallback。经柳柳明确授权，已只更新 Supabase `skills` 表 `name=memory` 的 `description`，对齐到当前恢复协议、导航 search fallback 与 `SB-FRAME-1.0` 验收契约；回读确认 `enabled=true`、`handler_config` 与 `input_schema` 均未变。此项关闭了 runtime description 的旧 key 文案差距，但不代表全局运行时硬门禁已实现。
+- 完整初始化路径仍 UNKNOWN；没有调用 `chat_with_agent` / `tools/list`，也没有要求 Operit 重测。
 - 2026-10-27 工作检查点键冲突已修复：原记录 ID `5b0048ab-0e0e-424e-adb5-958375cd375e` 曾被软删除但仍占用唯一 key，故 memory API 无法重新插入同键记录。经只读查询确认后，按精确 ID + status=deleted 条件恢复原记录 status=active、valid_to=null，并用 memory API 更新内容；标准键 `⚙️/当前工作检查点` 已精确 recall，DB 回读确认 active。完整旧值保存为 `⚙️/历史检查点·2026-10-27方案A定案前`；误建默认键副本已改名归档为 `⚙️/过渡检查点副本·2026-10-27键冲突修复`，未硬删除记忆。恢复 deleted→active 的状态动作本身未单独写入 memory_events；后续内容更新仍走 memory API 版本链。
 - 当前回归证据仍绑定代码基线 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf`：check exit 0、webhook104/104、contracts122/122、search_history20/20、release_guard15/15。此后仅有 Skill/桥接/治理文档更新，不能称这些更新经过新的行为回归；GPT 当前无本地 Node 执行通道，Operit 不重复跑测试以节省 token。
 - 继续做不触碰聊天室工具的阶段5/6文档一致性与静态验收；若未来要对正式换框路径做真实行为验证，必须先明确解除哪一项工具操作边界，再安排一次合并验证，避免重复消耗 Operit token。
