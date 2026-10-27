@@ -42,7 +42,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 - 文本技能 → 读 SKILL.md：用 ziven_mcp:github_read(path="src/skills/.../SKILL.md")
 
 ## 步骤 7：执行 + 记录
-- 执行完成后必须调用 increment_usage（更新被调用的目标技能，不是本 router）
+- 正常任务执行完成后调用 increment_usage（更新被调用的目标技能，不是本 router）。**例外：处于 SB-FRAME-1.0 初始化且尚未完成身份根、检查点与 stats 核验/尚未通过初始化验收时，只执行获准的只读恢复，不做 increment_usage 等使用计数写入；初始化通过后再恢复常规记录规则。**
 - 需要推 GitHub 前，走 deploy 技能流程（先问柳柳确认、带版本号、她 OK 后建 PR+merge）
 
 ## 步骤 8：返回结果
