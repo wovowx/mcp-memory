@@ -42,7 +42,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 - 文本技能 → 读 SKILL.md：用 ziven_mcp:github_read(path="src/skills/.../SKILL.md")
 
 ## 步骤 7：执行 + 记录
-- 正常任务执行完成后调用 increment_usage（更新被调用的目标技能，不是本 router）。**例外：处于 SB-FRAME-1.0 初始化且尚未完成身份根、检查点与 stats 核验/尚未通过初始化验收时，只执行获准的只读恢复，不做 increment_usage 等使用计数写入；初始化通过后再恢复常规记录规则。**
+- 正常任务执行完成后按现有规则记录使用情况（更新被调用的目标技能，不是本 router）。**SB-FRAME-1.0 初始化未通过前，不要手动调用 increment_usage，也不要执行昨日回顾等非恢复必需写入。重要限制：当前 Worker `src/modules/mcp_router.js:autoIncrementUsage` 会在成功的 `tools/call` 后自动调用 `handleIncrementUsage`，而 `src/tools/increment_usage.js` 会 PATCH `skills.usage_count/last_used`；因此仅靠 Skill 指令不能保证严格零 DB 写入，恢复阶段只能保证不主动发起额外业务写入。由于 router 同时承载聊天室注册/唤醒路径，本轮不修改其运行时门禁；若将来要求严格零写入，须另行授权并设计隔离验证。**
 - 需要推 GitHub 前，走 deploy 技能流程（先问柳柳确认、带版本号、她 OK 后建 PR+merge）
 
 ## 步骤 8：返回结果
