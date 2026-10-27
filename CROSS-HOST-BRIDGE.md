@@ -3415,11 +3415,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 4. 逐条回填真实退出码、可核查原始输出、通过/失败数与 stderr。release_guard.js 自测在断言数量不匹配时应返回非零退出码。
 
 ### 新增场景必须核对
-- GitHub 内容路径的绝对路径、反斜杠、控制字符、空段、. 和 .. 拒绝；拒绝时无业务请求。
-- 合法保留字符路径按 path segment 编码。
+- GitHub 内容路径的绝对路径、反斜杠、控制字符、空段、. 和 .. 拒绝；拒绝时无业务请求。合法保留字符路径按 path segment 编码；github_list 根目录仍能正常列出。
 - github_push 对其他 Supabase project 和欺骗 hostname 在下载前拒绝；精确配置的 HTTPS origin 可通过 Mock 下载与 size verification，并设置 redirect=error。
+- github_copy / github_move 的源和目标路径分别校验；github_move 的同仓同分支同路径必须在复制/删除前拒绝，确认不会把唯一源文件覆盖后再删掉。
 - Patch Engine proposal.target 与 patch.file 不一致时拒绝；危险目标路径在 GitHub 文件读取/写入前拒绝。
 - structured patch 拒绝非整数行号、重叠 changes、无操作 changes、非字符串/多行 insert 与 malformed delete_content。
+- Patch Engine 的 GitHub PUT 若 2xx 但响应缺 content SHA 或返回了不同 path，应返回 PARTIAL/UNKNOWN、保持 applying 且不发送 applied 状态 PATCH。
 - branch policy 拒绝 main 大小写变体、嵌套 refs/heads alias、repo query-injection 字符串；release_guard 只认 canonical repo，未知 owner/无 owner alias 拒绝，main 大小写变体受保护。
 
 ### 严格边界
