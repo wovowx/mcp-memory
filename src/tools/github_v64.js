@@ -9,7 +9,7 @@
 // 2026-09-01 ADD v6.3: GITHUB_TOOL_DEFS 元数据（自动注册真相源）+ github_auto_sync 自动同步
 // 2026-09-01 ADD v6.4: 基础工具第一阶段——github_read 范围读取+截断标记 / github_push 写入后 size 校验 / github_copy copy 后 size 校验（「API 成功 ≠ 文件成功」）
 import { getEnabledSkills, addSkill } from '../utils/skills.js';
-import { validatePatch, applyPatch, resolvePatchTargetPolicy } from '../modules/patch_engine.js';
+import { validatePatch, applyPatch, resolvePatchTargetPolicy, validatePatchTargetFile } from '../modules/patch_engine.js';
 
 // ============================================================
 // GITHUB_TOOL_DEFS - 所有 github_* 工具的元数据（唯一真相源）
@@ -221,12 +221,13 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (safeArgs.content_url) {
                 // v6.4.2: 大文件 url 通道——只允许我们自己的 Supabase 存储（先 /upload 上传拿 url），不经过 Agent 上下文
                 let cu; try { cu = new URL(safeArgs.content_url); } catch (e) { return (text ? text + '\n\n' : '') + 'ERROR: content_url invalid URL'; }
-                const cuHost = cu.hostname || '';
                 const cuPath = cu.pathname || '';
-                if (!cuHost.endsWith('.supabase.co') || !cuPath.startsWith('/storage/v1/object/public/files/')) {
-                    return (text ? text + '\n\n' : '') + 'ERROR: content_url must be our own Supabase storage url (*.supabase.co/storage/v1/object/public/files/...). Use our /upload endpoint first to get an url.';
+                let configuredOrigin = '';
+                try { configuredOrigin = new URL(env.SUPABASE_URL || '').origin; } catch (e) { configuredOrigin = ''; }
+                if (cu.protocol !== 'https:' || !configuredOrigin || cu.origin !== configuredOrigin || cu.username || cu.password || !cuPath.startsWith('/storage/v1/object/public/files/')) {
+                    return (text ? text + '\n\n' : '') + 'ERROR: content_url must be an HTTPS public-files URL on the exact configured SUPABASE_URL origin (/storage/v1/object/public/files/...). Use our /upload endpoint first to get an url.';
                 }
-                const urlResp = await fetch(safeArgs.content_url, { headers: { 'User-Agent': 'ziven-mcp' } });
+                const urlResp = await fetch(safeArgs.content_url, { headers: { 'User-Agent': 'ziven-mcp' }, redirect: 'error' });
                 if (!urlResp.ok) return (text ? text + '\n\n' : '') + 'ERROR: content_url fetch failed - HTTP ' + urlResp.status;
                 const buf = await urlResp.arrayBuffer();
                 const bytes = new Uint8Array(buf);
@@ -1244,8 +1245,15 @@ export async function handleGitHubTool(name, safeArgs, env) {
             let patch = null;
             try { patch = JSON.parse(proposal.diff); } catch (e) { patch = null; }
             if (!patch || !Array.isArray(patch.changes) || patch.changes.length === 0) return 'ERROR: proposal.diff 不是有效 structured patch JSON';
-            const targetFile = patch.file || proposal.target;
+            const proposalTarget = proposal.target == null ? '' : proposal.target;
+            const diffTarget = patch.file == null ? '' : patch.file;
+            if ((proposalTarget && typeof proposalTarget !== 'string') || (diffTarget && typeof diffTarget !== 'string')) return 'ERROR: proposal target / patch.file 必须是字符串路径';
+            if (proposalTarget && diffTarget && proposalTarget !== diffTarget) return 'ERROR: PATCH_TARGET_MISMATCH: proposal.target 与 patch.file 不一致；拒绝写入未经 proposal target 明确绑定的文件';
+            const targetFile = proposalTarget || diffTarget;
             if (!targetFile) return 'ERROR: 缺少目标文件（patch.file / proposal.target）';
+            const targetPathPolicy = validatePatchTargetFile(targetFile);
+            if (!targetPathPolicy.ok) return 'ERROR: ' + targetPathPolicy.code + ': ' + targetPathPolicy.reason;
+            patch.file = targetFile;
             // 3) 读目标文件当前内容（目标分支）
             const ghToken = env.GITHUB_TOKEN;
             if (!ghToken) return 'ERROR: GITHUB_TOKEN not configured';
