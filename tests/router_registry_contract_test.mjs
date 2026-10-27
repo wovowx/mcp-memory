@@ -284,7 +284,7 @@ try {
   check('shared repository path helper returns segment-safe encoded paths', validateRepoRelativePath('src/a b/c#d.js').encodedPath === 'src/a%20b/c%23d.js');
   check('Patch validator rejects fractional line numbers', !validatePatch('a\nb', { file: 'f', changes: [{ start_line: 1.5, delete_lines: 0, insert_lines: ['x'] }] }).ok);
   check('Patch validator rejects overlapping changes', !validatePatch('a\nb\nc', { file: 'f', changes: [{ start_line: 1, delete_lines: 2, insert_lines: [] }, { start_line: 2, delete_lines: 1, insert_lines: ['x'] }] }).ok);
-  check('Patch validator rejects multi-line entries and malformed delete snapshots', !validatePatch('a\nb', { file: 'f', changes: [{ start_line: 1, delete_lines: 0, insert_lines: ['x\ny'] }] }).ok && !validatePatch('a\\nb', { file: 'f', changes: [{ start_line: 1, delete_lines: 1, insert_lines: [], delete_content: [] }] }).ok);
+  check('Patch validator rejects multi-line entries and malformed delete snapshots', !validatePatch('a\nb', { file: 'f', changes: [{ start_line: 1, delete_lines: 0, insert_lines: ['x\ny'] }] }).ok && !validatePatch('a\nb', { file: 'f', changes: [{ start_line: 1, delete_lines: 1, insert_lines: [], delete_content: [] }] }).ok);
 
   check('Patch policy defaults to dev', resolvePatchTargetPolicy('wovowx/mcp-memory', 'dev', { GITHUB_REPO: 'wovowx/mcp-memory' }).ok);
   check('Patch policy blocks main alias refs/heads/main', !resolvePatchTargetPolicy('wovowx/mcp-memory', 'refs/heads/main', { GITHUB_REPO: 'wovowx/mcp-memory', PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/x,refs/heads/main' }).ok);
