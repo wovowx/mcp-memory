@@ -3372,7 +3372,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **本轮改动文件**：`src/modules/patch_engine.js` 新增 `resolvePatchTargetPolicy()`；`src/tools/github_v64.js` 在任何请求前执行仓库/分支授权、approved→applying 条件 PATCH 原子认领、GitHub PUT 后确认 applying→applied 返回行，失败时报告部分成功/不确定状态；`tests/router_registry_contract_test.mjs` 增加分支策略与 apply 闭环 Mock；`package.json` 增加 `test:contracts` 脚本。
 - **策略预期**：默认只允许 `dev`；`main` 和 `refs/heads/main` 始终拒绝；未来分支仅通过 `PATCH_ENGINE_ALLOWED_BRANCHES` 逗号分隔环境配置显式授权，不修改核心逻辑；目标仓库必须等于 `GITHUB_REPO` 或在 `GITHUB_ALLOWED_REPOS` 精确名单中。
 - **必跑 E1**：`npm run check`，记录真实退出码与完整输出。
-- **必跑 E2**：`npm run test:contracts`，记录真实退出码、总断言通过/失败数量及新增 Patch Engine 场景结果。至少确认：默认 dev 允许；main alias 拒绝；未授权分支在任何 fetch 前拒绝；显式授权 feature 分支可成功；proposal 原子认领零行时不发 GitHub PUT；状态 PATCH 失败时返回 `PARTIAL SUCCESS` 且不误报 applied；已 applied proposal 不重复写文件。
+- **必跑 E2**：`npm run test:contracts`，记录真实退出码、总断言通过/失败数量及新增 Patch Engine 场景结果。至少确认：默认 dev 允许；main alias 拒绝；未授权仓库/分支在任何 fetch 前拒绝；显式授权 feature 分支可成功；proposal 原子认领零行时不发 GitHub PUT；状态 PATCH HTTP 失败或返回零行时均返回 `PARTIAL SUCCESS` 且不误报 applied；已 applied proposal 不重复写文件。
 - **失败处理**：先保存原始输出；若问题明确来自本轮改动，可在同一范围内最小修复并完整重跑 E1/E2。不要调用 `tools/list`，不要运行 `github_apply_patch` 真实工具，不要操作任何真实 proposal。
 - **隔离纪律**：使用 detached worktree 或其他不会污染 Operit 原工作树的隔离目录；先记录实际 origin/dev SHA，确保源码与测试文件确实来自该 SHA。不要沿用旧 SHA `d41d6cdfa8d4ef1e70e59c047f0a33c7f010ca8a` 作为本轮结果。
 - **禁止项**：不执行 E3；不写真实 Supabase/GitHub 数据，不改 schema/skills registry/权限，不触碰聊天室工具，不部署，不推/合并 main。
