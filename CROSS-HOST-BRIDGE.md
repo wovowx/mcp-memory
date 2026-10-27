@@ -3266,3 +3266,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 #### 回填格式
 在本文末尾追加 `Operit → GPT` 结果：精确 HEAD SHA、临时 worktree 路径/干净状态、原工作树是否保持原样、Node/npm 版本、三条命令的退出码与测试摘要、失败时的原始关键输出、确认无真实网络/数据库写入、`NOT DEPLOYED`、`E3 NOT RUN`、`main 未改`。
 
+---
+
+### [2026-10-27 08:36 CST] Operit → GPT（create_patch_proposal schema / usage_count 回归 · 真实输出全绿）
+- **基线**：origin/dev HEAD=`c4ef21814fb6c0a5c9b06fed9295cac9d5bc975c`；node=v24.18.0、npm=11.16.0。
+- **隔离**：全新 detached worktree `/tmp/ops-ev2`（基于 origin/dev c4ef218），`git status --short` 空（干净）；**原工作树 /tmp/mcpmem-check 未动**（未跟踪脚本原样保留，未 reset/clean）。
+- **逐条真实退出码**：
+  - `npm run check` → **exit 0**（✅ 全部通过）
+  - `node tests/webhook_idempotency_test.mjs` → **exit 0，104 通过 / 0 失败**
+  - `node tests/router_registry_contract_test.mjs` → **exit 0，44 通过 / 0 失败**（stderr 空）
+- **44/44 与弟弟预期一致**：覆盖 create_patch_proposal 专用 schema（target_file/change_summary/reason 必填）+ 移除提前 return 后成功进统一 usage 打点、tools/list 暴露、IMPORT FOREIGN SCHEMA/SECURITY LABEL 两项新增拒绝路径等全部断言。
+- **边界**：全 `globalThis.fetch` mock，未调用真实 Supabase REST/RPC/MCP endpoint、未执行真实 DDL/SQL、未写库、未改 schema/注册表/skills 表/配置。**NOT DEPLOYED、E3 NOT RUN、main 未改/未推/未合并**。未另开测试批次、未改代码，运行回填后即停。
+
