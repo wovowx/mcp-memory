@@ -316,8 +316,8 @@ try {
   check('Patch policy allows explicitly configured feature branch', resolvePatchTargetPolicy('wovowx/mcp-memory', 'feature/x', { GITHUB_REPO: 'wovowx/mcp-memory', PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/x' }).ok);
   check('Patch policy rejects repository outside exact allowlist', !resolvePatchTargetPolicy('other-owner/mcp-memory', 'dev', { GITHUB_REPO: 'wovowx/mcp-memory', GITHUB_ALLOWED_REPOS: 'wovowx/ZivenLab' }).ok);
 
-  let patchFetchCount = 0, patchPutCount = 0;
-  let patchClaimMode = 'ok', patchAppliedMode = 'ok', patchProposalStatus = 'approved';
+  let patchFetchCount = 0, patchPutCount = 0, patchAppliedAttempts = 0;
+  let patchClaimMode = 'ok', patchAppliedMode = 'ok', patchPutMode = 'ok', patchProposalStatus = 'approved';
   let patchProposalTarget = 'src/mock.txt', patchDiffTarget = 'src/mock.txt';
   const patchEnv = {
     GITHUB_TOKEN: 'mock-gh-token', GITHUB_REPO: 'wovowx/mcp-memory',
@@ -338,6 +338,7 @@ try {
         return { ok: true, status: 200, json: async () => [{ id: 'mock-proposal-id', status: 'applying' }] };
       }
       if (s.includes('status=eq.applying') && body.status === 'applied') {
+        patchAppliedAttempts++;
         if (patchAppliedMode === 'http500') return { ok: false, status: 500, json: async () => ({ message: 'mock state failure' }) };
         if (patchAppliedMode === 'empty') return { ok: true, status: 200, json: async () => [] };
         patchProposalStatus = 'applied';
@@ -354,7 +355,9 @@ try {
     }
     if (s.includes('api.github.com/repos/wovowx/mcp-memory/contents/src/mock.txt') && method === 'PUT') {
       patchPutCount++;
-      return { ok: true, status: 200, json: async () => ({ content: { sha: 'newsha123456789' } }) };
+      if (patchPutMode === 'missing-sha') return { ok: true, status: 200, json: async () => ({ content: { path: 'src/mock.txt' } }) };
+      if (patchPutMode === 'wrong-path') return { ok: true, status: 200, json: async () => ({ content: { path: 'src/elsewhere.txt', sha: 'newsha123456789' } }) };
+      return { ok: true, status: 200, json: async () => ({ content: { path: 'src/mock.txt', sha: 'newsha123456789' } }) };
     }
     throw new Error('unexpected Patch Engine mock fetch: ' + method + ' ' + s);
   };
@@ -393,7 +396,7 @@ try {
     check('lost atomic proposal claim prevents GitHub PUT', t.includes('已被其他执行占用') && patchPutCount === 0);
     patchClaimMode = 'ok';
 
-    patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved'; patchAppliedMode = 'http500';
+    patchFetchCount = 0; patchPutCount = 0; patchAppliedAttempts = 0; patchProposalStatus = 'approved'; patchAppliedMode = 'http500';
     t = await applyPatchMock('dev');
     check('status PATCH HTTP failure reports partial success and does not claim applied', t.includes('PARTIAL SUCCESS') && t.includes('不要直接重试') && patchPutCount === 1 && patchProposalStatus === 'applying');
     patchAppliedMode = 'empty';
@@ -401,6 +404,16 @@ try {
     t = await applyPatchMock('dev');
     check('status PATCH zero-row response reports partial success', t.includes('PARTIAL SUCCESS') && patchPutCount === 1 && patchProposalStatus === 'applying');
     patchAppliedMode = 'ok';
+
+    patchPutMode = 'missing-sha';
+    patchFetchCount = 0; patchPutCount = 0; patchAppliedAttempts = 0; patchProposalStatus = 'approved';
+    t = await applyPatchMock('dev');
+    check('Patch Engine keeps proposal applying when successful PUT response lacks content SHA', t.includes('PARTIAL/UNKNOWN') && t.includes('remains applying') && patchPutCount === 1 && patchProposalStatus === 'applying' && patchAppliedAttempts === 0);
+    patchPutMode = 'wrong-path';
+    patchFetchCount = 0; patchPutCount = 0; patchAppliedAttempts = 0; patchProposalStatus = 'approved';
+    t = await applyPatchMock('dev');
+    check('Patch Engine refuses to mark applied when PUT response identifies another path', t.includes('PARTIAL/UNKNOWN') && t.includes('src/elsewhere.txt') && patchProposalStatus === 'applying' && patchAppliedAttempts === 0);
+    patchPutMode = 'ok';
 
     patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'applied';
     t = await applyPatchMock('dev');
