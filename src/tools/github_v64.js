@@ -808,9 +808,9 @@ export async function handleGitHubTool(name, safeArgs, env) {
             // github_move 默认目标 = dev（柳柳 2026-09-07：别默认 main，危险！搬动走 dev，确认后再 merge main）
             const mTargetBranch = safeArgs.target_branch || 'dev';
             const mTargetPath = String(safeArgs.target_path).trim();
-            const mSourcePathPolicy = validateRepoRelativePath(mSourcePath);
+            const mSourcePathPolicy = validateRepoRelativePath(mSourcePath, { allowRoot: true });
             if (!mSourcePathPolicy.ok) return 'ERROR: source_path ' + mSourcePathPolicy.code + ': ' + mSourcePathPolicy.reason;
-            const mTargetPathPolicy = validateRepoRelativePath(mTargetPath);
+            const mTargetPathPolicy = validateRepoRelativePath(mTargetPath, { allowRoot: true });
             if (!mTargetPathPolicy.ok) return 'ERROR: target_path ' + mTargetPathPolicy.code + ': ' + mTargetPathPolicy.reason;
             const mOverwrite = safeArgs.overwrite === true;
             const mRecursive = safeArgs.recursive !== false;
@@ -887,7 +887,9 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 item.encodedAbs = sourceItemPath.encodedPath;
                 item.encodedTargetAbs = targetItemPath.encodedPath;
             }
-
+            if (mSourceRepo === mTargetRepo && mSourceBranch === mTargetBranch && plan.some(item => item.abs === item.targetAbs)) {
+                return (warn ? warn + '\n\n' : '') + 'ERROR: SOURCE_TARGET_IDENTICAL - source and target resolve to the same repository path on the same branch; refusing a move that would delete the only copy.';
+            }
             // 逐个 copy（带 size 校验），全部成功才进入删除阶段
             const copied = [];
             let failed = null;
