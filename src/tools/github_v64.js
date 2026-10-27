@@ -881,9 +881,9 @@ export async function handleGitHubTool(name, safeArgs, env) {
             // Paths returned by GitHub's tree API are still validated before any content is copied/deleted.
             for (const item of plan) {
                 const sourceItemPath = validateRepoRelativePath(item.abs);
-                if (!sourceItemPath.ok) return (warn ? warn + '\\n\\n' : '') + 'ERROR: source tree path ' + sourceItemPath.code + ': ' + sourceItemPath.reason;
+                if (!sourceItemPath.ok) return (warn ? warn + '\n\n' : '') + 'ERROR: source tree path ' + sourceItemPath.code + ': ' + sourceItemPath.reason;
                 const targetItemPath = validateRepoRelativePath(item.targetAbs);
-                if (!targetItemPath.ok) return (warn ? warn + '\\n\\n' : '') + 'ERROR: target tree path ' + targetItemPath.code + ': ' + targetItemPath.reason;
+                if (!targetItemPath.ok) return (warn ? warn + '\n\n' : '') + 'ERROR: target tree path ' + targetItemPath.code + ': ' + targetItemPath.reason;
                 item.encodedAbs = sourceItemPath.encodedPath;
                 item.encodedTargetAbs = targetItemPath.encodedPath;
             }
