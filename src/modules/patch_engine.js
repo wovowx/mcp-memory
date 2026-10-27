@@ -3,6 +3,7 @@
 // Loaded by github_v64.js (SRC: ../modules/patch_engine.js)
 // 2026-09-05 Ziven x GPT #751/#753 converged
 // ============================================================
+import { validateRepoRelativePath } from '../utils/helpers.js';
 
 // 校验 structured patch 是否可应用
 // patch = { file, changes: [{ start_line, delete_lines, insert_lines, delete_content? }] }
@@ -78,20 +79,9 @@ export function resolvePatchTargetPolicy(repo, branch, env = {}) {
   return { ok: true, repo: targetRepo, branch: canonicalBranch };
 }
 
-// Validate an approved proposal's repository-relative target path before constructing a GitHub API URL.
-// GitHub path segments '.'/'..' are not escaped by encodeURIComponent and can normalize URL paths.
+// Preserve a focused name for Patch Engine callers while reusing the shared path contract.
 export function validatePatchTargetFile(filePath) {
-  if (typeof filePath !== 'string' || !filePath || filePath !== filePath.trim()) {
-    return { ok: false, code: 'INVALID_TARGET_PATH', reason: '目标文件路径必须是非空且无首尾空白的相对路径' };
-  }
-  if (filePath.startsWith('/') || filePath.includes('\\') || /[\u0000-\u001f\u007f]/.test(filePath)) {
-    return { ok: false, code: 'INVALID_TARGET_PATH', reason: '目标文件路径不能是绝对路径，也不能含反斜杠或控制字符' };
-  }
-  const segments = filePath.split('/');
-  if (segments.some(segment => !segment || segment === '.' || segment === '..')) {
-    return { ok: false, code: 'INVALID_TARGET_PATH', reason: '目标文件路径不能包含空路径段、. 或 .. 段' };
-  }
-  return { ok: true, path: filePath };
+  return validateRepoRelativePath(filePath);
 }
 
 // ============================================================
