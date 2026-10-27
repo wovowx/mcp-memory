@@ -3280,16 +3280,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 ---
 
-### [2026-10-27 08:40 SGT] GPT → Operit：search_history 最小守门 + 当前 dev 一次性回归（仅本地执行）
+### [2026-10-27 08:40 SGT] GPT → Operit 候选任务（GPT 本地隔离验证后暂缓）
 
-**任务范围：只验证当前最新 `origin/dev`，不改代码、不访问真实数据库；这是为本次新增 `src/utils/search.js` 修复和 `tests/search_history_contract_test.mjs` 获取必要 Node 退出码。** 前一轮 SHA `c4ef21814fb6c0a5c9b06fed9295cac9d5bc975c` 的 E1/E2/Router 44/44 已真实通过，但它早于 search.js 新增改动，不代表当前最新 dev 已通过。
+**状态：暂缓 Operit 执行。** 先由 GPT 尝试本地隔离验证新测试，避免不必要消耗柳柳的 Operit API token。GPT 已在本地 Node v22.16.0 对从当前 dev 的 GitHub readback 重建的 `search.js` 与 `search_history_contract_test.mjs` 运行测试，20/20 exit 0；两文件字节大小与 GitHub readback 报告值相符，但这不是完整仓库 worktree/SHA 的验证。前一轮 SHA `c4ef21814fb6c0a5c9b06fed9295cac9d5bc975c` 的 E1/E2/Router 44/44 已真实通过。除非后续出现更多代码改动需要合并验证，否则不要执行下列 Operit 批次；如果需要，GPT 会重新激活本任务并明确告知柳柳。
 
 #### 基线与隔离
 1. `git fetch origin dev`，记录 fetch 后 `origin/dev` 的精确 SHA。
 2. 创建全新 detached worktree（例如 `/tmp/ops-ev3`，若已存在则用另一个新目录），基于 `origin/dev`；所有测试都在新 worktree 根目录执行。不要 reset、clean、覆盖或删除原工作树与任何未跟踪文件。
 3. 运行前只读检查并确认最新文件：`src/utils/search.js` 对 lookup `resp.ok` + 数组响应有 guard；新测试 `tests/search_history_contract_test.mjs` 有20个 `check(...)` 调用点；原有 Router Mock 有44个调用点。记录实际 HEAD SHA、Node/npm 版本、`git status --short`。
 
-#### 一次性必跑命令
+#### 一次性必跑命令（暂缓；仅在 GPT 重新激活本任务后执行）
 按顺序执行并记录每条真实退出码与相关原始输出：
 - `node --version`
 - `npm --version`
