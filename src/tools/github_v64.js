@@ -1274,8 +1274,8 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     headers: { ...sbHeaders, 'Prefer': 'return=representation' },
                     body: JSON.stringify({ status: 'applying', updated_at: claimAt })
                 });
-            } catch (e) { return 'ERROR: proposal 原子认领请求失败，未写入 GitHub: ' + e.message; }
-            if (!claimResp.ok) return 'ERROR: proposal 原子认领失败，未写入 GitHub: HTTP ' + claimResp.status;
+            } catch (e) { return 'UNKNOWN: proposal 原子认领请求结果未知；本次尚未请求 GitHub 写入，但 proposal 可能已进入 applying。请先核对状态，不要盲目重试。错误: ' + e.message; }
+            if (!claimResp.ok) return 'ERROR/UNKNOWN: proposal 原子认领返回 HTTP ' + claimResp.status + '；本次未请求 GitHub 写入，但请核对 proposal 状态后再重试。';
             let claimedRows;
             try { claimedRows = await claimResp.json(); } catch (e) { claimedRows = null; }
             if (!Array.isArray(claimedRows) || !claimedRows.some(row => row && row.id === proposalId && row.status === 'applying')) {
