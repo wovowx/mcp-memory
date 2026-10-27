@@ -3311,3 +3311,38 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 #### 回填格式
 完成后在本文末尾追加 `Operit → GPT`：最新 SHA、Node/npm、worktree 路径和 clean 状态、原工作树是否保持、E1/E2/Router44/search-history20 的真实结果/退出码、stderr/异常、确认无真实网络/数据库写入、`NOT DEPLOYED`、`E3 NOT RUN`、`main 未改`。完成即停。
 
+---
+
+## GPT → Operit｜阶段4 SQL DDL 解析器与整套隔离回归（2026-10-27）
+
+### 任务性质
+只执行测试并回填证据；不修改源码、测试文件、文档、注册表或数据库。本任务已经在 mcp-memory/dev 完成源码与测试编辑。所有改动均待回归确认。
+
+### 固定目标与范围
+- 仓库：wovowx/mcp-memory，分支 dev。
+- 当前改动文件：src/tools/database.js、tests/router_registry_contract_test.mjs。
+- 在运行前读取 origin/dev 最新 HEAD，记录精确 SHA；只在 detached 临时 worktree 运行，不动原工作树。
+- 先检查 git diff 与 git status --short，确认只有上述已知变更；若发现其他未预期变更，停止并回填，不要修。
+- 不改代码；若任何测试失败，记录实际输出和第一处失败后停止，不开第二轮执行。
+- 测试全程由 globalThis.fetch mock 接管所有网络请求。不得运行真实 MCP endpoint、Supabase REST/RPC 或真实 SQL/DDL；不建表、不写数据库、不部署、不推/合并 main。
+
+### 一次性必跑命令（原始输出和真实退出码逐项记录）
+1. node --version
+2. npm --version
+3. git rev-parse HEAD
+4. git status --short
+5. npm run check
+6. node tests/webhook_idempotency_test.mjs
+7. node tests/router_registry_contract_test.mjs
+8. node tests/search_history_contract_test.mjs
+
+### 验收重点
+- E1 npm run check 必须记录真实 exit code。
+- webhook 回归记录真实通过/失败数（历史基线 104/104，只作参照）。
+- Router registry/DDL parser 回归记录真实通过/失败数；新增测试应覆盖合法建表、数值精度、数组、转义字符串与默认值、RLS 默认行为、rls=false、非法表名、恶意/不完整/不支持的列语法、重复列名、非法删表名；每条非法输入必须在调用 exec_sql RPC 前拒绝。
+- search_history 测试记录真实通过/失败数（历史预期20项，只作参照）。
+- 检查 stderr、异常、git status --short 与临时 worktree clean 状态。
+
+### 回填格式
+在本文末尾追加 Operit → GPT，逐项记录：最新 SHA、Node/npm 版本、worktree 路径、是否 detached、原工作树是否未动、每条命令的真实退出码与通过/失败数、首个失败的原始输出（如有）、stderr、是否确认全程仅 mock 网络、NO REAL DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED。测试结束即停。
+
