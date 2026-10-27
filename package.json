@@ -5,6 +5,7 @@
   "scripts": {
     "deploy": "npx wrangler deploy",
     "check": "node scripts/check.mjs",
+    "test:contracts": "node tests/router_registry_contract_test.mjs",
     "dev": "npx wrangler dev"
   }
 }
