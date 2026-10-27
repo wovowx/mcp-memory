@@ -10,6 +10,7 @@
 // 2026-09-01 ADD v6.4: 基础工具第一阶段——github_read 范围读取+截断标记 / github_push 写入后 size 校验 / github_copy copy 后 size 校验（「API 成功 ≠ 文件成功」）
 import { getEnabledSkills, addSkill } from '../utils/skills.js';
 import { validatePatch, applyPatch, resolvePatchTargetPolicy, validatePatchTargetFile } from '../modules/patch_engine.js';
+import { validateRepoRelativePath } from '../utils/helpers.js';
 
 // ============================================================
 // GITHUB_TOOL_DEFS - 所有 github_* 工具的元数据（唯一真相源）
@@ -212,6 +213,9 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // github_push
         if (name === 'github_push') {
             if (!safeArgs.path || !safeArgs.content_url) return 'ERROR: Missing path or content_url (push 必须带 content_url，先经 /upload 上传拿 url)';
+            const pathPolicy = validateRepoRelativePath(safeArgs.path);
+            if (!pathPolicy.ok) return 'ERROR: ' + pathPolicy.code + ': ' + pathPolicy.reason;
+            const encodedPath = pathPolicy.encodedPath;
             const message = safeArgs.message || `Update ${safeArgs.path}`;
             const branch = safeArgs.branch || 'main';
             if (branch === 'main') {
@@ -245,7 +249,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const expectedBytes = atob(base64Content).length;
             // v6.32.6 (2026-09-08)：文件已存在 → 一律拒绝（全分支），必须用 github_edit 修改
             // 理由：github_push=创建入口 / github_edit=修改入口，工具职责清晰（柳柳 + GPT 真讨论收敛）
-            const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+            const checkResp = await fetch(`${baseUrl}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
             if (checkResp.ok) {
                 const existingData = await checkResp.json();
                 const shaHint = existingData.sha ? existingData.sha.slice(0, 12) : '';
@@ -254,7 +258,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             let sha = null;
             const body = { message, content: base64Content, branch };
             if (sha) body.sha = sha;
-            const resp = await fetch(`${baseUrl}/contents/${safeArgs.path}`, {
+            const resp = await fetch(`${baseUrl}/contents/${encodedPath}`, {
                 method: 'PUT', headers: ghHeaders, body: JSON.stringify(body)
             });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
@@ -264,7 +268,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             let finalSize = 0;
             for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
                 try {
-                    const verifyResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+                    const verifyResp = await fetch(`${baseUrl}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
                     if (verifyResp.ok) {
                         const vData = await verifyResp.json();
                         finalSize = vData.size || 0;
