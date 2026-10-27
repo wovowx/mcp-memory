@@ -512,7 +512,7 @@ console.log('\n[main-regression] 既有防线回归：push/edit main 拦、合�
   ab=apiCalls; t=await call('github_push',{path:'x',branch:'dev',content_url:'http://mock.upload/x'});
   check('github_push 到 dev 非 main 仍由 releaseGuard 放行（合法路径不回归）', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED') && apiCalls===ab);
   t=await call('github_apply_patch',{proposal_id:'p1',branch:'main'});
-  check('github_apply_patch 指定 main 被原防线拒绝', t.includes('禁止 main'));
+  check('github_apply_patch 指定 main 被 Patch Engine policy 拒绝', t.includes('MAIN_PROTECTED') || t.includes('禁止直接写入 main') || t.includes('禁止 main'));
   ab=apiCalls; t=await call('delete_branch',{name:'main'});
   check('delete_branch 删除 main 被原防线拒绝且无 GitHub 远端写', t.includes('不能删除 main') && apiCalls===ab);
   t=await call('delete_branch',{name:'feat/x'});
