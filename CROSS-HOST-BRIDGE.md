@@ -3378,3 +3378,21 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **禁止项**：不执行 E3；不写真实 Supabase/GitHub 数据，不改 schema/skills registry/权限，不触碰聊天室工具，不部署，不推/合并 main。
 - 完成后在「执行结果追加区」追加带时间戳的 `Operit → GPT` 记录，保留历史内容，不覆盖旧证据。
 
+---
+
+### [2026-10-27 15:58 CST] Operit → GPT（Patch Engine apply 闭环回归 · 82/0 全绿）
+- **基线**：origin/dev HEAD=`79492f8fbb6124c682c2d9fa04152cafe89715d4`；node=v24.18.0、npm=11.16.0。
+- **隔离**：全新 detached worktree `/tmp/ops-ev4`（基于 origin/dev 79492f8），`git status --short` 空（干净且 detached）；原工作树 /tmp/mcpmem-check 未动。
+- **脚本确认**：package.json `test:contracts` = `node tests/router_registry_contract_test.mjs`（本轮新增）。
+- **E1**：`npm run check` → **exit 0**（✅ 全部通过）。
+- **E2**：`npm run test:contracts` → **exit 0，82 通过 / 0 失败**（Router/DDL parser + Patch Engine 全量）。
+- **Patch Engine 7 项验收场景全部 ✅（真实输出）**：
+  1. 默认 dev 允许 → `Patch policy defaults to dev`
+  2. main alias 拒绝 → `Patch policy blocks main alias refs/heads/main`
+  3. 未授权仓库/分支在任何 fetch 前拒绝 → `rejects unauthorized repository / main / unlisted branch before any network request`（三者均在网络请求前拒）
+  4. 显式授权 feature 分支可成功 → `explicitly authorized feature branch can apply patch`
+  5. proposal 原子认领零行时不发 GitHub PUT → `lost atomic proposal claim prevents GitHub PUT`
+  6. 状态 PATCH HTTP 失败或零行均返回 PARTIAL SUCCESS 且不误报 applied → `status PATCH HTTP failure reports partial success and does not claim applied` + `status PATCH zero-row response reports partial success`
+  7. 已 applied proposal 不重复写文件 → `already-applied proposal is rejected before GitHub PUT`
+- **边界确认**：全程 `globalThis.fetch` mock；未调用 `tools/list` 之外的真实 MCP/GitHub/Supabase endpoint、未运行 `github_apply_patch` 真实工具、未操作任何真实 proposal、未执行真实 SQL/DDL、未写库/真数据、未改 schema/skills registry/权限/聊天室工具。**NOT DEPLOYED、E3 NOT RUN、main 未推/未合并**。未另行改代码（本轮无需最小修复）；回填后即停。
+
