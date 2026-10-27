@@ -160,7 +160,7 @@ if (typeof process !== 'undefined' && import.meta.url === `file://${process.argv
         ['wovowx/mcp-memory', 'dev', '随便写', 'push', true],
         ['wovowx/mcp-memory', 'main', 'v6.9.0: ok', 'push', false],
         ['someone/new-repo', 'main', 'v1.0.0: test', 'merge', false],
-        ['someone/new-repo', 'dev', '随便写', 'push', true],
+        ['someone/new-repo', 'dev', '随便写', 'push', false],
         ['wovowx/ZivenLab', 'main', 'docs-2026.09.1xxx: 伪版本', 'merge', false],
         ['wovowx/ZivenLab', 'main', 'docs-2026.09abc: 伪版本', 'merge', false],
         ['wovowx/ZivenLab', 'main', 'docs-2026.09 something', 'merge', false],
