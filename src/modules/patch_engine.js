@@ -31,6 +31,10 @@ export function validatePatch(fileContent, patch) {
       errs.push('change[' + i + '] insert_lines must be an array of strings');
       continue;
     }
+    if (del === 0 && (!Array.isArray(ch.insert_lines) || ch.insert_lines.length === 0)) {
+      errs.push('change[' + i + '] must delete or insert at least one line');
+      continue;
+    }
     if (Array.isArray(ch.insert_lines) && ch.insert_lines.some(line => typeof line !== 'string' || line.includes('\n') || line.includes('\r'))) {
       errs.push('change[' + i + '] insert_lines entries must be single lines');
       continue;
@@ -86,13 +90,19 @@ export function resolvePatchTargetPolicy(repo, branch, env = {}) {
   if (!targetBranch || targetBranch.startsWith('-')) {
     return { ok: false, code: 'INVALID_BRANCH', reason: '目标分支无效' };
   }
-  const canonicalBranch = targetBranch.replace(/^refs\/heads\//, '');
+  const canonicalBranch = targetBranch.replace(/^refs\/heads\//i, '');
+  if (/^refs\/heads\//i.test(canonicalBranch)) {
+    return { ok: false, code: 'INVALID_BRANCH', reason: '分支名不能重复包含 refs/heads/ 前缀' };
+  }
+  if (canonicalBranch.startsWith('-') || /[\u0000-\u0020\u007f]/.test(canonicalBranch)) {
+    return { ok: false, code: 'INVALID_BRANCH', reason: '目标分支包含 Git ref 不允许的前导短横线/空白或控制字符' };
+  }
   if (canonicalBranch.toLowerCase() === 'main') {
     return { ok: false, code: 'MAIN_PROTECTED', reason: 'github_apply_patch 禁止直接写入 main；请走独立发布审批流程' };
   }
   const configured = String(env.PATCH_ENGINE_ALLOWED_BRANCHES || 'dev')
     .split(',').map(s => s.trim()).filter(Boolean);
-  const allowedBranches = new Set(configured.map(s => s.replace(/^refs\/heads\//, '')).filter(s => s.toLowerCase() !== 'main'));
+  const allowedBranches = new Set(configured.map(s => s.replace(/^refs\/heads\//i, '')).filter(s => s && !/^refs\/heads\//i.test(s) && !s.startsWith('-') && !/[\u0000-\u0020\u007f]/.test(s) && s.toLowerCase() !== 'main'));
   if (!allowedBranches.has(canonicalBranch)) {
     return { ok: false, code: 'BRANCH_NOT_ALLOWED', reason: `目标分支未获授权：${canonicalBranch}。允许分支：${Array.from(allowedBranches).join(', ') || '(none)'}` };
   }
