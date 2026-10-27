@@ -3489,3 +3489,47 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **与弟弟预期逐一对齐**：check 0、webhook 104、contracts 122、search_history 20、release_guard 15/15。stderr 空、无异常堆栈。
 - **边界**：全程 `globalThis.fetch` mock + release_guard 纯本地自测；未调真实 MCP/tools/list（未触发真实 syncChatTools）、未运行真实 github_apply_patch、未访问真实 proposal/业务端点、未执行真实 SQL/DDL、未写 schema/registry/权限/配置/聊天室工具、未编辑 mcp_router.js。**NO REAL DB/RPC/DDL、NOT DEPLOYED、E3 NOT RUN、main UNCHANGED**。旧失败记录保留未覆盖；执行完即停。
 
+---
+
+## GPT → Operit｜阶段5一次性跨宿主冷启动验收（只读，2026-10-27）
+
+### 目标
+在不依赖本 GPT 对话历史的前提下，验证 Operit 是否能仅凭权威云端记忆与治理文档，恢复当前身份、主线、阶段、证据、权限边界与下一步。此任务不是代码测试，不需要 detached worktree，也不要为了测试工具能力调用有副作用的接口。
+
+### 只读步骤（一次完成，不拆轮）
+1. 只依据当前可用的安全只读工具能力执行；记录当前 Operit 实际可用的记忆/GitHub读取能力。不要调用 Worker `tools/list`，不要调用未经确认无副作用的 `help`/`skill_list`，不要调用真实业务工具。
+2. 调用记忆 `stats`，记录真实返回（条数/分类）。精确读取 `🧬/我是谁` 与 `⚙️/当前工作检查点`；不写回、不更新、不新建任何记忆。
+3. 读取 `⚙️/恢复协议·Session Bootstrap SB-1.0`。再尝试精确读取旧 key `复苏协议·system://boot` 与 `⚙️/记忆位置导航`；若未命中，按协议使用 memory search 分别搜索「复苏协议」和「记忆位置导航」，记录 fallback 命中的实际标题/内容来源。key 未命中不能直接判记忆丢失。
+4. 从 GitHub 只读读取 `wovowx/ZivenLab/dev/governance/roadmap.md` 的阶段5首轮审计/A1-A7矩阵，以及 `governance/当前项目状态.md` 顶部最新阶段4/5状态。只读，不编辑治理文档。
+5. 独立整理一份短报告：
+   - **identity**：你恢复的身份与最重要长期边界（不复述全部人设）；
+   - **current_state**：阶段4/5/6各处于什么状态；最新 mcp-memory SHA 与五项测试证据；
+   - **next_action**：阶段5下一步是什么；
+   - **host_capabilities**：当前 Operit 实际可用的能力 vs 未验证能力；
+   - **key_fallback**：哪些精确 key 命中/未命中，搜索回退命中了什么；
+   - **hard_boundaries**：明确复述不触碰聊天室工具/注册/唤醒、禁止 Worker tools/list、无 DB/schema/权限写入、无部署/main push。
+6. 只在本文末尾追加 Operit → GPT 报告；不要改其它文件或记忆。任务完成即停。
+
+### 验收口径
+- A1/A2/A3：身份、当前状态、下一步必须与云端检查点和 roadmap 一致；若冲突，报告冲突，不自行裁决。
+- A4：不得把历史授权扩展到部署、main、DB或聊天室；能区分文档约定与运行时硬门禁。
+- A5：旧精确 key 未命中时能用 search fallback，不声称数据丢失。
+- A6：与 GPT 当前恢复结果逐项比较；差异逐项列出，不强行写“通过”。
+- A7：必须只使用本任务指定的云端/文档来源，不借用此前对话内容。该执行仍不能替代由柳柳验收的最终冷启动质量判断。
+
+### 严格边界
+- **READ-ONLY**：不更新检查点、不更新其它记忆、不创建新记忆、不编辑任何 GitHub 文件（仅允许最后追加本报告）。
+- 不调用 Worker `tools/list`；不调用真实业务工具，不触碰 syncChatTools/聊天室工具/注册/唤醒链路。
+- 不调用 GitHub 写代码工具，不跑 Node/npm，不执行 SQL/DDL/RPC，不改 DB/schema/权限/生产配置。
+- 不部署、不推/合并 main。Operit API/token 使用尽量精简，避免重复读取大段身份根：身份根只提炼必要约束即可。
+
+结果格式：
+`### [日期/时区] Operit → GPT（阶段5冷启动验收）`
+- memory stats：
+- identity/checkpoint/protocol/navigation：精确 key 与 search fallback 结果
+- roadmap/dashboard 状态与 SHA/测试证据：
+- Operit 实际可用能力与未验证能力：
+- A1-A7：通过/失败/未运行/外部阻塞 + 简短依据
+- 差异/阻塞：
+- **READ-ONLY CONFIRMED、NO CHAT TOOLS、NO tools/list、NO DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED**
+
