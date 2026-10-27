@@ -229,10 +229,14 @@ try {
 
   // github_push must only fetch public content from the exact configured Supabase origin.
   const previousPushFetch = globalThis.fetch;
-  let pushFetchCalls = 0, uploadFetchCount = 0, fileExistenceChecks = 0, observedRedirect = '';
+  let pushFetchCalls = 0, uploadFetchCount = 0, fileExistenceChecks = 0, observedRedirect = '', observedPathUrl = '';
   globalThis.fetch = async (url, opts = {}) => {
     pushFetchCalls++;
     const s = String(url), method = (opts.method || 'GET').toUpperCase();
+    if (s.includes('/contents/src/a%20b/c%23d.js?ref=dev') && method === 'GET') {
+      observedPathUrl = s;
+      return { ok: false, status: 404, json: async () => ({ message: 'mock path read' }) };
+    }
     if (s.includes('/storage/v1/object/public/files/demo.txt')) {
       uploadFetchCount++; observedRedirect = opts.redirect || '';
       const bytes = new TextEncoder().encode('hello');
@@ -267,6 +271,9 @@ try {
       check(toolName + ' rejects traversal path before any request', rejected.includes('INVALID_REPO_PATH') && pushFetchCalls === before);
     }
     check('github_push rejects a different Supabase project before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
+    const readBefore = pushFetchCalls;
+    await handleGitHubTool('github_read', { path: 'src/a b/c#d.js', branch: 'dev' }, pushEnv);
+    check('github_read encodes reserved path characters by segment', observedPathUrl.includes('/contents/src/a%20b/c%23d.js?ref=dev') && pushFetchCalls === readBefore + 1);
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co.evil.example/storage/v1/object/public/files/demo.txt' }, pushEnv);
     check('github_push rejects deceptive Supabase hostname before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co/storage/v1/object/public/files/demo.txt' }, pushEnv);
