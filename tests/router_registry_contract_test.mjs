@@ -264,7 +264,7 @@ try {
       return { ok: false, status: 400, json: async () => ({ message: 'unexpected proposal PATCH' }) };
     }
     if (s.includes('api.github.com/repos/wovowx/mcp-memory/contents/src/mock.txt') && method === 'GET') {
-      return { ok: true, status: 200, json: async () => ({ sha: 'oldsha123456789', content: btoa('a\\nb\\nc') .replace('YQpiCmM=', 'YQpib2xkCmI=') }) };
+      return { ok: true, status: 200, json: async () => ({ sha: 'oldsha123456789', content: btoa('a\nold\nb') }) };
     }
     if (s.includes('api.github.com/repos/wovowx/mcp-memory/contents/src/mock.txt') && method === 'PUT') {
       patchPutCount++;
