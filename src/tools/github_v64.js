@@ -687,10 +687,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
             const sourceRepo = String(safeArgs.source_repo).trim();
             const sourceBranch = safeArgs.source_branch || 'main';
-            const sourcePath = String(safeArgs.source_path).trim();
+            const sourcePath = String(safeArgs.source_path);
             const targetRepo = String(safeArgs.target_repo).trim();
             const targetBranch = safeArgs.target_branch || 'main';
-            const targetPath = String(safeArgs.target_path).trim();
+            const targetPath = String(safeArgs.target_path);
             const sourcePathPolicy = validateRepoRelativePath(sourcePath);
             if (!sourcePathPolicy.ok) return 'ERROR: source_path ' + sourcePathPolicy.code + ': ' + sourcePathPolicy.reason;
             const targetPathPolicy = validateRepoRelativePath(targetPath);
@@ -803,11 +803,11 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
             const mSourceRepo = String(safeArgs.source_repo).trim();
             const mSourceBranch = safeArgs.source_branch || 'main';
-            const mSourcePath = String(safeArgs.source_path).trim();
+            const mSourcePath = String(safeArgs.source_path);
             const mTargetRepo = String(safeArgs.target_repo).trim();
             // github_move 默认目标 = dev（柳柳 2026-09-07：别默认 main，危险！搬动走 dev，确认后再 merge main）
             const mTargetBranch = safeArgs.target_branch || 'dev';
-            const mTargetPath = String(safeArgs.target_path).trim();
+            const mTargetPath = String(safeArgs.target_path);
             const mSourcePathPolicy = validateRepoRelativePath(mSourcePath);
             if (!mSourcePathPolicy.ok) return 'ERROR: source_path ' + mSourcePathPolicy.code + ': ' + mSourcePathPolicy.reason;
             const mTargetPathPolicy = validateRepoRelativePath(mTargetPath);
