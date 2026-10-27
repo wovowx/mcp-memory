@@ -272,6 +272,7 @@ try {
       ['github_copy', { source_repo: 'wovowx/mcp-memory', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_path: 'src/../../outside.txt' }],
       ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: '../outside.txt', target_repo: 'wovowx/mcp-memory', target_path: 'moved.txt' }],
       ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: '   ', target_repo: 'wovowx/mcp-memory', target_path: 'moved.txt' }],
+      ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: ' src/a.txt ', target_repo: 'wovowx/mcp-memory', target_path: 'moved.txt' }],
       ['github_move', { source_repo: 'wovowx/mcp-memory', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_path: 'src/../../outside.txt' }]
     ];
     for (const [toolName, args] of invalidPathCalls) {
