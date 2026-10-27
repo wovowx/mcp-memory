@@ -1,4 +1,4 @@
-// 阶段4：Router/注册表契约隔离 Mock 回归测试（Operit 独立测试 · 2026-10-26）
+// 阶段4：Router/注册表/DDL parser/Patch Engine 隔离 Mock 契约回归（2026-10-27）
 // 运行：从仓库根目录执行 node tests/router_registry_contract_test.mjs
 import { handleMCPRequest } from '../src/modules/mcp_router.js';
 import { handleDatabaseTool } from '../src/tools/database.js';
