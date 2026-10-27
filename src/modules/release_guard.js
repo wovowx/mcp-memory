@@ -30,9 +30,7 @@ const DOCS_REPO_PATTERN = /^docs-\d{4}\.\d{2}(?:\.\d+)?\s*:/;
 // ============================================================
 const RELEASE_POLICY = {
     'wovowx/mcp-memory': { type: 'code', pattern: CODE_REPO_PATTERN },
-    'mcp-memory': { type: 'code', pattern: CODE_REPO_PATTERN },
     'wovowx/zivenlab': { type: 'docs', pattern: DOCS_REPO_PATTERN },
-    'zivenlab': { type: 'docs', pattern: DOCS_REPO_PATTERN },
 };
 
 /**
