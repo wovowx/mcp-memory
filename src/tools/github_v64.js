@@ -9,7 +9,7 @@
 // 2026-09-01 ADD v6.3: GITHUB_TOOL_DEFS 元数据（自动注册真相源）+ github_auto_sync 自动同步
 // 2026-09-01 ADD v6.4: 基础工具第一阶段——github_read 范围读取+截断标记 / github_push 写入后 size 校验 / github_copy copy 后 size 校验（「API 成功 ≠ 文件成功」）
 import { getEnabledSkills, addSkill } from '../utils/skills.js';
-import { validatePatch, applyPatch } from '../modules/patch_engine.js';
+import { validatePatch, applyPatch, resolvePatchTargetPolicy } from '../modules/patch_engine.js';
 
 // ============================================================
 // GITHUB_TOOL_DEFS - 所有 github_* 工具的元数据（唯一真相源）
@@ -1221,15 +1221,21 @@ export async function handleGitHubTool(name, safeArgs, env) {
         else if (name === 'github_apply_patch') {
             const proposalId = safeArgs.proposal_id;
             if (!proposalId) return 'ERROR: Missing proposal_id';
-            const branch = safeArgs.branch || 'dev';
-            if (branch === 'main') return 'ERROR: github_apply_patch 禁止 main（release_guard 家族）';
-            const applyRepo = (safeArgs && safeArgs.repo) || env.GITHUB_REPO;
+            const requestedBranch = safeArgs.branch || 'dev';
+            const requestedRepo = (safeArgs && safeArgs.repo) || env.GITHUB_REPO;
+            // Fail closed before any Supabase/GitHub request. New branches are enabled only by policy config.
+            const targetPolicy = resolvePatchTargetPolicy(requestedRepo, requestedBranch, env);
+            if (!targetPolicy.ok) return 'ERROR: ' + targetPolicy.code + ': ' + targetPolicy.reason;
+            const branch = targetPolicy.branch;
+            const applyRepo = targetPolicy.repo;
             if (!env.SUPABASE_URL) return 'ERROR: SUPABASE_URL not configured';
             const sbKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
             if (!sbKey) return 'ERROR: Supabase key not configured';
             const sbHeaders = { 'apikey': sbKey, 'Authorization': 'Bearer ' + sbKey, 'Content-Type': 'application/json' };
-            // 1) 查 proposal
-            const propResp = await fetch(env.SUPABASE_URL + '/rest/v1/patch_proposals?id=eq.' + proposalId + '&select=*', { headers: sbHeaders });
+            const proposalUrl = env.SUPABASE_URL + '/rest/v1/patch_proposals?id=eq.' + encodeURIComponent(proposalId);
+            // 1) 查 proposal，明确检查 HTTP 状态
+            const propResp = await fetch(proposalUrl + '&select=*', { headers: sbHeaders });
+            if (!propResp.ok) return 'ERROR: 读取 proposal 失败: HTTP ' + propResp.status;
             const propRows = await propResp.json();
             const proposal = Array.isArray(propRows) ? propRows[0] : null;
             if (!proposal) return 'ERROR: proposal not found: ' + proposalId;
@@ -1245,27 +1251,78 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (!ghToken) return 'ERROR: GITHUB_TOKEN not configured';
             const ghApplyHeaders = { 'Authorization': 'Bearer ' + ghToken, 'Accept': 'application/vnd.github+json', 'User-Agent': 'mcp-memory' };
             const gbUrl = 'https://api.github.com/repos/' + applyRepo;
-            const fileUrl = gbUrl + '/contents/' + targetFile.split('/').map(encodeURIComponent).join('/') + '?ref=' + branch;
+            const fileUrl = gbUrl + '/contents/' + targetFile.split('/').map(encodeURIComponent).join('/') + '?ref=' + encodeURIComponent(branch);
             const fileResp = await fetch(fileUrl, { headers: ghApplyHeaders });
-            const fileData = await fileResp.json();
+            let fileData;
+            try { fileData = await fileResp.json(); } catch (e) { return 'ERROR: 读取目标文件响应无效'; }
             if (!fileResp.ok) return 'ERROR: 读取文件失败: ' + (fileData.message || fileResp.status);
             const oldSha = fileData.sha;
             let fileContent;
             try { fileContent = base64ToUtf8(fileData.content); } catch (e) { return 'ERROR: base64 解码失败: ' + e.message; }
-            // 4) validate + apply
+            // 4) validate + apply before claiming proposal
             const vRes = validatePatch(fileContent, patch);
             if (!vRes.ok) return 'ERROR: validatePatch: ' + vRes.errors.join('; ');
             const aRes = applyPatch(fileContent, patch);
             if (!aRes.ok) return 'ERROR: applyPatch: ' + (aRes.errors ? aRes.errors.join('; ') : 'unknown');
             const newContent = aRes.content;
-            // 5) 写入 GitHub（PUT contents，带 old sha）
-            const putBody = { message: 'v6.17.1: apply patch proposal ' + proposalId.slice(0, 8) + ' (' + applyRepo + ' ' + branch + ' ' + targetFile + ')', content: utf8ToBase64(newContent), sha: oldSha, branch: branch };
-            const putResp = await fetch(gbUrl + '/contents/' + targetFile.split('/').map(encodeURIComponent).join('/'), { method: 'PUT', headers: ghApplyHeaders, body: JSON.stringify(putBody) });
-            const putData = await putResp.json();
-            if (!putResp.ok) return 'ERROR: 写入失败: ' + (putData.message || putResp.status);
-            // 6) 更新 proposal 状态
-            const updBody = { status: 'applied', applied_by: 'ziven', applied_at: new Date().toISOString(), rollback_sha: oldSha, updated_at: new Date().toISOString() };
-            await fetch(env.SUPABASE_URL + '/rest/v1/patch_proposals?id=eq.' + proposalId, { method: 'PATCH', headers: sbHeaders, body: JSON.stringify(updBody) });
+            // 5) Atomically claim only an approved proposal. A competing call gets zero rows and cannot write GitHub.
+            const claimAt = new Date().toISOString();
+            let claimResp;
+            try {
+                claimResp = await fetch(proposalUrl + '&status=eq.approved&select=id,status', {
+                    method: 'PATCH',
+                    headers: { ...sbHeaders, 'Prefer': 'return=representation' },
+                    body: JSON.stringify({ status: 'applying', updated_at: claimAt })
+                });
+            } catch (e) { return 'ERROR: proposal 原子认领请求失败，未写入 GitHub: ' + e.message; }
+            if (!claimResp.ok) return 'ERROR: proposal 原子认领失败，未写入 GitHub: HTTP ' + claimResp.status;
+            let claimedRows;
+            try { claimedRows = await claimResp.json(); } catch (e) { claimedRows = null; }
+            if (!Array.isArray(claimedRows) || !claimedRows.some(row => row && row.id === proposalId && row.status === 'applying')) {
+                return 'ERROR: proposal 已被其他执行占用或状态已变化；本次未写入 GitHub';
+            }
+            // 6) 写入 GitHub（PUT contents，带 old sha）
+            const putBody = { message: 'Patch Engine: apply proposal ' + proposalId.slice(0, 8) + ' (' + applyRepo + ' ' + branch + ' ' + targetFile + ')', content: utf8ToBase64(newContent), sha: oldSha, branch: branch };
+            let putResp;
+            try {
+                putResp = await fetch(gbUrl + '/contents/' + targetFile.split('/').map(encodeURIComponent).join('/'), { method: 'PUT', headers: ghApplyHeaders, body: JSON.stringify(putBody) });
+            } catch (e) {
+                return 'PARTIAL/UNKNOWN: proposal 已锁定为 applying，但 GitHub 写入结果未知；为避免重复应用未自动解锁。请先核对目标文件，再人工恢复 proposal 状态。错误: ' + e.message;
+            }
+            let putData;
+            try { putData = await putResp.json(); } catch (e) { putData = {}; }
+            if (!putResp.ok) {
+                // Definite client-side rejection (excluding timeout/rate-limit): release the claim. Server/timeout outcomes remain locked for reconciliation.
+                if (putResp.status >= 400 && putResp.status < 500 && putResp.status !== 408 && putResp.status !== 429) {
+                    let releaseOk = false;
+                    try {
+                        const releaseResp = await fetch(proposalUrl + '&status=eq.applying&select=id,status', {
+                            method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=representation' },
+                            body: JSON.stringify({ status: 'approved', updated_at: new Date().toISOString() })
+                        });
+                        const releaseRows = releaseResp.ok ? await releaseResp.json() : null;
+                        releaseOk = Array.isArray(releaseRows) && releaseRows.some(row => row && row.id === proposalId && row.status === 'approved');
+                    } catch (e) { releaseOk = false; }
+                    return 'ERROR: GitHub 写入被拒绝 (HTTP ' + putResp.status + '): ' + (putData.message || 'unknown') + (releaseOk ? '；proposal 已恢复 approved' : '；proposal 仍可能处于 applying，请核对状态后再处理');
+                }
+                return 'PARTIAL/UNKNOWN: GitHub 写入返回 HTTP ' + putResp.status + '，proposal 保持 applying 以防重复应用；请核对目标文件后再恢复状态。详情: ' + (putData.message || 'unknown');
+            }
+            // 7) Confirm applied state transition. HTTP success alone is insufficient; require returned row.
+            const appliedAt = new Date().toISOString();
+            let stateResp;
+            try {
+                stateResp = await fetch(proposalUrl + '&status=eq.applying&select=id,status', {
+                    method: 'PATCH', headers: { ...sbHeaders, 'Prefer': 'return=representation' },
+                    body: JSON.stringify({ status: 'applied', applied_by: 'ziven', applied_at: appliedAt, rollback_sha: oldSha, updated_at: appliedAt })
+                });
+            } catch (e) {
+                return 'PARTIAL SUCCESS: GitHub 文件已写入，但 proposal 状态确认请求失败；proposal 可能仍为 applying。不要直接重试。proposal=' + proposalId + ' file=' + targetFile + ' branch=' + branch + ' old_sha=' + oldSha + ' new_sha=' + ((putData.content && putData.content.sha) || '?') + ' error=' + e.message;
+            }
+            let stateRows;
+            try { stateRows = stateResp.ok ? await stateResp.json() : null; } catch (e) { stateRows = null; }
+            if (!stateResp.ok || !Array.isArray(stateRows) || !stateRows.some(row => row && row.id === proposalId && row.status === 'applied')) {
+                return 'PARTIAL SUCCESS: GitHub 文件已写入，但 proposal 状态未能确认变为 applied（HTTP ' + stateResp.status + '）。proposal 可能仍为 applying；不要直接重试。proposal=' + proposalId + ' file=' + targetFile + ' branch=' + branch + ' old_sha=' + oldSha + ' new_sha=' + ((putData.content && putData.content.sha) || '?');
+            }
             text = '✅ github_apply_patch 成功\nproposal: ' + proposalId + '\nfile: ' + targetFile + ' (' + branch + ')\nold_sha: ' + oldSha.slice(0, 12) + '\nnew_sha: ' + (putData.content && putData.content.sha ? putData.content.sha.slice(0, 12) : '?') + '\nrollback: ' + oldSha.slice(0, 12) + '\nstatus: applied';
         }
         else return 'ERROR: Unknown GitHub tool: ' + name;
