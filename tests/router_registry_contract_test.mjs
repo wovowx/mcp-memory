@@ -226,9 +226,48 @@ try {
     t.startsWith('✅ 删表成功') && ddlRpcCount === 1 &&
     lastExecSql === 'DROP TABLE IF EXISTS public."mock_probe" CASCADE');
 
-  // Patch Engine contract tests: all network calls are isolated fetch mocks.
+  // github_push must only fetch public content from the exact configured Supabase origin.
+  const previousPushFetch = globalThis.fetch;
+  let pushFetchCalls = 0, uploadFetchCount = 0, fileExistenceChecks = 0, observedRedirect = '';
+  globalThis.fetch = async (url, opts = {}) => {
+    pushFetchCalls++;
+    const s = String(url), method = (opts.method || 'GET').toUpperCase();
+    if (s.includes('/storage/v1/object/public/files/demo.txt')) {
+      uploadFetchCount++; observedRedirect = opts.redirect || '';
+      const bytes = new TextEncoder().encode('hello');
+      return { ok: true, status: 200, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+    }
+    if (s.includes('/contents/demo.txt?ref=dev') && method === 'GET') {
+      fileExistenceChecks++;
+      return fileExistenceChecks === 1
+        ? { ok: false, status: 404, json: async () => ({ message: 'not found' }) }
+        : { ok: true, status: 200, json: async () => ({ size: 5 }) };
+    }
+    if (s.endsWith('/contents/demo.txt') && method === 'PUT') return { ok: true, status: 201, json: async () => ({ content: { html_url: 'https://github.com/wovowx/mcp-memory/blob/dev/demo.txt' } }) };
+    throw new Error('unexpected github_push mock fetch: ' + method + ' ' + s);
+  };
+  const pushEnv = { GITHUB_TOKEN: 'mock-gh-token', GITHUB_REPO: 'wovowx/mcp-memory', SUPABASE_URL: 'https://mock.supabase.co' };
+  try {
+    let pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://another-project.supabase.co/storage/v1/object/public/files/demo.txt' }, pushEnv);
+    check('github_push rejects a different Supabase project before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
+    pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co.evil.example/storage/v1/object/public/files/demo.txt' }, pushEnv);
+    check('github_push rejects deceptive Supabase hostname before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
+    pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co/storage/v1/object/public/files/demo.txt' }, pushEnv);
+    check('github_push accepts exact configured public-files origin with redirects disabled', pushResult.includes('Verified: true') && uploadFetchCount === 1 && observedRedirect === 'error' && fileExistenceChecks === 2);
+  } finally { globalThis.fetch = previousPushFetch; }
+
+  // Patch Engine / release guard contracts.
+  check('release policy recognizes the configured repository exactly', detectRepoType('wovowx/mcp-memory').type === 'code');
+  check('release policy rejects same-name repository under an unknown owner', detectRepoType('another-owner/mcp-memory').type === 'unknown');
+  check('release guard blocks case-variant main branch', validateRelease({ repo: 'wovowx/mcp-memory', branch: 'MAIN', commitTitle: 'v1.0.0: test', action: 'push' }).allowed === false);
+  check('Patch target validator rejects traversal segments', !validatePatchTargetFile('../outside.txt').ok && !validatePatchTargetFile('src/../../outside.txt').ok);
+  check('Patch target validator rejects absolute/backslash/control paths', !validatePatchTargetFile('/root/file.txt').ok && !validatePatchTargetFile('src\\file.txt').ok && !validatePatchTargetFile('src/\u0000file.txt').ok);
+  check('Patch target validator permits ordinary repository-relative paths', validatePatchTargetFile('src/modules/example.js').ok);
+
   check('Patch policy defaults to dev', resolvePatchTargetPolicy('wovowx/mcp-memory', 'dev', { GITHUB_REPO: 'wovowx/mcp-memory' }).ok);
   check('Patch policy blocks main alias refs/heads/main', !resolvePatchTargetPolicy('wovowx/mcp-memory', 'refs/heads/main', { GITHUB_REPO: 'wovowx/mcp-memory', PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/x,refs/heads/main' }).ok);
+  check('Patch policy blocks case-variant main branch even if configured', !resolvePatchTargetPolicy('wovowx/mcp-memory', 'MAIN', { GITHUB_REPO: 'wovowx/mcp-memory', PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,MAIN' }).ok);
+  check('Patch policy rejects repository strings that can alter the API URL', !resolvePatchTargetPolicy('wovowx/mcp-memory?redirect=1', 'dev', { GITHUB_REPO: 'wovowx/mcp-memory?redirect=1' }).ok);
   check('Patch policy rejects unlisted feature branch', !resolvePatchTargetPolicy('wovowx/mcp-memory', 'feature/x', { GITHUB_REPO: 'wovowx/mcp-memory' }).ok);
   check('Patch policy allows explicitly configured feature branch', resolvePatchTargetPolicy('wovowx/mcp-memory', 'feature/x', { GITHUB_REPO: 'wovowx/mcp-memory', PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/x' }).ok);
   check('Patch policy rejects repository outside exact allowlist', !resolvePatchTargetPolicy('other-owner/mcp-memory', 'dev', { GITHUB_REPO: 'wovowx/mcp-memory', GITHUB_ALLOWED_REPOS: 'wovowx/ZivenLab' }).ok);
@@ -290,6 +329,17 @@ try {
     t = await applyPatchMock('feature/not-enabled');
     check('github_apply_patch rejects unlisted branch before any network request', t.includes('BRANCH_NOT_ALLOWED') && patchFetchCount === 0 && patchPutCount === 0);
 
+    patchProposalTarget = 'src/approved.txt'; patchDiffTarget = 'src/other.txt';
+    patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved';
+    t = await applyPatchMock('dev');
+    check('Patch Engine rejects diff target that differs from approved proposal target before GitHub reads/writes', t.includes('PATCH_TARGET_MISMATCH') && patchFetchCount === 1 && patchPutCount === 0);
+
+    patchProposalTarget = '../outside.txt'; patchDiffTarget = '../outside.txt';
+    patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved';
+    t = await applyPatchMock('dev');
+    check('Patch Engine rejects traversal target before GitHub reads/writes', t.includes('INVALID_TARGET_PATH') && patchFetchCount === 1 && patchPutCount === 0);
+
+    patchProposalTarget = 'src/mock.txt'; patchDiffTarget = 'src/mock.txt';
     patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved';
     t = await applyPatchMock('feature/authorized', { PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/authorized' });
     check('explicitly authorized feature branch can apply patch', t.includes('status: applied') && patchPutCount === 1 && patchProposalStatus === 'applied');
