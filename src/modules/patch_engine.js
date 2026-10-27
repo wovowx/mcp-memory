@@ -79,9 +79,10 @@ export function resolvePatchTargetPolicy(repo, branch, env = {}) {
   return { ok: true, repo: targetRepo, branch: canonicalBranch };
 }
 
-// Preserve a focused name for Patch Engine callers while reusing the shared path contract.
+// Preserve the Patch Engine-specific error code while reusing the shared path contract.
 export function validatePatchTargetFile(filePath) {
-  return validateRepoRelativePath(filePath);
+  const result = validateRepoRelativePath(filePath);
+  return result.ok ? result : { ...result, code: 'INVALID_TARGET_PATH' };
 }
 
 // ============================================================
