@@ -830,7 +830,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             // 递归收集源下的全部文件路径（相对 source 根）。返回 [] 层：[[relPath, absPath]]
             // 用 contents API tree 一次性拉全树，避免逐层递归过多请求
             const collectFiles = async (rootPath) => {
-                const treeResp = await fetch(`${mSrcBase}/git/trees/${encodeURIComponent(mSourceBranch)}?recursive=1`, { headers: ghHeaders });
+                const treeResp = await fetch(`${mSrcBase}/git/trees/${encodeURIComponent(mSourceBranch)}?recursive=1`, { headers: ghHeaders, redirect: 'error' });
                 if (!treeResp.ok) {
                     const err = await treeResp.json();
                     return { error: `GITHUB_API_ERROR - tree read failed: ${err.message || treeResp.status}` };
@@ -896,7 +896,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             for (const item of plan) {
                 try {
                     // 读源
-                    const sResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}?ref=${mSourceBranch}`, { headers: ghHeaders });
+                    const sResp = await fetch(`${mSrcBase}/contents/${item.encodedAbs}?ref=${encodeURIComponent(mSourceBranch)}`, { headers: ghHeaders });
                     if (!sResp.ok) {
                         const err = await sResp.json();
                         throw new Error(`source read failed: ${err.message || sResp.status}`);
@@ -904,7 +904,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     const sData = await sResp.json();
                     if (!sData.content) throw new Error('source has no content: ' + item.abs);
                     // 检查目标
-                    const tCheck = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}?ref=${mTargetBranch}`, { headers: ghHeaders });
+                    const tCheck = await fetch(`${mTgtBase}/contents/${item.encodedTargetAbs}?ref=${encodeURIComponent(mTargetBranch)}`, { headers: ghHeaders });
                     let tSha = null;
                     let overwritten = false;
                     if (tCheck.ok) {
@@ -919,7 +919,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     // PUT 目标
                     const putBody = { message: mMessage, content: sData.content, branch: mTargetBranch };
                     if (tSha) putBody.sha = tSha;
-                    const putResp = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}`, {
+                    const putResp = await fetch(`${mTgtBase}/contents/${item.encodedTargetAbs}`, {
                         method: 'PUT', headers: ghHeaders, body: JSON.stringify(putBody)
                     });
                     if (!putResp.ok) {
@@ -931,7 +931,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     let tFinal = 0;
                     for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
                         try {
-                            const vResp = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}?ref=${mTargetBranch}`, { headers: ghHeaders });
+                            const vResp = await fetch(`${mTgtBase}/contents/${item.encodedTargetAbs}?ref=${encodeURIComponent(mTargetBranch)}`, { headers: ghHeaders });
                             if (vResp.ok) {
                                 const vData = await vResp.json();
                                 tFinal = vData.size || 0;
@@ -960,13 +960,13 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const deleted = [];
             for (const item of plan) {
                 try {
-                    const dResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}?ref=${mSourceBranch}`, { headers: ghHeaders });
+                    const dResp = await fetch(`${mSrcBase}/contents/${item.encodedAbs}?ref=${encodeURIComponent(mSourceBranch)}`, { headers: ghHeaders });
                     if (!dResp.ok) {
                         const err = await dResp.json();
                         throw new Error(`source check for delete failed: ${err.message || dResp.status}`);
                     }
                     const dData = await dResp.json();
-                    const delResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}`, {
+                    const delResp = await fetch(`${mSrcBase}/contents/${item.encodedAbs}`, {
                         method: 'DELETE',
                         headers: ghHeaders,
                         body: JSON.stringify({ message: mMessage, sha: dData.sha, branch: mSourceBranch })
