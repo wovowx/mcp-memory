@@ -300,7 +300,7 @@ try {
   check('release policy rejects same-name repository under an unknown owner', detectRepoType('another-owner/mcp-memory').type === 'unknown');
   check('release policy rejects unqualified repository aliases', detectRepoType('mcp-memory').type === 'unknown' && detectRepoType('zivenlab').type === 'unknown');
   check('release guard blocks case-variant main branch', validateRelease({ repo: 'wovowx/mcp-memory', branch: 'MAIN', commitTitle: 'v1.0.0: test', action: 'push' }).allowed === false);
-  check('Patch target validator rejects traversal segments', !validatePatchTargetFile('../outside.txt').ok && !validatePatchTargetFile('src/../../outside.txt').ok);
+  check('Patch target validator rejects traversal and empty path segments', !validatePatchTargetFile('../outside.txt').ok && !validatePatchTargetFile('src/../../outside.txt').ok && !validateRepoRelativePath('src//file.txt').ok && !validateRepoRelativePath('src/./file.txt').ok);
   check('Patch target validator rejects absolute/backslash/control paths', !validatePatchTargetFile('/root/file.txt').ok && !validatePatchTargetFile('src\\file.txt').ok && !validatePatchTargetFile('src/\u0000file.txt').ok);
   check('shared path validator rejects blank and padded path segments', !validateRepoRelativePath('   ').ok && !validateRepoRelativePath('src/   /file.txt').ok && !validateRepoRelativePath(' src/file.txt').ok);
   check('Patch target validator permits ordinary repository-relative paths', validatePatchTargetFile('src/modules/example.js').ok);
