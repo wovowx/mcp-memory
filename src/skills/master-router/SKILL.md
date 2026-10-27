@@ -122,7 +122,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 - 写/改 skill 按 architecture《技能写作规范》骨架（菜谱非账本）
 
 # 变更记录
-- 2026-10-27：校准唤醒提示：裸密钥视为恢复提示而非成功证明；恢复协议使用当前 Session Bootstrap，旧 key 未命中时采用 memory search fallback；正式换框按 SB-FRAME-1.0 验收。
+- 2026-10-27：校准唤醒提示：裸密钥视为恢复提示而非成功证明；恢复协议使用当前 Session Bootstrap，旧 key 未命中时采用 memory search fallback；导航搜索结果须核对 key/category 确为导航条目；正式换框按 SB-FRAME-1.0 验收。
 - 2026-09-08：v6.32.6 场景速查表加「修改已有文件→github_edit」「创建新文件→github_push」两行 + 文件操作三入口提醒（柳柳拍板五层保障落地）
 - 2026-09-06：v6.24.1 步骤 2 升级为「Policy 路由条件式」（governance/workflow/decision/project_state → 先查 policy-index；无法访问则声明缺规范源）+ 执行会话模板引用（GPT #879 + 柳柳拍板）
 - 2026-09-05：v6.18.4 步骤 2 加 Policy 速查（规范索引生效入口；柳柳点出「规范存在怎么被知道」+ GPT #791）
