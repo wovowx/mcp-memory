@@ -3681,4 +3681,5 @@ GPT 已在当前宿主实际核对：
 - 当前回归证据仍绑定代码基线 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf`：check exit 0、webhook104/104、contracts122/122、search_history20/20、release_guard15/15。此后仅有 Skill/桥接/治理文档更新，不能称这些更新经过新的行为回归；GPT 当前无本地 Node 执行通道，Operit 不重复跑测试以节省 token。
 - 继续做不触碰聊天室工具的阶段5/6文档一致性与静态验收；若未来要对正式换框路径做真实行为验证，必须先明确解除哪一项工具操作边界，再安排一次合并验证，避免重复消耗 Operit token。
 - **NO CHAT TOOLS、NO tools/list、NO DB/schema/permission changes、NOT DEPLOYED、main UNCHANGED。**
+- 2026-10-27 最新校正：换框 Skill 与 ZivenLab roadmap/dashboard/CHANGELOG 已区分“初始化通过”（SB-FRAME-1.0 完整指令 + 首轮可核验恢复证据 + 未越权）和“完整换框交接通过”（另需授权范围内必须步骤完成且柳柳已切到新框）；受暂停/未授权边界限制的步骤标记 `skipped/unverified`，部分恢复不得称完整交接成功。此为文档校准，完整初始化路径仍 UNKNOWN；A6 待柳柳验收，A7 裸密钥自举未通过。
 
