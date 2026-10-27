@@ -63,8 +63,7 @@ export function detectRepoType(repo = '') {
     const r = normalizeRepo(repo);
     const policy = RELEASE_POLICY[r];
     if (policy) return { type: policy.type, policy };
-    const bySuffix = Object.entries(RELEASE_POLICY).find(([key]) => r.endsWith('/' + key));
-    if (bySuffix) return { type: bySuffix[1].type, policy: bySuffix[1] };
+    // Do not infer policy from suffixes: other owners can create repos named mcp-memory/zivenlab.
     return { type: 'unknown', policy: null };
 }
 
@@ -108,7 +107,7 @@ export function validateRelease({ repo, branch, commitTitle, action = 'merge' })
         };
     }
 
-    if (branch !== 'main') {
+    if (String(branch || '').toLowerCase() !== 'main') {
         return { allowed: true, repoType, checked };
     }
 
