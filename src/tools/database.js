@@ -136,7 +136,7 @@ function parseDdlDefault(input, position) {
     if (word) {
         const normalized = word.word.toLowerCase();
         if (['null', 'true', 'false', 'current_date', 'current_timestamp'].includes(normalized)) {
-            return { sql: ['null', 'true', 'false'].includes(normalized) ? normalized.toUpperCase() : normalized.toUpperCase(), end: word.end };
+            return { sql: normalized.toUpperCase(), end: word.end };
         }
     }
 
