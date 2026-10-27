@@ -1350,6 +1350,14 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 }
                 return 'PARTIAL/UNKNOWN: GitHub 写入返回 HTTP ' + putResp.status + '，proposal 保持 applying 以防重复应用；请核对目标文件后再恢复状态。详情: ' + (putData.message || 'unknown');
             }
+            // A 2xx alone is not enough: require a returned content SHA before marking the proposal applied.
+            // GitHub may have accepted the write while returning an unusable/truncated response; keep applying for reconciliation.
+            const returnedContent = putData && putData.content;
+            const returnedSha = returnedContent && typeof returnedContent.sha === 'string' ? returnedContent.sha : '';
+            const returnedPath = returnedContent && typeof returnedContent.path === 'string' ? returnedContent.path : '';
+            if (!returnedSha || (returnedPath && returnedPath !== targetFile)) {
+                return 'PARTIAL/UNKNOWN: GitHub PUT returned HTTP success but did not provide a verifiable target identity; proposal remains applying and was not marked applied. Check the repository file before reconciliation; do not retry blindly. proposal=' + proposalId + ' expected_file=' + targetFile + ' returned_file=' + (returnedPath || '?') + ' returned_sha=' + (returnedSha || '?');
+            }
             // 7) Confirm applied state transition. HTTP success alone is insufficient; require returned row.
             const appliedAt = new Date().toISOString();
             let stateResp;
