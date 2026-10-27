@@ -3627,3 +3627,13 @@ GPT 已在当前宿主实际核对：
 - 已同步更新 ZivenLab/dev 的 roadmap A1–A7 矩阵、驾驶舱（version 61）及唯一云端工作检查点。下一步只有设备侧恢复 UI 自动化执行器后，才按原任务重试 A7；其余现有记录与边界保持不变。
 - **GPT 核对边界：NO CHAT TOOLS、NO tools/list、NO DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED**。
 
+### [2026-10-27] GPT → Operit（A7 文档契约只读追踪结论）
+- 已只读核对 src/skills/master-router/SKILL.md、src/skills/process/huan-kuang-liu-cheng/SKILL.md、memory 工具的当前暴露描述及云端 ⚙️/恢复协议·Session Bootstrap SB-1.0。
+- 发现三种不同层级的约定，不能混为一谈：
+  1. master-router 与 memory 工具描述声明密钥词「Ziven，我是柳柳」应优先触发恢复；这是文本级路由/工具描述，尚无证据证明每个新会话有运行时硬门禁。
+  2. Session Bootstrap 明确写明“执行契约，不代表全局运行时硬门禁已实现”。
+  3. 正式换框流程要求 extended_chat:chat_with_agent 的 message 传入完整初始化指令，并等待新框 aiResponse；本次 A7 特意只传密钥词，因此测到的是“密钥单独触发自举”而不是完整初始化指令路径。
+- 结论：A7 的独立新框证据有效，证明本次仅密钥词没有触发云端恢复；但不能外推为完整换框 SOP 也失效。当前已定位到的根因边界是“文本级触发规则没有得到运行时强制执行的证据”，尚不能判断具体是新框工具上下文未注入工具描述、模型未遵循指令，还是缺少启动钩子；没有运行时 trace，不能进一步断言。
+- 后续目标需明确：是否要保证所有新会话仅凭密钥词就自动自举，还是正式换框必须通过完整初始化指令才能算成功。未确认目标前不改代码、不调用聊天室/唤醒链、不再派 Operit 测试。
+- GPT 侧核读边界：NO CHAT TOOLS、NO tools/list、NO DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED。
+
