@@ -46,6 +46,39 @@ export function applyPatch(fileContent, patch) {
 }
 
 // ============================================================
+// Patch Engine target policy
+// Default: dev only. Future branches can be explicitly authorized via
+// PATCH_ENGINE_ALLOWED_BRANCHES (comma-separated); main is never allowed here.
+// ============================================================
+export function resolvePatchTargetPolicy(repo, branch, env = {}) {
+  const targetRepo = String(repo || '').trim();
+  const targetBranch = String(branch || '').trim();
+  if (!targetRepo || !/^[^/\s]+\/[^/\s]+$/.test(targetRepo)) {
+    return { ok: false, code: 'INVALID_REPOSITORY', reason: '目标仓库必须是 owner/repo 格式' };
+  }
+  if (!targetBranch || targetBranch.startsWith('-')) {
+    return { ok: false, code: 'INVALID_BRANCH', reason: '目标分支无效' };
+  }
+  const canonicalBranch = targetBranch.replace(/^refs\/heads\//, '');
+  if (canonicalBranch === 'main') {
+    return { ok: false, code: 'MAIN_PROTECTED', reason: 'github_apply_patch 禁止直接写入 main；请走独立发布审批流程' };
+  }
+  const configured = String(env.PATCH_ENGINE_ALLOWED_BRANCHES || 'dev')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const allowedBranches = new Set(configured.map(s => s.replace(/^refs\/heads\//, '')).filter(s => s !== 'main'));
+  if (!allowedBranches.has(canonicalBranch)) {
+    return { ok: false, code: 'BRANCH_NOT_ALLOWED', reason: `目标分支未获授权：${canonicalBranch}。允许分支：${Array.from(allowedBranches).join(', ') || '(none)'}` };
+  }
+  const configuredRepos = String(env.GITHUB_ALLOWED_REPOS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const defaultRepo = String(env.GITHUB_REPO || '').trim();
+  if (targetRepo !== defaultRepo && !configuredRepos.includes(targetRepo)) {
+    return { ok: false, code: 'REPOSITORY_NOT_ALLOWED', reason: `目标仓库未获授权：${targetRepo}。允许仓库：${[defaultRepo, ...configuredRepos].filter(Boolean).join(', ')}` };
+  }
+  return { ok: true, repo: targetRepo, branch: canonicalBranch };
+}
+
+// ============================================================
 // Self-test block
 // ============================================================
 export function selfTest() {
