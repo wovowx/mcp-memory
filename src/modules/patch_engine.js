@@ -9,25 +9,51 @@ import { validateRepoRelativePath } from '../utils/helpers.js';
 // patch = { file, changes: [{ start_line, delete_lines, insert_lines, delete_content? }] }
 export function validatePatch(fileContent, patch) {
   const errs = [];
-  if (!patch || !patch.file) errs.push('missing file');
-  if (!Array.isArray(patch.changes) || patch.changes.length === 0) errs.push('missing changes');
+  if (!patch || typeof patch !== 'object' || typeof patch.file !== 'string' || !patch.file.trim()) errs.push('missing file');
+  if (!patch || !Array.isArray(patch.changes) || patch.changes.length === 0) errs.push('missing changes');
   if (errs.length) return { ok: false, errors: errs };
 
   const lines = fileContent.split('\n');
   const total = lines.length;
+  const ranges = [];
 
   for (let i = 0; i < patch.changes.length; i++) {
     const ch = patch.changes[i];
+    if (!ch || typeof ch !== 'object' || Array.isArray(ch)) {
+      errs.push('change[' + i + '] must be an object');
+      continue;
+    }
     const start = ch.start_line;
-    const del = ch.delete_lines || 0;
-    if (typeof start !== 'number' || start < 1) { errs.push('change[' + i + '] start_line invalid: ' + start); continue; }
-    if (typeof del !== 'number' || del < 0) { errs.push('change[' + i + '] delete_lines invalid: ' + del); continue; }
+    const del = ch.delete_lines === undefined ? 0 : ch.delete_lines;
+    if (!Number.isInteger(start) || start < 1) { errs.push('change[' + i + '] start_line must be a positive integer: ' + start); continue; }
+    if (!Number.isInteger(del) || del < 0) { errs.push('change[' + i + '] delete_lines must be a non-negative integer: ' + del); continue; }
+    if (ch.insert_lines !== undefined && !Array.isArray(ch.insert_lines)) {
+      errs.push('change[' + i + '] insert_lines must be an array of strings');
+      continue;
+    }
+    if (Array.isArray(ch.insert_lines) && ch.insert_lines.some(line => typeof line !== 'string' || line.includes('\n') || line.includes('\r'))) {
+      errs.push('change[' + i + '] insert_lines entries must be single lines');
+      continue;
+    }
+    if (ch.delete_content !== undefined && (!Array.isArray(ch.delete_content) || ch.delete_content.length !== del || ch.delete_content.some(line => typeof line !== 'string'))) {
+      errs.push('change[' + i + '] delete_content must contain exactly delete_lines strings');
+      continue;
+    }
     if (start > total + 1) { errs.push('change[' + i + '] start_line out of range: ' + start + ' > total+1=' + (total + 1)); continue; }
     if (start - 1 + del > total) { errs.push('change[' + i + '] delete range out of bounds: start=' + start + ' del=' + del + ' total=' + total); continue; }
     if (del > 0 && ch.delete_content) {
       for (let k = 0; k < del; k++) {
         if (lines[start - 1 + k] !== ch.delete_content[k]) { errs.push('change[' + i + '] delete_content mismatch at line ' + (start + k)); break; }
       }
+    }
+    ranges.push({ index: i, start, end: start + Math.max(del, 1) - 1 });
+  }
+
+  // Multiple operations touching the same line make the reverse-order splice ambiguous.
+  ranges.sort((a, b) => a.start - b.start || a.end - b.end);
+  for (let i = 1; i < ranges.length; i++) {
+    if (ranges[i].start <= ranges[i - 1].end) {
+      errs.push('change ranges overlap: change[' + ranges[i - 1].index + '] and change[' + ranges[i].index + ']');
     }
   }
   return { ok: errs.length === 0, errors: errs, lines, total };
