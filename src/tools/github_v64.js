@@ -808,9 +808,9 @@ export async function handleGitHubTool(name, safeArgs, env) {
             // github_move 默认目标 = dev（柳柳 2026-09-07：别默认 main，危险！搬动走 dev，确认后再 merge main）
             const mTargetBranch = safeArgs.target_branch || 'dev';
             const mTargetPath = String(safeArgs.target_path).trim();
-            const mSourcePathPolicy = validateRepoRelativePath(mSourcePath, { allowRoot: true });
+            const mSourcePathPolicy = validateRepoRelativePath(mSourcePath);
             if (!mSourcePathPolicy.ok) return 'ERROR: source_path ' + mSourcePathPolicy.code + ': ' + mSourcePathPolicy.reason;
-            const mTargetPathPolicy = validateRepoRelativePath(mTargetPath, { allowRoot: true });
+            const mTargetPathPolicy = validateRepoRelativePath(mTargetPath);
             if (!mTargetPathPolicy.ok) return 'ERROR: target_path ' + mTargetPathPolicy.code + ': ' + mTargetPathPolicy.reason;
             const mOverwrite = safeArgs.overwrite === true;
             const mRecursive = safeArgs.recursive !== false;
