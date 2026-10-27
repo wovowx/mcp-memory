@@ -3322,7 +3322,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 仓库：wovowx/mcp-memory，分支 dev。
 - 当前改动文件：src/tools/database.js、tests/router_registry_contract_test.mjs。
 - 在运行前读取 origin/dev 最新 HEAD，记录精确 SHA；只在 detached 临时 worktree 运行，不动原工作树。
-- 先检查 git diff 与 git status --short，确认只有上述已知变更；若发现其他未预期变更，停止并回填，不要修。
+- 检查 git status --short（应为空），并执行 git diff --stat c4ef21814fb6c0a5c9b06fed9295cac9d5bc975c...HEAD。相对该基线，本批允许差异文件为 src/utils/search.js、tests/search_history_contract_test.mjs、src/tools/database.js、tests/router_registry_contract_test.mjs、CROSS-HOST-BRIDGE.md；如额外出现其他路径，停止并回填，不要修。
 - 不改代码；若任何测试失败，记录实际输出和第一处失败后停止，不开第二轮执行。
 - 测试全程由 globalThis.fetch mock 接管所有网络请求。不得运行真实 MCP endpoint、Supabase REST/RPC 或真实 SQL/DDL；不建表、不写数据库、不部署、不推/合并 main。
 
