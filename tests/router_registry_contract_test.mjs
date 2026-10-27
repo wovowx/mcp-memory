@@ -274,6 +274,7 @@ try {
     const readBefore = pushFetchCalls;
     await handleGitHubTool('github_read', { path: 'src/a b/c#d.js', branch: 'dev' }, pushEnv);
     check('github_read encodes reserved path characters by segment', observedPathUrl.includes('/contents/src/a%20b/c%23d.js?ref=dev') && pushFetchCalls === readBefore + 1);
+    pushFetchCalls = 0;
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co.evil.example/storage/v1/object/public/files/demo.txt' }, pushEnv);
     check('github_push rejects deceptive Supabase hostname before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co/storage/v1/object/public/files/demo.txt' }, pushEnv);
