@@ -825,8 +825,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
 
             const mSrcBase = `https://api.github.com/repos/${mSourceRepo}`;
             const mTgtBase = `https://api.github.com/repos/${mTargetRepo}`;
-            const enc = (p) => p.split('/').map(encodeURIComponent).join('/');
-
             // 递归收集源下的全部文件路径（相对 source 根）。返回 [] 层：[[relPath, absPath]]
             // 用 contents API tree 一次性拉全树，避免逐层递归过多请求
             const collectFiles = async (rootPath) => {
