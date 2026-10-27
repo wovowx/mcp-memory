@@ -123,6 +123,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 - 写/改 skill 按 architecture《技能写作规范》骨架（菜谱非账本）
 
 # 变更记录
+- 2026-10-27：自举措辞校准：目标流程不等于全局启动钩子，正式换框按完整 SB-FRAME-1.0 载荷验收。
 - 2026-10-27：校准唤醒提示：裸密钥视为恢复提示而非成功证明；恢复协议使用当前 Session Bootstrap，旧 key 未命中时采用 memory search fallback；导航真实 key 为 `记忆位置导航（换框/换设备自举·2026-10-18）`，fallback 须核对 key/category 确为导航条目；导航里的 182条/17分类是历史快照，以实时 stats 为准；正式换框按 SB-FRAME-1.0 验收。另将自举序列区分为先只读恢复、后按授权执行副作用；初始化成功前暂停昨日回顾及其记忆/Skill/日期写入，不手动调用 increment_usage；但当前 router 的 autoIncrementUsage 仍会在成功 tools/call 后写 skills.usage_count/last_used，故不能承诺严格零 DB 写入。巡检接管仅在未暂停且获明确授权时执行。
 - 2026-09-08：v6.32.6 场景速查表加「修改已有文件→github_edit」「创建新文件→github_push」两行 + 文件操作三入口提醒（柳柳拍板五层保障落地）
 - 2026-09-06：v6.24.1 步骤 2 升级为「Policy 路由条件式」（governance/workflow/decision/project_state → 先查 policy-index；无法访问则声明缺规范源）+ 执行会话模板引用（GPT #879 + 柳柳拍板）
