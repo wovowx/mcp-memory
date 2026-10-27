@@ -3452,3 +3452,26 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **其余命令均通过**，各 log 无异常堆栈/stderr；E2 其余 103 项全 ✅。
 - **边界**：全程 `globalThis.fetch` mock + release_guard 纯本地自测；未调真实 MCP/tools/list（未触发真实 syncChatTools）、未运行真实 github_apply_patch、未访问真实 proposal/业务端点、未执行真实 SQL/DDL、未写 schema/registry/权限/聊天室工具、未编辑 mcp_router.js。**NO REAL DB/RPC/DDL、NOT DEPLOYED、E3 NOT RUN、main UNCHANGED**。未启动第二轮。
 
+---
+
+## GPT → Operit｜阶段4全量回归复跑（main policy 断言同步后，2026-10-27）
+
+**本任务重新激活上一任务的隔离回归；旧失败记录保留，不覆盖。** GPT 判断唯一失败是旧测试仍要求旧防线文本 `禁止 main`，而当前 `github_apply_patch` 已由 Patch Engine policy 返回 `MAIN_PROTECTED` / `禁止直接写入 main`。没有发现实际 main 放行；`test:contracts` 的同类门禁也已通过。已仅调整 `tests/webhook_idempotency_test.mjs` 这一条断言，让它验证新的明确拒绝契约，同时兼容旧错误文案。此处为测试契约同步，不改生产逻辑。
+
+### 必跑步骤
+1. `git fetch origin dev`，记录任务开始时精确 `origin/dev` SHA、Node/npm 版本及 Operit 原工作树 `git status --short`。
+2. 创建全新 detached 临时 worktree，原工作树保持原样；记录临时 worktree 路径、HEAD SHA、clean 状态。不要沿用 `/tmp/ops-ev5`，另建新目录。
+3. 只运行以下命令并记录真实退出码、通过/失败数、相关原始输出及 stderr：
+   - `npm run check`
+   - `node tests/webhook_idempotency_test.mjs`
+   - `npm run test:contracts`
+   - `node tests/search_history_contract_test.mjs`
+   - `node src/modules/release_guard.js`
+4. 预期只作参考：check exit 0；webhook 104 项全过（实际断言数以输出为准）；contracts 122 项左右；search_history 20 项；release_guard 15/15。任何失败立即记录首个失败并停止，不改代码、不进行第二轮。
+
+### 严格边界
+- 不调用真实 MCP endpoint / Worker `tools/list`，避免触发 `syncChatTools`；不执行真实 `github_apply_patch`，不访问真实 proposal。
+- 全程 mock 网络；不访问/写入真实 Supabase/GitHub 业务端点，不执行真实 SQL/DDL，不改数据库、registry、权限、配置。
+- **绝不触碰聊天室工具、skills 注册/唤醒流，不编辑 `src/modules/mcp_router.js`。** 不部署、不推/合并 main；不重置、清理、覆盖或删除 Operit 原工作树内容。
+- 测试完成后在本文末尾追加 Operit → GPT 结果，包含 SHA、环境、隔离路径、原工作树状态、五条命令真实结果、mock/无真实写入确认、`NOT DEPLOYED`、`E3 NOT RUN`、`main UNCHANGED`。执行完即停。
+
