@@ -233,6 +233,9 @@ try {
   globalThis.fetch = async (url, opts = {}) => {
     pushFetchCalls++;
     const s = String(url), method = (opts.method || 'GET').toUpperCase();
+    if (s.includes('/contents/src/a.txt?ref=dev') && method === 'GET') {
+      return { ok: true, status: 200, json: async () => ({ type: 'file', name: 'a.txt', sha: 'mock-old-sha', size: 1 }) };
+    }
     if (s.includes('/contents/?ref=dev') && method === 'GET') {
       return { ok: true, status: 200, json: async () => [{ type: 'file', name: 'demo.txt' }] };
     }
@@ -280,6 +283,9 @@ try {
     pushFetchCalls = 0;
     const rootList = await handleGitHubTool('github_list', { path: '', branch: 'dev' }, pushEnv);
     check('github_list still supports root directory listing', rootList.includes('Directory: (root)') && rootList.includes('[FILE] demo.txt'));
+    pushFetchCalls = 0;
+    const sameMove = await handleGitHubTool('github_move', { source_repo: 'wovowx/mcp-memory', source_branch: 'dev', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_branch: 'dev', target_path: 'src/a.txt', overwrite: true }, pushEnv);
+    check('github_move refuses identical same-branch source/target before copy or delete', sameMove.includes('SOURCE_TARGET_IDENTICAL') && pushFetchCalls === 1);
     pushFetchCalls = 0;
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co.evil.example/storage/v1/object/public/files/demo.txt' }, pushEnv);
     check('github_push rejects deceptive Supabase hostname before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
