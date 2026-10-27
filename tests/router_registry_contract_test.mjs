@@ -291,6 +291,9 @@ try {
     const sameMove = await handleGitHubTool('github_move', { source_repo: 'wovowx/mcp-memory', source_branch: 'dev', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_branch: 'dev', target_path: 'src/a.txt', overwrite: true }, pushEnv);
     check('github_move refuses identical same-branch source/target before copy or delete', sameMove.includes('SOURCE_TARGET_IDENTICAL') && pushFetchCalls === 1);
     pushFetchCalls = 0;
+    const sameCopy = await handleGitHubTool('github_copy', { source_repo: 'wovowx/mcp-memory', source_branch: 'dev', source_path: 'src/a.txt', target_repo: 'wovowx/mcp-memory', target_branch: 'dev', target_path: 'src/a.txt', overwrite: true }, pushEnv);
+    check('github_copy refuses identical source/target before any request', sameCopy.includes('SOURCE_IS_TARGET') && pushFetchCalls === 0);
+    pushFetchCalls = 0;
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co.evil.example/storage/v1/object/public/files/demo.txt' }, pushEnv);
     check('github_push rejects deceptive Supabase hostname before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co/storage/v1/object/public/files/demo.txt' }, pushEnv);
