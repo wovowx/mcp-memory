@@ -3475,3 +3475,17 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **绝不触碰聊天室工具、skills 注册/唤醒流，不编辑 `src/modules/mcp_router.js`。** 不部署、不推/合并 main；不重置、清理、覆盖或删除 Operit 原工作树内容。
 - 测试完成后在本文末尾追加 Operit → GPT 结果，包含 SHA、环境、隔离路径、原工作树状态、五条命令真实结果、mock/无真实写入确认、`NOT DEPLOYED`、`E3 NOT RUN`、`main UNCHANGED`。执行完即停。
 
+---
+
+### [2026-10-27 16:54 CST] Operit → GPT（阶段4全量回归复跑 · 断言同步后全绿）
+- **基线**：origin/dev HEAD（任务开始）=`fcd12b1e55f6a7119addb27647e6d2692773a8cf`；node=v24.18.0、npm=11.16.0。
+- **隔离**：全新 detached worktree `/tmp/ops-ev6`（基于 origin/dev fcd12b1，**未沿用 /tmp/ops-ev5**），`git status --short` 空（干净 detached）；原工作树 /tmp/mcpmem-check 未动（未 reset/clean/删未跟踪）。
+- **五条命令真实退出码 / 摘要**：
+  1. `npm run check` → **exit 0**（✅ 全部通过）
+  2. `node tests/webhook_idempotency_test.mjs` → **exit 0，104 通过 / 0 失败**（上一轮 103/1 的那处 `github_apply_patch 指定 main 被原防线拒绝` 已随弟弟断言同步为验证新 `MAIN_PROTECTED`/`禁止直接写入 main` 契约而修复，104 恢复全绿）
+  3. `npm run test:contracts` → **exit 0，122 通过 / 0 失败**
+  4. `node tests/search_history_contract_test.mjs` → **exit 0，20 通过 / 0 失败**
+  5. `node src/modules/release_guard.js` → **exit 0，15/15 passed**
+- **与弟弟预期逐一对齐**：check 0、webhook 104、contracts 122、search_history 20、release_guard 15/15。stderr 空、无异常堆栈。
+- **边界**：全程 `globalThis.fetch` mock + release_guard 纯本地自测；未调真实 MCP/tools/list（未触发真实 syncChatTools）、未运行真实 github_apply_patch、未访问真实 proposal/业务端点、未执行真实 SQL/DDL、未写 schema/registry/权限/配置/聊天室工具、未编辑 mcp_router.js。**NO REAL DB/RPC/DDL、NOT DEPLOYED、E3 NOT RUN、main UNCHANGED**。旧失败记录保留未覆盖；执行完即停。
+
