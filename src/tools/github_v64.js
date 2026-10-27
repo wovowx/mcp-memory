@@ -1294,7 +1294,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             if (!ghToken) return 'ERROR: GITHUB_TOKEN not configured';
             const ghApplyHeaders = { 'Authorization': 'Bearer ' + ghToken, 'Accept': 'application/vnd.github+json', 'User-Agent': 'mcp-memory' };
             const gbUrl = 'https://api.github.com/repos/' + applyRepo;
-            const fileUrl = gbUrl + '/contents/' + targetFile.split('/').map(encodeURIComponent).join('/') + '?ref=' + encodeURIComponent(branch);
+            const fileUrl = gbUrl + '/contents/' + targetPathPolicy.encodedPath + '?ref=' + encodeURIComponent(branch);
             const fileResp = await fetch(fileUrl, { headers: ghApplyHeaders });
             let fileData;
             try { fileData = await fileResp.json(); } catch (e) { return 'ERROR: 读取目标文件响应无效'; }
@@ -1328,7 +1328,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const putBody = { message: 'Patch Engine: apply proposal ' + proposalId.slice(0, 8) + ' (' + applyRepo + ' ' + branch + ' ' + targetFile + ')', content: utf8ToBase64(newContent), sha: oldSha, branch: branch };
             let putResp;
             try {
-                putResp = await fetch(gbUrl + '/contents/' + targetFile.split('/').map(encodeURIComponent).join('/'), { method: 'PUT', headers: ghApplyHeaders, body: JSON.stringify(putBody) });
+                putResp = await fetch(gbUrl + '/contents/' + targetPathPolicy.encodedPath, { method: 'PUT', headers: ghApplyHeaders, body: JSON.stringify(putBody) });
             } catch (e) {
                 return 'PARTIAL/UNKNOWN: proposal 已锁定为 applying，但 GitHub 写入结果未知；为避免重复应用未自动解锁。请先核对目标文件，再人工恢复 proposal 状态。错误: ' + e.message;
             }
