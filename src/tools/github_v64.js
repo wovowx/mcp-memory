@@ -691,6 +691,12 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const targetRepo = String(safeArgs.target_repo).trim();
             const targetBranch = safeArgs.target_branch || 'main';
             const targetPath = String(safeArgs.target_path).trim();
+            const sourcePathPolicy = validateRepoRelativePath(sourcePath);
+            if (!sourcePathPolicy.ok) return 'ERROR: source_path ' + sourcePathPolicy.code + ': ' + sourcePathPolicy.reason;
+            const targetPathPolicy = validateRepoRelativePath(targetPath);
+            if (!targetPathPolicy.ok) return 'ERROR: target_path ' + targetPathPolicy.code + ': ' + targetPathPolicy.reason;
+            const sourceEncodedPath = sourcePathPolicy.encodedPath;
+            const targetEncodedPath = targetPathPolicy.encodedPath;
             const overwrite = safeArgs.overwrite === true;
             const message = safeArgs.message || `Copy ${sourcePath} → ${targetPath}`;
 
@@ -710,7 +716,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const tgtBase = `https://api.github.com/repos/${targetRepo}`;
 
             // 读 source 文件（服务端内部，内容不进 Agent 上下文）
-            const srcResp = await fetch(`${srcBase}/contents/${encodeURIComponent(sourcePath)}?ref=${sourceBranch}`, { headers: ghHeaders });
+            const srcResp = await fetch(`${srcBase}/contents/${sourceEncodedPath}?ref=${encodeURIComponent(sourceBranch)}`, { headers: ghHeaders });
             if (!srcResp.ok) {
                 if (srcResp.status === 404) return 'ERROR: SOURCE_NOT_FOUND - ' + sourcePath + ' not found in ' + sourceRepo + '@' + sourceBranch;
                 const err = await srcResp.json();
@@ -721,7 +727,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             const fileSha = srcData.sha;
 
             // 检查 target 是否存在
-            const tgtCheck = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
+            const tgtCheck = await fetch(`${tgtBase}/contents/${targetEncodedPath}?ref=${encodeURIComponent(targetBranch)}`, { headers: ghHeaders });
             let targetSha = null;
             let overwritten = false;
             if (tgtCheck.ok) {
@@ -745,7 +751,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             // PUT 到 target（用 source 的 base64 内容，服务端内部传递）
             const body = { message, content: srcData.content, branch: targetBranch };
             if (targetSha) body.sha = targetSha;
-            const putResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}`, {
+            const putResp = await fetch(`${tgtBase}/contents/${targetEncodedPath}`, {
                 method: 'PUT', headers: ghHeaders, body: JSON.stringify(body)
             });
             if (!putResp.ok) {
@@ -760,7 +766,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             let targetFinalSize = 0;
             for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
                 try {
-                    const verifyResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
+                    const verifyResp = await fetch(`${tgtBase}/contents/${targetEncodedPath}?ref=${encodeURIComponent(targetBranch)}`, { headers: ghHeaders });
                     if (verifyResp.ok) {
                         const vData = await verifyResp.json();
                         targetFinalSize = vData.size || 0;
