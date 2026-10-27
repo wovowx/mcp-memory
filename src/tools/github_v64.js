@@ -808,6 +808,10 @@ export async function handleGitHubTool(name, safeArgs, env) {
             // github_move 默认目标 = dev（柳柳 2026-09-07：别默认 main，危险！搬动走 dev，确认后再 merge main）
             const mTargetBranch = safeArgs.target_branch || 'dev';
             const mTargetPath = String(safeArgs.target_path).trim();
+            const mSourcePathPolicy = validateRepoRelativePath(mSourcePath);
+            if (!mSourcePathPolicy.ok) return 'ERROR: source_path ' + mSourcePathPolicy.code + ': ' + mSourcePathPolicy.reason;
+            const mTargetPathPolicy = validateRepoRelativePath(mTargetPath);
+            if (!mTargetPathPolicy.ok) return 'ERROR: target_path ' + mTargetPathPolicy.code + ': ' + mTargetPathPolicy.reason;
             const mOverwrite = safeArgs.overwrite === true;
             const mRecursive = safeArgs.recursive !== false;
             const mMessage = safeArgs.message || `Move ${mSourcePath} → ${mTargetPath}`;
@@ -846,7 +850,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
             };
 
             // 判断源是文件还是目录（若 recursive=false 且源是目录则报错）
-            const srcCheckResp = await fetch(`${mSrcBase}/contents/${enc(mSourcePath)}?ref=${mSourceBranch}`, { headers: ghHeaders });
+            const srcCheckResp = await fetch(`${mSrcBase}/contents/${mSourcePathPolicy.encodedPath}?ref=${encodeURIComponent(mSourceBranch)}`, { headers: ghHeaders });
             if (!srcCheckResp.ok) {
                 if (srcCheckResp.status === 404) return 'ERROR: SOURCE_NOT_FOUND - ' + mSourcePath + ' not found in ' + mSourceRepo + '@' + mSourceBranch;
                 const err = await srcCheckResp.json();
