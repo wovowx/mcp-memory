@@ -254,6 +254,7 @@ try {
       }
       if (s.includes('status=eq.applying') && body.status === 'applied') {
         if (patchAppliedMode === 'http500') return { ok: false, status: 500, json: async () => ({ message: 'mock state failure' }) };
+        if (patchAppliedMode === 'empty') return { ok: true, status: 200, json: async () => [] };
         patchProposalStatus = 'applied';
         return { ok: true, status: 200, json: async () => [{ id: 'mock-proposal-id', status: 'applied' }] };
       }
@@ -276,6 +277,10 @@ try {
   const applyPatchMock = (branch = 'dev', extraEnv = {}) => handleGitHubTool('github_apply_patch', { proposal_id: 'mock-proposal-id', branch }, { ...patchEnv, ...extraEnv });
   try {
     patchFetchCount = 0; patchPutCount = 0;
+    t = await handleGitHubTool('github_apply_patch', { proposal_id: 'mock-proposal-id', repo: 'other-owner/mcp-memory', branch: 'dev' }, patchEnv);
+    check('github_apply_patch rejects unauthorized repository before any network request', t.includes('Repository not allowed') && patchFetchCount === 0 && patchPutCount === 0);
+
+    patchFetchCount = 0; patchPutCount = 0;
     t = await applyPatchMock('main');
     check('github_apply_patch rejects main before any network request', t.includes('MAIN_PROTECTED') && patchFetchCount === 0 && patchPutCount === 0);
 
@@ -294,7 +299,11 @@ try {
 
     patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved'; patchAppliedMode = 'http500';
     t = await applyPatchMock('dev');
-    check('status PATCH failure reports partial success and does not claim applied', t.includes('PARTIAL SUCCESS') && t.includes('不要直接重试') && patchPutCount === 1 && patchProposalStatus === 'applying');
+    check('status PATCH HTTP failure reports partial success and does not claim applied', t.includes('PARTIAL SUCCESS') && t.includes('不要直接重试') && patchPutCount === 1 && patchProposalStatus === 'applying');
+    patchAppliedMode = 'empty';
+    patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved';
+    t = await applyPatchMock('dev');
+    check('status PATCH zero-row response reports partial success', t.includes('PARTIAL SUCCESS') && patchPutCount === 1 && patchProposalStatus === 'applying');
     patchAppliedMode = 'ok';
 
     patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'applied';
