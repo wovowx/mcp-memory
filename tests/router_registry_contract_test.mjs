@@ -2,6 +2,8 @@
 // 运行：从仓库根目录执行 node tests/router_registry_contract_test.mjs
 import { handleMCPRequest } from '../src/modules/mcp_router.js';
 import { handleDatabaseTool } from '../src/tools/database.js';
+import { handleGitHubTool } from '../src/tools/github_v64.js';
+import { resolvePatchTargetPolicy } from '../src/modules/patch_engine.js';
 
 const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
 let pass = 0, fail = 0;
@@ -222,6 +224,83 @@ try {
   check('drop_table valid identifier safely quoted and uses one isolated RPC',
     t.startsWith('✅ 删表成功') && ddlRpcCount === 1 &&
     lastExecSql === 'DROP TABLE IF EXISTS public."mock_probe" CASCADE');
+
+  // Patch Engine contract tests: all network calls are isolated fetch mocks.
+  check('Patch policy defaults to dev', resolvePatchTargetPolicy('wovowx/mcp-memory', 'dev', { GITHUB_REPO: 'wovowx/mcp-memory' }).ok);
+  check('Patch policy blocks main alias refs/heads/main', !resolvePatchTargetPolicy('wovowx/mcp-memory', 'refs/heads/main', { GITHUB_REPO: 'wovowx/mcp-memory', PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/x,refs/heads/main' }).ok);
+  check('Patch policy rejects unlisted feature branch', !resolvePatchTargetPolicy('wovowx/mcp-memory', 'feature/x', { GITHUB_REPO: 'wovowx/mcp-memory' }).ok);
+  check('Patch policy allows explicitly configured feature branch', resolvePatchTargetPolicy('wovowx/mcp-memory', 'feature/x', { GITHUB_REPO: 'wovowx/mcp-memory', PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/x' }).ok);
+  check('Patch policy rejects repository outside exact allowlist', !resolvePatchTargetPolicy('other-owner/mcp-memory', 'dev', { GITHUB_REPO: 'wovowx/mcp-memory', GITHUB_ALLOWED_REPOS: 'wovowx/ZivenLab' }).ok);
+
+  let patchFetchCount = 0, patchPutCount = 0;
+  let patchClaimMode = 'ok', patchAppliedMode = 'ok', patchProposalStatus = 'approved';
+  const patchEnv = {
+    GITHUB_TOKEN: 'mock-gh-token', GITHUB_REPO: 'wovowx/mcp-memory',
+    SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key'
+  };
+  const patchMockFetch = async (url, opts = {}) => {
+    patchFetchCount++;
+    const s = String(url), method = (opts.method || 'GET').toUpperCase();
+    if (s.includes('/rest/v1/patch_proposals')) {
+      if (method === 'GET') return { ok: true, status: 200, json: async () => [{
+        id: 'mock-proposal-id', status: patchProposalStatus, target: 'src/mock.txt',
+        diff: JSON.stringify({ file: 'src/mock.txt', changes: [{ start_line: 2, delete_lines: 1, insert_lines: ['new'] }] })
+      }] };
+      const body = JSON.parse(opts.body || '{}');
+      if (s.includes('status=eq.approved') && body.status === 'applying') {
+        if (patchClaimMode === 'empty') return { ok: true, status: 200, json: async () => [] };
+        patchProposalStatus = 'applying';
+        return { ok: true, status: 200, json: async () => [{ id: 'mock-proposal-id', status: 'applying' }] };
+      }
+      if (s.includes('status=eq.applying') && body.status === 'applied') {
+        if (patchAppliedMode === 'http500') return { ok: false, status: 500, json: async () => ({ message: 'mock state failure' }) };
+        patchProposalStatus = 'applied';
+        return { ok: true, status: 200, json: async () => [{ id: 'mock-proposal-id', status: 'applied' }] };
+      }
+      if (s.includes('status=eq.applying') && body.status === 'approved') {
+        patchProposalStatus = 'approved';
+        return { ok: true, status: 200, json: async () => [{ id: 'mock-proposal-id', status: 'approved' }] };
+      }
+      return { ok: false, status: 400, json: async () => ({ message: 'unexpected proposal PATCH' }) };
+    }
+    if (s.includes('api.github.com/repos/wovowx/mcp-memory/contents/src/mock.txt') && method === 'GET') {
+      return { ok: true, status: 200, json: async () => ({ sha: 'oldsha123456789', content: btoa('a\\nb\\nc') .replace('YQpiCmM=', 'YQpib2xkCmI=') }) };
+    }
+    if (s.includes('api.github.com/repos/wovowx/mcp-memory/contents/src/mock.txt') && method === 'PUT') {
+      patchPutCount++;
+      return { ok: true, status: 200, json: async () => ({ content: { sha: 'newsha123456789' } }) };
+    }
+    throw new Error('unexpected Patch Engine mock fetch: ' + method + ' ' + s);
+  };
+  globalThis.fetch = patchMockFetch;
+  const applyPatchMock = (branch = 'dev', extraEnv = {}) => handleGitHubTool('github_apply_patch', { proposal_id: 'mock-proposal-id', branch }, { ...patchEnv, ...extraEnv });
+  try {
+    patchFetchCount = 0; patchPutCount = 0;
+    t = await applyPatchMock('main');
+    check('github_apply_patch rejects main before any network request', t.includes('MAIN_PROTECTED') && patchFetchCount === 0 && patchPutCount === 0);
+
+    patchFetchCount = 0; patchPutCount = 0;
+    t = await applyPatchMock('feature/not-enabled');
+    check('github_apply_patch rejects unlisted branch before any network request', t.includes('BRANCH_NOT_ALLOWED') && patchFetchCount === 0 && patchPutCount === 0);
+
+    patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved';
+    t = await applyPatchMock('feature/authorized', { PATCH_ENGINE_ALLOWED_BRANCHES: 'dev,feature/authorized' });
+    check('explicitly authorized feature branch can apply patch', t.includes('status: applied') && patchPutCount === 1 && patchProposalStatus === 'applied');
+
+    patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved'; patchClaimMode = 'empty';
+    t = await applyPatchMock('dev');
+    check('lost atomic proposal claim prevents GitHub PUT', t.includes('已被其他执行占用') && patchPutCount === 0);
+    patchClaimMode = 'ok';
+
+    patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'approved'; patchAppliedMode = 'http500';
+    t = await applyPatchMock('dev');
+    check('status PATCH failure reports partial success and does not claim applied', t.includes('PARTIAL SUCCESS') && t.includes('不要直接重试') && patchPutCount === 1 && patchProposalStatus === 'applying');
+    patchAppliedMode = 'ok';
+
+    patchFetchCount = 0; patchPutCount = 0; patchProposalStatus = 'applied';
+    t = await applyPatchMock('dev');
+    check('already-applied proposal is rejected before GitHub PUT', t.includes('proposal status=applied') && patchPutCount === 0);
+  } finally { globalThis.fetch = origFetch; }
 
 } finally { globalThis.fetch = origFetch; }
 console.log('===== ' + pass + ' 通过 / ' + fail + ' 失败 =====');
