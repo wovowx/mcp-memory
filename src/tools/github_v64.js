@@ -299,8 +299,11 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // github_read
         else if (name === 'github_read') {
             if (!safeArgs.path) return 'ERROR: Missing path';
+            const pathPolicy = validateRepoRelativePath(safeArgs.path);
+            if (!pathPolicy.ok) return 'ERROR: ' + pathPolicy.code + ': ' + pathPolicy.reason;
+            const encodedPath = pathPolicy.encodedPath;
             const branch = safeArgs.branch || 'main';
-            const resp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+            const resp = await fetch(`${baseUrl}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
             if (data.type === 'file') {
@@ -349,8 +352,11 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // github_list
         else if (name === 'github_list') {
             const path = safeArgs.path || '';
+            const pathPolicy = validateRepoRelativePath(path, { allowRoot: true });
+            if (!pathPolicy.ok) return 'ERROR: ' + pathPolicy.code + ': ' + pathPolicy.reason;
+            const encodedPath = pathPolicy.encodedPath;
             const branch = safeArgs.branch || 'main';
-            const resp = await fetch(`${baseUrl}/contents/${path}?ref=${branch}`, { headers: ghHeaders });
+            const resp = await fetch(`${baseUrl}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
             if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
             const data = await resp.json();
             const items = Array.isArray(data) ? data : [data];
@@ -361,11 +367,14 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // github_delete
         else if (name === 'github_delete') {
             if (!safeArgs.path) return 'ERROR: Missing path';
+            const pathPolicy = validateRepoRelativePath(safeArgs.path);
+            if (!pathPolicy.ok) return 'ERROR: ' + pathPolicy.code + ': ' + pathPolicy.reason;
+            const encodedPath = pathPolicy.encodedPath;
             const branch = safeArgs.branch || 'main';
-            const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+            const checkResp = await fetch(`${baseUrl}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
             if (!checkResp.ok) { const err = await checkResp.json(); throw new Error(err.message || `HTTP ${checkResp.status}`); }
             const data = await checkResp.json();
-            const resp = await fetch(`${baseUrl}/contents/${safeArgs.path}`, {
+            const resp = await fetch(`${baseUrl}/contents/${encodedPath}`, {
                 method: 'DELETE',
                 headers: ghHeaders,
                 body: JSON.stringify({ message: safeArgs.message || `Delete ${safeArgs.path}`, sha: data.sha, branch })
@@ -378,12 +387,15 @@ export async function handleGitHubTool(name, safeArgs, env) {
         else if (name === 'github_edit') {
             if (!safeArgs.path) return 'ERROR: github_edit requires path';
             if (!Array.isArray(safeArgs.operations) || safeArgs.operations.length === 0) return 'ERROR: github_edit requires operations (array of {old, new})';
+            const pathPolicy = validateRepoRelativePath(safeArgs.path);
+            if (!pathPolicy.ok) return 'ERROR: ' + pathPolicy.code + ': ' + pathPolicy.reason;
+            const encodedPath = pathPolicy.encodedPath;
             const branch = safeArgs.branch || 'dev';
             const message = safeArgs.message || `Update ${safeArgs.path}`;
             const dryRun = safeArgs.dry_run === true;
 
             // 读文件
-            const readResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+            const readResp = await fetch(`${baseUrl}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
             if (!readResp.ok) { const err = await readResp.json(); return 'ERROR: READ_FAILED ' + (err.message || `HTTP ${readResp.status}`); }
             const readData = await readResp.json();
             if (!readData.content) return 'ERROR: READ_NO_CONTENT';
@@ -413,12 +425,12 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 const newBase64 = utf8ToBase64(content);
                 const putBody = { message, content: newBase64, branch };
                 if (readData.sha) putBody.sha = readData.sha;
-                const putResp = await fetch(`${baseUrl}/contents/${safeArgs.path}`, { method: 'PUT', headers: ghHeaders, body: JSON.stringify(putBody) });
+                const putResp = await fetch(`${baseUrl}/contents/${encodedPath}`, { method: 'PUT', headers: ghHeaders, body: JSON.stringify(putBody) });
                 if (!putResp.ok) { const err = await putResp.json(); return 'ERROR: WRITE_FAILED ' + (err.message || `HTTP ${putResp.status}`); }
                 const putData = await putResp.json();
                 // size 校验
                 let verified = false;
-                const verifyResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
+                const verifyResp = await fetch(`${baseUrl}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
                 if (verifyResp.ok) {
                     const vData = await verifyResp.json();
                     if (vData.content) verified = base64ToUtf8(vData.content) === content;
