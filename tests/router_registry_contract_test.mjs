@@ -259,6 +259,7 @@ try {
   // Patch Engine / release guard contracts.
   check('release policy recognizes the configured repository exactly', detectRepoType('wovowx/mcp-memory').type === 'code');
   check('release policy rejects same-name repository under an unknown owner', detectRepoType('another-owner/mcp-memory').type === 'unknown');
+  check('release policy rejects unqualified repository aliases', detectRepoType('mcp-memory').type === 'unknown' && detectRepoType('zivenlab').type === 'unknown');
   check('release guard blocks case-variant main branch', validateRelease({ repo: 'wovowx/mcp-memory', branch: 'MAIN', commitTitle: 'v1.0.0: test', action: 'push' }).allowed === false);
   check('Patch target validator rejects traversal segments', !validatePatchTargetFile('../outside.txt').ok && !validatePatchTargetFile('src/../../outside.txt').ok);
   check('Patch target validator rejects absolute/backslash/control paths', !validatePatchTargetFile('/root/file.txt').ok && !validatePatchTargetFile('src\\file.txt').ok && !validatePatchTargetFile('src/\u0000file.txt').ok);
