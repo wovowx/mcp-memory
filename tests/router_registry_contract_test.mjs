@@ -3,7 +3,8 @@
 import { handleMCPRequest } from '../src/modules/mcp_router.js';
 import { handleDatabaseTool } from '../src/tools/database.js';
 import { handleGitHubTool } from '../src/tools/github_v64.js';
-import { resolvePatchTargetPolicy } from '../src/modules/patch_engine.js';
+import { resolvePatchTargetPolicy, validatePatchTargetFile } from '../src/modules/patch_engine.js';
+import { detectRepoType, validateRelease } from '../src/modules/release_guard.js';
 
 const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
 let pass = 0, fail = 0;
@@ -234,6 +235,7 @@ try {
 
   let patchFetchCount = 0, patchPutCount = 0;
   let patchClaimMode = 'ok', patchAppliedMode = 'ok', patchProposalStatus = 'approved';
+  let patchProposalTarget = 'src/mock.txt', patchDiffTarget = 'src/mock.txt';
   const patchEnv = {
     GITHUB_TOKEN: 'mock-gh-token', GITHUB_REPO: 'wovowx/mcp-memory',
     SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key'
@@ -243,8 +245,8 @@ try {
     const s = String(url), method = (opts.method || 'GET').toUpperCase();
     if (s.includes('/rest/v1/patch_proposals')) {
       if (method === 'GET') return { ok: true, status: 200, json: async () => [{
-        id: 'mock-proposal-id', status: patchProposalStatus, target: 'src/mock.txt',
-        diff: JSON.stringify({ file: 'src/mock.txt', changes: [{ start_line: 2, delete_lines: 1, insert_lines: ['new'] }] })
+        id: 'mock-proposal-id', status: patchProposalStatus, target: patchProposalTarget,
+        diff: JSON.stringify({ file: patchDiffTarget, changes: [{ start_line: 2, delete_lines: 1, insert_lines: ['new'] }] })
       }] };
       const body = JSON.parse(opts.body || '{}');
       if (s.includes('status=eq.approved') && body.status === 'applying') {
