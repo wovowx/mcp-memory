@@ -3685,7 +3685,7 @@ GPT 已在当前宿主实际核对：
 ### [2026-10-28 Pages 保留决策与 dev 修复状态｜当前有效]
 
 - 柳柳已明确决定：**保留 GitHub Pages**。这只决定保留目标，不等于授权部署、改 main 或解除其他冻结边界。
-- 已在 `mcp-memory/dev` 修改 `.github/workflows/pages.yml`：仍只监听 main，增加 Pages 最小权限、concurrency、configure-pages，并使用当前 Pages artifact/deploy action；发布 artifact 从整个仓库根目录改为 runner 上构建的白名单 `_site/`，其中只放 `index.html` 与 `memory-universe.html`，排除源码、测试、治理文档、聊天室页及其他仓库文件。
+- 已在 `mcp-memory/dev` 修改 `.github/workflows/pages.yml`：push 到 dev/main 都会先构建并上传白名单 artifact；只有 main 分支执行 Pages deploy job，dev 构建 job 的部署步骤按设计 skipped。workflow 使用最小权限、按分支隔离的 concurrency、`configure-pages@v5` 与当前 Pages artifact/deploy action；artifact 从 runner 上构建的白名单 `_site/` 上传，只放 `index.html` 与 `memory-universe.html`，排除源码、测试、治理文档、聊天室页及其他仓库文件。
 - 已在 `src/public/memory-universe.html` 把硬编码的个人记忆示例替换为合成演示数据，加入 `noindex,nofollow`，副标题明确标注“示例数据”。此修改只影响 dev 中的静态演示 HTML；未删除或修改任何云端/数据库/业务记忆。
 - 已验证的 Pages workflow 修复提交 SHA `c80b2ccab2dd798c3b9a5c741b8819730a7d58c3` 对应 Pages workflow run `40659688436` **success**：`Build and validate Pages artifact` 成功，`Deploy Pages (main only)` 因当前分支是 dev 而按设计 `skipped`，证明 dev push 可构建/上传白名单 artifact 而不部署。相同 SHA 的完整 `learning-regression` run `40659688333` 也 **success**，E1/E2 全绿。此前脱敏演示页 run `40658090594`、Pages workflow v5 初版 run `40659233295` 也 success。以上 CI 只证明静态/Mock回归与 Pages artifact 构建，不证明 Pages 设置已启用或真实线上访问成功。本桥接文档后续提交同样会自动触发新的回归；如需判断最新提交状态，应以对应 SHA 的 Actions run 为准。
 - 静态核验：演示页不再包含原个人样例标记，含合成数据声明和 noindex；workflow artifact 构建步骤只复制两份 HTML。Pages settings API 当前不可读，repo metadata 仍显示 `has_pages=false`，故尚不能证明 GitHub Pages 设置已启用，也没有真实 URL/线上访问证据。
