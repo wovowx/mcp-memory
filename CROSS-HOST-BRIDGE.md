@@ -3698,4 +3698,9 @@ GPT 已在当前宿主实际核对：
 - 对应文档：`governance/roadmap.md`、`governance/真相源导航表.md` v3.28、`governance/资产盘点与整理升级计划.md` v3.14、`governance/当前项目状态.md` version84、`governance/CHANGELOG.md` docs-2026.10.22。阶段5仅静态文档验收，阶段6尚未启动。
 - 本次仅改 ZivenLab/dev 治理文档与本桥接文档；没有代码、数据库、记忆、注册表或聊天室工具改动；未运行测试、不部署、不推/合并 main。当前无待 Operit 执行任务。
 
+### [2026-10-28 阶段6准入清单预备完成]
+- ZivenLab `governance/架构差距矩阵.md` 升至 v3.8，新增阶段6准入证据清单；只作准备，当前仍是阶段5静态审计/文档一致性，阶段6未启动。
+- 清单要求：正式启动前重读当时 mcp-memory/dev HEAD/SHA 与真实测试证据；保留 A6 待柳柳验收、完整 SB-FRAME-1.0 路径 UNKNOWN；聊天室/list_chats、注册/唤醒链与 Worker `tools/list` 继续冻结；如未来获准启动，将必要验证合并为一批，区分 Mock/本地/真实端点/DB 证据，并列明发布候选与回滚路径。
+- 同步文档：导航表 v3.29、驾驶舱 version85、CHANGELOG docs-2026.10.23。当前无待 Operit 执行任务；没有触碰代码/DB/业务记忆/聊天室工具，没有跑测试、部署或推/合并 main。
+
 
