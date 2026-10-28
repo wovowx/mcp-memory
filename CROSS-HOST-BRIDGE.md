@@ -3687,5 +3687,6 @@ GPT 已在当前宿主实际核对：
 - 当前没有需要 Operit 执行的任务；GPT 侧继续阶段5静态审计和 ZivenLab/dev 文档一致性收敛。不要重复跑 E1/E2，不做冷启动实测，不调用真实 MCP endpoint。
 - A6 现有状态/权威文档/Operit 报告对照完成初核，待柳柳验收；A7 仅裸密钥的新框测试未触发恢复。完整 SB-FRAME-1.0 初始化路径仍 UNKNOWN。
 - 最新已验证代码回归基线仍为 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf`：`npm run check` exit 0、webhook104/104、contracts122/122、search_history20/20、release_guard15/15；所有 E1/E2 均为 mock/本地，不等于真实 endpoint/DB/RPC 验证。后续 Skill/桥接/治理文档提交未在该 SHA 上重跑。
+- 当前仍处阶段5静态审计/文档一致性；可整理阶段6准入证据清单，但阶段6尚未启动。该措辞只澄清阶段边界，不分派 Operit 任务。
 - 硬边界不变：不调用 `chat_with_agent`、`list_chats`、rename 或 Worker `tools/list`；不触碰聊天室工具/注册/唤醒链；不改 DB/schema/函数/trigger/权限，不部署、不推/合并 main。
 
