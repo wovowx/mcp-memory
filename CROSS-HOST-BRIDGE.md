@@ -3711,7 +3711,7 @@ GPT 已在当前宿主实际核对：
 
 ### [2026-10-28 当前状态指针：优先于历史交接]
 - 当前有效工作：阶段5静态审计与 ZivenLab/dev 治理文档一致性收敛；阶段6尚未启动。当前没有待 Operit 执行的任务，不要按本文件较早章节中“当前有效任务（2026-10-23）”及其命令执行，也不要因此消耗柳柳的 API token。
-- 版本指针：驾驶舱 `governance/当前项目状态.md` version86；路线 `governance/roadmap.md`；差距矩阵 v3.9；导航表 v3.30；policy-index v2.6；资产整理计划 v3.14。本文件只作 GPT↔Operit 唯一交接入口，文末当前状态与最新工作检查点优先于历史快照。
+- 版本指针：驾驶舱 `governance/当前项目状态.md` version87；路线 `governance/roadmap.md`；差距矩阵 v3.9；导航表 v3.31；policy-index v2.6；资产整理计划 v3.14。本文件只作 GPT↔Operit 唯一交接入口，文末当前状态与最新工作检查点优先于历史快照。
 - A6 只代表现有状态记录静态对照 PASS（范围限定）；A7 裸密钥独立冷启动未触发恢复；完整 `SB-FRAME-1.0` 初始化路径仍 UNKNOWN。聊天室/list_chats、注册/唤醒链与 Worker `tools/list` 继续冻结；若将来需要真实路径验证，须先取得对具体冻结操作的明确授权，并将必要验证合并为一批。
 - 最新已验证代码回归基线仍为 `fcd12b1e55f6a7119addb27647e6d2692773a8cf`，但后续桥接/Skill/治理文档提交未在该 SHA 上重跑代码测试；它不是当前 dev HEAD 的声明，也不证明真实 MCP/HTTP/DB/RPC 行为。未部署、不推/合并 main。
 
