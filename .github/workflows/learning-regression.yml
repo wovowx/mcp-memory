@@ -1,29 +1,46 @@
 name: learning-regression
-# 持续学习引擎 MVP：学习回归测试门禁（CI）
-# 任何 push/PR 触及 tests/learning/ 时自动运行 runner，校验工件一致性（test_id 唯一+格式/必填字段/status 合法/checks 非空）。
-# 对应代码质量守门人「持续学习回归检查」——回归测试必需 CI（GPT 建议）。
+# CI 回归门禁：每次 push/PR 都执行；不加 paths 过滤，避免源码改动跳过主回归。
+# E1：npm run check。E2：隔离 Mock/契约回归。学习工件格式校验作为同一批的最后一步。
+# 保留既有 workflow/job 名称，尽量不破坏可能存在的 branch-protection check name。
 
 on:
   push:
-    paths:
-      - 'tests/learning/**'
-      - '.github/workflows/learning-regression.yml'
   pull_request:
-    paths:
-      - 'tests/learning/**'
-      - '.github/workflows/learning-regression.yml'
+
+permissions:
+  contents: read
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
-      - name: Run learning regression tests
+      - name: E1 - Static syntax, imports, and in-repo contracts
+        run: npm run check
+
+      - name: E2 - Webhook idempotency and memory write mocks
+        run: node tests/webhook_idempotency_test.mjs
+
+      - name: E2 - Router, registry, DDL parser, and Patch Engine contracts
+        run: npm run test:contracts
+
+      - name: E2 - Search history contracts
+        run: node tests/search_history_contract_test.mjs
+
+      - name: E2 - Release guard regression
+        run: node src/modules/release_guard.js
+
+      - name: Learning artifact regression
         run: python3 tests/learning/run_learning_tests.py
