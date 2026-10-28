@@ -3712,7 +3712,7 @@ GPT 已在当前宿主实际核对：
 ### [2026-10-28 当前状态指针：优先于历史交接]
 - 当前有效状态：阶段5静态审计与治理文档一致性范围已于 2026-10-28 封口；阶段6尚未启动。当前没有待 Operit 执行的任务，不要按本文件较早章节中“当前有效任务（2026-10-23）”及其命令执行，也不要因此消耗柳柳的 API token。剩余真实运行时/权限/隐私差距进入阶段6准入或独立差距追踪，不再重复阶段5静态审计。
 - 版本指针：驾驶舱 `governance/当前项目状态.md` version90；路线 `governance/roadmap.md`；差距矩阵 v4.2；导航表 v3.34；policy-index v2.6；资产整理计划 v3.17。本文件只作 GPT↔Operit 唯一交接入口，文末当前状态与最新工作检查点优先于历史快照。
-- **2026-10-28 CI/结果闭环能力盘点**：现有 `learning-regression.yml` 只校验 `tests/learning/*.json` 学习工件，不执行主代码回归；当前 GPT 可用的 Ziven MCP 工具没有 GitHub Actions run dispatch/status/job-log 读取入口；已找到可用于 CI 调试的 GitHub 连接器，但尚未安装/连接。此次未触发 workflow、未运行测试，故不声称 CI 通过或失败。连接器可用后仅只读核查现有 Actions run/status/log；连接前不假定权限/能力，不新增服务/权限、不派 Operit、不启动阶段6。
+- **2026-10-28 GitHub Actions 只读核查结果（连接器现可用）**：已读取现有 runs/jobs/steps/job logs；未 dispatch/rerun workflow。当前 `mcp-memory/dev` HEAD=`985c2ef4725ea04b55569a98155fde2e5d7fbccb`（2026-10-28 06:19:06Z）。最近一次 `learning-regression` 成功 run `39922942691` 在 2026-10-23 运行于旧 SHA `2c6a00ffc1f94a4a368ac4d91c7d1ef494ec5f2b`；真实日志显示 `npm run check` 通过、学习工件 9 项 PASS，但不覆盖当前 HEAD。当前 dev workflow 只在 `tests/learning/**` 或 workflow 文件变化时触发，并只校验学习工件 JSON；普通源码/治理文档提交不会触发，当前 HEAD 没有该 workflow 提供的主代码回归结果。另 main Pages runs `40163294520`（2026-10-25）与 `40276421501`（2026-10-26）均在 setup 阶段因依赖链使用已弃用 `actions/upload-artifact@v3` 失败，未进入部署步骤；这是发布流水线阻塞，不等于主代码测试失败，也不能单独推断当前部署状态。Pages settings/当前部署及可见性仍待独立核实。未触发/重跑 workflow、不派 Operit、不新增服务/权限、不启动阶段6。
 - A6 只代表现有状态记录静态对照 PASS（范围限定）；A7 裸密钥独立冷启动未触发恢复；完整 `SB-FRAME-1.0` 初始化路径仍 UNKNOWN。聊天室/list_chats、注册/唤醒链与 Worker `tools/list` 继续冻结；若将来需要真实路径验证，须先取得对具体冻结操作的明确授权，并将必要验证合并为一批。
 - 最新已验证代码回归基线仍为 `fcd12b1e55f6a7119addb27647e6d2692773a8cf`，但后续桥接/Skill/治理文档提交未在该 SHA 上重跑代码测试；它不是当前 dev HEAD 的声明，也不证明真实 MCP/HTTP/DB/RPC 行为。未部署、不推/合并 main。
 
