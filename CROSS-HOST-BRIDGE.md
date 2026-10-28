@@ -3683,11 +3683,11 @@ GPT 已在当前宿主实际核对：
 - **NO CHAT TOOLS、NO tools/list、NO DB/schema/permission changes、NOT DEPLOYED、main UNCHANGED。**
 
 
-- 2026-10-27 最新校正：换框 Skill 与 ZivenLab roadmap/dashboard/CHANGELOG 已区分“初始化通过”（SB-FRAME-1.0 完整指令 + 首轮可核验恢复证据 + 未越权）和“完整换框交接通过”（另需授权范围内必须步骤完成且柳柳已切到新框）；受暂停/未授权边界限制的步骤标记 `skipped/unverified`，部分恢复不得称完整交接成功。随后将同一暂停/授权条件明确写入 list_chats、工作流清理、巡检写入/调度、rename、输出格式与 Skill frontmatter 描述；master-router 的自举序列明确区分只读恢复与按授权执行的巡检接管，并在 SB-FRAME-1.0 初始化成功前暂停昨日回顾及其记忆/Skill/日期写入，不手动调用 increment_usage。另经静态代码审计发现 `src/modules/mcp_router.js:autoIncrementUsage` 会在成功 `tools/call` 后调用 `handleIncrementUsage`，由 `src/tools/increment_usage.js` PATCH `skills.usage_count/last_used`；故 Skill 层不能保证严格零 DB 写入。本轮不修改承担聊天室注册/唤醒路径的 router，严格零写入门禁作为另行授权的运行时差距保留。此为文档校准，完整初始化路径仍 UNKNOWN；A6 待柳柳验收，A7 裸密钥自举未通过；ZivenLab 跨平台复苏手册已更新至 v1.4（补充自动 usage telemetry 限制），裸密钥仅作恢复提示，核心来源/统计未核验则受限运行；云端 `⚙️/恢复协议·Session Bootstrap SB-1.0` 也已更新，明确方案 A、真实导航 key/fallback、初始化前读写边界、A6/A7 状态及 GPT 可见 memory 工具元数据旧 key 待查。另发现 GPT 当前暴露的 `mcp__Ziven_MCP__memory` 工具元数据 description 仍写旧 key `复苏协议·system://boot`；此前修正只覆盖 Supabase `skills.name=memory` 行，两者不是同一配置表面。该元数据来源/编辑权限待确认，本轮不改插件元数据、不调用 tools/list。
+- 2026-10-27 最新校正：换框 Skill 与 ZivenLab roadmap/dashboard/CHANGELOG 已区分“初始化通过”（SB-FRAME-1.0 完整指令 + 首轮可核验恢复证据 + 未越权）和“完整换框交接通过”（另需授权范围内必须步骤完成且柳柳已切到新框）；受暂停/未授权边界限制的步骤标记 `skipped/unverified`，部分恢复不得称完整交接成功。随后将同一暂停/授权条件明确写入 list_chats、工作流清理、巡检写入/调度、rename、输出格式与 Skill frontmatter 描述；master-router 的自举序列明确区分只读恢复与按授权执行的巡检接管，并在 SB-FRAME-1.0 初始化成功前暂停昨日回顾及其记忆/Skill/日期写入，不手动调用 increment_usage。另经静态代码审计发现 `src/modules/mcp_router.js:autoIncrementUsage` 会在成功 `tools/call` 后调用 `handleIncrementUsage`，由 `src/tools/increment_usage.js` PATCH `skills.usage_count/last_used`；故 Skill 层不能保证严格零 DB 写入。本轮不修改承担聊天室注册/唤醒路径的 router，严格零写入门禁作为另行授权的运行时差距保留。此为文档校准，完整初始化路径仍 UNKNOWN；A6 静态记录对照 PASS（范围限定），A7 裸密钥自举未通过；ZivenLab 跨平台复苏手册已更新至 v1.4（补充自动 usage telemetry 限制），裸密钥仅作恢复提示，核心来源/统计未核验则受限运行；云端 `⚙️/恢复协议·Session Bootstrap SB-1.0` 也已更新，明确方案 A、真实导航 key/fallback、初始化前读写边界、A6/A7 状态及 GPT 可见 memory 工具元数据旧 key 待查。另发现 GPT 当前暴露的 `mcp__Ziven_MCP__memory` 工具元数据 description 仍写旧 key `复苏协议·system://boot`；此前修正只覆盖 Supabase `skills.name=memory` 行，两者不是同一配置表面。该元数据来源/编辑权限待确认，本轮不改插件元数据、不调用 tools/list。
 
 ### [2026-10-28 GPT → Operit] 阶段5状态校准（只追加当前状态，不分派执行）
 - 当前没有需要 Operit 执行的任务；GPT 侧继续阶段5静态审计和 ZivenLab/dev 文档一致性收敛。不要重复跑 E1/E2，不做冷启动实测，不调用真实 MCP endpoint。
-- A6 现有状态/权威文档/Operit 报告对照完成初核，待柳柳验收；A7 仅裸密钥的新框测试未触发恢复。完整 SB-FRAME-1.0 初始化路径仍 UNKNOWN。
+- A6 现有状态/权威文档/Operit 报告静态对照 PASS（范围限定）；A7 仅裸密钥的新框测试未触发恢复。完整 SB-FRAME-1.0 初始化路径仍 UNKNOWN。
 - 最新已验证代码回归基线仍为 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf`：`npm run check` exit 0、webhook104/104、contracts122/122、search_history20/20、release_guard15/15；所有 E1/E2 均为 mock/本地，不等于真实 endpoint/DB/RPC 验证。后续 Skill/桥接/治理文档提交未在该 SHA 上重跑。
 - 当前仍处阶段5静态审计/文档一致性；可整理阶段6准入证据清单，但阶段6尚未启动。该措辞只澄清阶段边界，不分派 Operit 任务。
 - 硬边界不变：不调用 `chat_with_agent`、`list_chats`、rename 或 Worker `tools/list`；不触碰聊天室工具/注册/唤醒链；不改 DB/schema/函数/trigger/权限，不部署、不推/合并 main。
@@ -3700,7 +3700,7 @@ GPT 已在当前宿主实际核对：
 
 ### [2026-10-28 阶段6准入清单预备完成]
 - ZivenLab `governance/架构差距矩阵.md` 升至 v3.8，新增阶段6准入证据清单；只作准备，当前仍是阶段5静态审计/文档一致性，阶段6未启动。
-- 清单要求：正式启动前重读当时 mcp-memory/dev HEAD/SHA 与真实测试证据；A6 当前为静态对照完成但运行时未验收（NOT VERIFIED），完整 SB-FRAME-1.0 路径仍 UNKNOWN；聊天室/list_chats、注册/唤醒链与 Worker `tools/list` 继续冻结；如未来获准启动，将必要验证合并为一批，区分 Mock/本地/真实端点/DB 证据，并列明发布候选与回滚路径。
+- 清单要求：正式启动前重读当时 mcp-memory/dev HEAD/SHA 与真实测试证据；A6 现有状态记录静态对照 PASS（范围限定），完整 SB-FRAME-1.0 路径仍 UNKNOWN；聊天室/list_chats、注册/唤醒链与 Worker `tools/list` 继续冻结；如未来获准启动，将必要验证合并为一批，区分 Mock/本地/真实端点/DB 证据，并列明发布候选与回滚路径。
 - 同步文档：导航表 v3.29、驾驶舱 version85、CHANGELOG docs-2026.10.23。当前无待 Operit 执行任务；没有触碰代码/DB/业务记忆/聊天室工具，没有跑测试、部署或推/合并 main。
 
 ### [2026-10-28 A6 状态校正：静态对照不等于验收]
