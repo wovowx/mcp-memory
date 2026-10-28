@@ -3689,7 +3689,8 @@ GPT 已在当前宿主实际核对：
 - 已在 `src/public/memory-universe.html` 把硬编码的个人记忆示例替换为合成演示数据，加入 `noindex,nofollow`，副标题明确标注“示例数据”。此修改只影响 dev 中的静态演示 HTML；未删除或修改任何云端/数据库/业务记忆。
 - 已验证的 Pages workflow 修复提交 SHA `c80b2ccab2dd798c3b9a5c741b8819730a7d58c3` 对应 Pages workflow run `40659688436` **success**：`Build and validate Pages artifact` 成功，`Deploy Pages (main only)` 因当前分支是 dev 而按设计 `skipped`，证明 dev push 可构建/上传白名单 artifact 而不部署。相同 SHA 的完整 `learning-regression` run `40659688333` 也 **success**，E1/E2 全绿。此前脱敏演示页 run `40658090594`、Pages workflow v5 初版 run `40659233295` 也 success。以上 CI 只证明静态/Mock回归与 Pages artifact 构建，不证明 Pages 设置已启用或真实线上访问成功。本桥接文档后续提交同样会自动触发新的回归；如需判断最新提交状态，应以对应 SHA 的 Actions run 为准。
 - 静态核验：演示页不再包含原个人样例标记，含合成数据声明和 noindex；workflow artifact 构建步骤只复制两份 HTML。Pages settings API 当前不可读，repo metadata 仍显示 `has_pages=false`，故尚不能证明 GitHub Pages 设置已启用，也没有真实 URL/线上访问证据。
-- **下一步**：读取最新 HEAD 与自动回归结果；在 dev 上补齐 Pages 发布合同/风险说明和项目权威文档；不触发部署、不改 main。若要把修复发布到 main，先向柳柳汇报版本、范围、CI、风险与回滚并取得明确同意。若 Pages 尚未启用，需由有设置权限的一方把 Pages source 设为 GitHub Actions 后，才可在获准的发布窗口实际部署验证。
+- **发布候选已准备**：已从 main 基线 `71f6a03e` 创建隔离分支 `release/pages-retain-2026-10`，仅包含 Pages workflow、记忆宇宙 HTML 脱敏与 README 公开仓库说明三项；候选 SHA `21dee584cafffdb1a5d27e6fc01cc30887f77031` 的 Pages artifact build/上传 run `40660502475` success，main-only deploy job 按设计 skipped。已创建 PR #319：`https://github.com/wovowx/mcp-memory/pull/319`，未合并。
+- **下一步**：等柳柳审阅并明确同意合并/推 main 前，先核实 Pages source 已设为 GitHub Actions；当前 `has_pages=false` 且 Settings API 不可读，不能假定线上部署可直接成功。获得同意并确认设置后才合并 PR，随后读取 main 上的 Pages 部署 run 与真实 URL，验收首页/记忆宇宙加载、访问范围与回滚路径。当前不合并、不部署。
 - 本节覆盖本文件更早章节中“Pages 是否保留待决”的状态；旧记录保留为历史，不再重复询问该决定。冻结边界不变：不调用聊天室工具/Worker `tools/list`，不改 DB/schema/权限/生产数据，不部署、不推/合并 main。**
 
 
