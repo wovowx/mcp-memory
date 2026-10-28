@@ -4,14 +4,78 @@ on:
   push:
     branches:
       - main
+      - dev
+      - release/pages-retain-2026-10
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
+    name: Build and validate Pages artifact
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/upload-pages-artifact@v2
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare minimal Pages artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp src/public/memory-universe.html _site/memory-universe.html
+          cat > _site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <meta name="robots" content="noindex,nofollow">
+            <title>Ziven · 记忆宇宙</title>
+            <style>
+              body{margin:0;min-height:100vh;display:grid;place-items:center;background:#030514;color:#eef2ff;font:16px/1.6 system-ui,sans-serif}
+              main{max-width:40rem;padding:2rem;text-align:center}
+              a{display:inline-block;margin-top:1rem;padding:.75rem 1.25rem;border-radius:999px;background:#8298ff;color:#08102d;text-decoration:none;font-weight:700}
+            </style>
+          </head>
+          <body><main><h1>Ziven · 记忆宇宙</h1><p>打开记忆星空可视化页面。</p><a href="./memory-universe.html">进入记忆宇宙</a></main></body>
+          </html>
+          EOF
+          test -s _site/index.html
+          test -s _site/memory-universe.html
+          test "$(find _site -maxdepth 1 -type f | wc -l)" -eq 2
+          test "$(find _site -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 0
+          grep -q 'MEMORY UNIVERSE · 示例数据' _site/memory-universe.html
+          ! grep -Eq '七身份约定|痛经请假|布洛芬|Agnes月卡|柳柳亲口说' _site/memory-universe.html
+
+      - name: Upload minimal Pages artifact
+        uses: actions/upload-pages-artifact@v5
         with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v2
+          path: _site
+
+  deploy:
+    name: Deploy Pages (main only)
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
