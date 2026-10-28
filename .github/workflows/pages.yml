@@ -4,30 +4,24 @@ on:
   push:
     branches:
       - main
+      - dev
 
 permissions:
   contents: read
 
 concurrency:
-  group: github-pages
+  group: github-pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
+    name: Build and validate Pages artifact
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/checkout@v7
 
       - name: Prepare minimal Pages artifact
         shell: bash
@@ -56,11 +50,30 @@ jobs:
           test -s _site/index.html
           test -s _site/memory-universe.html
           test "$(find _site -maxdepth 1 -type f | wc -l)" -eq 2
+          test "$(find _site -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 0
+          grep -q 'MEMORY UNIVERSE · 示例数据' _site/memory-universe.html
+          ! grep -Eq '七身份约定|痛经请假|布洛芬|Agnes月卡|柳柳亲口说' _site/memory-universe.html
 
       - name: Upload minimal Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+
+  deploy:
+    name: Deploy Pages (main only)
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
       - name: Deploy to GitHub Pages
         id: deployment
