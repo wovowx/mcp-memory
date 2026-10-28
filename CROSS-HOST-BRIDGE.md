@@ -3680,7 +3680,17 @@ GPT 已在当前宿主实际核对：
 - 2026-10-27 工作检查点键冲突已修复：原记录 ID `5b0048ab-0e0e-424e-adb5-958375cd375e` 曾被软删除但仍占用唯一 key，故 memory API 无法重新插入同键记录。经只读查询确认后，按精确 ID + status=deleted 条件恢复原记录 status=active、valid_to=null，并用 memory API 更新内容；标准键 `⚙️/当前工作检查点` 已精确 recall，DB 回读确认 active。完整旧值保存为 `⚙️/历史检查点·2026-10-27方案A定案前`；误建默认键副本已改名归档为 `⚙️/过渡检查点副本·2026-10-27键冲突修复`，未硬删除记忆。恢复 deleted→active 的状态动作本身未单独写入 memory_events；后续内容更新仍走 memory API 版本链。
 - 当前回归证据仍绑定代码基线 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf`：check exit 0、webhook104/104、contracts122/122、search_history20/20、release_guard15/15。此后仅有 Skill/桥接/治理文档更新，不能称这些更新经过新的行为回归；GPT 当前无本地 Node 执行通道，Operit 不重复跑测试以节省 token。
 - 当前继续做不触碰聊天室工具/运行时写路径的阶段5文档一致性与静态验收；可整理阶段6准入证据清单，但阶段6尚未启动。若未来要对正式换框路径做真实行为验证，必须先明确解除哪一项工具操作边界，再安排一次合并验证，避免重复消耗 Operit token。
-- **NO CHAT TOOLS、NO tools/list、NO DB/schema/permission changes、NOT DEPLOYED、main UNCHANGED。**
+- **NO CHAT TOOLS、NO tools/list、NO DB/schema/permission changes、NOT DEPLOYED、main UNCHANGED。
+
+### [2026-10-28 Pages 保留决策与 dev 修复状态｜当前有效]
+
+- 柳柳已明确决定：**保留 GitHub Pages**。这只决定保留目标，不等于授权部署、改 main 或解除其他冻结边界。
+- 已在 `mcp-memory/dev` 修改 `.github/workflows/pages.yml`：仍只监听 main，增加 Pages 最小权限、concurrency、configure-pages，并使用当前 Pages artifact/deploy action；发布 artifact 从整个仓库根目录改为 runner 上构建的白名单 `_site/`，其中只放 `index.html` 与 `memory-universe.html`，排除源码、测试、治理文档、聊天室页及其他仓库文件。
+- 已在 `src/public/memory-universe.html` 把硬编码的个人记忆示例替换为合成演示数据，加入 `noindex,nofollow`，副标题明确标注“示例数据”。此修改只影响 dev 中的静态演示 HTML；未删除或修改任何云端/数据库/业务记忆。
+- 当前 mcp-memory/dev commits：Pages workflow 修复 SHA `7c76fbc5eb3d5f0a5881e509f12d074e8e88f187`；脱敏演示数据 SHA `f1997659a71f2cfc31edd84d9a45a9bfb97bb78e`；随后 Pages action 升级为 v5 的提交已在 dev，需以最新分支 HEAD 为准。每次 push 都自动触发 `learning-regression`；前两次提交对应 run `40657904721`、`40658090594` 均 success，E1/E2 全绿（均为静态/本地 Mock，不是 Pages 部署验证）。v5 action 更新后的最新回归待读取。
+- 静态核验：演示页不再包含原个人样例标记，含合成数据声明和 noindex；workflow artifact 构建步骤只复制两份 HTML。Pages settings API 当前不可读，repo metadata 仍显示 `has_pages=false`，故尚不能证明 GitHub Pages 设置已启用，也没有真实 URL/线上访问证据。
+- **下一步**：读取最新 HEAD 与自动回归结果；在 dev 上补齐 Pages 发布合同/风险说明和项目权威文档；不触发部署、不改 main。若要把修复发布到 main，先向柳柳汇报版本、范围、CI、风险与回滚并取得明确同意。若 Pages 尚未启用，需由有设置权限的一方把 Pages source 设为 GitHub Actions 后，才可在获准的发布窗口实际部署验证。
+- 本节覆盖本文件更早章节中“Pages 是否保留待决”的状态；旧记录保留为历史，不再重复询问该决定。冻结边界不变：不调用聊天室工具/Worker `tools/list`，不改 DB/schema/权限/生产数据，不部署、不推/合并 main。**
 
 
 - 2026-10-27 最新校正：换框 Skill 与 ZivenLab roadmap/dashboard/CHANGELOG 已区分“初始化通过”（SB-FRAME-1.0 完整指令 + 首轮可核验恢复证据 + 未越权）和“完整换框交接通过”（另需授权范围内必须步骤完成且柳柳已切到新框）；受暂停/未授权边界限制的步骤标记 `skipped/unverified`，部分恢复不得称完整交接成功。随后将同一暂停/授权条件明确写入 list_chats、工作流清理、巡检写入/调度、rename、输出格式与 Skill frontmatter 描述；master-router 的自举序列明确区分只读恢复与按授权执行的巡检接管，并在 SB-FRAME-1.0 初始化成功前暂停昨日回顾及其记忆/Skill/日期写入，不手动调用 increment_usage。另经静态代码审计发现 `src/modules/mcp_router.js:autoIncrementUsage` 会在成功 `tools/call` 后调用 `handleIncrementUsage`，由 `src/tools/increment_usage.js` PATCH `skills.usage_count/last_used`；故 Skill 层不能保证严格零 DB 写入。本轮不修改承担聊天室注册/唤醒路径的 router，严格零写入门禁作为另行授权的运行时差距保留。此为文档校准，完整初始化路径仍 UNKNOWN；A6 静态记录对照 PASS（范围限定），A7 裸密钥自举未通过；ZivenLab 跨平台复苏手册已更新至 v1.4（补充自动 usage telemetry 限制），裸密钥仅作恢复提示，核心来源/统计未核验则受限运行；云端 `⚙️/恢复协议·Session Bootstrap SB-1.0` 也已更新，明确方案 A、真实导航 key/fallback、初始化前读写边界、A6/A7 状态及 GPT 可见 memory 工具元数据旧 key 待查。另发现 GPT 当前暴露的 `mcp__Ziven_MCP__memory` 工具元数据 description 仍写旧 key `复苏协议·system://boot`；此前修正只覆盖 Supabase `skills.name=memory` 行，两者不是同一配置表面。该元数据来源/编辑权限待确认，本轮不改插件元数据、不调用 tools/list。
