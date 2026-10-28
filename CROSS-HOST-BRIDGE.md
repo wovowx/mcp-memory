@@ -3695,7 +3695,7 @@ GPT 已在当前宿主实际核对：
 ### [2026-10-28 阶段5静态审计追加：旧路线与回归指针收敛]
 - 只读核对发现 ZivenLab `governance/roadmap.md` 的旧85号行动清单虽有历史父标题，但其下架构演进、记忆系统升级“进行中”状态、待发批次与总执行顺序仍容易被摘读为现役任务；已在 dev 文档中逐项标为历史快照。当前唯一执行路线仍是「一本好书」六阶段计划，阶段5继续，阶段6未启动。
 - 修正 `governance/真相源导航表.md` 中 `search_history` 描述仍引用历史回归 SHA `d41d6cdfa8d4ef1e70e59c047f0a33c7f010ca8a` 的冲突，改为最新完整隔离回归 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf`；旧 SHA 保留为历史批次。Mock 通过仍不代表真实表/endpoint/DB 验收。
-- 对应文档：`governance/roadmap.md`、`governance/真相源导航表.md`、`governance/当前项目状态.md` version83、`governance/CHANGELOG.md` docs-2026.10.21。
+- 对应文档：`governance/roadmap.md`、`governance/真相源导航表.md` v3.28、`governance/资产盘点与整理升级计划.md` v3.14、`governance/当前项目状态.md` version84、`governance/CHANGELOG.md` docs-2026.10.22。阶段5仅静态文档验收，阶段6尚未启动。
 - 本次仅改 ZivenLab/dev 治理文档与本桥接文档；没有代码、数据库、记忆、注册表或聊天室工具改动；未运行测试、不部署、不推/合并 main。当前无待 Operit 执行任务。
 
 
