@@ -3814,7 +3814,7 @@ GPT 已在当前宿主实际核对：
 - **源码核对（wovowx/mcp-memory/dev/src/tools/memory_unified.js）**：
   1. getMemoryByKey() 查询 key=eq.<key>&status=eq.active，未过滤 valid_to。
   2. getAllMemories() 只过滤 status=active；by_category 使用它，因此也可能展示 valid_to 已设置的过期记录。
-  3. search 明确额外要求 status='active' AND valid_to IS NULL。因此，同一条仍标 active、但 valid_to 非空的记录会出现在 exact recall / by_category，却被 search 排除；这与本次观察相符。
+  3. search 明确额外要求 status='active' AND valid_to IS NULL；但本次直接查询确认 canonical 检查点 status=active 且 valid_to=null，因此该筛选条件本身不解释新框未命中。getMemoryByKey()/by_category 的筛选标准与 search 不完全相同，是一般实现差异，但不是本案已证实根因。
 - **直接只读查库结果（Supabase memories，未改数据）**：按完整 key 查询仅返回一条 canonical 行：id=5b0048ab-0e0e-424e-adb5-958375cd375e，key=⚙️/当前工作检查点，title=当前工作检查点，category=⚙️，status=active，valid_to=null，updated_at=2026-10-29T01:37:39.013+00:00（新加坡时间 09:37:39）。按 title=当前工作检查点 查询返回两行：上述 canonical 行，以及旧的未加分类前缀行 id=9db2b413-7f12-4fd0-b507-a85c89bd68cc、key=当前工作检查点、category=默认、status=deleted、valid_to=2026-10-27T11:30:18.339+00:00。精确 plain-key recall 未命中，与旧行已软删除一致。
 - **当前操作结论**：不写入、重命名、合并或删除任何云端记忆；不改数据库/生产数据；不重跑 A7。A7 继续记为“部分 PASS：身份根/导航/协议/stats 可恢复，但新框没有可靠恢复 canonical 工作检查点”；A6 跨宿主一致性继续 UNKNOWN。现有最新桥接记录是当天测试结果与范围的依据；过期检查点正文中的“阶段6未启动”不得覆盖其后记录。
 - **根因判断与剩余未知**：没有证据表明 canonical 记忆行丢失、过期或存在多个相同完整 key 的活动行。现有证据指向“读取面用的标识不同”：当前 MCP exact recall 使用实际 key `⚙️/当前工作检查点` 可命中；不带前缀的 key `当前工作检查点` 指向一条已删除旧记录。Operit 新框报告的系统 get_memory_by_title 未命中，可能是它使用 title/裸 key 的查找路径而没有回退到带分类前缀的 canonical key，但该系统工具的实现、索引和过滤条件仍 UNKNOWN，不能把这个解释写成已证实源码根因。另一个独立问题是 canonical checkpoint 的正文停在 09:37，未记录 10:55/11:00 新框测试结果，内容陈旧。
