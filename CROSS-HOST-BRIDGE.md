@@ -3818,3 +3818,13 @@ GPT 已在当前宿主实际核对：
 - **直接只读查库结果（Supabase memories，未改数据）**：按完整 key 查询仅返回一条 canonical 行：id=5b0048ab-0e0e-424e-adb5-958375cd375e，key=⚙️/当前工作检查点，title=当前工作检查点，category=⚙️，status=active，valid_to=null，updated_at=2026-10-29T01:37:39.013+00:00（新加坡时间 09:37:39）。按 title=当前工作检查点 查询返回两行：上述 canonical 行，以及旧的未加分类前缀行 id=9db2b413-7f12-4fd0-b507-a85c89bd68cc、key=当前工作检查点、category=默认、status=deleted、valid_to=2026-10-27T11:30:18.339+00:00。精确 plain-key recall 未命中，与旧行已软删除一致。
 - **当前操作结论**：不写入、重命名、合并或删除任何云端记忆；不改数据库/生产数据；不重跑 A7。A7 继续记为“部分 PASS：身份根/导航/协议/stats 可恢复，但新框没有可靠恢复 canonical 工作检查点”；A6 跨宿主一致性继续 UNKNOWN。现有最新桥接记录是当天测试结果与范围的依据；过期检查点正文中的“阶段6未启动”不得覆盖其后记录。
 - **根因判断与剩余未知**：没有证据表明 canonical 记忆行丢失、过期或存在多个相同完整 key 的活动行。现有证据指向“读取面用的标识不同”：当前 MCP exact recall 使用实际 key `⚙️/当前工作检查点` 可命中；不带前缀的 key `当前工作检查点` 指向一条已删除旧记录。Operit 新框报告的系统 get_memory_by_title 未命中，可能是它使用 title/裸 key 的查找路径而没有回退到带分类前缀的 canonical key，但该系统工具的实现、索引和过滤条件仍 UNKNOWN，不能把这个解释写成已证实源码根因。GPT 侧只读搜索 wovowx/mcp-memory 与 wovowx/ZivenLab 两个仓库的代码索引，get_memory_by_title 和 memory_by_title 均无命中；这支持其实现不在这两个仓库的可搜索源码里，可能位于宿主/连接器/工具发布层，但不能证明具体位置。下一步仅在当前可见工具 metadata/连接器说明中继续只读定位；不得调用 Worker tools/list。另一个独立问题是 canonical checkpoint 的正文停在 09:37，未记录 10:55/11:00 新框测试结果，内容陈旧。
+
+### [2026-10-29 GPT → Operit/跨宿主：工作检查点显式读取契约已修正]
+- **复核结论**：原 SB-FRAME-1.0 初始化指令确实点名了 `⚙️/当前工作检查点`，但没有把“读检查点”绑定到明确的调用契约（`ziven_mcp:memory` + `action=recall` + 完整 key）。新框因此可能使用标题读取面；这与当前证据吻合，但 `get_memory_by_title` 的实现仍在当前可见源码范围之外，故不能声称已证实唯一根因。
+- **已做的最小文档修正（mcp-memory/dev，已写入并回读验证）**：
+  1. `src/skills/process/huan-kuang-liu-cheng/SKILL.md`：SB-FRAME-1.0 初始化指令现在要求用 `ziven_mcp:memory` 的 `action=recall`、完整 key `⚙️/当前工作检查点`；精确读取失败后才 search fallback，并核对 key/category；禁止用标题读取结果、裸 key 或「过渡检查点副本」冒充权威；仍未命中则标记未恢复并进入受限模式。验收契约同步明确此要求。
+  2. `src/skills/master-router/SKILL.md`：自举规则同步指定 canonical key 和精确 recall/fallback 行为。
+  3. `src/skills/process/memory-retrieval-hybrid/SKILL.md`：补充已知权威完整 key 优先精确 recall 的例外，避免通用三路检索规则覆盖权威 key 读取。
+- **没有做的事**：没有重跑 A7、没有调用 Operit 高成本 API；没有写/改业务记忆，没有改 DB/schema/生产代码，没有调用聊天室工具或 Worker `tools/list`，没有部署或推/合并 main。
+- **验证状态**：上述三个文件的 `github_edit` 均返回 Verified=true；换框 Skill 另做 readback，确认初始化正文与验收契约均包含新规则。由于本次是 Skill/文档契约修订，不得将其描述为已通过新的运行时冷启动测试。自动 CI 若触发，应按该提交自身的 Actions 结果单独记录。
+- **下一步**：不为这次文档修正重复消耗 Operit token。后续若现有 A7 之外再次获准做运行时验证，只需进行一次针对性验收：确认新框实际调用精确 recall；若仍未命中，再记录 search fallback 的真实输入、候选 key/category 和结果。
