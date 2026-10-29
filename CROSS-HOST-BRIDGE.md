@@ -3889,3 +3889,11 @@ GPT 已检查当前会话的可见 `ALL_TOOLS`/工具 metadata：没有名为 `g
 - A7 总体仍记为“部分 PASS”：身份根/导航/协议/stats 可恢复；检查点的精确读取路径现已验证可用，但原始新框是否自动调用该路径未由本次证据独立证明。A6 完整跨宿主一致性仍 UNKNOWN。
 - 检查点正文仍停在 2026-10-29 09:37，内容写“阶段6未启动”，与后续桥接证据不同步。**不擅自改写业务记忆**；当前阶段事实以本桥接文档中较新的带时间戳执行记录为准。后续若需更新 canonical 检查点正文，应单独明确授权。
 - 本次只追加判读记录；不改业务记忆/代码/数据库，不重跑 CI，不部署，不推/合并 main。
+
+---
+### [2026-10-29 GPT｜一次性收敛复核与剩余硬门槛]
+- **本轮已做完的可自主工作**：重新读取本桥接文末；复核 ZivenLab 驾驶舱 version110、差距矩阵 v4.20、导航表 v3.51、资产整理计划 v3.34、roadmap 与 CHANGELOG docs-2026.10.44 的当前状态；确认这些文档把精确 recall PASS 与初始化自动调用 UNKNOWN 分开记录，未把静态/Mock 证据升级为运行时 PASS。无需再重复静态契约调查、同一次 recall 或完整 CI。
+- **GitHub 当前只读证据**：PR #319 `release: retain Pages with minimal, sanitized artifact` 仍 open、未合并、mergeable clean；仅 3 个文件（Pages workflow、README、memory-universe 页面），review submissions=0、inline review threads=0。候选 SHA `fd4cf7b6e735d186869cf89dd12459e6350b5fb4` 既有 Pages artifact run `40799872572` SUCCESS；dev HEAD `fb34371dd00f7a3339648d7a6a8fae355996ecb7` 的 learning-regression run `40813963598` 的 validate job SUCCESS，实际步骤包含 `npm run check`、webhook、Router/contracts、search_history、release_guard、学习工件回归；Pages run `40813963599` build/upload SUCCESS，deploy job skipped（dev 上按设计）。本轮没有 rerun workflow。
+- **阶段6结论**：仍不能总体验收 PASS。A7 部分 PASS；精确 recall 通路 PASS，但修订后的初始化是否自动发起精确 recall 未证实；A6 完整跨宿主一致性 UNKNOWN。真实 Worker `/mcp` 与高影响 HTTP 路由的外层 Access/WAF/认证拒绝与授权允许路径、真实 DB/RPC/RLS/GRANT/trigger/CAS/事务、MCP metadata 发布源，以及 Pages Source/真实 URL 仍缺权限或运行时证据。
+- **为什么不能在本轮越过这些门槛**：GitHub Pages Settings API 当前不可读，repo metadata `has_pages=false`，所以 Source=GitHub Actions 只能由有权限者确认；发布仍须柳柳单独明确授权合并/部署。真实 DB/schema/权限、高影响端点、Worker `tools/list`、聊天室/注册/唤醒链仍在冻结范围，不能通过文档/Mock 推断通过或自行调用。新建冷启动框也不是本次精确 recall 授权的一部分，不能擅自扩大。
+- **边界**：没有改 main、没有合并/部署、没有 DB/schema/权限写入、没有业务记忆变更、没有调用生产高影响端点/Worker `tools/list`/聊天室工具，也没有重跑 A7/CI。当前可自主完成的检查与文档收敛已做完；剩余事项均属于有权限者确认或单独授权的硬门槛，不通过反复汇报或重复测试制造假闭环。
