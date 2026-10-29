@@ -2,8 +2,8 @@
 // 治：语法错误进部署 + 文件移动后出现悬空 import
 // 轻量、离线可运行（不需要外部 API / Supabase / GitHub）
 // 用法：node scripts/check.mjs   （或 npm run check）
-import { execSync } from 'node:child_process';
-import { readdirSync, statSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 
 const root = process.cwd();
@@ -22,14 +22,14 @@ function walk(dir) {
 const jsFiles = walk(join(root, 'src'));
 console.log(`[check] 语法检查 ${jsFiles.length} 个 JavaScript 文件...`);
 for (const f of jsFiles) {
-  try { execSync(`node --check "${f}"`, { stdio: 'ignore' }); }
+  try { execFileSync(process.execPath, ['--check', f], { stdio: 'ignore' }); }
   catch { console.log('  ✗ 语法错误:', f); failed++; }
 }
 
 // import 完整性：确认本地相对 import 目标存在（不检查 npm 包）
 console.log('[check] 验证本地 import 路径完整性...');
 for (const f of jsFiles) {
-  const src = execSync(`cat "${f}"`, { encoding: 'utf8' });
+  const src = readFileSync(f, 'utf8');
   const re = /from\s+['"](\.[^'"]+)['"]/g;
   let m;
   while ((m = re.exec(src)) !== null) {
