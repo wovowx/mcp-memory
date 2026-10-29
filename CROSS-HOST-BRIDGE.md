@@ -3941,4 +3941,4 @@ GPT 已检查当前会话的可见 `ALL_TOOLS`/工具 metadata：没有名为 `g
 - 写入后立即通过 `memory(action=recall,key="⚙️/当前工作检查点")` 回读确认：顶部已显示新覆盖段，完整 key/category 正确，旧段保留在后方作为历史快照。该动作更新的是既有权威检查点正文，不删除记忆、不改 DB schema/权限，不是重新测试新框。
 - **A6 仍 UNKNOWN**：Operit 新框 `7516ae0a-23e2-4b6f-8dce-6cb4f592547f` 的首次回复发生在本次正文同步之前，反映的是当时的旧快照；未再次消耗 Operit token，也不把旧回复伪装成更新后的两端一致证据。若未来确需将 A6 升为 PASS，只能依据两端同一时点的状态对照证据，不能用文档写入本身代替。
 - 最新只读 CI 核验：当前 dev 桥接提交 `e2b4a03e4703cd53def66daef8f695417fe94e14` 的 `learning-regression` run `40847460276` SUCCESS，Pages workflow run `40847460268` SUCCESS（dev 上 deploy job 按设计 skipped）。Cloudflare main 部署仍 `VERIFIED`（main `71f6a03ebc81` 对应 deploy `c78ab839`）。未合并/推送 main、未部署、未改 DB/schema/权限/生产代码。
-- 结论：用户无须重复安排或手动转述；能在当前权限下完成的状态同步已经完成。阶段6剩余的 Worker 认证/外层防护、DB/RPC 权限行为、MCP metadata 发布源，以及若发布 Pages 时的 Source/URL，仍需要相应只读权限或运行时证据；这些不是继续写文档就能宣告通过的。
+- 结论：用户无须重复安排或手动转述；能在当前权限下完成的状态同步已经完成。**纠正 A6 原因表述**：canonical 检查点顶部当前状态覆盖段已写入并回读确认，不能再把“当前正文仍陈旧”作为现状；A6 仍 UNKNOWN 的准确原因是 Operit 新框首次回复早于该次同步，缺少同步之后同一时点的双端对照证据。旧的 A6 原因描述仅代表同步前快照，不能覆盖本补记。阶段6剩余的 Worker 认证/外层防护、DB/RPC 权限行为、MCP metadata 发布源，以及若发布 Pages 时的 Source/URL，仍需要相应只读权限或运行时证据；这些不是继续写文档就能宣告通过的。
