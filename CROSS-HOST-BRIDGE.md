@@ -3727,4 +3727,13 @@ GPT 已在当前宿主实际核对：
 - A6 只代表现有状态记录静态对照 PASS（范围限定）；A7 裸密钥独立冷启动未触发恢复；完整 `SB-FRAME-1.0` 初始化路径仍 UNKNOWN。聊天室/list_chats、注册/唤醒链与 Worker `tools/list` 继续冻结；若将来需要真实路径验证，须先取得对具体冻结操作的明确授权，并将必要验证合并为一批。
 - 最新已验证代码回归基线仍为 `fcd12b1e55f6a7119addb27647e6d2692773a8cf`，但后续桥接/Skill/治理文档提交未在该 SHA 上重跑代码测试；它不是当前 dev HEAD 的声明，也不证明真实 MCP/HTTP/DB/RPC 行为。未部署、不推/合并 main。
 
+### [2026-10-29 当前状态指针：Pages 保留与发布候选]
+
+- 柳柳已明确决定**保留 GitHub Pages**。此决定不自动授权合并/推 main 或部署；继续遵守“main 发布前先报告版本、范围、CI、风险与回滚并取得明确同意”。
+- mcp-memory/dev 当前已验证快照（本次桥接记录更新前）为 HEAD `7eabe99ee5c043cc837e3606769c60fadc02008d`：完整 E1/E2 run `40660621011` SUCCESS；Pages workflow run `40660621137` SUCCESS，build/上传白名单 artifact 成功，deploy job 在 dev 分支按设计 skipped。该批测试为静态/Mock，不能证明真实 MCP/HTTP/DB/RPC 或线上 Pages 已可访问。
+- Pages workflow 现在会在 dev/main/发布候选分支验证 artifact；仅 main 分支执行 deploy job。artifact 只包含 `_site/index.html` 与 `_site/memory-universe.html`，不会再将仓库根目录整体发布。HTML 中的硬编码个人记忆样例已在 dev 替换为合成演示数据，带 `noindex,nofollow`；未改云端/数据库业务记忆。
+- 发布候选分支 `release/pages-retain-2026-10` 的 SHA 为 `21dee584cafffdb1a5d27e6fc01cc30887f77031`，Pages artifact workflow run `40660502475` SUCCESS，deploy job skipped。PR #319（[release: retain Pages with minimal, sanitized artifact](https://github.com/wovowx/mcp-memory/pull/319)）目前 open、非 draft、mergeable；只含 `.github/workflows/pages.yml`、`src/public/memory-universe.html`、`README.md` 三个文件，尚未合并。
+- repo metadata 仍显示 `has_pages=false`，Pages Settings API 无法由当前连接器读取；因此 Pages source 是否设为 GitHub Actions、真实 URL/线上可访问性均 UNKNOWN。合并前须让有权限的人确认 Pages source；取得柳柳明确同意前不合并、不部署。
+- 本次桥接文档提交会自动触发完整 `learning-regression` 与 dev 上的 Pages artifact build；结果以这次提交对应的 Actions run 为准。仍不调用聊天室工具或 Worker `tools/list`，不改 DB/schema/权限/生产数据，不部署、不推/合并 main。
+
 
