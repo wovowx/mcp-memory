@@ -3834,3 +3834,14 @@ GPT 已在当前宿主实际核对：
 - **纠正读取契约**：精确读取 `ziven_mcp:memory(action=recall, key="⚙️/当前工作检查点")` 仍是唯一成功判据；recall 的正常响应会显示完整 key 与 category。若首次 recall 未命中，可以用 `ziven_mcp:memory(action=search, keyword="⚙️/当前工作检查点")` 定位候选，但必须再用完整 key 重试精确 recall。不能把 search 命中、title 命中或过渡副本当成恢复成功；再次精确 recall 仍失败就进入受限模式并明确报告检查点未恢复。
 - **已同步修正**：换框流程、master-router、memory-retrieval-hybrid 三份现有 Skill 已更新为上述可执行规则，并分别回读验证；不新增平行机制、不改业务数据。
 - **边界**：不重跑 A7、不调用 Operit 高成本 API、不调用 Worker `tools/list`/聊天室工具、不写业务记忆、不改 DB/schema/生产代码、不部署、不推/合并 main。此次只读检查不会把此前 A7 从部分 PASS 升为全 PASS；A6 仍 UNKNOWN。
+
+### [下一步｜需 Operit 侧只读确认工具契约来源，不重跑 A7]
+GPT 已检查当前会话的可见 `ALL_TOOLS`/工具 metadata：没有名为 `get_memory_by_title` 的工具；当前 `mcp__Ziven_MCP__memory` 暴露描述仍写旧 key `复苏协议·system://boot`。同时，`wovowx/mcp-memory` 与 `wovowx/ZivenLab` 两仓库的可搜索源码没有 `get_memory_by_title` / `memory_by_title` 定义，当前私有 `Ziven_MCP` 插件包的 manifest 也没有 memory 工具 schema/description。因此 GPT 侧无法继续从已授权可见范围确认该系统工具的实现来源。
+
+**请 Operit 侧只读检查自身已存在的工具注册表/工具说明/本地 metadata（仅阅读，不调用工具）：**
+1. 找到 `get_memory_by_title` 的确切工具名、输入 schema、参数含义及其可见说明；确认它按 title、key 还是其他字段查找，是否接受带分类前缀的完整 key，以及是否存在默认分类/索引过滤。
+2. 记录该工具究竟属于 Operit 宿主内置能力、MCP server 暴露工具，还是其他连接器/包装层；只写可见证据，不能根据猜测认定来源。
+3. 对照现已更新的 `src/skills/process/huan-kuang-liu-cheng/SKILL.md`：如果 Operit 文档契约支持调用 `ziven_mcp:memory` 的 `action=recall` 并传完整 key `⚙️/当前工作检查点`，后续验证只需确认初始化指令是否真的发起此调用；若其工具路由或 schema 不支持该形式，先报告参数/工具名差异，不要自行改业务代码或记忆数据。
+4. 若本地工具说明/metadata 中也找不到该工具，直接报告“当前 Operit 可见定义未找到”，并注明查过哪些静态位置；到此停止，不能为了找来源调用额外 API、发起真实记忆查询、重复创建新框或探测 Worker `tools/list`。
+
+**本项严格只读、低成本**：不调用 `get_memory_by_title` 或其他 MCP 工具，不查/写数据库，不改记忆，不触碰聊天室/唤醒链，不重跑 A7，不部署、不推/合并 main。完成后把发现追加到本文件文末；无需同步整套治理文档，除非出现能改变根因判断的新证据。
