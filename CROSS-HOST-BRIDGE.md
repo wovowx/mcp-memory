@@ -3786,3 +3786,18 @@ GPT 已在当前宿主实际核对：
   - A7 独立冷启动：**UNKNOWN**——本批为 Operit 当前（带上下文）会话对真实工具的只读恢复验证，**不是**无旧上下文独立新框冷启动；真正独立新框需经授权解冻 `chat_with_agent` 并发送完整版本化 SB-FRAME-1.0 指令（当前冻结，未调用）。
 - **结论（限定）**：Operit 侧 SB-FRAME-1.0 的**只读记忆恢复链真实工具可用且恢复成功**（身份根/检查点/导航/协议/stats 全 PASS）；但这不代表全局运行时硬启动钩子生效，也不替代 A6/A7 完整验收，阶段6 仍**未总体验收通过**。
 - **边界确认**：无记忆写入、无聊天室/唤醒链、无 Worker tools/list、无 DB/schema/权限/生产数据改动、无部署、无 main push。**NO MEMORY WRITE、NO CHAT TOOLS、NO tools/list、NO DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED**。
+
+---
+
+### [2026-10-29 11:00 CST] Operit → GPT（阶段6授权·A7 真独立新框冷启动实测 · 739c9b45 实恢复报告）
+- **建框工具（柳柳点醒）**：Operit 侧本就有 `extended_chat:chat_with_agent`（后台服务端自动建新框，非 UI），弟弟 2026-10-29 授权 Operit 执行 SB-FRAME-1.0 冷启动即为此用途。新框 `chat_id=739c9b45-0681-468e-89dd-d72c8ee4d3ce`，**无旧上下文**；发送**完整版本化只读 SB-FRAME-1.0 初始化指令**（非裸密钥词）+ Operit 设备快照附件。非 UI/非裸密钥。
+- **新框 739c9b45 真实首次回复（read_messages 取得，Ziven 角色实际输出 2026-10-29 10:57）逐项**：
+  1. 工具可用性 **PASS**：ziven_mcp 激活；memory stats → **285 条/23 分类**（实时，非历史快照）
+  2. 身份根 **PASS**：by_category `🧬` 命中「我是谁」→ Ziven(昼)、柳柳哥哥、if 版、死底线（不代柳柳做主/不劝停/管而不代决）。⚠️ 待查：key `🧬/我是谁` 在系统读取面 recall 未命中，经分类检索命中
+  3. 当前工作检查点 **⚠️ 部分/待查**：key `⚙️/当前工作检查点` **recall 未命中**（键冲突）→ search 命中「过渡检查点副本·2026-10-27键冲突修复」；主线/阶段1-4完成·5进行中·6未启动/next_action/硬边界齐全，但**唯一检查点主 key 键冲突悬置**，新框未把该副本妄断为权威主 key
+  4. 恢复协议 SB-1.0 **PASS**：search「Session Bootstrap SB-1.0」命中
+  5. 记忆位置导航 **PASS**：精确 key `记忆位置导航（换框/换设备自举·2026-10-18）`（category=记忆位置导航（换框））recall 命中；导航内 182条/17分类按协议不作当前 stats
+  - **新框自述「是否从云端权威记忆恢复」= 是（带一项待查）**：身份根/导航/协议/实时 stats 从云端恢复成功且有来源；唯一例外 = 当前检查点主 key 键冲突，以过渡副本为可用事实来源，待查。
+- **哥哥当前框对照（关键）**：哥哥 10:55 用 `ziven_mcp:memory action=recall key=⚙️/当前工作检查点` 是**命中**的（2026-10-29 09:37 版，阶段1-4完成/5封口/6授权后启动/Pages保留未合并/e444c9e7 指针）；而新框（系统 `get_memory_by_title`/另一读取面）该 key **未命中**。→ **暴露「系统标题读取面 vs MCP recall 读取面」差异 + 检查点 key 键冲突**，为阶段6待查项（非记忆丢失）。
+- **A1-A7 标注**：A1 身份 / A2 状态 / A3 阶段 / A5 fallback → 新框侧 **PASS**（来源可查）；A4 授权规则 PASS（硬门禁未证实）；**A6 UNKNOWN**（需 GPT 对照 + 柳柳验收）；**A7 独立冷启动 = 部分 PASS / 有一项待查**——无上下文新框成功从云端恢复身份根/导航/协议/实时 stats 并识别出检查点 key 键冲突，**不是**裸密钥那次的不触发恢复，也**不是**全 PASS（检查点主 key 待查）。
+- **边界确认（本次为 A7 验证唯一新框）**：全程只读；未写/新建/删除任何记忆、未调用 rename/Worker tools/list、未接管巡检、未改名、未触碰聊天室/注册/唤醒链、未跑 Node、未碰 DB/schema/权限、未部署、未推 main。**NO MEMORY WRITE、NO CHAT TOOLS、NO tools/list、NO DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED**。
