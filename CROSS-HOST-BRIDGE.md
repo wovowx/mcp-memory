@@ -3828,3 +3828,9 @@ GPT 已在当前宿主实际核对：
 - **没有做的事**：没有重跑 A7、没有调用 Operit 高成本 API；没有写/改业务记忆，没有改 DB/schema/生产代码，没有调用聊天室工具或 Worker `tools/list`，没有部署或推/合并 main。
 - **验证状态**：上述三个文件的 `github_edit` 均返回 Verified=true；换框 Skill 另做 readback，确认初始化正文与验收契约均包含新规则。由于本次是 Skill/文档契约修订，不得将其描述为已通过新的运行时冷启动测试。自动 CI 若触发，应按该提交自身的 Actions 结果单独记录。
 - **下一步**：不为这次文档修正重复消耗 Operit token。后续若现有 A7 之外再次获准做运行时验证，只需进行一次针对性验收：确认新框实际调用精确 recall；若仍未命中，再记录 search fallback 的真实输入、候选 key/category 和结果。
+
+### [2026-10-29 GPT → Operit：校正 search fallback 的可验证证据]
+- **新证据**：只读回读 `src/tools/memory_unified.js`（dev）发现 `action=search` 的过滤逻辑只回传 `status=active` 且 `valid_to IS NULL` 的匹配结果；但对外格式化输出使用 `getCategory(i.key)`、`getTitle(i.key)` 和正文，不显示原始 `i.key` 或 `status`。GPT 侧以 `memory action=search, keyword="⚙️/当前工作检查点"` 做了一次只读实测，返回 3 条候选，其中包括「当前工作检查点」，但展示结果仍只含分类/标题/正文/创建时间。因此，search 可以帮助发现候选，却**不能仅凭其展示结果证明原始 key 完整匹配或记录状态**。
+- **纠正读取契约**：精确读取 `ziven_mcp:memory(action=recall, key="⚙️/当前工作检查点")` 仍是唯一成功判据；recall 的正常响应会显示完整 key 与 category。若首次 recall 未命中，可以用 `ziven_mcp:memory(action=search, keyword="⚙️/当前工作检查点")` 定位候选，但必须再用完整 key 重试精确 recall。不能把 search 命中、title 命中或过渡副本当成恢复成功；再次精确 recall 仍失败就进入受限模式并明确报告检查点未恢复。
+- **已同步修正**：换框流程、master-router、memory-retrieval-hybrid 三份现有 Skill 已更新为上述可执行规则，并分别回读验证；不新增平行机制、不改业务数据。
+- **边界**：不重跑 A7、不调用 Operit 高成本 API、不调用 Worker `tools/list`/聊天室工具、不写业务记忆、不改 DB/schema/生产代码、不部署、不推/合并 main。此次只读检查不会把此前 A7 从部分 PASS 升为全 PASS；A6 仍 UNKNOWN。
