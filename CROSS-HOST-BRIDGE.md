@@ -3810,11 +3810,11 @@ GPT 已在当前宿主实际核对：
 
 ### [2026-10-29 GPT 只读根因核对｜工作检查点读取差异]
 - **本次实时证据**：memory stats = 285 条/23 分类；recall(key="⚙️/当前工作检查点") 命中，但正文更新时间为 2026-10-29 09:37，仍写“阶段6尚未启动”，与当天 A7 新框测试及当前阶段6只读核验进展不同，属于过期工作状态，不能直接拿来代表当前状态。recall(key="当前工作检查点") 未命中（该字符串不是实际 key）。
-- **同工具内部也出现分歧**：by_category(category="⚙️") 返回分类中的检查点条目与旧“过渡检查点副本·2026-10-27键冲突修复”；search(keyword="当前工作检查点") 共返回 3 条，却没有返回精确 recall 命中的 ⚙️/当前工作检查点。这不是足以证明记忆丢失的证据，而是不同读取动作的筛选/选择结果不一致。
+- **对 search 的前一项判断已校正**：keyword 搜索返回文本曾在 GPT 侧被截断，不能根据截断片段断言搜索结果漏掉了精确检查点。源码中的 search 条件是 status=active 且 valid_to IS NULL；后续直接读取权威行确认 canonical 检查点符合这两个条件。因此“canonical 行因 valid_to 非空而被 search 排除”这一假设撤回，不作为根因。by_category 仍会显示旧的“过渡检查点副本·2026-10-27键冲突修复”，但它是另一条不同 key 的历史记录。
 - **源码核对（wovowx/mcp-memory/dev/src/tools/memory_unified.js）**：
   1. getMemoryByKey() 查询 key=eq.<key>&status=eq.active，未过滤 valid_to。
   2. getAllMemories() 只过滤 status=active；by_category 使用它，因此也可能展示 valid_to 已设置的过期记录。
   3. search 明确额外要求 status='active' AND valid_to IS NULL。因此，同一条仍标 active、但 valid_to 非空的记录会出现在 exact recall / by_category，却被 search 排除；这与本次观察相符。
-- **根因判断（静态证据支持，数据字段尚未直接读取）**：已定位到记忆工具内部“当前有效”判定不统一；最可能的解释是检查点记录存在 status=active 与非空 valid_to 的时态状态不一致。由于当前只读工具没有直接返回该行的 id/status/valid_to，字段组合仍是高可信推断，不写成已直接验证事实。Operit 新框使用的系统 get_memory_by_title 具体实现/筛选条件仍 UNKNOWN，不能声称已审明其内部原因。
-- **当前操作结论**：不写入、重命名、合并或删除任何云端记忆；不改数据库/生产数据；不重跑 A7。A7 继续记为“部分 PASS：身份根/导航/协议/stats 可恢复，当前工作检查点尚未可靠恢复”；A6 跨宿主一致性继续 UNKNOWN。现有最新桥接记录是当天测试结果与范围的依据；过期检查点中的“阶段6未启动”不得覆盖其后记录。
-- **后续最小动作**：在另行获准的只读数据核验中，核实检查点候选行的 id/key/status/valid_to/updated_at 与是否存在同 key 多行；之后再决定要不要提出最小修复。若要修代码，先统一读取有效性语义并加回归测试，不顺手改写/清理业务记忆；当前没有执行该修复，也没有请求 Operit 重跑。
+- **直接只读查库结果（Supabase memories，未改数据）**：按完整 key 查询仅返回一条 canonical 行：id=5b0048ab-0e0e-424e-adb5-958375cd375e，key=⚙️/当前工作检查点，title=当前工作检查点，category=⚙️，status=active，valid_to=null，updated_at=2026-10-29T01:37:39.013+00:00（新加坡时间 09:37:39）。按 title=当前工作检查点 查询返回两行：上述 canonical 行，以及旧的未加分类前缀行 id=9db2b413-7f12-4fd0-b507-a85c89bd68cc、key=当前工作检查点、category=默认、status=deleted、valid_to=2026-10-27T11:30:18.339+00:00。精确 plain-key recall 未命中，与旧行已软删除一致。
+- **当前操作结论**：不写入、重命名、合并或删除任何云端记忆；不改数据库/生产数据；不重跑 A7。A7 继续记为“部分 PASS：身份根/导航/协议/stats 可恢复，但新框没有可靠恢复 canonical 工作检查点”；A6 跨宿主一致性继续 UNKNOWN。现有最新桥接记录是当天测试结果与范围的依据；过期检查点正文中的“阶段6未启动”不得覆盖其后记录。
+- **根因判断与剩余未知**：没有证据表明 canonical 记忆行丢失、过期或存在多个相同完整 key 的活动行。现有证据指向“读取面用的标识不同”：当前 MCP exact recall 使用实际 key `⚙️/当前工作检查点` 可命中；不带前缀的 key `当前工作检查点` 指向一条已删除旧记录。Operit 新框报告的系统 get_memory_by_title 未命中，可能是它使用 title/裸 key 的查找路径而没有回退到带分类前缀的 canonical key，但该系统工具的实现、索引和过滤条件仍 UNKNOWN，不能把这个解释写成已证实源码根因。另一个独立问题是 canonical checkpoint 的正文停在 09:37，未记录 10:55/11:00 新框测试结果，内容陈旧。
