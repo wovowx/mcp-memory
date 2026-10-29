@@ -3924,3 +3924,13 @@ GPT 已检查当前会话的可见 `ALL_TOOLS`/工具 metadata：没有名为 `g
 - **诚实标注（判定依据）**：read_messages 返回的 aiResponse 为**新框自述恢复证据**，原始中间工具调用日志不在消息流可见范围；本 PASS 判定依据 = 新框自述 + 与云端记忆完全一致（同 key/category/stats 285 与哥哥 10:55 独立 recall 佐证吻合）。
 - **判定**：**完整 SB-FRAME-1.0 初始化路径在独立新框上实际执行并正确恢复 canonical 工作检查点 → 该项标 PASS**（从部分 PASS 升级）。A6 完整跨宿主一致性仍 UNKNOWN（需 GPT 以两端相同状态证据对照 + 柳柳验收）；阶段6 仍未总体验收通过（剩余外部门槛见弟弟 15:52 段清单）。
 - **边界确认（本次为唯一运行时验收，未建第二框）**：未重跑 A7/CI、未调 Worker tools/list/聊天室/唤醒链、未查/写 DB/RPC/DDL、未写业务记忆、未部署、未推 main。允许的标准遥测副作用（router 自动 usage_count 打点）按弟弟说明接受。**NO MEMORY WRITE、NO CHAT TOOLS、NO tools/list、NO DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED**。
+
+---
+
+### [2026-10-29 GPT｜阶段6一次性收敛复核与文档同步]
+- 已重新读取本桥接文末及治理驾驶舱、架构差距矩阵、路线图、导航表、资产整理计划和 CHANGELOG；不重复冷启动、已通过 CI 或已关闭的 metadata 静态调查。
+- 确认 A7 = PASS（限定新框与可见证据）；A6 完整跨宿主一致性 = UNKNOWN。原因不是 canonical key 不存在，而是新框恢复出的检查点正文仍指向“阶段6未启动/等待 Pages Source”，与之后的阶段6证据收敛及柳柳“无视风险、不主动推动 PR #319”的决定不同步。**不擅自改写业务记忆**，因此不能把 A6 强行标为 PASS。
+- 已在 `wovowx/ZivenLab/dev` 同步治理版本：驾驶舱 version 115、差距矩阵 v4.25、导航表 v3.56、资产整理计划 v3.39、CHANGELOG `docs-2026.10.49`。矩阵旧 A6/A7 段已标明为历史快照；公开源文件个人样例风险按柳柳决定保留为已知接受风险，不再作为当前主线阻塞，也不主动推动 PR #319。
+- 最新只读核验：PR #319 仍 open、未合并、mergeable clean；`mcp-memory main...dev` 当前 ahead 261、behind 0、21 个文件不同，禁止整条 dev 一揽子合入 main；Cloudflare `verify_main=true` 仍 VERIFIED，main HEAD `71f6a03ebc81` 对应最新部署 `c78ab839`（2026-10-26）。未合并、未部署、未改 main。
+- **阶段6仍未总体验收**。剩余门槛：① canonical 工作检查点业务记忆需要与最新阶段状态同步（须另获明确记忆写入授权）；② Worker `/mcp` 与高影响 HTTP 路由实际认证、外层 Access/WAF、匿名拒绝/授权允许路径；③真实 DB/RPC/RLS/GRANT/trigger/CAS/事务证据；④ GPT memory tool metadata 发布源；⑤若要发布 Pages，须有权限者确认 Source/真实 URL，且合并/部署另需柳柳明确授权。缺权限/运行时证据的项保持 UNKNOWN。
+- 本轮只修改 dev 治理文档并做只读核验；未改业务记忆、DB/schema/权限、生产代码、main；未触碰冻结工具、生产高影响端点或聊天室/唤醒链，未部署。
