@@ -3807,3 +3807,14 @@ GPT 已在当前宿主实际核对：
 - **哥哥当前框对照（关键）**：哥哥 10:55 用 `ziven_mcp:memory action=recall key=⚙️/当前工作检查点` 是**命中**的（2026-10-29 09:37 版，阶段1-4完成/5封口/6授权后启动/Pages保留未合并/e444c9e7 指针）；而新框（系统 `get_memory_by_title`/另一读取面）该 key **未命中**。→ **暴露「系统标题读取面 vs MCP recall 读取面」差异 + 检查点 key 键冲突**，为阶段6待查项（非记忆丢失）。
 - **A1-A7 标注**：A1 身份 / A2 状态 / A3 阶段 / A5 fallback → 新框侧 **PASS**（来源可查）；A4 授权规则 PASS（硬门禁未证实）；**A6 UNKNOWN**（需 GPT 对照 + 柳柳验收）；**A7 独立冷启动 = 部分 PASS / 有一项待查**——无上下文新框成功从云端恢复身份根/导航/协议/实时 stats 并识别出检查点 key 键冲突，**不是**裸密钥那次的不触发恢复，也**不是**全 PASS（检查点主 key 待查）。
 - **边界确认（本次为 A7 验证唯一新框）**：全程只读；未写/新建/删除任何记忆、未调用 rename/Worker tools/list、未接管巡检、未改名、未触碰聊天室/注册/唤醒链、未跑 Node、未碰 DB/schema/权限、未部署、未推 main。**NO MEMORY WRITE、NO CHAT TOOLS、NO tools/list、NO DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED**。
+
+### [2026-10-29 GPT 只读根因核对｜工作检查点读取差异]
+- **本次实时证据**：memory stats = 285 条/23 分类；recall(key="⚙️/当前工作检查点") 命中，但正文更新时间为 2026-10-29 09:37，仍写“阶段6尚未启动”，与当天 A7 新框测试及当前阶段6只读核验进展不同，属于过期工作状态，不能直接拿来代表当前状态。recall(key="当前工作检查点") 未命中（该字符串不是实际 key）。
+- **同工具内部也出现分歧**：by_category(category="⚙️") 返回分类中的检查点条目与旧“过渡检查点副本·2026-10-27键冲突修复”；search(keyword="当前工作检查点") 共返回 3 条，却没有返回精确 recall 命中的 ⚙️/当前工作检查点。这不是足以证明记忆丢失的证据，而是不同读取动作的筛选/选择结果不一致。
+- **源码核对（wovowx/mcp-memory/dev/src/tools/memory_unified.js）**：
+  1. getMemoryByKey() 查询 key=eq.<key>&status=eq.active，未过滤 valid_to。
+  2. getAllMemories() 只过滤 status=active；by_category 使用它，因此也可能展示 valid_to 已设置的过期记录。
+  3. search 明确额外要求 status='active' AND valid_to IS NULL。因此，同一条仍标 active、但 valid_to 非空的记录会出现在 exact recall / by_category，却被 search 排除；这与本次观察相符。
+- **根因判断（静态证据支持，数据字段尚未直接读取）**：已定位到记忆工具内部“当前有效”判定不统一；最可能的解释是检查点记录存在 status=active 与非空 valid_to 的时态状态不一致。由于当前只读工具没有直接返回该行的 id/status/valid_to，字段组合仍是高可信推断，不写成已直接验证事实。Operit 新框使用的系统 get_memory_by_title 具体实现/筛选条件仍 UNKNOWN，不能声称已审明其内部原因。
+- **当前操作结论**：不写入、重命名、合并或删除任何云端记忆；不改数据库/生产数据；不重跑 A7。A7 继续记为“部分 PASS：身份根/导航/协议/stats 可恢复，当前工作检查点尚未可靠恢复”；A6 跨宿主一致性继续 UNKNOWN。现有最新桥接记录是当天测试结果与范围的依据；过期检查点中的“阶段6未启动”不得覆盖其后记录。
+- **后续最小动作**：在另行获准的只读数据核验中，核实检查点候选行的 id/key/status/valid_to/updated_at 与是否存在同 key 多行；之后再决定要不要提出最小修复。若要修代码，先统一读取有效性语义并加回归测试，不顺手改写/清理业务记忆；当前没有执行该修复，也没有请求 Operit 重跑。
