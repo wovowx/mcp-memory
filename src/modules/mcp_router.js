@@ -88,11 +88,16 @@ const CREATE_PATCH_PROPOSAL_SCHEMA = {
     }
 };
 
+function getToolSchemaOverride(name) {
+    return name === 'create_patch_proposal' ? CREATE_PATCH_PROPOSAL_SCHEMA : null;
+}
+
 async function getToolSchema(env, name) {
     // 注册表查询失败必须向上传递，不能伪装成“未配置 schema”。
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
-    if (name === 'create_patch_proposal') return CREATE_PATCH_PROPOSAL_SCHEMA;
+    const schemaOverride = getToolSchemaOverride(name);
+    if (schemaOverride) return schemaOverride;
     if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
         return skill.input_schema;
     }
@@ -209,7 +214,8 @@ async function invalidateCache() { skillCache.clear(); }
 
 function getExposedInputSchema(skill) {
     const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : {};
-    if (skill?.name === 'create_patch_proposal') return CREATE_PATCH_PROPOSAL_SCHEMA;
+    const schemaOverride = getToolSchemaOverride(skill?.name);
+    if (schemaOverride) return schemaOverride;
     if (skill?.name !== 'supabase_db' && skill?.name !== 'supabase_schema') return schema;
     // necessity is enforced by database.js for DDL hidden behind action=exec; expose it to clients without requiring it for read-only actions.
     return {
