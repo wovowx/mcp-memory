@@ -3733,7 +3733,10 @@ GPT 已在当前宿主实际核对：
 - mcp-memory/dev 当前最新代码与 Pages workflow 验证快照为 SHA `c25f71d1e41be36b7dc9a888c1fb60d591fc7e2f`：完整 E1/E2 run `40799853469` SUCCESS；同 SHA 的 Pages workflow run `40799853457` SUCCESS，白名单 artifact build/上传成功，deploy job 在 dev 分支按设计 skipped。该批测试为静态/Mock，不证明真实 MCP/HTTP/DB/RPC 或线上 Pages 已可访问。
 - Pages workflow 在 dev/main/发布候选分支验证 artifact；仅 main 分支执行 deploy job。artifact 只包含 `_site/index.html` 与 `_site/memory-universe.html`，不再发布仓库根目录。当前 action 主版本：`actions/checkout@v7`、`actions/configure-pages@v6`、`actions/upload-pages-artifact@v5`、`actions/deploy-pages@v5`。HTML 已将个人样例替换为合成演示数据，带 `noindex,nofollow`；未改云端/数据库业务记忆。
 - 发布候选分支 `release/pages-retain-2026-10` 当前 SHA 为 `fd4cf7b6e735d186869cf89dd12459e6350b5fb4`，Pages artifact workflow run `40799872572` SUCCESS，build/上传成功，deploy job skipped。PR #319（[release: retain Pages with minimal, sanitized artifact](https://github.com/wovowx/mcp-memory/pull/319)）目前 open、非 draft、mergeable；只含 `.github/workflows/pages.yml`、`src/public/memory-universe.html`、`README.md` 三个文件，尚未合并。
-- repo metadata 仍显示 `has_pages=false`，Pages Settings API 无法由当前连接器读取；因此 Pages source 是否设为 GitHub Actions、真实 URL/线上可访问性均 UNKNOWN。合并前须让有权限的人确认 Pages source；取得柳柳明确同意前不合并、不部署。
+- repo metadata 仍显示 `has_pages=false`，Pages Settings API 无法由当前连接器读取；因此 Pages source 是否设为 GitHub Actions、真实 URL/线上可访问性均 UNKNOWN。第一道人工门槛：由有权限的人打开仓库 Settings → Pages → Build and deployment，确认 Source = `GitHub Actions`；若不是，不合并，先由管理员确认并调整设置。
+- 发布前检查顺序：①核对 PR #319 的三文件 diff 与候选 SHA `fd4cf7b6e735d186869cf89dd12459e6350b5fb4`；②确认对应 Pages artifact run 成功、deploy job 在候选分支按设计 skipped；③确认 Pages source 已设为 GitHub Actions；④将版本/范围/CI证据/隐私风险/回滚方案完整报告柳柳并取得明确合并授权；⑤合并后只读取 main 上新触发的 workflow 结果，待真实 deploy job success 后才从 GitHub Pages environment 输出中取得实际 URL；⑥实际验证首页、`memory-universe.html`、静态页面数据为合成示例、没有仓库文件/聊天室页面被发布，再记录访问范围与回滚信息。当前仍停在第③步之前，未合并、未部署。
+- 回滚原则：若候选构建失败就不发布；若真实部署失败，不把 dev artifact success 当作线上 success。若发布后验收失败，采取单独的安全回滚/前向修复，并保留脱敏后的 HTML 与 `_site/` 白名单；**不能直接把整个 PR 回滚到旧 `path: .` 工作流或恢复原个人记忆样例**，因为那会重新引入全仓库发布/隐私风险。回滚动作也需遵循 main/部署的独立授权门槛。
+- 取得柳柳明确同意前不合并、不部署。
 - 本次桥接文档提交会自动触发完整 `learning-regression` 与 dev 上的 Pages artifact build；结果以这次提交对应的 Actions run 为准。仍不调用聊天室工具或 Worker `tools/list`，不改 DB/schema/权限/生产数据，不部署、不推/合并 main。
 
 
