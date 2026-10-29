@@ -6,10 +6,30 @@ import { handleGitHubTool } from '../src/tools/github_v64.js';
 import { resolvePatchTargetPolicy, validatePatchTargetFile, validatePatch } from '../src/modules/patch_engine.js';
 import { detectRepoType, validateRelease } from '../src/modules/release_guard.js';
 import { validateRepoRelativePath } from '../src/utils/helpers.js';
+import { buildErrorResponse, jsonResponse } from '../src/utils/response.js';
 
 const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
 let pass = 0, fail = 0;
 function check(name, cond, extra = '') { if (cond) { pass++; console.log('  ✅ ' + name); } else { fail++; console.log('  ❌ ' + name + ' ' + extra); } }
+
+// ---------- Shared response contract ----------
+console.log('\\n[Shared response helper contract]');
+for (const status of [400, 401, 404, 500]) {
+  const actual = buildErrorResponse('test error', status);
+  const expected = jsonResponse({ error: 'test error' }, status);
+  const actualBody = await actual.json();
+  const expectedBody = await expected.json();
+  check(
+    `buildErrorResponse reuses the JSON response contract (status ${status})`,
+    actual.status === expected.status &&
+      actual.headers.get('content-type') === expected.headers.get('content-type') &&
+      actual.headers.get('access-control-allow-origin') === expected.headers.get('access-control-allow-origin') &&
+      JSON.stringify(actualBody) === JSON.stringify(expectedBody)
+  );
+}
+const defaultErrorResponse = buildErrorResponse('default status');
+check('buildErrorResponse keeps the default 400 status', defaultErrorResponse.status === 400);
+check('buildErrorResponse keeps the { error } body', JSON.stringify(await defaultErrorResponse.json()) === JSON.stringify({ error: 'default status' }));
 
 const fixture = [
   { name: 'memory', enabled: true, description: 'memory tool', handler_type: 'js', handler_config: { handler: 'memory' } },
