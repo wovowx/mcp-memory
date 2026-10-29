@@ -13,7 +13,7 @@ let pass = 0, fail = 0;
 function check(name, cond, extra = '') { if (cond) { pass++; console.log('  ✅ ' + name); } else { fail++; console.log('  ❌ ' + name + ' ' + extra); } }
 
 // ---------- Shared response contract ----------
-console.log('\\n[Shared response helper contract]');
+console.log('\n[Shared response helper contract]');
 for (const status of [400, 401, 404, 500]) {
   const actual = buildErrorResponse('test error', status);
   const expected = jsonResponse({ error: 'test error' }, status);
