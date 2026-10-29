@@ -3896,4 +3896,15 @@ GPT 已检查当前会话的可见 `ALL_TOOLS`/工具 metadata：没有名为 `g
 - **GitHub 当前只读证据**：PR #319 `release: retain Pages with minimal, sanitized artifact` 仍 open、未合并、mergeable clean；仅 3 个文件（Pages workflow、README、memory-universe 页面），review submissions=0、inline review threads=0。候选 SHA `fd4cf7b6e735d186869cf89dd12459e6350b5fb4` 既有 Pages artifact run `40799872572` SUCCESS；dev HEAD `fb34371dd00f7a3339648d7a6a8fae355996ecb7` 的 learning-regression run `40813963598` 的 validate job SUCCESS，实际步骤包含 `npm run check`、webhook、Router/contracts、search_history、release_guard、学习工件回归；Pages run `40813963599` build/upload SUCCESS，deploy job skipped（dev 上按设计）。本轮没有 rerun workflow。
 - **阶段6结论**：仍不能总体验收 PASS。A7 部分 PASS；精确 recall 通路 PASS，但修订后的初始化是否自动发起精确 recall 未证实；A6 完整跨宿主一致性 UNKNOWN。真实 Worker `/mcp` 与高影响 HTTP 路由的外层 Access/WAF/认证拒绝与授权允许路径、真实 DB/RPC/RLS/GRANT/trigger/CAS/事务、MCP metadata 发布源，以及 Pages Source/真实 URL 仍缺权限或运行时证据。
 - **为什么不能在本轮越过这些门槛**：GitHub Pages Settings API 当前不可读，repo metadata `has_pages=false`，所以 Source=GitHub Actions 只能由有权限者确认；发布仍须柳柳单独明确授权合并/部署。真实 DB/schema/权限、高影响端点、Worker `tools/list`、聊天室/注册/唤醒链仍在冻结范围，不能通过文档/Mock 推断通过或自行调用。新建冷启动框也不是本次精确 recall 授权的一部分，不能擅自扩大。
-- **边界**：没有改 main、没有合并/部署、没有 DB/schema/权限写入、没有业务记忆变更、没有调用生产高影响端点/Worker `tools/list`/聊天室工具，也没有重跑 A7/CI。当前可自主完成的检查与文档收敛已做完；剩余事项均属于有权限者确认或单独授权的硬门槛，不通过反复汇报或重复测试制造假闭环。
+- **边界**：没有改 main、没有合并/部署、没有 DB/schema/权限写入、没有业务记忆变更、没有调用生产高影响端点/Worker `tools/list`/聊天室工具，也没有重跑 A7/CI。当前可自主完成的检查与文档收敛已做完；其余事项按各自授权门槛处理，不通过反复汇报或重复测试制造假闭环。
+
+---
+### [2026-10-29 15:52 SGT GPT → Operit｜柳柳最新“一次性搞定全部”授权：仅一次完整 SB-FRAME-1.0 运行时验收]
+- **授权依据**：柳柳在当前对话最新明确要求“一次性搞定全部的”。这条记录将其落实为当前主线唯一必要的新增运行时动作：对已修订的换框流程做**一次**独立冷启动验收，以实际行为判断 canonical 检查点是否被初始化流程正确恢复。此授权不代表授权 main 合并/推送、部署、DB/schema/权限更改、生产高影响 HTTP 探测、Worker `tools/list` 或聊天室/注册/唤醒链操作。
+- **开始前**：仅只读读取当前 `origin/dev` 的 `src/skills/process/huan-kuang-liu-cheng/SKILL.md`，确认其中最新版完整 `SB-FRAME-1.0` 初始化载荷和当前验收标准；不跑 CI、不改 Skill、不改代码。
+- **唯一运行时动作**：按现有正规 `chat_with_agent` 换框流程创建**一个**全新 Ziven 对话（使用既定 Ziven 角色卡，确保无旧对话上下文），发送 Skill 中完整版本化 `SB-FRAME-1.0` 初始化载荷，不简化、不另写一版。只执行这一个新框；不得第二次重试创建新框。按该 SOP 正常执行恢复所需步骤，最多使用其明文规定的 exact-recall→必要时 search 定位→完整 key exact-recall fallback，不做额外探测。
+- **必须记录的证据**：新框 ID；发送载荷的版本/来源；实际工具调用日志中是否出现 `ziven_mcp:memory`、`action=recall`、完整 `key=⚙️/当前工作检查点`；recall 返回是否同时显示 canonical 完整 key 与 category `⚙️`；初始化最终恢复的身份根、当前主线、阶段状态、下一步和硬边界；若仍读到检查点正文中的过时“阶段6未启动”，需明确区分正文陈旧与桥接文末最新执行记录，不能自行更新业务记忆。
+- **判定**：若完整 SB-FRAME-1.0 初始化本身实际发起精确 recall，且依据返回的 canonical key/category 识别正确记录并正确接续最新状态，则仅将该项标记 PASS；若只是独立测试 recall、仅有 Skill 文本、没有可见运行时调用日志，或初始化没有恢复检查点，则 A7 仍部分 PASS / UNKNOWN，不得升级。A6 完整跨宿主一致性仍需两端相同状态证据。
+- **成本/副作用透明**：这是一项必要的实际宿主验证，可能消耗 Operit API/token；MCP Router 对成功工具调用会自动递增常规 `usage_count/last_used` 统计。允许这一标准遥测副作用，但不得写入/改写/软删除任何业务记忆，不得主动执行任何 DB/RPC/DDL 操作。
+- **硬边界**：不得调用 Worker `tools/list`；不得调用聊天室、唤醒、巡检或注册同步工具；不得访问/调用生产高影响 HTTP/MCP endpoint，不碰 DB/schema/RLS/GRANT/权限，不更改代码/Skill/插件/注册表，不部署、不推/合并 main。若正规流程要求触及上述冻结项，直接跳过并记为 BLOCKED，不自行绕开。
+- **结束方式**：把结果与可见的真实调用证据追加在本文件文末，明确 PASS/PARTIAL/FAIL/BLOCKED；不要重复同类测试，不做额外回归。之后由 GPT 汇总其余无法由当前会话解除的外部授权门槛。
