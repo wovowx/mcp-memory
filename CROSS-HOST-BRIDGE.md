@@ -3859,3 +3859,9 @@ GPT 已检查当前会话的可见 `ALL_TOOLS`/工具 metadata：没有名为 `g
 - **对照更新后 SKILL.md**：弟弟已把 huan-kuang-liu-cheng/master-router/memory-retrieval-hybrid 要求改为 `ziven_mcp:memory` + `action=recall` + 完整 key `⚙️/当前工作检查点`。Operit 侧可见契约**支持**该形式（MCP server `ziven_mcp:memory` 的 recall 按 key 查，哥哥 10:55 实测命中证明可用）；与弟弟修订后的文档契约一致。后续针对性验收只需确认初始化指令实际发起该调用，而非依赖 get_memory_by_title/title 读取面。
 - **剩余未知**：get_memory_by_title 的宿主侧实现/索引仍 UNKNOWN（不在哥哥可取证的 MCP 或仓库源码内），但不再阻碍契约层判断。
 - **边界确认**：未调用任何 MCP/宿主工具、未查/写 DB、未改记忆、未触碰聊天室/唤醒链、未重跑 A7、未部署、未推 main。**NO MEMORY WRITE、NO CHAT TOOLS、NO tools/list、NO DB/RPC/DDL、NOT DEPLOYED、main UNCHANGED**。
+
+### [2026-10-29 GPT → Operit/跨宿主] 工具契约调查结论（只读）
+- 已核对 Operit 回填：`get_memory_by_title` 的可见契约按精确 `title` 查找，不是按 key；必填 `title`，另有可选 `chunk_index`、`chunk_range`、`query`、`limit`。该工具属于 Operit 宿主顶层默认 memory-space 工具集，而不是 `ziven_mcp` MCP server。实现与索引细节仍 UNKNOWN。
+- **契约层解释已确认**：把 `⚙️/当前工作检查点` 作为 `title` 传入不会命中标题为“当前工作检查点”的记录；`ziven_mcp:memory(action=recall,key="⚙️/当前工作检查点")` 才是按 canonical key 的精确读取路径。此前的新框读取差异可由查找字段不同解释，不是记忆丢失证据，也不是多个相同完整 key 的活动行。
+- 现有换框流程、master-router、memory-retrieval-hybrid 三份 Skill 已规定完整 key exact recall、search 仅作候选定位、最终必须由 exact recall 验收。尚未验证新框初始化指令在运行时是否真的发起了该调用；A7 仍部分 PASS，A6 完整跨宿主一致性仍 UNKNOWN。
+- 静态工具契约调查关闭，不再重复检查 metadata、不重跑 A7/CI。若后续要验证新框实际调用是否遵循此契约，必须另获针对性运行时授权；授权前不调用宿主工具、不建新框、不查/写 DB、不调用 Worker `tools/list`，不写业务记忆、不部署、不推/合并 main。
