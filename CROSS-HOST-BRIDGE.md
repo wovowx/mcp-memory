@@ -3741,3 +3741,10 @@ GPT 已在当前宿主实际核对：
 - 【memory tool metadata source 调查（2026-10-29，只读）】通过 Plugin Creator 列出当前账号拥有的私有 `Ziven_MCP` 插件：backend ID `plugin_asdk_app_6ad85722a6808191b55587a39c60941e`，当前 release `PluginRelease_d2c4b06819cc8191a05828b0258e9c7c`。只读取其文件清单与 manifest：包内只有 `.app.json` 与 `.codex-plugin/plugin.json`；前者仅映射 app ID，后者仅含插件级名称/简介/显示信息，没有 `memory` 工具 schema 或工具 description。因此，现有插件包 manifest **不是目前已证实的旧 key 文案来源**；不能通过盲目改插件简介就声称修复了 GPT 可见工具描述。已对齐的 Supabase `skills.name=memory` description 与当前会话 `mcp__Ziven_MCP__memory` 工具元数据是不同表面。下一步仅追查 MCP connector/host schema 发布或会话缓存来源；不更新插件包，不调用 Worker `tools/list`（会触发 `syncChatTools`，存在聊天室工具写入副作用）。来源仍 UNKNOWN。
 
 
+### [2026-10-29 当前交接状态｜低风险代码收敛已验证]
+
+- 本批实际代码变更已落在 `mcp-memory/dev`：`src/utils/response.js` 的 `buildErrorResponse()` 复用 `jsonResponse()`；`src/modules/mcp_router.js` 的 `create_patch_proposal` schema 覆写改由一个 `getToolSchemaOverride()` 提供；`tests/router_registry_contract_test.mjs` 增加响应契约断言。没有改变 DB/schema、权限、业务记忆、聊天室/唤醒链或生产路由行为。
+- 被验证的源码与测试 commit：`de017537f5f51429260b9285e682eb4dbb0a22e3`；GitHub Actions `learning-regression` run `40805561230` **SUCCESS**。实际日志：E1 检查 31 个 JS 文件且 import/语法检查全过；webhook 104/104；Router/contracts 128/128；search_history 20/20；release_guard 15/15；学习工件全过。Pages run `40805561139` 构建/上传成功，`Deploy Pages (main only)` 在 dev 上按设计 skipped。没有合并 main、没有部署。
+- 此证据取代历史回归 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf` 作为本批代码验证依据；这些检查是静态/隔离 Mock，不代表真实 MCP/HTTP/DB/RPC endpoint 或完整换框路径通过。
+- 不需要 Operit 重跑同一批测试，避免重复消耗柳柳 token。此桥接文档提交本身会触发新一轮自动 CI；不要为了把该文档提交的 run 编号再写回本文件而重复修改桥接。需核对时读取该文档提交对应的 Actions run 即可。
+- 当前主线仍是「一本好书式架构」；这是局部职责收敛，不代表整体架构或阶段6整体验收完成。保留既有冻结边界：不调用聊天室工具/Worker `tools/list`，不改 DB/schema/函数/trigger/权限，不部署、不推/合并 main。
