@@ -3933,4 +3933,12 @@ GPT 已检查当前会话的可见 `ALL_TOOLS`/工具 metadata：没有名为 `g
 - 已在 `wovowx/ZivenLab/dev` 同步治理版本：驾驶舱 version 115、差距矩阵 v4.25、导航表 v3.56、资产整理计划 v3.39、CHANGELOG `docs-2026.10.49`。矩阵旧 A6/A7 段已标明为历史快照；公开源文件个人样例风险按柳柳决定保留为已知接受风险，不再作为当前主线阻塞，也不主动推动 PR #319。
 - 最新只读核验：PR #319 仍 open、未合并、mergeable clean；`mcp-memory main...dev` 当前 ahead 261、behind 0、21 个文件不同，禁止整条 dev 一揽子合入 main；Cloudflare `verify_main=true` 仍 VERIFIED，main HEAD `71f6a03ebc81` 对应最新部署 `c78ab839`（2026-10-26）。未合并、未部署、未改 main。
 - **阶段6仍未总体验收**。剩余门槛：① canonical 工作检查点业务记忆需要与最新阶段状态同步（须另获明确记忆写入授权）；② Worker `/mcp` 与高影响 HTTP 路由实际认证、外层 Access/WAF、匿名拒绝/授权允许路径；③真实 DB/RPC/RLS/GRANT/trigger/CAS/事务证据；④ GPT memory tool metadata 发布源；⑤若要发布 Pages，须有权限者确认 Source/真实 URL，且合并/部署另需柳柳明确授权。缺权限/运行时证据的项保持 UNKNOWN。
-- 本轮只修改 dev 治理文档并做只读核验；未改业务记忆、DB/schema/权限、生产代码、main；未触碰冻结工具、生产高影响端点或聊天室/唤醒链，未部署。
+- **本段当时的操作边界**：在该记录写入时只修改 dev 治理文档并做只读核验；未改 DB/schema/权限、生产代码、main；未触碰冻结工具、生产高影响端点或聊天室/唤醒链，未部署。后续若发生独立的检查点更新，以紧随其后的补记为准。
+
+### [2026-10-29 GPT｜权威检查点正文同步补记]
+- 发现 `⚙️/当前工作检查点` 正文顶部之前没有当前状态覆盖，正文仍含“阶段6尚未启动/等待 Pages Source”等旧状态，导致新框恢复到的是旧阶段指针。
+- 为避免再次要求柳柳转述或重复测试，已在现有 canonical 记忆正文最前面**增加当前状态覆盖段**，保留原正文及所有历史证据，不删除该记忆、不改 key/category、不新建副本。新段明确：阶段1–5已封口、阶段6已启动但未总体验收；A7 限定范围 PASS、A6 UNKNOWN；用户接受的公开样例风险不再阻塞；当前主线与 remaining runtime gates；main/部署边界；不重复冷启动和已通过 CI。
+- 写入后立即通过 `memory(action=recall,key="⚙️/当前工作检查点")` 回读确认：顶部已显示新覆盖段，完整 key/category 正确，旧段保留在后方作为历史快照。该动作更新的是既有权威检查点正文，不删除记忆、不改 DB schema/权限，不是重新测试新框。
+- **A6 仍 UNKNOWN**：Operit 新框 `7516ae0a-23e2-4b6f-8dce-6cb4f592547f` 的首次回复发生在本次正文同步之前，反映的是当时的旧快照；未再次消耗 Operit token，也不把旧回复伪装成更新后的两端一致证据。若未来确需将 A6 升为 PASS，只能依据两端同一时点的状态对照证据，不能用文档写入本身代替。
+- 最新只读 CI 核验：当前 dev 桥接提交 `e2b4a03e4703cd53def66daef8f695417fe94e14` 的 `learning-regression` run `40847460276` SUCCESS，Pages workflow run `40847460268` SUCCESS（dev 上 deploy job 按设计 skipped）。Cloudflare main 部署仍 `VERIFIED`（main `71f6a03ebc81` 对应 deploy `c78ab839`）。未合并/推送 main、未部署、未改 DB/schema/权限/生产代码。
+- 结论：用户无须重复安排或手动转述；能在当前权限下完成的状态同步已经完成。阶段6剩余的 Worker 认证/外层防护、DB/RPC 权限行为、MCP metadata 发布源，以及若发布 Pages 时的 Source/URL，仍需要相应只读权限或运行时证据；这些不是继续写文档就能宣告通过的。
