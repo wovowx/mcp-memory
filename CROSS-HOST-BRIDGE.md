@@ -3738,5 +3738,6 @@ GPT 已在当前宿主实际核对：
 - 回滚原则：若候选构建失败就不发布；若真实部署失败，不把 dev artifact success 当作线上 success。若发布后验收失败，采取单独的安全回滚/前向修复，并保留脱敏后的 HTML 与 `_site/` 白名单；**不能直接把整个 PR 回滚到旧 `path: .` 工作流或恢复原个人记忆样例**，因为那会重新引入全仓库发布/隐私风险。回滚动作也需遵循 main/部署的独立授权门槛。
 - 取得柳柳明确同意前不合并、不部署。
 - 本次桥接文档提交会自动触发完整 `learning-regression` 与 dev 上的 Pages artifact build；结果以这次提交对应的 Actions run 为准。仍不调用聊天室工具或 Worker `tools/list`，不改 DB/schema/权限/生产数据，不部署、不推/合并 main。
+- 【memory tool metadata source 调查（2026-10-29，只读）】通过 Plugin Creator 列出当前账号拥有的私有 `Ziven_MCP` 插件：backend ID `plugin_asdk_app_6ad85722a6808191b55587a39c60941e`，当前 release `PluginRelease_d2c4b06819cc8191a05828b0258e9c7c`。只读取其文件清单与 manifest：包内只有 `.app.json` 与 `.codex-plugin/plugin.json`；前者仅映射 app ID，后者仅含插件级名称/简介/显示信息，没有 `memory` 工具 schema 或工具 description。因此，现有插件包 manifest **不是目前已证实的旧 key 文案来源**；不能通过盲目改插件简介就声称修复了 GPT 可见工具描述。已对齐的 Supabase `skills.name=memory` description 与当前会话 `mcp__Ziven_MCP__memory` 工具元数据是不同表面。下一步仅追查 MCP connector/host schema 发布或会话缓存来源；不更新插件包，不调用 Worker `tools/list`（会触发 `syncChatTools`，存在聊天室工具写入副作用）。来源仍 UNKNOWN。
 
 
