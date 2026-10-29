@@ -3748,3 +3748,13 @@ GPT 已在当前宿主实际核对：
 - 此证据取代历史回归 SHA `fcd12b1e55f6a7119addb27647e6d2692773a8cf` 作为本批代码验证依据；这些检查是静态/隔离 Mock，不代表真实 MCP/HTTP/DB/RPC endpoint 或完整换框路径通过。
 - 不需要 Operit 重跑同一批测试，避免重复消耗柳柳 token。此桥接文档提交本身会触发新一轮自动 CI；不要为了把该文档提交的 run 编号再写回本文件而重复修改桥接。需核对时读取该文档提交对应的 Actions run 即可。
 - 当前主线仍是「一本好书式架构」；这是局部职责收敛，不代表整体架构或阶段6整体验收完成。保留既有冻结边界：不调用聊天室工具/Worker `tools/list`，不改 DB/schema/函数/trigger/权限，不部署、不推/合并 main。
+
+### [2026-10-29 阶段6｜只读准入与证据收敛检查点]
+
+- 阶段6已启动，但**尚未总体验收通过**。本批只做只读核验和治理文档同步，没有更改 Worker 源码、数据库、权限、业务记忆、聊天室/唤醒链、部署或 main。
+- 最新可读回归证据：源码/测试 commit `de017537f5f51429260b9285e682eb4dbb0a22e3` 的 `learning-regression` run `40805561230` SUCCESS；随后桥接文档提交 run `40805938145` 的 `validate` job 也 SUCCESS。日志显示 E1 检查31个 JS 文件通过；webhook104/104、Router/contracts128/128、search_history20/20、release_guard15/15、学习工件通过。全是静态/隔离 Mock，不是真实 endpoint/DB/权限或完整换框路径的证据。没有让 Operit 重跑同一批测试。
+- 只读部署核验：Cloudflare `verify_main=true` 返回 `VERIFIED`，`mcp-memory/main` HEAD `71f6a03ebc81193e5d88a98297ad66083d301515` 与最新部署 `c78ab839` 对应；这只证明部署版本匹配，不证明各路由的认证/授权行为。Pages PR #319 当前 open、mergeable clean、未合并；候选 Pages artifact CI 成功，但 Pages Source 与真实线上 URL仍 UNKNOWN。
+- **阶段6剩余硬门槛（不能以静态证据代替）**：①完整 `SB-FRAME-1.0` 冷启动/跨宿主初始化路径尚 UNKNOWN，涉及此前冻结的工具/路径，须先取得柳柳针对该验证范围的明确授权；②`/mcp` 与高影响 HTTP 路由的实际部署 SHA、Cloudflare Access/WAF/外层保护、匿名拒绝/授权允许路径尚未核验，不能调用重启/执行/调试等高影响端点试探；③数据库 RLS/GRANT/trigger/CAS/事务和真实 RPC 行为仍缺可用的只读 catalog/权限证据，不做 DDL/写入；④Pages Source/真实 URL须由有相应设置权限的人确认，合并/部署仍需柳柳另行明确授权；⑤GPT 可见 memory tool description 的发布源仍 UNKNOWN，不调用 Worker `tools/list`（会触发聊天室工具同步副作用）。
+- **下一批一次性执行顺序**：先确认是否授权隔离的新会话运行完整 SB-FRAME-1.0 验证；由具备权限者只读确认 Worker 部署版本和 Access/WAF/Pages Source；具备 DB 管理读取能力者提供只读 catalog/RLS/GRANT/trigger 核验；然后将这些真实证据与本批 CI 证据对照，更新矩阵验收结果。仅在证据闭合后才可宣告阶段6 PASS。禁止把本条中的“已启动”解释成已通过。
+- GPT 端当前没有可安全调用的通用 HTTP 请求工具来对 `/mcp` 做无副作用真实协议验证；也没有权限读取 Pages Settings 或 DB system catalogs。故没有发起生产端点请求、没有调用 Worker `tools/list`、没有触碰 DB/schema/权限，没有合并 PR #319、没有部署、没有推 main。
+- 治理文档已同步：驾驶舱 version103、差距矩阵 v4.13、导航表 v3.45、资产计划 v3.27、现状架构、路线图、CHANGELOG `docs-2026.10.38`。此桥接提交会触发自动 CI；按文档纪律只读取对应 run，不为回填 run ID 再次修改本桥接文件。
