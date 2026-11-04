@@ -26,7 +26,7 @@ function assertWritableBranch(branch) {
 }
 async function requestJson(ctx, url, options = {}) {
     let response;
-    try { response = await ctx.fetchImpl(url, { headers: ctx.headers, ...options }); }
+    try { response = await ctx.fetchImpl.call(globalThis, url, { headers: ctx.headers, ...options }); }
     catch (error) {
         return { ok: false, status: 0, code: 'NETWORK_ERROR', message: error?.message || String(error) };
     }
