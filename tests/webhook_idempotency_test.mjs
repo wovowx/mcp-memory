@@ -465,17 +465,17 @@ console.log('\n[main-guard] 非发布流程禁止直接修改 main：四个工�
   const call=async(nm,arg)=>{ const r=await handleMCPRequest({method:'tools/call',id:9,params:{name:nm,arguments:arg||{}}},env); return r.data.result.content[0].text; };
   let r,beforeApi;
   beforeApi=apiCount(); r=await call('github_delete',{path:'x'});
-  check('github_delete 缺省 branch(main) → MAIN_WRITE_BLOCKED 且无 GitHub 远端写副作用', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  check('github_delete 缺省 branch(dev) → 进入 dev 路径而非 main guard', !r.startsWith('MAIN_WRITE_BLOCKED') && apiLog.some(x=>x.includes('/contents/x?ref=dev')));
   beforeApi=apiCount(); r=await call('github_delete',{path:'x',branch:'main'});
   check('github_delete 显式 main 拒绝', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   r=await call('github_delete',{path:'x',branch:'dev'});
   check('github_delete 非 main(dev) 放行（guard 不拦截）', !r.startsWith('MAIN_WRITE_BLOCKED'));
   beforeApi=apiCount(); r=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t'});
-  check('github_copy 缺省 target_branch(main) → 拒且无 GitHub 远端写副作用', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  check('github_copy 缺省 target_branch(dev) → 不触发 main guard', !r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   r=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',target_branch:'dev'});
   check('github_copy target_branch=dev 放行', !r.startsWith('MAIN_WRITE_BLOCKED'));
   beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t'});
-  check('github_move 缺省 source_branch(main) → 拒且无 GitHub 远端写副作用', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  check('github_move 缺省 source_branch/target_branch(dev) → 不触发 main guard', !r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'main',target_branch:'dev'});
   check('github_move 源 main + 目标 dev → 源拒绝', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'dev',target_branch:'main'});
@@ -517,8 +517,8 @@ console.log('\n[main-regression] 既有防线回归：push/edit main 拦、合�
   check('delete_branch 删除 main 被原防线拒绝且无 GitHub 远端写', t.includes('不能删除 main') && apiCalls===ab);
   t=await call('delete_branch',{name:'feat/x'});
   check('delete_branch 非 main 放行（原防线仅拦 main）', !t.includes('不能删除 main'));
-  ab=apiCalls; t=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t'});
-  check('github_copy 目标 main 拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
+  ab=apiCalls; t=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',target_branch:'main'});
+  check('github_copy 显式目标 main 拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
   ab=apiCalls; t=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'dev',target_branch:'main'});
   check('github_move 目标 main 拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
 }
