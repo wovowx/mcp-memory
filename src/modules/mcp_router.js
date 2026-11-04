@@ -269,12 +269,12 @@ function githubMainWriteGuard(name, args = {}) {
     const isMain = value => String(value || '').toLowerCase() === 'main';
     let protectedBranches = [];
     if (name === 'github_delete') {
-        protectedBranches = [args.branch || 'main'];
+        protectedBranches = [args.branch || 'dev'];
     } else if (name === 'github_copy') {
-        protectedBranches = [args.target_branch || 'main'];
+        protectedBranches = [args.target_branch || 'dev'];
     } else if (name === 'github_move') {
-        const sourceBranch = args.source_branch || 'main';
-        const targetBranch = args.target_branch || (sourceBranch === 'dev' ? 'dev' : 'main');
+        const sourceBranch = args.source_branch || 'dev';
+        const targetBranch = args.target_branch || 'dev';
         protectedBranches = [sourceBranch, targetBranch];
     } else if (name === 'github_sync_branch') {
         protectedBranches = [args.name || args.branch || 'dev'];
