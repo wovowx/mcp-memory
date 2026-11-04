@@ -6,7 +6,7 @@ import {
     pushFileFromStorage, editFileByAnchors, deleteFile, copyFile, movePath
 } from '../src/modules/github/contents.js';
 import { validateRepoRelativePath } from '../src/utils/helpers.js';
-import { GITHUB_TOOL_DEFS } from '../src/tools/github_v64.js';
+import { GITHUB_TOOL_DEFS, restoreBranchReference } from '../src/tools/github_v64.js';
 import { formatContentsResult } from '../src/modules/github/contents.js';
 
 const jsonResponse = (payload, status = 200) => ({
@@ -333,6 +333,67 @@ console.log('\n[GitHub move safety contracts]');
         target_repo: 'wovowx/ZivenLab', target_path: 'archive'
     });
     check('move never deletes from main, including when explicitly requested', !result.ok && result.code === 'SOURCE_MAIN_DELETE_BLOCKED' && calls === 0);
+}
+
+
+console.log('\n[Fetch binding + exact dev ref restore]');
+{
+    let receiverCorrect = false;
+    function fetchWithReceiver() {
+        receiverCorrect = this === globalThis;
+        return Promise.resolve(jsonResponse(file('ok', 'blob-ok')));
+    }
+    const ctx = makeContext(fetchWithReceiver);
+    await getContent(ctx, { repo: ctx.repo, path: 'ok.txt', branch: 'dev' });
+    check('Cloudflare Worker global fetch keeps its required receiver', receiverCorrect);
+}
+{
+    const targetSha = 'aeb6a8ebed19575e587d3c21dde3fb51e3597a84';
+    const expectedSha = '5532a3ea52aa71e1362f830b66811abd1242d8fb';
+    const calls = [];
+    let moved = false;
+    const fetchImpl = async (url, options = {}) => {
+        const address = String(url);
+        calls.push({ address, options });
+        if (address.endsWith(`/commits/${targetSha}`)) return jsonResponse({ sha: targetSha });
+        if (address.endsWith('/git/ref/heads/dev')) return jsonResponse({ object: { sha: moved ? targetSha : expectedSha } });
+        if (address.endsWith('/git/refs/heads/dev') && options.method === 'PATCH') {
+            moved = true;
+            return jsonResponse({ ref: 'refs/heads/dev' });
+        }
+        throw new Error('Unexpected request: ' + address);
+    };
+    const restored = await restoreBranchReference({
+        baseUrl: 'https://api.github.com/repos/wovowx/mcp-memory',
+        headers: { Authorization: 'Bearer mock' },
+        branch: 'dev', targetSha, expectedSha, fetchImpl
+    });
+    check('exact dev restore checks commit and expected HEAD, then verifies the new ref', restored.ok && restored.previousSha === expectedSha && restored.sha === targetSha && calls.length === 4);
+    check('exact dev restore uses force PATCH with only the approved SHA', calls[2].options.method === 'PATCH' && JSON.parse(calls[2].options.body).sha === targetSha && JSON.parse(calls[2].options.body).force === true);
+}
+{
+    let calls = 0;
+    const result = await restoreBranchReference({
+        baseUrl: 'https://api.github.com/repos/wovowx/mcp-memory', headers: {},
+        branch: 'main', targetSha: 'aeb6a8ebed19575e587d3c21dde3fb51e3597a84',
+        expectedSha: '5532a3ea52aa71e1362f830b66811abd1242d8fb',
+        fetchImpl: async () => { calls++; return jsonResponse({}); }
+    });
+    check('exact restore categorically refuses main without making a request', !result.ok && result.code === 'BRANCH_NOT_ALLOWED' && calls === 0);
+}
+{
+    const calls = [];
+    const result = await restoreBranchReference({
+        baseUrl: 'https://api.github.com/repos/wovowx/mcp-memory', headers: {}, branch: 'dev',
+        targetSha: 'aeb6a8ebed19575e587d3c21dde3fb51e3597a84',
+        expectedSha: '5532a3ea52aa71e1362f830b66811abd1242d8fb',
+        fetchImpl: async (url, options = {}) => {
+            calls.push({ url: String(url), options });
+            if (String(url).endsWith('/commits/aeb6a8ebed19575e587d3c21dde3fb51e3597a84')) return jsonResponse({ sha: 'aeb6a8ebed19575e587d3c21dde3fb51e3597a84' });
+            return jsonResponse({ object: { sha: '1111111111111111111111111111111111111111' } });
+        }
+    });
+    check('exact restore rejects a stale expected HEAD before PATCH', !result.ok && result.code === 'HEAD_MISMATCH' && calls.length === 2 && calls.every(call => call.options.method !== 'PATCH'));
 }
 
 console.log('\n[Facade schema defaults]');
