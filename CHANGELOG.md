@@ -6,7 +6,7 @@
 ### Changed（GitHub Contents 领域收敛）
 - 新增 `src/modules/github/contents.js`：集中 GitHub Contents 原子操作与 push/edit/delete/copy/move 工作流；保留既有工具入口、Schema 和非 Contents GitHub 能力。
 - 非发布写入 fallback 统一到 `dev`：push、delete、copy.target_branch、move.source_branch/target_branch；copy.source_branch 只读来源仍默认 `main`。
-- Router 写保护 fallback 与 handler 对齐；显式写入 `main` 仍然拒绝。
+- Router 写保护与 Release Guard 的写入 fallback 均与 handler 对齐；push/edit/delete/copy target/move source+target 默认 `dev`，显式写入 `main` 仍然拒绝。
 
 ### Fixed（完整性与部分成功语义）
 - push 仅将 HTTP 404 视为目标不存在；其他读取错误中止写入。
