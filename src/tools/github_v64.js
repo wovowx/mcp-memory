@@ -10,6 +10,8 @@
 // 2026-09-01 ADD v6.4: 基础工具第一阶段——github_read 范围读取+截断标记 / github_push 写入后 size 校验 / github_copy copy 后 size 校验（「API 成功 ≠ 文件成功」）
 import { getEnabledSkills, addSkill } from '../utils/skills.js';
 import { validatePatch, applyPatch } from '../modules/patch_engine.js';
+import { validateRepoRelativePath } from '../utils/helpers.js';
+import { getContent, listContents, pushFileFromStorage, editFileByAnchors, deleteFile, copyFile, movePath, formatContentsResult } from '../modules/github/contents.js';
 
 // ============================================================
 // GITHUB_TOOL_DEFS - 所有 github_* 工具的元数据（唯一真相源）
@@ -54,11 +56,11 @@ function findSimilarCandidates(contentSrc, anchor, topN, minSim) {
 }
 
 export const GITHUB_TOOL_DEFS = [
-    { name: 'github_push', description: '【创建入口】推送 NEW 文件到 GitHub 仓库（目标文件不存在时）。内容通过 content_url（我们自己的 Supabase 存储 url，先经 /upload）传入。如果文件已存在会被拒绝（GITHUB_PUSH_EXISTING_FILE）——修改已有文件请用 github_edit（读→改→写回一次完成，服务端精确替换，不用上传）。写入后自动 size 校验。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content_url: { type: 'string', description: '必填，文件内容来源：仅限我们自己的 Supabase 存储 url（*.supabase.co/storage/v1/object/public/files/...），先经 /upload 上传本地文件拿到 url 再传这里' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path', 'content_url'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
+    { name: 'github_push', description: '【创建入口】推送 NEW 文件到 GitHub 仓库（目标文件不存在时）。内容通过 content_url（我们自己的 Supabase 存储 url，先经 /upload）传入。如果文件已存在会被拒绝（GITHUB_PUSH_EXISTING_FILE）——修改已有文件请用 github_edit（读→改→写回一次完成，服务端精确替换，不用上传）。省略 branch 时默认 dev；写入后以 blob SHA 与字节数验证，允许空文件。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content_url: { type: 'string', description: '必填，文件内容来源：仅限我们自己的 Supabase 存储 url（*.supabase.co/storage/v1/object/public/files/...），先经 /upload 上传本地文件拿到 url 再传这里' }, branch: { type: 'string', description: '分支名（默认dev）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path', 'content_url'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
     { name: 'github_create_repo', description: '在 GitHub 创建新仓库。', input_schema: { type: 'object', properties: { repo: { type: 'string', description: '仓库名称' }, private: { type: 'boolean', description: '是否私有（默认false）' }, description: { type: 'string', description: '仓库描述' } }, required: ['repo'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '仓库'] },
     { name: 'github_read', description: '读取 GitHub 仓库文件内容（UTF-8 安全，支持中文）。支持 start_line/end_line 范围读取；默认最多返回前200行；返回 total_lines/returned_lines/truncated/has_more，明确是否截断。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' }, start_line: { type: 'number', description: '起始行（1-based，可选）' }, end_line: { type: 'number', description: '结束行（包含，可选）' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '读取'] },
     { name: 'github_list', description: '列出 GitHub 仓库目录内容（文件/子目录）。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '目录路径（默认根）' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '目录'] },
-    { name: 'github_delete', description: '删除 GitHub 仓库文件。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '删除'] },
+    { name: 'github_delete', description: '删除 GitHub 仓库文件。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认dev）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '删除'] },
     { name: 'github_merge_to_main', description: '智能三步合并 dev 到 main：建PR→查可合并→合并。merge_method **默认 rebase**（标准发布策略，防标题重复）；显式 merge 必须带 commit_title + merge_reason（禁止策略含糊）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { branch: { type: 'string', description: '源分支（默认dev）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式（推荐rebase或merge）' }, commit_title: { type: 'string', description: '自定义合并 commit 标题（版本号+名称）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
     { name: 'github_create_pull_request', description: '新建 Pull Request。', input_schema: { type: 'object', properties: { head: { type: 'string', description: '源分支（默认dev）' }, base: { type: 'string', description: '目标分支（默认main）' }, title: { type: 'string', description: 'PR标题' }, body: { type: 'string', description: 'PR描述' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['title'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
     { name: 'github_merge_pull_request', description: '合并指定 Pull Request。支持 merge_method（merge/squash/rebase）和 commit_title（自定义 commit 标题，从版本号开始）。合并成功后自动 sync dev。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, merge_method: { type: 'string', enum: ['merge', 'rebase', 'squash'], description: '合并方式' }, commit_title: { type: 'string', description: '自定义 commit 标题（版本号+名称）' }, title: { type: 'string', description: '自定义 commit 标题（别名）' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '合并', 'PR'] },
@@ -68,8 +70,8 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_get_pull_request', description: '查询单个 Pull Request 详情（state/merged/mergeable）。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
     { name: 'github_create_branch', description: '从指定分支新建分支（多仓库兼容）。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '新分支名' }, branch: { type: 'string', description: '新分支名（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支'] },
     { name: 'github_sync_branch', description: '让分支直接指向源分支最新 commit（fast-forward 同步，不删分支）。分叉根治专用。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '要同步的分支（默认dev）' }, branch: { type: 'string', description: '要同步的分支（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '同步'] },
-    { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，source/target 大小不一致返回 COPY_VERIFY_FAILED 而不是 success。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
-    { name: 'github_move', description: '移动/搬移文件或目录（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。源是文件→单文件搬移；源是目录→自动递归收集全部文件，逐个 copy（复用 size 校验），**全部成功后才删除源**（保证不丢，杜绝「搬一半源没了」）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/recursive/message。默认 recursive=true。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件或目录路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认main）' }, target_path: { type: 'string', description: '目标文件或目录路径' }, overwrite: { type: 'boolean', description: '目标已存在时是否覆盖（默认false）' }, recursive: { type: 'boolean', description: '源是目录时是否递归（默认true）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '移动', '搬运', '目录'] },
+    { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，源/目标 blob SHA 不一致返回 COPY_VERIFY_FAILED；允许空文件。target_branch 省略时默认 dev。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认dev）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
+    { name: 'github_move', description: '移动/搬移文件或目录（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。源是文件→单文件搬移；源是目录→自动递归收集全部文件，逐个 copy 并校验 blob SHA；递归树截断时安全回退枚举；全部复制验证后重新检查源 SHA，只有未变化的源才删除。部分失败会准确报告已复制/已删除/保留源文件。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/recursive/message。默认 recursive=true。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认dev；移动会删除源，禁止 main）' }, source_path: { type: 'string', description: '源文件或目录路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认dev）' }, target_path: { type: 'string', description: '目标文件或目录路径' }, overwrite: { type: 'boolean', description: '目标已存在时是否覆盖（默认false）' }, recursive: { type: 'boolean', description: '源是目录时是否递归（默认true）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '移动', '搬运', '目录'] },
     { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] },
     { name: 'cloudflare_deploy_status', description: '查询 Cloudflare Workers 部署记录与版本列表（部署日志）：读 Worker 的 deployments + versions，返回最近部署时间/来源/ID。支持 verify_main=true 自动对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查，柳柳铁律）。需要 Worker env 已配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。', input_schema: { type: 'object', properties: { account_id: { type: 'string', description: '可选，Cloudflare Account ID（默认用 env CLOUDFLARE_ACCOUNT_ID）' }, worker_name: { type: 'string', description: '可选，Worker 名称（默认 mcp-memory）' }, limit: { type: 'number', description: '可选，返回条数（默认5，最大10）' }, verify_main: { type: 'boolean', description: '可选，true 时对比 main HEAD commit vs 最新部署版本，返回 VERIFIED/DEPLOY_UNVERIFIED（部署后必查）' }, repo: { type: 'string', description: '可选，verify_main 时对比的仓库（默认 mcp-memory）' } } }, handler: 'github', category: 'GitHub', tags: ['Cloudflare', '部署', '日志', '状态'] },
 
@@ -208,74 +210,15 @@ export async function handleGitHubTool(name, safeArgs, env) {
         'User-Agent': 'Cloudflare-Worker-MCP/1.0'
     };
 
+    const contentsCtx = {
+        repo, env, headers: ghHeaders, fetchImpl: fetch,
+        validateRepoRelativePath, base64ToUtf8, utf8ToBase64, findSimilarCandidates
+    };
+
     try {
-        // github_push
+        // GitHub Contents scenario workflow (details are isolated in the domain module).
         if (name === 'github_push') {
-            if (!safeArgs.path || !safeArgs.content_url) return 'ERROR: Missing path or content_url (push 必须带 content_url，先经 /upload 上传拿 url)';
-            const message = safeArgs.message || `Update ${safeArgs.path}`;
-            const branch = safeArgs.branch || 'main';
-            if (branch === 'main') {
-                text = '⚠️ WARNING: You are pushing directly to main. This triggers Cloudflare deploy + creates fork divergence. Recommend: push to dev first, then use PR/merge to main. Ask user to confirm before continuing. If confirmed, push will proceed.';
-            }
-            let base64Content;
-            if (safeArgs.content_url) {
-                // v6.4.2: 大文件 url 通道——只允许我们自己的 Supabase 存储（先 /upload 上传拿 url），不经过 Agent 上下文
-                let cu; try { cu = new URL(safeArgs.content_url); } catch (e) { return (text ? text + '\n\n' : '') + 'ERROR: content_url invalid URL'; }
-                const cuHost = cu.hostname || '';
-                const cuPath = cu.pathname || '';
-                if (!cuHost.endsWith('.supabase.co') || !cuPath.startsWith('/storage/v1/object/public/files/')) {
-                    return (text ? text + '\n\n' : '') + 'ERROR: content_url must be our own Supabase storage url (*.supabase.co/storage/v1/object/public/files/...). Use our /upload endpoint first to get an url.';
-                }
-                const urlResp = await fetch(safeArgs.content_url, { headers: { 'User-Agent': 'ziven-mcp' } });
-                if (!urlResp.ok) return (text ? text + '\n\n' : '') + 'ERROR: content_url fetch failed - HTTP ' + urlResp.status;
-                const buf = await urlResp.arrayBuffer();
-                const bytes = new Uint8Array(buf);
-                let bin = '';
-                for (let i = 0; i < bytes.length; i += 0x8000) {
-                    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-                }
-                base64Content = btoa(bin);
-            }
-            // 计算预期 UTF-8 字节长度（解码 base64 后），用于写入后校验
-            // v6.4.3: strict base64 validity check (content_url 服务端生成，若截断会 block)
-            if (typeof base64Content !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64Content) || base64Content.length % 4 !== 0) {
-                return (text ? text + '\n\n' : '') + `ERROR: INPUT_CORRUPT - base64 content is not valid (possibly truncated). Length=${(base64Content || '').length}, mod4=${(base64Content || '').length % 4}. Refusing to push.`;
-            }
-            const expectedBytes = atob(base64Content).length;
-            // v6.32.6 (2026-09-08)：文件已存在 → 一律拒绝（全分支），必须用 github_edit 修改
-            // 理由：github_push=创建入口 / github_edit=修改入口，工具职责清晰（柳柳 + GPT 真讨论收敛）
-            const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
-            if (checkResp.ok) {
-                const existingData = await checkResp.json();
-                const shaHint = existingData.sha ? existingData.sha.slice(0, 12) : '';
-                return (text ? text + '\n\n' : '') + `ERROR: GITHUB_PUSH_EXISTING_FILE - ${safeArgs.path} already exists on ${branch} (sha ${shaHint}). github_push is for CREATE only. Use github_edit to modify existing files (or github_delete first).`;
-            }
-            let sha = null;
-            const body = { message, content: base64Content, branch };
-            if (sha) body.sha = sha;
-            const resp = await fetch(`${baseUrl}/contents/${safeArgs.path}`, {
-                method: 'PUT', headers: ghHeaders, body: JSON.stringify(body)
-            });
-            if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
-            const data = await resp.json();
-            // v6.4: 写入后完整性校验——「API 成功 ≠ 文件成功」（ISSUE-3 fix: retry up to 3 times to avoid consistency window）
-            let verified = false;
-            let finalSize = 0;
-            for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
-                try {
-                    const verifyResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
-                    if (verifyResp.ok) {
-                        const vData = await verifyResp.json();
-                        finalSize = vData.size || 0;
-                        verified = finalSize === expectedBytes && finalSize > 0;
-                    } else { finalSize = 0; }
-                } catch (e) { finalSize = 0; }
-                if (!verified && attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
-            }
-            if (!verified) {
-                return (text ? text + '\n\n' : '') + `ERROR: WRITE_VERIFY_FAILED - file written but size verification failed (expected ${expectedBytes}, got ${finalSize}). The file may be truncated or corrupt. This is NOT a success.`;
-            }
-            text = (text ? text + '\n\n' : '') + `OK: File pushed to GitHub\nPath: ${safeArgs.path}\nMsg: ${message}\nURL: ${data.content?.html_url || 'pushed'}\nVerified: true\nFile size: ${finalSize} bytes`;
+            return formatContentsResult(name, await pushFileFromStorage(contentsCtx, safeArgs || {}));
         }
 
         // github_create_repo
@@ -291,23 +234,25 @@ export async function handleGitHubTool(name, safeArgs, env) {
             text = `OK: Repo created\nName: ${data.full_name}\nURL: ${data.html_url}`;
         }
 
-        // github_read
+        // github_read: the facade formats ranges; the domain primitive owns GitHub Contents I/O.
         else if (name === 'github_read') {
             if (!safeArgs.path) return 'ERROR: Missing path';
             const branch = safeArgs.branch || 'main';
-            const resp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
-            if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
-            const data = await resp.json();
+            const read = await getContent(contentsCtx, { repo, path: safeArgs.path, branch });
+            if (!read.ok) {
+                if (read.code === 'INVALID_REPO_PATH') return 'ERROR: ' + read.code + ': ' + read.message;
+                throw new Error(read.message || ('HTTP ' + (read.status || 'unknown')));
+            }
+            const data = read.data;
             if (data.type === 'file') {
                 // v6.4: 范围读取 + 默认上限 + 明确截断标记
                 const DEFAULT_MAX_LINES = 200;
                 const MAX_RESPONSE_CHARS = 12000;
-                const fullContent = base64ToUtf8(data.content);
+                const fullContent = base64ToUtf8(data.content || '');
                 const totalLines = fullContent.split('\n').length;
                 const startLine = safeArgs.start_line !== undefined ? parseInt(safeArgs.start_line, 10) : 1;
                 const endLine = safeArgs.end_line !== undefined ? parseInt(safeArgs.end_line, 10) : (startLine + DEFAULT_MAX_LINES - 1);
                 const allLines = fullContent.split('\n');
-                // BUG-1 fix: out-of-range returns explicit empty result, no negative line counts
                 if (startLine > totalLines || endLine < 1) {
                     const clampedStart = Math.max(1, Math.min(startLine, totalLines));
                     const clampedEnd = Math.min(totalLines, Math.max(1, endLine));
@@ -319,7 +264,6 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     let truncated = false;
                     let hasMore = false;
                     let responseText = selected.join('\n');
-                    // 单次响应字节上限保护
                     if (responseText.length > MAX_RESPONSE_CHARS) {
                         selected = allLines.slice(safeStart - 1);
                         let buf = '';
@@ -341,85 +285,29 @@ export async function handleGitHubTool(name, safeArgs, env) {
             }
         }
 
-        // github_list
+
+        // github_list: the facade formats entries; the domain primitive owns GitHub Contents I/O.
         else if (name === 'github_list') {
             const path = safeArgs.path || '';
             const branch = safeArgs.branch || 'main';
-            const resp = await fetch(`${baseUrl}/contents/${path}?ref=${branch}`, { headers: ghHeaders });
-            if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
-            const data = await resp.json();
-            const items = Array.isArray(data) ? data : [data];
+            const listing = await listContents(contentsCtx, { repo, path, branch });
+            if (!listing.ok) {
+                if (listing.code === 'INVALID_REPO_PATH') return 'ERROR: ' + listing.code + ': ' + listing.message;
+                throw new Error(listing.message || ('HTTP ' + (listing.status || 'unknown')));
+            }
             text = 'Directory: ' + (path || '(root)') + '\n' +
-                items.map(i => `${i.type === 'dir' ? '[DIR]' : '[FILE]'} ${i.name}${i.type === 'dir' ? '/' : ''}`).join('\n');
+                listing.items.map(i => `${i.type === 'dir' ? '[DIR]' : '[FILE]'} ${i.name}${i.type === 'dir' ? '/' : ''}`).join('\n');
         }
+
 
         // github_delete
         else if (name === 'github_delete') {
-            if (!safeArgs.path) return 'ERROR: Missing path';
-            const branch = safeArgs.branch || 'main';
-            const checkResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
-            if (!checkResp.ok) { const err = await checkResp.json(); throw new Error(err.message || `HTTP ${checkResp.status}`); }
-            const data = await checkResp.json();
-            const resp = await fetch(`${baseUrl}/contents/${safeArgs.path}`, {
-                method: 'DELETE',
-                headers: ghHeaders,
-                body: JSON.stringify({ message: safeArgs.message || `Delete ${safeArgs.path}`, sha: data.sha, branch })
-            });
-            if (!resp.ok) { const err = await resp.json(); throw new Error(err.message || `HTTP ${resp.status}`); }
-            text = `DELETED: ${safeArgs.path}`;
+            return formatContentsResult(name, await deleteFile(contentsCtx, safeArgs || {}));
         }
 
-        // github_edit (v6.32.5 ADD: 服务端编辑——读→改→写回一次完成，不用上传)
+        // github_edit
         else if (name === 'github_edit') {
-            if (!safeArgs.path) return 'ERROR: github_edit requires path';
-            if (!Array.isArray(safeArgs.operations) || safeArgs.operations.length === 0) return 'ERROR: github_edit requires operations (array of {old, new})';
-            const branch = safeArgs.branch || 'dev';
-            const message = safeArgs.message || `Update ${safeArgs.path}`;
-            const dryRun = safeArgs.dry_run === true;
-
-            // 读文件
-            const readResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
-            if (!readResp.ok) { const err = await readResp.json(); return 'ERROR: READ_FAILED ' + (err.message || `HTTP ${readResp.status}`); }
-            const readData = await readResp.json();
-            if (!readData.content) return 'ERROR: READ_NO_CONTENT';
-            let content = base64ToUtf8(readData.content);
-
-            // 逐操作替换（锚点必须唯一，0次=没找到，>1次=歧义）
-            const details = [];
-            for (let i = 0; i < safeArgs.operations.length; i++) {
-                const op = safeArgs.operations[i];
-                if (typeof op.old !== 'string' || typeof op.new !== 'string') return 'ERROR: each operation must be {old: string, new: string}';
-                const count = content.split(op.old).length - 1;
-                if (count === 0) {
-                    var _hint = findSimilarCandidates(content, op.old);
-                    var _base = 'ERROR: ANCHOR_NOT_FOUND (op #' + (i + 1) + '): ' + op.old.slice(0, 80);
-                    return _base + (_hint ? '\n  [候选提示] 最接近的几行：\n  ' + _hint : '');
-                }
-                if (count > 1) return `ERROR: ANCHOR_AMBIGUOUS (op #${i + 1}) matches ${count} times: ${op.old.slice(0, 80)}`;
-                content = content.replace(op.old, op.new);
-                details.push(`op#${i + 1}: ${op.old.slice(0, 40)}… → ${op.new.slice(0, 40)}…`);
-            }
-
-            if (dryRun) {
-                const NL = String.fromCharCode(10);
-                text = 'DRY_RUN (' + branch + '/' + safeArgs.path + '):' + NL + details.join(NL) + NL + content.length + ' bytes after edit';
-            } else {
-                // 写回（带 sha 防覆盖）
-                const newBase64 = utf8ToBase64(content);
-                const putBody = { message, content: newBase64, branch };
-                if (readData.sha) putBody.sha = readData.sha;
-                const putResp = await fetch(`${baseUrl}/contents/${safeArgs.path}`, { method: 'PUT', headers: ghHeaders, body: JSON.stringify(putBody) });
-                if (!putResp.ok) { const err = await putResp.json(); return 'ERROR: WRITE_FAILED ' + (err.message || `HTTP ${putResp.status}`); }
-                const putData = await putResp.json();
-                // size 校验
-                let verified = false;
-                const verifyResp = await fetch(`${baseUrl}/contents/${safeArgs.path}?ref=${branch}`, { headers: ghHeaders });
-                if (verifyResp.ok) {
-                    const vData = await verifyResp.json();
-                    if (vData.content) verified = base64ToUtf8(vData.content) === content;
-                }
-                text = 'OK: github_edit (' + branch + '/' + safeArgs.path + '):' + String.fromCharCode(10) + details.join(String.fromCharCode(10)) + String.fromCharCode(10) + 'Verified: ' + verified + String.fromCharCode(10) + 'URL: ' + (putData.content?.html_url || '');
-            }
+            return formatContentsResult(name, await editFileByAnchors(contentsCtx, safeArgs || {}));
         }
 
         // github_merge_to_main
@@ -663,302 +551,14 @@ export async function handleGitHubTool(name, safeArgs, env) {
         }
 
 
-        // github_copy - 跨仓库/跨分支文件复制（内容不经过 Agent 上下文）
+        // github_copy - reusable single-file copy workflow
         else if (name === 'github_copy') {
-            if (!safeArgs.source_repo || !safeArgs.source_path || !safeArgs.target_repo || !safeArgs.target_path) {
-                return 'ERROR: github_copy requires source_repo, source_path, target_repo, target_path';
-            }
-            const sourceRepo = String(safeArgs.source_repo).trim();
-            const sourceBranch = safeArgs.source_branch || 'main';
-            const sourcePath = String(safeArgs.source_path).trim();
-            const targetRepo = String(safeArgs.target_repo).trim();
-            const targetBranch = safeArgs.target_branch || 'main';
-            const targetPath = String(safeArgs.target_path).trim();
-            const overwrite = safeArgs.overwrite === true;
-            const message = safeArgs.message || `Copy ${sourcePath} → ${targetPath}`;
-
-            // 安全1：source 和 target 都必须过白名单
-            const allowedRaw = env.GITHUB_ALLOWED_REPOS || '';
-            const allowed = allowedRaw.split(',').map(s => s.trim()).filter(Boolean);
-            const checkRepo = (r) => r === env.GITHUB_REPO || (allowed.length > 0 && allowed.includes(r));
-            if (!checkRepo(sourceRepo)) return `ERROR: Repository not allowed: ${sourceRepo}`;
-            if (!checkRepo(targetRepo)) return `ERROR: Repository not allowed: ${targetRepo}`;
-
-            // 安全2：source 与 target 相同则拒绝
-            if (sourceRepo === targetRepo && sourceBranch === targetBranch && sourcePath === targetPath) {
-                return 'ERROR: SOURCE_IS_TARGET - source and target are the same file';
-            }
-
-            const srcBase = `https://api.github.com/repos/${sourceRepo}`;
-            const tgtBase = `https://api.github.com/repos/${targetRepo}`;
-
-            // 读 source 文件（服务端内部，内容不进 Agent 上下文）
-            const srcResp = await fetch(`${srcBase}/contents/${encodeURIComponent(sourcePath)}?ref=${sourceBranch}`, { headers: ghHeaders });
-            if (!srcResp.ok) {
-                if (srcResp.status === 404) return 'ERROR: SOURCE_NOT_FOUND - ' + sourcePath + ' not found in ' + sourceRepo + '@' + sourceBranch;
-                const err = await srcResp.json();
-                return `ERROR: GITHUB_API_ERROR - source read failed: ${err.message || srcResp.status}`;
-            }
-            const srcData = await srcResp.json();
-            if (!srcData.content) return 'ERROR: SOURCE_NOT_FOUND - no content at ' + sourcePath;
-            const fileSha = srcData.sha;
-
-            // 检查 target 是否存在
-            const tgtCheck = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
-            let targetSha = null;
-            let overwritten = false;
-            if (tgtCheck.ok) {
-                const tgtData = await tgtCheck.json();
-                targetSha = tgtData.sha;
-                if (!overwrite) {
-                    return `ERROR: TARGET_EXISTS - ${targetPath} already exists in ${targetRepo}@${targetBranch}. Set overwrite=true to overwrite.`;
-                }
-                overwritten = true;
-            } else if (tgtCheck.status !== 404) {
-                const err = await tgtCheck.json();
-                return `ERROR: GITHUB_API_ERROR - target check failed: ${err.message || tgtCheck.status}`;
-            }
-
-            // target=main 时走 push-main 警示逻辑
-            let warn = '';
-            if (targetBranch === 'main') {
-                warn = '⚠️ WARNING: Copying directly to main. This triggers Cloudflare deploy. Confirm before continuing.';
-            }
-
-            // PUT 到 target（用 source 的 base64 内容，服务端内部传递）
-            const body = { message, content: srcData.content, branch: targetBranch };
-            if (targetSha) body.sha = targetSha;
-            const putResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}`, {
-                method: 'PUT', headers: ghHeaders, body: JSON.stringify(body)
-            });
-            if (!putResp.ok) {
-                const err = await putResp.json();
-                return `ERROR: GITHUB_API_ERROR - target write failed: ${err.message || putResp.status}`;
-            }
-            const putData = await putResp.json();
-
-            // v6.4: copy 后完整性校验——「API 成功 ≠ 文件成功」（ISSUE-4 fix: retry up to 3 times to avoid consistency window）
-            // 必须验证 target 最终 size 与 source size 一致，否则判定 copy 失败
-            let verified = false;
-            let targetFinalSize = 0;
-            for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
-                try {
-                    const verifyResp = await fetch(`${tgtBase}/contents/${encodeURIComponent(targetPath)}?ref=${targetBranch}`, { headers: ghHeaders });
-                    if (verifyResp.ok) {
-                        const vData = await verifyResp.json();
-                        targetFinalSize = vData.size || 0;
-                        verified = targetFinalSize === (srcData.size || 0) && targetFinalSize > 0;
-                    } else { targetFinalSize = 0; }
-                } catch (e) { targetFinalSize = 0; }
-                if (!verified && attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
-            }
-            if (!verified) {
-                return (warn ? warn + '\n\n' : '') + `ERROR: COPY_VERIFY_FAILED - target written but size mismatched (source ${srcData.size || 0}, target ${targetFinalSize}). The copy may be truncated or corrupt. This is NOT a success.`;
-            }
-
-            text = (warn ? warn + '\n\n' : '') + JSON.stringify({
-                success: true,
-                verified: true,
-                source_repo: sourceRepo,
-                source_branch: sourceBranch,
-                source_path: sourcePath,
-                source_size: srcData.size || 0,
-                target_repo: targetRepo,
-                target_branch: targetBranch,
-                target_path: targetPath,
-                target_size: targetFinalSize,
-                file_sha: fileSha,
-                commit_sha: putData.commit?.sha || '',
-                overwritten
-            }, null, 2);
+            return formatContentsResult(name, await copyFile(contentsCtx, safeArgs || {}));
         }
 
-        // github_move - 移动/搬移文件或目录（copy 全部成功后删除源，保证不丢）
+        // github_move - directory orchestration: enumerate, copy+verify all, recheck snapshots, then delete.
         else if (name === 'github_move') {
-            if (!safeArgs.source_repo || !safeArgs.source_path || !safeArgs.target_repo || !safeArgs.target_path) {
-                return 'ERROR: github_move requires source_repo, source_path, target_repo, target_path';
-            }
-            const mSourceRepo = String(safeArgs.source_repo).trim();
-            const mSourceBranch = safeArgs.source_branch || 'main';
-            const mSourcePath = String(safeArgs.source_path).trim();
-            const mTargetRepo = String(safeArgs.target_repo).trim();
-            // github_move 默认目标 = dev（柳柳 2026-09-07：别默认 main，危险！搬动走 dev，确认后再 merge main）
-            const mTargetBranch = safeArgs.target_branch || 'dev';
-            const mTargetPath = String(safeArgs.target_path).trim();
-            const mOverwrite = safeArgs.overwrite === true;
-            const mRecursive = safeArgs.recursive !== false;
-            const mMessage = safeArgs.message || `Move ${mSourcePath} → ${mTargetPath}`;
-
-            // 安全1：source 和 target 都必须过白名单
-            const allowedRaw = env.GITHUB_ALLOWED_REPOS || '';
-            const allowed = allowedRaw.split(',').map(s => s.trim()).filter(Boolean);
-            const checkRepo = (r) => r === env.GITHUB_REPO || (allowed.length > 0 && allowed.includes(r));
-            if (!checkRepo(mSourceRepo)) return `ERROR: Repository not allowed: ${mSourceRepo}`;
-            if (!checkRepo(mTargetRepo)) return `ERROR: Repository not allowed: ${mTargetRepo}`;
-
-            const mSrcBase = `https://api.github.com/repos/${mSourceRepo}`;
-            const mTgtBase = `https://api.github.com/repos/${mTargetRepo}`;
-            const enc = (p) => p.split('/').map(encodeURIComponent).join('/');
-
-            // 递归收集源下的全部文件路径（相对 source 根）。返回 [] 层：[[relPath, absPath]]
-            // 用 contents API tree 一次性拉全树，避免逐层递归过多请求
-            const collectFiles = async (rootPath) => {
-                const treeResp = await fetch(`${mSrcBase}/git/trees/${encodeURIComponent(mSourceBranch)}?recursive=1`, { headers: ghHeaders });
-                if (!treeResp.ok) {
-                    const err = await treeResp.json();
-                    return { error: `GITHUB_API_ERROR - tree read failed: ${err.message || treeResp.status}` };
-                }
-                const tree = await treeResp.json();
-                const files = [];
-                const prefix = rootPath === '' ? '' : rootPath + '/';
-                for (const item of (tree.tree || [])) {
-                    if (item.type !== 'blob') continue;
-                    if (rootPath !== '' && !item.path.startsWith(prefix)) continue;
-                    const rel = rootPath === '' ? item.path : item.path.slice(prefix.length);
-                    // 只收集源目录下的文件（rootPath 为文件时本收集不适用，走单文件路径）
-                    if (rootPath !== '' && item.path === rootPath) continue; // 跳过根自己是目录的情形不会出现
-                    files.push({ rel, abs: item.path });
-                }
-                return { files };
-            };
-
-            // 判断源是文件还是目录（若 recursive=false 且源是目录则报错）
-            const srcCheckResp = await fetch(`${mSrcBase}/contents/${enc(mSourcePath)}?ref=${mSourceBranch}`, { headers: ghHeaders });
-            if (!srcCheckResp.ok) {
-                if (srcCheckResp.status === 404) return 'ERROR: SOURCE_NOT_FOUND - ' + mSourcePath + ' not found in ' + mSourceRepo + '@' + mSourceBranch;
-                const err = await srcCheckResp.json();
-                return `ERROR: GITHUB_API_ERROR - source check failed: ${err.message || srcCheckResp.status}`;
-            }
-            const srcCheck = await srcCheckResp.json();
-            const isDir = Array.isArray(srcCheck);
-
-            // 收集待搬移文件清单：[{abs, rel, targetAbs}]
-            let plan = [];
-            let warn = '';
-            if (mTargetBranch === 'main') {
-                warn = '⚠️ WARNING: Moving directly to main（危险！）。默认应 target_branch=dev 搬动，确认后再 merge main。除非明确需要直接改 main（如文档仓打通），否则拒绝。Confirm before continuing.';
-            }
-            if (!isDir) {
-                plan = [{ abs: mSourcePath, rel: mSourcePath.split('/').pop(), targetAbs: mTargetPath }];
-            } else {
-                if (!mRecursive) {
-                    return (warn ? warn + '\n\n' : '') + `ERROR: DIRECTORY_WITHOUT_RECURSIVE - ${mSourcePath} is a directory but recursive=false. A directory source requires recursive=true to move.`;
-                }
-                const col = await collectFiles(mSourcePath);
-                if (col.error) return (warn ? warn + '\n\n' : '') + col.error;
-                if (col.files.length === 0) return (warn ? warn + '\n\n' : '') + `ERROR: EMPTY_DIRECTORY - no files found under ${mSourcePath}`;
-                plan = col.files.map(f => ({
-                    abs: f.abs,
-                    rel: f.rel,
-                    targetAbs: (mTargetPath === '' ? '' : mTargetPath + '/') + f.rel
-                }));
-            }
-
-            // 逐个 copy（带 size 校验），全部成功才进入删除阶段
-            const copied = [];
-            let failed = null;
-            for (const item of plan) {
-                try {
-                    // 读源
-                    const sResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}?ref=${mSourceBranch}`, { headers: ghHeaders });
-                    if (!sResp.ok) {
-                        const err = await sResp.json();
-                        throw new Error(`source read failed: ${err.message || sResp.status}`);
-                    }
-                    const sData = await sResp.json();
-                    if (!sData.content) throw new Error('source has no content: ' + item.abs);
-                    // 检查目标
-                    const tCheck = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}?ref=${mTargetBranch}`, { headers: ghHeaders });
-                    let tSha = null;
-                    let overwritten = false;
-                    if (tCheck.ok) {
-                        const tData = await tCheck.json();
-                        tSha = tData.sha;
-                        if (!mOverwrite) throw new Error(`TARGET_EXISTS - ${item.targetAbs} already exists. Set overwrite=true to overwrite.`);
-                        overwritten = true;
-                    } else if (tCheck.status !== 404) {
-                        const err = await tCheck.json();
-                        throw new Error(`target check failed: ${err.message || tCheck.status}`);
-                    }
-                    // PUT 目标
-                    const putBody = { message: mMessage, content: sData.content, branch: mTargetBranch };
-                    if (tSha) putBody.sha = tSha;
-                    const putResp = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}`, {
-                        method: 'PUT', headers: ghHeaders, body: JSON.stringify(putBody)
-                    });
-                    if (!putResp.ok) {
-                        const err = await putResp.json();
-                        throw new Error(`target write failed: ${err.message || putResp.status}`);
-                    }
-                    // size 校验（retry 3 次）
-                    let verified = false;
-                    let tFinal = 0;
-                    for (let attempt = 1; attempt <= 3 && !verified; attempt++) {
-                        try {
-                            const vResp = await fetch(`${mTgtBase}/contents/${enc(item.targetAbs)}?ref=${mTargetBranch}`, { headers: ghHeaders });
-                            if (vResp.ok) {
-                                const vData = await vResp.json();
-                                tFinal = vData.size || 0;
-                                verified = tFinal === (sData.size || 0) && tFinal > 0;
-                            } else { tFinal = 0; }
-                        } catch (e) { tFinal = 0; }
-                        if (!verified && attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
-                    }
-                    if (!verified) {
-                        throw new Error(`COPY_VERIFY_FAILED - ${item.targetAbs} size mismatch (${sData.size || 0} vs ${tFinal}). Abort move, source untouched.`);
-                    }
-                    copied.push({ abs: item.abs, rel: item.rel, target: item.targetAbs, verified: true, overwritten, size: tFinal });
-                } catch (e) {
-                    failed = { file: item.abs, reason: e.message };
-                    break;
-                }
-            }
-
-            // 有失败 → 不删任何源，返回已复制清单（让源保持完整可重试）
-            if (failed) {
-                const partial = copied.length ? '\n已成功复制（未删源，可重试或手动清理）：\n' + copied.map(c => '  ✅ ' + c.abs + ' → ' + c.target).join('\n') : '';
-                return (warn ? warn + '\n\n' : '') + `ERROR: MOVE_PARTIAL_FAILED - ${failed.file}: ${failed.reason}. Aborted; NO source deleted.${partial}`;
-            }
-
-            // 全部 copy 成功 → 删除源文件（目录则逐个删文件，空目录 GitHub 无实体自动消失）
-            const deleted = [];
-            for (const item of plan) {
-                try {
-                    const dResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}?ref=${mSourceBranch}`, { headers: ghHeaders });
-                    if (!dResp.ok) {
-                        const err = await dResp.json();
-                        throw new Error(`source check for delete failed: ${err.message || dResp.status}`);
-                    }
-                    const dData = await dResp.json();
-                    const delResp = await fetch(`${mSrcBase}/contents/${enc(item.abs)}`, {
-                        method: 'DELETE',
-                        headers: ghHeaders,
-                        body: JSON.stringify({ message: mMessage, sha: dData.sha, branch: mSourceBranch })
-                    });
-                    if (!delResp.ok) {
-                        const err = await delResp.json();
-                        throw new Error(`source delete failed: ${err.message || delResp.status}`);
-                    }
-                    deleted.push(item.abs);
-                } catch (e) {
-                    // 删除失败：已复制成功但源删除失败 → 返回半移状态（源保留，不丢）
-                    return (warn ? warn + '\n\n' : '') + `ERROR: MOVE_DELETE_FAILED - copied ${copied.length}/${plan.length} but failed to delete source ${item.abs}: ${e.message}. Target files exist; source retained for safety. Delete manually: ${deleted.join(', ')}`;
-                }
-            }
-
-            text = (warn ? warn + '\n\n' : '') + JSON.stringify({
-                success: true,
-                moved: plan.length,
-                is_dir: isDir,
-                source_repo: mSourceRepo,
-                source_branch: mSourceBranch,
-                source_path: mSourcePath,
-                target_repo: mTargetRepo,
-                target_branch: mTargetBranch,
-                target_path: mTargetPath,
-                verified_all: true,
-                files: plan.map(p => ({ source: p.abs, target: p.targetAbs }))
-            }, null, 2);
+            return formatContentsResult(name, await movePath(contentsCtx, safeArgs || {}));
         }
 
         // cloudflare_deploy_logs - 部署日志/详情查询（v6.18.1 新增 · 柳柳要求「做查日志的工具」）
