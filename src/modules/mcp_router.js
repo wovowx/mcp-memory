@@ -231,7 +231,7 @@ export async function githubReleaseGuard(name, safeArgs, env) {
     const targetRepo = safeArgs.repo || env.GITHUB_REPO;
     // v6.32.5: github_edit 按 push 处理（写操作）——写 dev 放行，写 main 拦（版本化）
     const isPush = name === 'github_push' || name === 'github_edit';
-    const branch = isPush ? (safeArgs.branch || 'main') : 'main';
+    const branch = isPush ? (safeArgs.branch || 'dev') : 'main';
     const action = isPush ? 'push' : 'merge';
 
     // rebase（默认）模式：merge 标题由源分支 HEAD commit 决定，校验真实标题
