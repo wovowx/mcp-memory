@@ -15,8 +15,9 @@
 - 保持既有工具名、参数 Schema 与 copy/move 成功响应字段兼容。
 
 ### Regression
-- CI runs `npm run check`, `npm run test:github-contents`, webhook idempotency and learning artifact regression.
-- Mock contract coverage is distinct from real GitHub endpoint E3; E3 has not been run.
+- GitHub Actions run #794 (`41798715712`): all jobs SUCCESS.
+- E1 `npm run check`: PASS; GitHub Contents contracts: 31/31; webhook/router regression: 106/106; learning artifact regression: PASS.
+- These are static/mock contract and regression checks; real GitHub endpoint E3 has not been run.
 
 ## [v6.35.0] - 2026-10-26
 ### Fixed / Changed（MCP 路由、记忆与工具契约收敛）
