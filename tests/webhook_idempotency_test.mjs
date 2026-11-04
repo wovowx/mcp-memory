@@ -465,7 +465,7 @@ console.log('\n[main-guard] 非发布流程禁止直接修改 main：四个工�
   const call=async(nm,arg)=>{ const r=await handleMCPRequest({method:'tools/call',id:9,params:{name:nm,arguments:arg||{}}},env); return r.data.result.content[0].text; };
   let r,beforeApi;
   beforeApi=apiCount(); r=await call('github_delete',{path:'x'});
-  check('github_delete 缺省 branch(dev) → 进入 dev 路径而非 main guard', !r.startsWith('MAIN_WRITE_BLOCKED') && apiLog.some(x=>x.includes('/contents/x?ref=dev')));
+  check('github_delete 缺省 branch(dev) → 进入 dev 路径而非 main guard', !r.startsWith('MAIN_WRITE_BLOCKED') && fetchLog.some(x=>x.includes('/contents/x?ref=dev')));
   beforeApi=apiCount(); r=await call('github_delete',{path:'x',branch:'main'});
   check('github_delete 显式 main 拒绝', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   r=await call('github_delete',{path:'x',branch:'dev'});
