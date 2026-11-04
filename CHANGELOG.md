@@ -2,6 +2,13 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.36.1] - 2026-11-04
+### Fixed
+- 修复 Cloudflare Worker 中 GitHub Contents 请求调用全局 fetch 时丢失 receiver 导致的 `Illegal invocation`。
+- 为 `github_sync_branch` 增加仅限 `dev` 的精确 SHA 恢复模式：校验目标 commit、预期当前 HEAD，并在更新后回读验证；普通分支同步路径保持不变。
+### Regression
+- 新增 fetch receiver 与 dev 精确恢复的契约测试；CI 结果将在发布验证后补录。
+
 ## [v6.36.0] - 2026-11-04
 ### Changed（GitHub Contents 领域收敛）
 - 新增 `src/modules/github/contents.js`：集中 GitHub Contents 原子操作与 push/edit/delete/copy/move 工作流；保留既有工具入口、Schema 和非 Contents GitHub 能力。
