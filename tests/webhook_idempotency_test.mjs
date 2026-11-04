@@ -506,9 +506,13 @@ console.log('\n[main-regression] 既有防线回归：push/edit main 拦、合�
   const call=async(nm,arg)=>{ const r=await handleMCPRequest({method:'tools/call',id:7,params:{name:nm,arguments:arg||{}}},rgEnv); return r.data.result.content[0].text; };
   let t,ab;
   t=await call('github_push',{path:'x',content_url:'http://u'});
-  check('github_push 缺省 branch(main) 被 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD') && t.includes('push_to_main_blocked'));
-  t=await call('github_edit',{path:'x',operations:[{old:'a',new:'b'}]});
-  check('github_edit 缺省 branch(main) 被 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD'));
+  check('github_push 缺省 branch(dev) 通过 releaseGuard 并继续校验上传 URL', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED') && t.includes('INVALID_CONTENT_URL'));
+  ab=apiCalls; t=await call('github_edit',{path:'x',operations:[{old:'a',new:'b'}]});
+  check('github_edit 缺省 branch(dev) 通过 releaseGuard 并读取 dev', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED') && apiCalls===ab+1);
+  t=await call('github_push',{path:'x',branch:'main',content_url:'http://u'});
+  check('github_push 显式 main 仍由 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD') && t.includes('push_to_main_blocked'));
+  t=await call('github_edit',{path:'x',branch:'main',operations:[{old:'a',new:'b'}]});
+  check('github_edit 显式 main 仍由 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD'));
   ab=apiCalls; t=await call('github_push',{path:'x',branch:'dev',content_url:'http://mock.upload/x'});
   check('github_push 到 dev 非 main 仍由 releaseGuard 放行（合法路径不回归）', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED') && apiCalls===ab);
   t=await call('github_apply_patch',{proposal_id:'p1',branch:'main'});
