@@ -2,6 +2,22 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.36.0] - 2026-11-04
+### Changed（GitHub Contents 领域收敛）
+- 新增 `src/modules/github/contents.js`：集中 GitHub Contents 原子操作与 push/edit/delete/copy/move 工作流；保留既有工具入口、Schema 和非 Contents GitHub 能力。
+- 非发布写入 fallback 统一到 `dev`：push、delete、copy.target_branch、move.source_branch/target_branch；copy.source_branch 只读来源仍默认 `main`。
+- Router 写保护 fallback 与 handler 对齐；显式写入 `main` 仍然拒绝。
+
+### Fixed（完整性与部分成功语义）
+- push 仅将 HTTP 404 视为目标不存在；其他读取错误中止写入。
+- push/copy/edit 使用 SHA 或精确内容回读验证，支持零字节文件和有界重试。
+- move 对截断目录树采用保守枚举；无法证明清单完整时不开始写入。源文件变化或步骤失败时保留源并报告部分结果。
+- 保持既有工具名、参数 Schema 与 copy/move 成功响应字段兼容。
+
+### Regression
+- CI runs `npm run check`, `npm run test:github-contents`, webhook idempotency and learning artifact regression.
+- Mock contract coverage is distinct from real GitHub endpoint E3; E3 has not been run.
+
 ## [v6.35.0] - 2026-10-26
 ### Fixed / Changed（MCP 路由、记忆与工具契约收敛）
 
