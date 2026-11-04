@@ -12,6 +12,74 @@ import { getEnabledSkills, addSkill } from '../utils/skills.js';
 import { validatePatch, applyPatch } from '../modules/patch_engine.js';
 import { validateRepoRelativePath } from '../utils/helpers.js';
 import { getContent, listContents, pushFileFromStorage, editFileByAnchors, deleteFile, copyFile, movePath, formatContentsResult } from '../modules/github/contents.js';
+// Guarded recovery primitive for restoring the development ref to an exact commit.
+// It never permits main or another branch, and requires an expected current HEAD.
+export async function restoreBranchReference({
+    baseUrl, headers, branch = 'dev', targetSha, expectedSha, fetchImpl = fetch
+} = {}) {
+    const fail = (code, message, extra = {}) => ({ ok: false, code, message, ...extra });
+    const validSha = value => typeof value === 'string' && /^[0-9a-f]{40}$/i.test(value);
+    const readJson = async response => {
+        try { return await response.json(); } catch { return {}; }
+    };
+
+    if (branch !== 'dev') return fail('BRANCH_NOT_ALLOWED', '精确恢复模式只允许操作 dev。');
+    if (!validSha(targetSha) || !validSha(expectedSha)) {
+        return fail('INVALID_SHA', 'targetSha 和 expectedSha 都必须是完整的 40 位 commit SHA。');
+    }
+
+    let response;
+    let payload;
+    try {
+        response = await fetchImpl.call(globalThis, `${baseUrl}/commits/${targetSha}`, { headers });
+        payload = await readJson(response);
+    } catch (error) {
+        return fail('TARGET_COMMIT_READ_FAILED', error?.message || String(error));
+    }
+    if (!response.ok || (payload.sha || '').toLowerCase() !== targetSha.toLowerCase()) {
+        return fail('TARGET_COMMIT_NOT_FOUND', payload.message || `HTTP ${response.status}`, { status: response.status });
+    }
+
+    const refUrl = `${baseUrl}/git/ref/heads/dev`;
+    try {
+        response = await fetchImpl.call(globalThis, refUrl, { headers });
+        payload = await readJson(response);
+    } catch (error) {
+        return fail('CURRENT_REF_READ_FAILED', error?.message || String(error));
+    }
+    if (!response.ok) return fail('CURRENT_REF_READ_FAILED', payload.message || `HTTP ${response.status}`, { status: response.status });
+    const currentSha = payload.object?.sha;
+    if (!currentSha || currentSha.toLowerCase() !== expectedSha.toLowerCase()) {
+        return fail('HEAD_MISMATCH', 'dev 当前 HEAD 已变化，拒绝覆盖。', { currentSha: currentSha || null });
+    }
+
+    try {
+        response = await fetchImpl.call(globalThis, `${baseUrl}/git/refs/heads/dev`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ sha: targetSha, force: true })
+        });
+        payload = await readJson(response);
+    } catch (error) {
+        return fail('REF_UPDATE_FAILED', error?.message || String(error), { previousSha: currentSha });
+    }
+    if (!response.ok) return fail('REF_UPDATE_FAILED', payload.message || `HTTP ${response.status}`, { status: response.status, previousSha: currentSha });
+
+    try {
+        response = await fetchImpl.call(globalThis, refUrl, { headers });
+        payload = await readJson(response);
+    } catch (error) {
+        return fail('REF_VERIFY_FAILED', error?.message || String(error), { previousSha: currentSha });
+    }
+    const verifiedSha = payload.object?.sha;
+    if (!response.ok || !verifiedSha || verifiedSha.toLowerCase() !== targetSha.toLowerCase()) {
+        return fail('REF_VERIFY_FAILED', payload.message || '更新后回读的 dev HEAD 与目标 SHA 不一致。', {
+            status: response.status, previousSha: currentSha, verifiedSha: verifiedSha || null
+        });
+    }
+    return { ok: true, branch: 'dev', previousSha: currentSha, sha: verifiedSha };
+}
+
 
 // ============================================================
 // GITHUB_TOOL_DEFS - 所有 github_* 工具的元数据（唯一真相源）
@@ -69,7 +137,7 @@ export const GITHUB_TOOL_DEFS = [
     { name: 'github_compare_branches', description: '对比两个分支差异（base...head），返回值：ahead/behind/status/files。', input_schema: { type: 'object', properties: { base: { type: 'string', description: '基础分支（默认main）' }, head: { type: 'string', description: '对比分支（默认dev）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '对比'] },
     { name: 'github_get_pull_request', description: '查询单个 Pull Request 详情（state/merged/mergeable）。', input_schema: { type: 'object', properties: { pull_number: { type: 'number', description: 'PR编号' }, repo: { type: 'string', description: '可选，目标仓库' } }, required: ['pull_number'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', 'PR'] },
     { name: 'github_create_branch', description: '从指定分支新建分支（多仓库兼容）。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '新分支名' }, branch: { type: 'string', description: '新分支名（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支'] },
-    { name: 'github_sync_branch', description: '让分支直接指向源分支最新 commit（fast-forward 同步，不删分支）。分叉根治专用。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '要同步的分支（默认dev）' }, branch: { type: 'string', description: '要同步的分支（与name二选一）' }, from: { type: 'string', description: '源分支（默认main）' }, base: { type: 'string', description: '源分支（与from二选一）' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '同步'] },
+    { name: 'github_sync_branch', description: '常规模式将目标分支同步到源分支；精确恢复模式仅允许 dev：from="sha:<40位commit SHA>"、base="<预期当前dev HEAD SHA>"。执行前校验目标提交和当前HEAD，更新后回读验证。', input_schema: { type: 'object', properties: { name: { type: 'string', description: '目标分支（默认dev；精确恢复仅允许dev）' }, branch: { type: 'string', description: '目标分支（与name二选一）' }, from: { type: 'string', description: '源分支；或 sha:<40位commit SHA> 进入精确恢复模式' }, base: { type: 'string', description: '常规模式是源分支别名；精确恢复模式是预期当前dev HEAD SHA' }, repo: { type: 'string', description: '可选，目标仓库' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '分支', '同步', '恢复'] },
     { name: 'github_copy', description: '跨仓库/跨分支复制文件（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/message。复制后自动做 size 校验，源/目标 blob SHA 不一致返回 COPY_VERIFY_FAILED；允许空文件。target_branch 省略时默认 dev。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认main）' }, source_path: { type: 'string', description: '源文件路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认dev）' }, target_path: { type: 'string', description: '目标文件路径' }, overwrite: { type: 'boolean', description: '目标存在时是否覆盖（默认false）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '复制', '搬运'] },
     { name: 'github_move', description: '移动/搬移文件或目录（GitHub → GitHub，内容不经过 Agent 上下文，由 MCP 服务端内部搬运）。源是文件→单文件搬移；源是目录→自动递归收集全部文件，逐个 copy 并校验 blob SHA；递归树截断时安全回退枚举；全部复制验证后重新检查源 SHA，只有未变化的源才删除。部分失败会准确报告已复制/已删除/保留源文件。参数：source_repo/source_branch/source_path/target_repo/target_branch/target_path/overwrite/recursive/message。默认 recursive=true。', input_schema: { type: 'object', properties: { source_repo: { type: 'string', description: '源仓库（如 wovowx/ZivenLab）' }, source_branch: { type: 'string', description: '源分支（默认dev；移动会删除源，禁止 main）' }, source_path: { type: 'string', description: '源文件或目录路径' }, target_repo: { type: 'string', description: '目标仓库（如 wovowx/mcp-memory）' }, target_branch: { type: 'string', description: '目标分支（默认dev）' }, target_path: { type: 'string', description: '目标文件或目录路径' }, overwrite: { type: 'boolean', description: '目标已存在时是否覆盖（默认false）' }, recursive: { type: 'boolean', description: '源是目录时是否递归（默认true）' }, message: { type: 'string', description: '提交信息（可选）' } }, required: ['source_repo', 'source_path', 'target_repo', 'target_path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '移动', '搬运', '目录'] },
     { name: 'github_auto_sync', description: '自动同步 github_* 工具注册表：对比 GITHUB_TOOL_DEFS（代码真相源）与 Supabase skills 表，新增自动补注册，变化/孤儿列出待确认。', input_schema: { type: 'object', properties: { dry_run: { type: 'boolean', description: '仅报告不写入（默认false）' } } }, handler: 'github', category: 'GitHub', tags: ['GitHub', '自动注册', '同步'] },
@@ -480,27 +548,38 @@ export async function handleGitHubTool(name, safeArgs, env) {
         }
 
         // github_sync_branch
+        // github_sync_branch
         else if (name === 'github_sync_branch') {
             const targetBranch = safeArgs.name || safeArgs.branch || 'dev';
-            const fromBranch = safeArgs.from || safeArgs.base || 'main';
-            if (targetBranch === fromBranch) return 'ERROR: target and source are the same branch';
-            const refResp = await fetch(`${baseUrl}/git/ref/heads/${fromBranch}`, { headers: ghHeaders });
-            if (!refResp.ok) {
-                const err = await refResp.json();
-                throw new Error('取源��支失败：' + (err.message || `HTTP ${refResp.status}`));
+            const shaMatch = typeof safeArgs.from === 'string' ? safeArgs.from.match(/^sha:([0-9a-f]{40})$/i) : null;
+            if (shaMatch) {
+                const restored = await restoreBranchReference({
+                    baseUrl, headers: ghHeaders, branch: targetBranch,
+                    targetSha: shaMatch[1], expectedSha: safeArgs.base, fetchImpl: fetch
+                });
+                if (!restored.ok) throw new Error(`精确恢复失败 [${restored.code}]：${restored.message}`);
+                text = `✅ 已精确恢复：${targetBranch} ${restored.previousSha.slice(0, 8)} → ${restored.sha.slice(0, 8)}（expected SHA 校验及回读验证通过）`;
+            } else {
+                const fromBranch = safeArgs.from || safeArgs.base || 'main';
+                if (targetBranch === fromBranch) return 'ERROR: target and source are the same branch';
+                const refResp = await fetch(`${baseUrl}/git/ref/heads/${fromBranch}`, { headers: ghHeaders });
+                if (!refResp.ok) {
+                    const err = await refResp.json();
+                    throw new Error('取源分支失败：' + (err.message || `HTTP ${refResp.status}`));
+                }
+                const refData = await refResp.json();
+                const sha = refData.object.sha;
+                const updateResp = await fetch(`${baseUrl}/git/refs/heads/${targetBranch}`, {
+                    method: 'PATCH',
+                    headers: ghHeaders,
+                    body: JSON.stringify({ sha, force: true })
+                });
+                if (!updateResp.ok) {
+                    const err = await updateResp.json();
+                    throw new Error('同步失败：' + (err.message || `HTTP ${updateResp.status}`));
+                }
+                text = `✅ 已同步：${targetBranch} → ${fromBranch}（${sha.slice(0, 8)}，未删分支）`;
             }
-            const refData = await refResp.json();
-            const sha = refData.object.sha;
-            const updateResp = await fetch(`${baseUrl}/git/refs/heads/${targetBranch}`, {
-                method: 'PATCH',
-                headers: ghHeaders,
-                body: JSON.stringify({ sha, force: true })
-            });
-            if (!updateResp.ok) {
-                const err = await updateResp.json();
-                throw new Error('同步失败：' + (err.message || `HTTP ${updateResp.status}`));
-            }
-            text = `✅ 已同步：${targetBranch} → ${fromBranch}（${sha.slice(0, 8)}，未删分支）`;
         }
 
         // github_create_branch
