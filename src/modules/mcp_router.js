@@ -50,7 +50,7 @@ function isKnownToolName(name) {
     if (name === 'create_patch_proposal') return true;            // 专门 handler
     // 动态注册的前缀族（其余走 skills 表懒注册）
     if (name.startsWith('github_')) return true;                  // handleGitHubTool
-    if (name.startsWith('supabase_')) return true;                // handleDatabaseTool
+    if (name.startsWith('supabase_')) return null;                // handleDatabaseTool
     if (name.startsWith('memory_')) return true;                  // handleMemoryTool
     if (name.startsWith('database_')) return true;                // handleDatabaseTool
     if (name.startsWith('category_')) return true;                // handleCategoryTool
@@ -74,10 +74,30 @@ async function isKnownTool(env, name) {
 // v6.35.8 (2026-10-18)：从工具注册表取 input_schema（含 required）。
 // 对齐"踩肩+不重复造"：直接复用 skills 表/GITHUB_TOOL_DEFS 已有的参数契约，不自己定义。
 // 返回 null=查不到 schema（这种情况走信封校验放行，不误伤无 schema 的工具）。
+const CREATE_PATCH_PROPOSAL_SCHEMA = {
+    type: 'object',
+    required: ['target_file', 'change_summary', 'reason'],
+    properties: {
+        target_file: { type: 'string' },
+        change_summary: { type: 'string' },
+        reason: { type: 'string' },
+        evidence: { type: ['string', 'array'] },
+        diff: { type: ['string', 'object'] },
+        risk: { type: 'string' },
+        old_sha: { type: 'string' }
+    }
+};
+
+function getToolSchemaOverride(name) {
+    return name === 'create_patch_proposal' ? CREATE_PATCH_PROPOSAL_SCHEMA : null;
+}
+
 async function getToolSchema(env, name) {
     // 注册表查询成功但没有 schema 时返回 null；查询失败必须向上传递，不能伪装成“未配置 schema”。
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
+    const schemaOverride = getToolSchemaOverride(name);
+    if (schemaOverride) return schemaOverride;
     if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
         return skill.input_schema;
     }
@@ -191,6 +211,24 @@ async function getCachedSkills(env) {
 }
 
 async function invalidateCache() { skillCache.clear(); }
+
+function getExposedInputSchema(skill) {
+    const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : {};
+    const schemaOverride = getToolSchemaOverride(skill?.name);
+    if (schemaOverride) return schemaOverride;
+    if (skill?.name !== 'supabase_db' && skill?.name !== 'supabase_schema') return schema;
+    // necessity is enforced by database.js for DDL hidden behind action=exec; expose it to clients without requiring it for read-only actions.
+    return {
+        ...schema,
+        properties: {
+            ...(schema.properties && typeof schema.properties === 'object' ? schema.properties : {}),
+            necessity: {
+                type: 'string',
+                description: 'DDL/结构变更时必填：说明为什么现有表或结构不能满足需求；只读 SQL 无需填写。'
+            }
+        }
+    };
+}
 
 // release_guard 前置闸：push/merge 到 main 必须版本化；非 main 分支放行
 // v6.32.3 (2026-09-08)：FIX rebase 标题失守——rebase 模式 GitHub 保留 dev 原始 commit 标题，
@@ -336,7 +374,7 @@ export async function handleMCPRequest(body, env) {
     if (method === 'tools/list') {
         await syncChatTools(env);
         const skills = await getCachedSkills(env);
-        const tools = skills.map(s => ({ name: s.name, description: s.description, inputSchema: s.input_schema || {} }));
+        const tools = skills.map(s => ({ name: s.name, description: s.description, inputSchema: getExposedInputSchema(s) }));
         return { ok: true, data: { jsonrpc: '2.0', id, result: { tools } } };
     }
     if (method === 'tools/call') {
@@ -355,12 +393,10 @@ export async function handleMCPRequest(body, env) {
         }
         let text = '';
         try {
-            // create_patch_proposal 提前拦截（无论 skills 注册与否）
+            // 专用 handler 保留，但统一在下方 toolOk 中核对结果和使用统计。
             if (name === 'create_patch_proposal') {
                 text = await handleCreatePatchProposal(safeArgs, env);
-                return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
-            }
-            if (name?.startsWith('supabase_')) {
+            } else if (name?.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
                 await invalidateCache();
             } else if (name === 'memory' || name?.startsWith('memory_')) {
@@ -403,7 +439,7 @@ export async function handleMCPRequest(body, env) {
                 }
             }
         } catch (e) { text = 'err: ' + e.message; }
-        const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:') && !text.startsWith('MAIN_WRITE_BLOCKED:') && !text.startsWith('unknown tool:');
+        const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:') && !text.startsWith('MAIN_WRITE_BLOCKED:') && !text.startsWith('unknown tool:') && !text.startsWith('handler type not implemented');
         if (toolOk) await autoIncrementUsage(env, name);
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
