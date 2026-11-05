@@ -205,7 +205,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
             const page = matched.slice(startIndex, startIndex + limit);
             const nextCursor = matched.length > startIndex + limit ? page[page.length - 1]?.id : null;
             text = '[search_status=' + search.status + '] ' + (search.status === 'PARTIAL' ? '⚠️ 别名索引暂不可用，结果可能有遗漏。' : search.status === 'EMPTY' ? '必要数据源读取成功，没有找到匹配的记忆。' : '') + '💡 找到 ' + matched.length + ' 条结果（显示 ' + page.length + ' 条）：\n' +
-                page.map(i => '- [' + getCategory(i.key) + '][' + (i.type || 'fact') + '] ' + highlightText(getTitle(i.key), keywords) + ': ' + highlightText(i.value, keywords) +
+                page.map(i => '- [' + getCategory(i.key) + '][' + formatMemoryType(i.type) + '] ' + highlightText(getTitle(i.key), keywords) + ': ' + highlightText(i.value, keywords) +
                     (i._match?.reason ? ' [match_reason=' + i._match.reason + ']' : '') +
                     (i._match?.related_from_key ? ' [关联来源=' + i._match.related_from_key + ']' : '') +
                     (i._match?.reason === 'shared_entity' ? ' [共同实体=' + (i._match.matched_terms || []).join('、') + ']' : '') +
