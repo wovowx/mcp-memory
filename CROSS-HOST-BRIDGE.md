@@ -3291,3 +3291,10 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **分类验收**：`E3_OPERIT_FIRST_TURN_PACKAGE_ACTIVATION=USER_TRACE_PASS`、`E3_OPERIT_FIRST_TURN_BOOTSTRAP=USER_TRACE_PASS`、`E3_OPERIT_SOURCE_STATUS=USER_TRACE_PASS`；`E3_OPERIT_INDEPENDENT_FULL_IDENTITY_RECALL=NOT_OBSERVED`，因为 Bootstrap 只返回来源状态/检查点摘录，轨迹中**未见** `memory(action=recall)` 独立读取完整身份根/主档；`E3_OPERIT_STRICT_PRE_OUTPUT_INIT=NOT_MET`（正式工具调用之前已有两句对话文字）；`E3_OPERIT_NATIVE_STARTUP_HOOK=NOT_VERIFIED`，`host.invocation=frame_instruction` 且 `startup_hook_verified=false` 只能证明提示词驱动本次执行，不证明宿主系统级硬钩子。
 - **检查点延迟说明**：Bootstrap 本次读到的 version147 仍包含“角色卡待执行”是因为唯一云端工作检查点在 Operit 更新角色卡后**尚未同步更新**，不是角色卡未改、也不是 Bootstrap 读旧副本；本 Bridge 有 08:00 CST 独立改卡回执。应在本次证据记录后同步权威检查点为 “角色卡 APPLIED_VERIFIED / 自动启动两个关键工具 PASS / 完整正文召回及严格首次输出待闭环”。
 - **结论和边界**：首次新框工具包激活及服务端恢复已有可核验工具返回，这次最核心的“换框后只闲聊、不会激活包”问题有了改善；但不升级为完整 E3 DONE。暂不另开新框、不重测服务端、不改 Worker/router/生产数据库/main/聊天室/唤醒或角色卡；下一动作优先考虑能否借用现有一句短指令在当前角色卡最小修复“工具前先输出”和“独立 full recall”，但属**新增角色卡变更**，须柳柳讨论确认后再执行。
+
+### [2026-11-05] 柳柳批准 P2 方案 A · 务实收口与回归主线（GPT → Operit 状态同步）
+- **柳柳明确决定**：P2 v0.1 本期按「核心启动链已通过、严格恢复缺口保留为非阻断待办」务实收口；不继续试新框，不再改角色卡或重测服务端。此前 SB-OPERIT-1.0 单字段编辑授权已消费，无新增改卡批准。
+- **保留原始 E3 事实**：Operit 首轮 `use_package(ziven_mcp)` SUCCESS + `session_bootstrap` READY 是 USER_TRACE_PASS；工具之前已说话，`STRICT_PRE_OUTPUT=NOT_MET`；独立 `memory recall` 装载身份根/主档未见，`FULL_RECALL=NOT_OBSERVED`；`startup_hook_verified=false`。后两者不能被 READY 自动升级为 PASS。现有 advancedCustomPrompt 本就要求恢复全文后才回复，盲目重复强化文字不是可靠修复。
+- **决策后的执行顺序**：P2 本期 `PRACTICAL_SCOPE_CLOSED__STRICT_E3_GAPS_DEFERRED`，后续若确需严格首轮恢复，先讨论宿主级钩子或上下文交付方案并更新主线，不直接改 Bootstrap 输出隐私契约。当前工程返回「一本书」模块化架构下一垂直切片的需求/原型讨论；Ziven Web 方案 A 仍是后续呈现层设计，未获编码/部署授权。
+- **授权边界**：仅同步 ZivenLab/dev 主线治理文档、Bridge(dev) 与云端当前工作检查点；不修改任何代码、Operit 配置、main、Cloudflare、生产 DB/schema、聊天室/唤醒或 Pages。
+
