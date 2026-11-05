@@ -6,7 +6,7 @@ import {
     pushFileFromStorage, editFileByAnchors, deleteFile, copyFile, movePath
 } from '../src/modules/github/contents.js';
 import { validateRepoRelativePath } from '../src/utils/helpers.js';
-import { GITHUB_TOOL_DEFS, restoreBranchReference } from '../src/tools/github_v64.js';
+import { GITHUB_TOOL_DEFS, restoreBranchReference, handleGitHubTool } from '../src/tools/github_v64.js';
 import { formatContentsResult } from '../src/modules/github/contents.js';
 
 const jsonResponse = (payload, status = 200) => ({
@@ -394,6 +394,139 @@ console.log('\n[Fetch binding + exact dev ref restore]');
         }
     });
     check('exact restore rejects a stale expected HEAD before PATCH', !result.ok && result.code === 'HEAD_MISMATCH' && calls.length === 2 && calls.every(call => call.options.method !== 'PATCH'));
+}
+
+console.log('\n[GitHub PR auto-sync contracts] only a merged dev → main PR may move dev');
+{
+  const originalFetchForMerge = globalThis.fetch;
+  const mergeEnv = { GITHUB_TOKEN: 'mock-gh-token', GITHUB_REPO: 'wovowx/mcp-memory' };
+  const mainShaForMerge = 'a'.repeat(40);
+
+  async function runMergeScenario({
+    handler = 'pr',
+    mergeStatus = 200,
+    mergePayload = { merged: true },
+    prStatus = 200,
+    prMetadata = { merged: true, head: { ref: 'dev' }, base: { ref: 'main' } },
+    prJsonThrows = false,
+    mainRefPayload = { object: { sha: mainShaForMerge } },
+    sourceBranch = 'dev'
+  } = {}) {
+    const calls = [];
+    const response = (payload, status = 200) => ({
+      ok: status >= 200 && status < 300,
+      status,
+      json: async () => payload
+    });
+    globalThis.fetch = async (url, options = {}) => {
+      const address = String(url);
+      const method = (options.method || 'GET').toUpperCase();
+      calls.push({ address, method, body: options.body || null });
+      if (handler === 'pr') {
+        if (address.endsWith('/pulls/42/merge') && method === 'PUT') return response(mergePayload, mergeStatus);
+      } else {
+        if (address.endsWith('/pulls') && method === 'POST') {
+          return response({ number: 43, mergeable: true, mergeable_state: 'clean', html_url: 'https://example.test/pull/43' });
+        }
+        if (address.endsWith('/pulls/43/merge') && method === 'PUT') return response(mergePayload, mergeStatus);
+      }
+      const pullNumber = handler === 'pr' ? 42 : 43;
+      if (address.endsWith('/pulls/' + pullNumber) && method === 'GET') {
+        if (prJsonThrows) return { ok: true, status: 200, json: async () => { throw new Error('mock invalid PR JSON'); } };
+        return response(prMetadata, prStatus);
+      }
+      if (address.endsWith('/git/ref/heads/main') && method === 'GET') return response(mainRefPayload);
+      if (address.endsWith('/git/refs/heads/dev') && method === 'PATCH') return response({ ref: 'refs/heads/dev' });
+      throw new Error('unexpected merge mock request: ' + method + ' ' + address);
+    };
+    try {
+      const output = handler === 'pr'
+        ? await handleGitHubTool('github_merge_pull_request', { pull_number: 42 }, mergeEnv)
+        : await handleGitHubTool('github_merge_to_main', { branch: sourceBranch }, mergeEnv);
+      return { output, calls };
+    } finally {
+      globalThis.fetch = originalFetchForMerge;
+    }
+  }
+
+  const movedToMain = await runMergeScenario();
+  const movedCalls = movedToMain.calls;
+  const devPatch = movedCalls.find(c => c.method === 'PATCH' && c.address.endsWith('/git/refs/heads/dev'));
+  check('merged dev → main PR fetches metadata then syncs dev to main SHA',
+    movedToMain.output.includes('dev → main') && !!devPatch &&
+    JSON.parse(devPatch.body).sha === mainShaForMerge &&
+    JSON.parse(devPatch.body).force === true &&
+    movedCalls.findIndex(c => c.address.endsWith('/pulls/42') && c.method === 'GET') < movedCalls.findIndex(c => c.method === 'PATCH'));
+
+  const scoped = await runMergeScenario({
+    prMetadata: { merged: true, head: { ref: 'release/v6.36.0' }, base: { ref: 'main' } }
+  });
+  check('merged scoped release → main PR skips dev ref mutation',
+    scoped.output.includes('已跳过 dev 自动同步') && !scoped.calls.some(c => c.method === 'PATCH' && c.address.endsWith('/git/refs/heads/dev')) &&
+    !scoped.calls.some(c => c.address.endsWith('/git/ref/heads/main')));
+
+  const otherBase = await runMergeScenario({
+    prMetadata: { merged: true, head: { ref: 'dev' }, base: { ref: 'release' } }
+  });
+  check('merged dev → non-main PR skips dev ref mutation',
+    otherBase.output.includes('dev → release') && !otherBase.calls.some(c => c.method === 'PATCH' && c.address.endsWith('/git/refs/heads/dev')));
+
+  const metadataHttpFailure = await runMergeScenario({ prStatus: 503, prMetadata: { message: 'unavailable' } });
+  check('PR metadata HTTP failure fails closed before reading main ref or patching dev',
+    metadataHttpFailure.output.includes('读取 PR #42 信息失败') &&
+    !metadataHttpFailure.calls.some(c => c.address.endsWith('/git/ref/heads/main')) &&
+    !metadataHttpFailure.calls.some(c => c.method === 'PATCH'));
+
+  const metadataMissingRefs = await runMergeScenario({
+    prMetadata: { merged: true, head: { ref: 'dev' } }
+  });
+  check('incomplete PR head/base metadata fails closed',
+    metadataMissingRefs.output.includes('缺少完整 head/base ref') &&
+    !metadataMissingRefs.calls.some(c => c.method === 'PATCH'));
+
+  const metadataNotMerged = await runMergeScenario({
+    mergeStatus: 405,
+    mergePayload: { message: 'already merged' },
+    prMetadata: { merged: false, head: { ref: 'dev' }, base: { ref: 'main' } }
+  });
+  check('HTTP 405 alone cannot trigger dev sync when PR metadata is not merged',
+    metadataNotMerged.output.includes('未能确认 merged=true') &&
+    !metadataNotMerged.calls.some(c => c.method === 'PATCH'));
+
+  const metadataInvalidJson = await runMergeScenario({ prJsonThrows: true });
+  check('malformed PR metadata response fails closed',
+    metadataInvalidJson.output.includes('读取异常') &&
+    !metadataInvalidJson.calls.some(c => c.method === 'PATCH'));
+
+  const invalidMainSha = await runMergeScenario({
+    mainRefPayload: { object: { sha: 'not-a-commit-sha' } }
+  });
+  check('invalid main ref SHA prevents dev PATCH',
+    invalidMainSha.output.includes('未返回有效 commit SHA') &&
+    !invalidMainSha.calls.some(c => c.method === 'PATCH'));
+
+  const alreadyMergedValid = await runMergeScenario({
+    mergeStatus: 405,
+    mergePayload: { message: 'already merged' }
+  });
+  check('HTTP 405 already-merged path syncs only after valid merged dev → main metadata',
+    alreadyMergedValid.output.includes('dev → main') &&
+    alreadyMergedValid.calls.some(c => c.method === 'PATCH' && c.address.endsWith('/git/refs/heads/dev')));
+
+  const mergeToMain = await runMergeScenario({ handler: 'merge_to_main' });
+  check('github_merge_to_main uses the same PR head/base guard',
+    mergeToMain.output.includes('dev → main') &&
+    mergeToMain.calls.some(c => c.method === 'GET' && c.address.endsWith('/pulls/43')) &&
+    mergeToMain.calls.some(c => c.method === 'PATCH' && c.address.endsWith('/git/refs/heads/dev')));
+
+  const mergeToScoped = await runMergeScenario({
+    handler: 'merge_to_main',
+    sourceBranch: 'release/v6.36.0',
+    prMetadata: { merged: true, head: { ref: 'release/v6.36.0' }, base: { ref: 'main' } }
+  });
+  check('github_merge_to_main scoped release path also leaves dev unchanged',
+    mergeToScoped.output.includes('已跳过 dev 自动同步') &&
+    !mergeToScoped.calls.some(c => c.method === 'PATCH' && c.address.endsWith('/git/refs/heads/dev')));
 }
 
 console.log('\n[Facade schema defaults]');
