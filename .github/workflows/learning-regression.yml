@@ -35,6 +35,8 @@ jobs:
 
       - name: E2 - Memory Core repository, lifecycle and facade contracts
         run: npm run test:memory-core
+      - name: E2 - Synthetic Memory Retrieval Quality Benchmark
+        run: npm run test:memory-retrieval-benchmark
 
       - name: E2 - Search history contracts
         run: npm run test:search-history
