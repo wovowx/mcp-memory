@@ -164,28 +164,58 @@ function normalize(value) {
 }
 
 // ============================================================
-// tryAutoSyncDev - 合完 main 后自动把 dev 同步到最新（硬性要求）
-// 只有 dev 不领先 main（无未合入独立 commit）时才自动 fast-forward，
-// 否则跳过并提示——避免 force 覆盖把 dev 未合入的改动冲掉。
-// 这是解决「合完不 sync → 下一轮 PR 必 dirty」的根本手段。
+// tryAutoSyncDev - 仅在已合并的 dev → main PR 后同步 dev
+// scoped release / hotfix / 其他 head/base 一律不移动 dev。
+// PR metadata 不可读取或字段不完整时 fail closed。
 // ============================================================
-async function tryAutoSyncDev(baseUrl, ghHeaders) {
+async function tryAutoSyncDev(baseUrl, ghHeaders, pullNumber) {
     try {
-        // v6.41.3 根治假分叉（2026-10-19 柳柳拍板）：写入 router 实际加载的 github_v64.js。
-        // 合并成功后源分支(dev)的改动已全部并入 main，直接 force 同步到 main（rebase 合并生成新 hash 会让 compare 误报 ahead_by>0，旧代码因此跳过快进→假分叉）。
+        const prNum = Number(pullNumber);
+        if (!Number.isSafeInteger(prNum) || prNum <= 0) {
+            return 'ℹ️ 已跳过 dev 自动同步：缺少有效 PR 编号，dev 未修改';
+        }
+
+        // 必须用 GitHub 当前 PR metadata 判断实际 head/base 与 merged 状态，
+        // 不能仅凭调用入口的参数或 merge endpoint 的 HTTP 状态推断。
+        const prResp = await fetch(`${baseUrl}/pulls/${prNum}`, { headers: ghHeaders });
+        if (!prResp.ok) {
+            return `⚠️ 已跳过 dev 自动同步：读取 PR #${prNum} 信息失败（HTTP ${prResp.status}），dev 未修改`;
+        }
+        const prData = await prResp.json();
+        if (!prData || prData.merged !== true) {
+            return `ℹ️ 已跳过 dev 自动同步：PR #${prNum} 未能确认 merged=true，dev 未修改`;
+        }
+
+        const headRef = prData.head?.ref;
+        const baseRef = prData.base?.ref;
+        if (typeof headRef !== 'string' || typeof baseRef !== 'string' || !headRef || !baseRef) {
+            return `⚠️ 已跳过 dev 自动同步：PR #${prNum} 缺少完整 head/base ref，dev 未修改`;
+        }
+        if (headRef !== 'dev' || baseRef !== 'main') {
+            return `ℹ️ 已跳过 dev 自动同步：PR #${prNum} 为 ${headRef} → ${baseRef}，仅 dev → main 可触发同步；dev 未修改`;
+        }
+
         const refResp = await fetch(`${baseUrl}/git/ref/heads/main`, { headers: ghHeaders });
-        if (!refResp.ok) return '⚠️ 自动同步 dev 失败：取 main SHA 出错';
+        if (!refResp.ok) return '⚠️ 自动同步 dev 失败：取 main SHA 出错；dev 未确认修改';
         const refData = await refResp.json();
-        const sha = refData.object.sha;
+        const sha = refData?.object?.sha;
+        if (typeof sha !== 'string' || !/^[0-9a-f]{40}$/i.test(sha)) {
+            return '⚠️ 自动同步 dev 已停止：main ref 未返回有效 commit SHA；dev 未修改';
+        }
+
         const updResp = await fetch(`${baseUrl}/git/refs/heads/dev`, {
             method: 'PATCH',
             headers: ghHeaders,
             body: JSON.stringify({ sha, force: true })
         });
-        if (!updResp.ok) return '⚠️ 自动同步 dev 失败：' + (await updResp.json()).message;
-        return '✅ 合并后已自动同步 dev → main（' + sha.slice(0, 8) + '），下次 PR 不再冲突';
+        if (!updResp.ok) {
+            let message = `HTTP ${updResp.status}`;
+            try { message = (await updResp.json())?.message || message; } catch {}
+            return '⚠️ 自动同步 dev 失败：' + message;
+        }
+        return `✅ 已确认 PR #${prNum} 为 dev → main，合并后自动同步 dev → main（${sha.slice(0, 8)}）`;
     } catch (e) {
-        return '⚠️ 自动同步 dev 出错：' + e.message;
+        return '⚠️ 已跳过/停止 dev 自动同步：PR 或 ref 信息读取异常，dev 未执行后续同步。' + e.message;
     }
 }
 
@@ -445,7 +475,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                     if (mergeTitle && mergeMethod !== 'rebase') steps.push('Commit: ' + mergeTitle);
                     if (mergeMethod === 'rebase') steps.push('(rebase: 保留 dev 原始 commit 名，无 Merge PR 前缀)');
                     if (mergeData.merged || mergeResp.status === 405) {
-                        const syncNote = await tryAutoSyncDev(baseUrl, ghHeaders);
+                        const syncNote = await tryAutoSyncDev(baseUrl, ghHeaders, prNum);
                         steps.push(syncNote);
                     }
                     text = steps.join('\n');
@@ -502,7 +532,7 @@ export async function handleGitHubTool(name, safeArgs, env) {
                 if (commitTitle && method !== 'rebase') text += `\nCommit: ${commitTitle}`;
                 if (method === 'rebase') text += '\n(rebase: 保留 dev 原始 commit 名，无 Merge PR 前缀)';
                 if (data.merged || resp.status === 405) {
-                    const syncNote = await tryAutoSyncDev(baseUrl, ghHeaders);
+                    const syncNote = await tryAutoSyncDev(baseUrl, ghHeaders, pr);
                     text += '\n\n' + syncNote;
                 }
             } else {
