@@ -568,6 +568,27 @@
         }
       ],
       "forbidden_ids": []
+    },
+    {
+      "id": "Q16",
+      "query": "缓存清理说明",
+      "kind": "stale_association_filter",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct",
+        "stale"
+      ],
+      "expected_direct_ids": [
+        "M14"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M14": "key_phrase"
+      },
+      "forbidden_ids": [
+        "M09",
+        "M10"
+      ]
     }
   ],
   "fallback_probes": [
