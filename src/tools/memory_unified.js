@@ -21,6 +21,14 @@ import { importMemories, getExportableMemories } from '../modules/memory/transfe
 
 export { getMemoryByKey, getCurrentMemoryByKey, getAllMemories, findAuthoritativeKey, putMemory };
 
+function formatHistorySnapshot(snapshot) {
+    if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
+        const value = snapshot.value == null ? '' : String(snapshot.value);
+        return value.substring(0, 80) + ' [type=' + formatMemoryType(snapshot.type) + ']';
+    }
+    return String(snapshot ?? '').substring(0, 80);
+}
+
 export async function handleMemoryTool(name, safeArgs, env) {
     // 兼容旧名称：memory_remember → remember 等
     const actionMap = {
