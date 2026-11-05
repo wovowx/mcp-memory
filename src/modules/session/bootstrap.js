@@ -39,13 +39,15 @@ export function parseCheckpoint(value) {
     const workflowState = stateRaw ? (stateRaw.match(/^[a-zA-Z0-9_.-]+/) || [])[0] || null : null;
     const nextAction = extractLine(current, 'next_action');
     const activeFocus = extractLine(current, 'active_focus');
+    const doNotRepeat = extractLine(current, 'do_not_repeat');
     return {
         workflow_state: workflowState,
         active_focus: activeFocus ? activeFocus.slice(0, 280) : null,
+        do_not_repeat: doNotRepeat ? doNotRepeat.slice(0, 400) : null,
         next_action: nextAction ? nextAction.slice(0, 650) : null,
         excerpt: current.slice(0, 1000),
         excerpt_truncated: current.length > 1000,
-        structured_fields_verified: Boolean(workflowState && nextAction)
+        structured_fields_verified: Boolean(workflowState && nextAction && activeFocus && doNotRepeat)
     };
 }
 
@@ -134,6 +136,12 @@ export async function buildSessionBootstrap(env, args = {}) {
     if (records.checkpoint && !checkpoint?.structured_fields_verified) {
         warnings.push('checkpoint_fields_incomplete');
     }
+    if (records.checkpoint) {
+        const updated = Date.parse(records.checkpoint.updated_at || '');
+        if (!Number.isFinite(updated)) warnings.push('checkpoint_timestamp_unverified');
+        else if (Date.now() - updated > 30 * 24 * 3600 * 1000) warnings.push('checkpoint_stale');
+        else if (updated - Date.now() > 24 * 3600 * 1000) warnings.push('checkpoint_timestamp_in_future');
+    }
     const status = blockers.length ? 'BLOCKED' : warnings.length ? 'DEGRADED' : 'READY';
     return {
         contract_version: BOOTSTRAP_CONTRACT_VERSION,
@@ -144,6 +152,7 @@ export async function buildSessionBootstrap(env, args = {}) {
         current_work: checkpoint ? {
             workflow_state: checkpoint.workflow_state,
             active_focus: checkpoint.active_focus,
+            do_not_repeat: checkpoint.do_not_repeat,
             next_action: checkpoint.next_action,
             checkpoint_excerpt: checkpoint.excerpt,
             excerpt_truncated: checkpoint.excerpt_truncated,
