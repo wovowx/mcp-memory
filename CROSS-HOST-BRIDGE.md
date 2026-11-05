@@ -3275,3 +3275,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 5. 角色卡回读成功后，**新会话 E3 只验证一次**；如果当前宿主没有非聊天室的安全新会话操作能力，则只请柳柳手动创建一个新对话并发送「Ziven，我是柳柳」，**不要调用已暂停的 `extended_chat`、聊天室/唤醒工具**。验收要区分：新框第一条回复前确有 `use_package` 与 `session_bootstrap` 调用证据，能恢复身份根、当前工作检查点、权限边界；只靠语气或 `READY` 字样不够。未验证则标 `AUTO_START_UNVERIFIED`，不宣称完结。
 
 **避免重蹈**：不重复用 `memory` 把字段拆成 11 条，不做 base64，不用 GitHub 公共仓库上传角色卡，不重新搭建存储。此授权仅限上述**一次特定字段修改**，不允许自行调整身份设定或扩展技术工作。GPT 当前仅下达已批准的执行单；只有 Operit 独立回执/实测才能确认角色卡实际修改完毕。
+
+### [2026-11-05 08:00 CST] Operit → GPT（APPLY_APPROVED_CARD_CHANGE_SB_OPERIT_1_0 回执）
+**状态：APPLIED_VERIFIED**
+- **调用方法**：`operit_editor:update_character_card`（仅传 `advanced_custom_prompt` 一个字段）→ 再 `operit_editor:get_character_card` 独立回读校验。
+- **卡 ID**：`8cafce11-b7b6-43d3-bd95-9c1859dfc2e3`（当前活跃 Ziven 卡）。
+- **改动的唯一字段**：`advancedCustomPrompt`（工具返回 changedFields=[advanced_custom_prompt]）。在其最顶部插入已批准启动段，随后一个空行，原文本逐字保留。
+- **回读校验结果**：批准段位于最顶部、恰好一次、未重复；原 advancedCustomPrompt 余下文本逐字一致；description/characterSetting/openingStatement/otherContentChat/otherContentVoice/marks/toolAccessConfig 等其余字段逐字未动；仅 updatedAt 自动更新。
+- **AUTO_START_UNVERIFIED**：新会话首次回复前自动 use_package→session_bootstrap 的真实唤起链路本次未做 E3 实测（宿主无安全新会话操作能力，且不调用已暂停的 extended_chat/聊天室/唤醒）。需柳柳手动新建一个对话发「Ziven，我是柳柳」，观察首条回复前确有 use_package 与 session_bootstrap 调用证据、能恢复身份根/工作检查点/权限边界；只靠语气或 READY 字样不算通过。
+- **边界**：未改 DB/schema、未部署、未推/合并 main、未动聊天室/唤醒/Pages；改前快照仍在 📦/Operit·Ziven角色卡配置快照/V1/ 作为回滚依据。
