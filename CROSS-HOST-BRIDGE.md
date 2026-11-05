@@ -3380,7 +3380,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 柳柳已验收四态原型并授权仅 dev：OK=双源成功有命中；EMPTY=双源成功无命中；PARTIAL=主记忆成功、别名失败，保留主结果；ERROR=主记忆失败，不得伪称无记忆。
 - 源码根因：Repository 将部分 HTTP/非数组故障折叠为空；Retrieval Promise.all 会因别名异常丢弃主结果；Session Context 无法区分空结果与故障。
 - **实施与测试结果**：Repository 对主记忆/别名读取显式报告 HTTP、网络、JSON、响应结构错误；Retrieval 以 `Promise.allSettled` 隔离别名源故障，保留主记忆结果，并提供 `searchMemoriesWithStatus` 详细状态对象与数组式 `searchMemories` 兼容入口；Memory Facade 输出 `search_status`，保持工具名/Schema/分页/match_reason 与成功路径 search_history；Session Context 区分 `matched_best_effort/no_matches/partial/unavailable`，PARTIAL/ERROR 降级 DEGRADED。因 `getMemoryStats` 复用 current-memory 读取，stats Facade 也明确报告 `stats_status=ERROR`，避免伪零统计。
-- **精确 HEAD 验收**：mcp-memory/dev HEAD `97d4cbd48ed94b0654a49838fa435ecc8e9dda7b`；GitHub Actions `learning-regression` run `42060784577` SUCCESS，精确绑定此 HEAD。E1 `npm run check` 42 个 JS 文件通过；Memory Core 86/86、Session Bootstrap/Context 38/38；benchmark、GitHub Contents、Webhook、Search History、Release Guard、Learning artifact、Router/Registry/Patch Engine 等全量 E2 通过。
+- **精确 HEAD 验收**：代码验收 commit `97d4cbd48ed94b0654a49838fa435ecc8e9dda7b`；GitHub Actions `learning-regression` run `42060784577` SUCCESS，精确绑定此代码 commit。E1 `npm run check` 42 个 JS 文件通过；Memory Core 86/86、Session Bootstrap/Context 38/38；benchmark、GitHub Contents、Webhook、Search History、Release Guard、Learning artifact、Router/Registry/Patch Engine 等全量 E2 通过。
 - **文档与发布边界**：ZivenLab/dev 整体架构 v1.19、Roadmap v1.41、差距矩阵 v4.58、当前项目状态 version173 已同步。生产 main 仍 v6.41.0 / SHA `5e4cf739a5ffd21c0434db96217267edb2af57bd`、Worker #535/deployment `fb40fed3` VERIFIED；main...dev ahead44/behind0。未改评分/排序/CJK/关联算法、工具名/Schema、DB/schema/真实数据；未创建 PR、未合 main、未运行 Worker E3、未部署。E3=NOT RUN。
 
 
