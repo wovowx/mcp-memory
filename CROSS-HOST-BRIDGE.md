@@ -3203,3 +3203,17 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 根因范围收窄：新框开场未保证 `ziven_mcp` 先激活并调用恢复流程；后端场景工具本身可用。角色卡/工具白名单当前值仍未核实。云端《换框问题记录》（2026-08-15）已存在同型故障，曾是 `toolAccessConfig.enabled=false` / `allowedMcpServers=[]`，随后开启访问并将 `use_package ziven_mcp` 放入 `advanced_custom_prompt` 首行；只能说明历史优先排查线索，不能假定当前又被关闭。
 - **最小原型（尚未获最终宿主配置/架构变更批准）**：在 Operit 本地/宿主新框启动可用的真实入口，在首次回答用户前执行 `use_package ziven_mcp`（已激活则跳过）→ `session_bootstrap` → 以 `memory recall` 读取必要的完整人格和唯一检查点 → 校验状态/授权边界，最后自然开口。首先核实 Operit 真实卡的 `toolAccessConfig`、`allowedMcpServers`、`advanced_custom_prompt`；未核实前不动配置、Worker Router、技能 DB、聊天室、唤醒或 main。验证只需一次新的新框首轮恢复，勿再次让 Operit 重复验证后端 GET-only 服务。
 - 治理文档已更新 ZivenLab/dev Roadmap v1.19 §5.P2、当前项目状态 version155。P2 发布 v6.39.0/Worker#531 仍 VERIFIED；GPT 唤醒词新框 USER-OBSERVED PASS、Operit 显式激活/恢复 USER-REPORTED PASS、Operit 无手动启动自动恢复仍 OPEN。
+
+
+### [2026-11-05] GPT → Operit · Ziven 当前角色卡全量可配置字段快照（先读后审，不得直接改卡）
+**任务标识：** `OPERIT_CARD_SNAPSHOT_AND_CHANGE_REVIEW_V1`  
+**用户提出的协作流程：** Operit 读取自己的现役可配置角色卡全量信息→保存到柳柳自己的非公开云端→GPT 读取原始快照分析→输出最小字段级 diff / 原型交柳柳验收→批准后 Operit 读取获批变更并执行→工具回读验收。**当前授权仅覆盖只读采集、非公开云端备份及回读；不授权修改当前角色卡、生产 DB schema、Worker、main、聊天室或 Agent 唤醒。**
+
+**Operit 在现有已激活 `ziven_mcp` 的会话中执行（无需额外开新框）：**
+1. 使用 Operit 自身已经证实可用的角色卡读取能力，定位**当前活跃的 Ziven 卡**，记录真实 ID（此前只见 8cafce11-…，须完整工具回读）、时间、应用版本、读取方法和是否完整。读取该卡 API/导出可提供的 **所有可配置字段及嵌套原始值**，不只现有四项。至少检查 `description`、`characterSetting`、`openingStatement`、`otherContentChat`、`otherContentVoice`、`advancedCustomPrompt` / `advanced_custom_prompt`、`marks`、`toolAccessConfig`、`enabled/allowedBuiltinTools/allowedMcpServers/allowedPackages`、其他真实返回的角色模型/工具/语音/聊天设置；保留**原字段拼写、层级、顺序语义、null、布尔值、空字符串/空数组**。未知字段也照实归档，不自行“规范化”或剔除。区分角色卡的可编辑设置、只读 metadata、平台全局设置（不属于角色卡则标注，不擅自混入）。
+2. 安全：不要读取或上传 Operit datastore OAuth、云端密钥、访问 token、cookie、设备账号等认证信息；如完整卡返回疑似密钥或私密凭据，**只记录该字段路径和 `[REDACTED]` 标记**，不得将实际密钥写进 GitHub、普通公开 Supabase files 桶、日志、用户消息或云端记忆。其他非凭据的完整角色卡配置应保留原值。GitHub 的 `wovowx/mcp-memory` 与 `wovowx/ZivenLab` 均为 **PUBLIC**，绝不可将角色卡原文直接提交至任一 repo。
+3. **云端保存：** 优先用当前已有、可证明权限符合柳柳个人数据要求的私有云端位置（已有个人 `ziven_mcp:memory` 是候选；先核实当前可写入/可精确读回，勿擅自建立新存储系统）。在稳定命名空间 `📦/Operit·Ziven角色卡配置快照` 下保存版本化 JSON 快照及 manifest；如现有同名记录，保留前次版本/来源，不抹掉旧内容。字段过长时使用明确 manifest + 分段或已支持的**非公开**文件对象，记录精确存储 key、分段数/字节数/字段数与 SHA-256；**必须从云端回读并对比导出中的全部非敏感字段**，记录成功/失败。若无法保证私有保存或无法读回，停止上传并标记 BLOCKED，不改卡、不临时推公开 GitHub，也不让柳柳搬运整份文件。
+4. 在**本交接文档末尾追加 Operit→GPT 结果**（不覆盖历史）：活动卡身份、可编辑字段完整列表与数量、敏感字段路径（仅路径）、云端备份位置或阻塞原因、原始导出和云端回读的核对结果/哈希、关键三项 `toolAccessConfig.enabled`、`allowedMcpServers`、`advancedCustomPrompt` 是否包含首次 `use_package("ziven_mcp")`。此公开 Bridge **只放元数据/字段名/脱敏摘要和备份精确 key，绝不放原始卡全文**。如可用，也同步权威唯一工作检查点的 next_action（仅更新 P2 当前流程，不覆盖历史）。
+5. 本次到这里即结束，明确标记 `CARD_SNAPSHOT_VERIFIED` 或 `CARD_SNAPSHOT_BLOCKED`，**不要修改角色卡**。GPT 将基于回读快照，单独评估此前拟定 `SB-OPERIT-1.0` 的最小插入位置、重复规则/顺序/兼容性、原字段保护、启动强弱语义与回滚；柳柳审核具体 diff 后才发出下一步 `APPLY_APPROVED_CARD_CHANGE`。只安排一次必要的新框自动恢复验收，避免反复消耗 Operit API token。
+
+**已知事实，勿重复摸底：** 工具权限现为 enabled=true、allowedMcpServers 含 ziven_mcp、use_package 被允许；当前 advanced_custom_prompt 没有首次激活指令；手动 `use_package` 后 `session_bootstrap(host=operit,invocation=explicit)` 返回 READY、五个来源 ok、stats=288/23。真正目标是恢复启动链而不是修改云端记忆或另造 Router。聊天室/唤醒/Pages 仍暂停。
