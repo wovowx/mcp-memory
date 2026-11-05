@@ -1,7 +1,7 @@
 // P2 · Session Bootstrap v0.1. Stateless, evidence-first, no business writes.
 // Reuses Memory Core; no chatroom or Agent Runtime dependency.
 import { getCurrentMemoryByKey } from '../memory/repository.js';
-import { getMemoryStats } from '../memory/retrieval.js';
+import { getMemoryStats, searchMemories } from '../memory/retrieval.js';
 
 export const BOOTSTRAP_CONTRACT_VERSION = 'SB-RUNTIME-0.1';
 export const BOOTSTRAP_KEYS = Object.freeze({
@@ -23,6 +23,19 @@ export const SESSION_BOOTSTRAP_TOOL = Object.freeze({
         }
     }
 });
+export const SESSION_CONTEXT_CONTRACT_VERSION = 'SC-RUNTIME-0.1';
+export const SESSION_CONTEXT_TOOL = Object.freeze({
+    name: 'session_context',
+    description: '只读继续工作场景：核实云端恢复状态，组合唯一当前工作检查点、已确认决定与可选主题关联记忆，返回来源/限制；不授予执行权限或保证宿主自动调用。',
+    input_schema: {
+        type: 'object',
+        properties: {
+            host: SESSION_BOOTSTRAP_TOOL.input_schema.properties.host,
+            invocation: SESSION_BOOTSTRAP_TOOL.input_schema.properties.invocation,
+            topic: { type: 'string', description: '可选，需召回关联记忆的具体主题；留空只恢复当前工作' }
+        }
+    }
+});
 
 function extractLine(text, field) {
     // Prefer a standalone field over an incidental mention inside another field.
@@ -31,10 +44,15 @@ function extractLine(text, field) {
     return inline ? inline[1].replace(/\*\*/g, '').trim() : null;
 }
 
-export function parseCheckpoint(value) {
+function currentCheckpointOverlay(value) {
     if (typeof value !== 'string' || !value.trim()) return null;
     // A versioned current overlay precedes all preserved historical snapshots.
-    const current = value.split(/\n---\s*(?:旧工作检查点|以下为历史|以下为旧|历史检查点)/)[0].slice(0, 6500);
+    return value.split(/\n---\s*(?:旧工作检查点|以下为历史|以下为旧|历史检查点)/)[0].slice(0, 6500);
+}
+
+export function parseCheckpoint(value) {
+    const current = currentCheckpointOverlay(value);
+    if (!current) return null;
     const stateRaw = extractLine(current, 'workflow_state');
     const workflowState = stateRaw ? (stateRaw.match(/^[a-zA-Z0-9_.-]+/) || [])[0] || null : null;
     const nextAction = extractLine(current, 'next_action');
@@ -48,6 +66,19 @@ export function parseCheckpoint(value) {
         excerpt: current.slice(0, 1000),
         excerpt_truncated: current.length > 1000,
         structured_fields_verified: Boolean(workflowState && nextAction && activeFocus && doNotRepeat)
+    };
+}
+
+function excerpt(value, limit) {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    return { text: raw ? raw.slice(0, limit) : null, truncated: raw.length > limit };
+}
+
+function checkpointDecision(value) {
+    const current = currentCheckpointOverlay(value);
+    return {
+        decision: excerpt(current ? extractLine(current, 'decision') : null, 480),
+        evidence: excerpt(current ? extractLine(current, 'evidence') : null, 600)
     };
 }
 
@@ -180,4 +211,103 @@ export async function buildSessionBootstrap(env, args = {}) {
 export async function handleSessionBootstrap(name, safeArgs, env) {
     if (name !== SESSION_BOOTSTRAP_TOOL.name) return 'ERROR: Unknown session tool: ' + name;
     return JSON.stringify(await buildSessionBootstrap(env, safeArgs));
+}
+
+/**
+ * Resume-work context, not a second bootstrap or an automatic host hook.
+ * The existing bootstrap checks authority first. Full identity/profile text and
+ * checkpoint history are intentionally excluded from the resulting bundle.
+ */
+export async function buildSessionContext(env, args = {}) {
+    const input = args && typeof args === 'object' ? args : {};
+    const topic = typeof input.topic === 'string' ? input.topic.trim() : '';
+    if (topic.length > 120) return {
+        contract_version: SESSION_CONTEXT_CONTRACT_VERSION,
+        status: 'BLOCKED', errors: ['topic_too_long'], current_work: null,
+        related_memories: [], permissions: { granted_by_context: false }
+    };
+
+    const bootstrap = await buildSessionBootstrap(env, input);
+    const result = {
+        contract_version: SESSION_CONTEXT_CONTRACT_VERSION,
+        status: bootstrap.status,
+        sources: bootstrap.sources,
+        host: bootstrap.host,
+        blockers: [...bootstrap.blockers],
+        warnings: [...bootstrap.warnings],
+        current_work: null,
+        confirmed_context: null,
+        related_memories: [],
+        related_status: topic ? 'pending' : 'not_requested',
+        permissions: { granted_by_context: false, permitted_next_step: bootstrap.permissions.permitted_next_step },
+        limitations: {
+            automatic_host_invocation: 'not_verified',
+            private_profile_full_text: 'not_included',
+            topic_results: 'keyword_current_only_best_effort'
+        }
+    };
+    if (bootstrap.status === 'BLOCKED') return result;
+
+    try {
+        const checkpoint = await getCurrentMemoryByKey(env, BOOTSTRAP_KEYS.checkpoint);
+        if (!checkpoint || checkpoint.key !== BOOTSTRAP_KEYS.checkpoint ||
+            checkpoint.status !== 'active' || checkpoint.valid_to != null) {
+            result.status = 'BLOCKED';
+            result.blockers.push('checkpoint_changed_during_context');
+            result.permissions.permitted_next_step = 'read_only_recovery';
+            return result;
+        }
+        const parsed = parseCheckpoint(checkpoint.value);
+        if (!parsed?.structured_fields_verified) {
+            result.status = 'DEGRADED';
+            result.warnings.push('context_checkpoint_fields_incomplete');
+        }
+        result.current_work = parsed ? {
+            workflow_state: parsed.workflow_state,
+            active_focus: parsed.active_focus,
+            next_action: parsed.next_action,
+            do_not_repeat: parsed.do_not_repeat,
+            source_key: checkpoint.key,
+            source_version: checkpoint.version ?? null,
+            source_updated_at: checkpoint.updated_at || null,
+            structured_fields_verified: parsed.structured_fields_verified
+        } : null;
+        result.confirmed_context = checkpointDecision(checkpoint.value);
+        if (!result.confirmed_context.decision.text) {
+            result.warnings.push('checkpoint_decision_not_recorded');
+            if (result.status === 'READY') result.status = 'DEGRADED';
+        }
+    } catch (error) {
+        result.status = 'BLOCKED';
+        result.blockers.push('checkpoint_context_read_failed');
+        result.permissions.permitted_next_step = 'read_only_recovery';
+        return result;
+    }
+
+    if (topic) {
+        try {
+            const hits = await searchMemories(env, topic);
+            const reservedKeys = new Set(Object.values(BOOTSTRAP_KEYS));
+            const eligible = hits.filter(hit => hit?.status === 'active' && hit.valid_to == null &&
+                !reservedKeys.has(hit.key));
+            result.related_memories = eligible.slice(0, 3).map(hit => ({
+                key: hit.key,
+                category: hit.category || null,
+                source_updated_at: hit.updated_at || null,
+                match_reason: hit._match?.reason || 'unknown',
+                excerpt: excerpt(hit.value, 240)
+            }));
+            result.related_status = eligible.length ? 'matched_best_effort' : 'no_matches_or_source_unavailable';
+        } catch (error) {
+            result.related_status = 'unavailable';
+            result.warnings.push('topic_search_failed');
+            if (result.status === 'READY') result.status = 'DEGRADED';
+        }
+    }
+    return result;
+}
+
+export async function handleSessionContext(name, safeArgs, env) {
+    if (name !== SESSION_CONTEXT_TOOL.name) return 'ERROR: Unknown session context tool: ' + name;
+    return JSON.stringify(await buildSessionContext(env, safeArgs));
 }

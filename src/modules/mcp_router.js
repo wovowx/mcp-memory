@@ -18,7 +18,7 @@ import { handleDeleteBranch } from '../tools/delete_branch.js';
 import { handleChatTool, CHAT_TOOL_DEFS } from '../tools/chat_mcp.js';
 import { handleCfProxyTool } from '../tools/cf_proxy.js';
 import { validateRelease } from './release_guard.js';
-import { SESSION_BOOTSTRAP_TOOL, handleSessionBootstrap } from './session/bootstrap.js';
+import { SESSION_BOOTSTRAP_TOOL, handleSessionBootstrap, SESSION_CONTEXT_TOOL, handleSessionContext } from './session/bootstrap.js';
 
 // Read-only text Skill adapter: reuse the GitHub Contents primitive and return
 // the full instructions as data. Never execute Markdown or write usage telemetry.
@@ -105,6 +105,7 @@ function isKnownToolName(name) {
     if (KNOWN_HANDLERS.has(name)) return true;                    // handlerMap 直连工具
     if (name === 'create_patch_proposal') return true;            // 专门 handler
     if (name === SESSION_BOOTSTRAP_TOOL.name) return true;       // P2 static read-only scenario
+    if (name === SESSION_CONTEXT_TOOL.name) return true;         // resume-work read-only scenario
     // 动态注册的前缀族（其余走 skills 表懒注册）
     if (name.startsWith('github_')) return true;                  // handleGitHubTool
     if (name.startsWith('supabase_')) return null;                // handleDatabaseTool
@@ -147,13 +148,14 @@ const CREATE_PATCH_PROPOSAL_SCHEMA = {
 
 function getToolSchemaOverride(name) {
     if (name === SESSION_BOOTSTRAP_TOOL.name) return SESSION_BOOTSTRAP_TOOL.input_schema;
+    if (name === SESSION_CONTEXT_TOOL.name) return SESSION_CONTEXT_TOOL.input_schema;
     return name === 'create_patch_proposal' ? CREATE_PATCH_PROPOSAL_SCHEMA : null;
 }
 
 async function getToolSchema(env, name) {
     // P2 static bootstrap uses its own fixed schema; avoid registry probing in recovery.
     const schemaOverride = getToolSchemaOverride(name);
-    if (name === SESSION_BOOTSTRAP_TOOL.name) return schemaOverride;
+    if (name === SESSION_BOOTSTRAP_TOOL.name || name === SESSION_CONTEXT_TOOL.name) return schemaOverride;
     // 其他工具保留旧注册表及 schema 行为。
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
@@ -417,7 +419,7 @@ async function syncChatTools(env) {
 
 async function autoIncrementUsage(env, name) {
     // v6.38.0 自动使用打点：工具执行成功后分发层自动+1（②自动技能沉淀数据源修复，不再靠 AI 自觉调 increment_usage）
-    if (!name || name === 'increment_usage' || name === SESSION_BOOTSTRAP_TOOL.name || ['skill_list', 'skill_add', 'skill_update', 'skill_delete'].includes(name)) return;
+    if (!name || name === 'increment_usage' || name === SESSION_BOOTSTRAP_TOOL.name || name === SESSION_CONTEXT_TOOL.name || ['skill_list', 'skill_add', 'skill_update', 'skill_delete'].includes(name)) return;
     try { await handleIncrementUsage(name, { name }, env); } catch (e) { /* 静默，不污染回复 */ }
 }
 
@@ -438,6 +440,9 @@ export async function handleMCPRequest(body, env) {
         // Static tool needs no Supabase registry write; existing tools/list side effects remain a known separate issue.
         if (!tools.some(tool => tool.name === SESSION_BOOTSTRAP_TOOL.name)) {
             tools.push({ name: SESSION_BOOTSTRAP_TOOL.name, description: SESSION_BOOTSTRAP_TOOL.description, inputSchema: SESSION_BOOTSTRAP_TOOL.input_schema });
+        }
+        if (!tools.some(tool => tool.name === SESSION_CONTEXT_TOOL.name)) {
+            tools.push({ name: SESSION_CONTEXT_TOOL.name, description: SESSION_CONTEXT_TOOL.description, inputSchema: SESSION_CONTEXT_TOOL.input_schema });
         }
         return { ok: true, data: { jsonrpc: '2.0', id, result: { tools } } };
     }
@@ -463,6 +468,8 @@ export async function handleMCPRequest(body, env) {
                 text = await handleCreatePatchProposal(safeArgs, env);
             } else if (name === SESSION_BOOTSTRAP_TOOL.name) {
                 text = await handleSessionBootstrap(name, safeArgs, env);
+            } else if (name === SESSION_CONTEXT_TOOL.name) {
+                text = await handleSessionContext(name, safeArgs, env);
             } else if (name?.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
                 await invalidateCache();
