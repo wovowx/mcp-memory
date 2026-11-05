@@ -39,11 +39,11 @@ jobs:
       - name: E2 - Search history contracts
         run: npm run test:search-history
 
-      - name: E2 - Router, registry and Patch Engine contracts
-        run: npm run test:contracts
-
       - name: E2 - Release Guard regression
         run: node src/modules/release_guard.js
 
       - name: Learning artifact regression
         run: python3 tests/learning/run_learning_tests.py
+
+      - name: E2 - Router, registry and Patch Engine contracts (frozen Router regression gate)
+        run: npm run test:contracts
