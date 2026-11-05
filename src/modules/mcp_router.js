@@ -16,6 +16,7 @@ import { handleDeleteBranch } from '../tools/delete_branch.js';
 import { handleChatTool, CHAT_TOOL_DEFS } from '../tools/chat_mcp.js';
 import { handleCfProxyTool } from '../tools/cf_proxy.js';
 import { validateRelease } from './release_guard.js';
+import { SESSION_BOOTSTRAP_TOOL, handleSessionBootstrap } from './session/bootstrap.js';
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -48,6 +49,7 @@ function isKnownToolName(name) {
     if (!name || typeof name !== 'string') return false;
     if (KNOWN_HANDLERS.has(name)) return true;                    // handlerMap 直连工具
     if (name === 'create_patch_proposal') return true;            // 专门 handler
+    if (name === SESSION_BOOTSTRAP_TOOL.name) return true;       // P2 static read-only scenario
     // 动态注册的前缀族（其余走 skills 表懒注册）
     if (name.startsWith('github_')) return true;                  // handleGitHubTool
     if (name.startsWith('supabase_')) return null;                // handleDatabaseTool
@@ -89,14 +91,17 @@ const CREATE_PATCH_PROPOSAL_SCHEMA = {
 };
 
 function getToolSchemaOverride(name) {
+    if (name === SESSION_BOOTSTRAP_TOOL.name) return SESSION_BOOTSTRAP_TOOL.input_schema;
     return name === 'create_patch_proposal' ? CREATE_PATCH_PROPOSAL_SCHEMA : null;
 }
 
 async function getToolSchema(env, name) {
-    // 注册表查询成功但没有 schema 时返回 null；查询失败必须向上传递，不能伪装成“未配置 schema”。
+    // P2 static bootstrap uses its own fixed schema; avoid registry probing in recovery.
+    const schemaOverride = getToolSchemaOverride(name);
+    if (name === SESSION_BOOTSTRAP_TOOL.name) return schemaOverride;
+    // 其他工具保留旧注册表及 schema 行为。
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
-    const schemaOverride = getToolSchemaOverride(name);
     if (schemaOverride) return schemaOverride;
     if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
         return skill.input_schema;
@@ -357,7 +362,7 @@ async function syncChatTools(env) {
 
 async function autoIncrementUsage(env, name) {
     // v6.38.0 自动使用打点：工具执行成功后分发层自动+1（②自动技能沉淀数据源修复，不再靠 AI 自觉调 increment_usage）
-    if (!name || name === 'increment_usage' || ['skill_list', 'skill_add', 'skill_update', 'skill_delete'].includes(name)) return;
+    if (!name || name === 'increment_usage' || name === SESSION_BOOTSTRAP_TOOL.name || ['skill_list', 'skill_add', 'skill_update', 'skill_delete'].includes(name)) return;
     try { await handleIncrementUsage(name, { name }, env); } catch (e) { /* 静默，不污染回复 */ }
 }
 
@@ -375,6 +380,10 @@ export async function handleMCPRequest(body, env) {
         await syncChatTools(env);
         const skills = await getCachedSkills(env);
         const tools = skills.map(s => ({ name: s.name, description: s.description, inputSchema: getExposedInputSchema(s) }));
+        // Static tool needs no Supabase registry write; existing tools/list side effects remain a known separate issue.
+        if (!tools.some(tool => tool.name === SESSION_BOOTSTRAP_TOOL.name)) {
+            tools.push({ name: SESSION_BOOTSTRAP_TOOL.name, description: SESSION_BOOTSTRAP_TOOL.description, inputSchema: SESSION_BOOTSTRAP_TOOL.input_schema });
+        }
         return { ok: true, data: { jsonrpc: '2.0', id, result: { tools } } };
     }
     if (method === 'tools/call') {
@@ -396,6 +405,8 @@ export async function handleMCPRequest(body, env) {
             // 专用 handler 保留，但统一在下方 toolOk 中核对结果和使用统计。
             if (name === 'create_patch_proposal') {
                 text = await handleCreatePatchProposal(safeArgs, env);
+            } else if (name === SESSION_BOOTSTRAP_TOOL.name) {
+                text = await handleSessionBootstrap(name, safeArgs, env);
             } else if (name?.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
                 await invalidateCache();
