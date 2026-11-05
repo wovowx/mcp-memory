@@ -884,7 +884,8 @@ console.log('\n[Transfer contracts]');
         { key: 'core/type-null', value: 'unmarked import insert', type: null }
     ], { invalidAsFailed: true });
     const typedImportPatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
-    const typedImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories'));
+    const typedImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && call.body?.key === 'core/type-new');
+    const nullImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && call.body?.key === 'core/type-null');
     check('import applies explicit legal type to existing and new memories',
         typedImport.ok && typedImport.updated === 1 && typedImport.added === 1 &&
         typedImportPatch?.body?.type === 'agreement' && typedImportInsert?.body?.type === 'quote');
