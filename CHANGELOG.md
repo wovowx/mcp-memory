@@ -10,7 +10,7 @@
 - 纯文本 Skill 读取不触发 `usage_count` 自动写入；其他业务工具的已有使用统计保持原行为。
 
 ### Regression / release boundary
-- 本地实际运行 `npm run check` exit 0；Router/Registry/Patch 157/157、GitHub Contents 50、Memory Core 60、Search History 20、Session Bootstrap 21、Webhook/Agnes 114、learning 9 工件全部通过（隔离 Mock/E1/E2，不等于真实线上 E3）。远端 dev 两个代码文件与本地已按精确 Git SHA fetch + diff=0 核对；最终候选 GitHub Actions 精确 SHA 尚需独立核验，不能预填 SUCCESS。
+- 本地实际运行 `npm run check` exit 0；Router/Registry/Patch 157/157、GitHub Contents 50、Memory Core 60、Search History 20、Session Bootstrap 21、Webhook/Agnes 114、learning 9 工件全部通过（隔离 Mock/E1/E2，不等于真实线上 E3）。远端 dev 两个代码文件与本地已按精确 Git SHA fetch + diff=0 核对；版本候选 SHA `8a6b668aff2ca338bb151599993cf9a0706f2482` 的 GitHub Actions learning-regression [run 42005920662](https://github.com/wovowx/mcp-memory/actions/runs/42005920662) **SUCCESS**，`validate` Job E1/各项 E2/学习工件均成功。此后若仅更新本段 CHANGELOG，最终文档 HEAD 的 CI 仍须重新确认，不提前继承成功。
 - 相对已部署的 v6.39.0 主线，业务变更仅 `src/modules/mcp_router.js` 与 `tests/router_registry_contract_test.mjs`；候选随版本正常更新 `package.json` 与 `CHANGELOG.md`，另外含既有 `CROSS-HOST-BRIDGE.md` 纯交接文档。无新增数据库迁移/服务或操作工具，未触及生产 DB/schema、聊天室/唤醒、角色卡、Pages。
 - **仅 dev 候选；尚无创建 PR、合并 main、Worker 部署的授权。** 柳柳已同意拟议 `squash` 策略，但版本发布仍需提交最终 SHA、文件清单、CI/回滚风险并单独征求批准。当前 dev 有历史非版本化提交标题，不直接采用默认 rebase；正式操作前需再确认 squash 后 dev 指针/历史保护策略。
 
