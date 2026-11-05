@@ -27,11 +27,5 @@ export function mcpError(message, id = null, code = -32601) {
     };
 }
 export function buildErrorResponse(message, status = 400) {
-    return new Response(JSON.stringify({ error: message }), {
-        status: status,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        }
-    });
+    return jsonResponse({ error: message }, status);
 }
