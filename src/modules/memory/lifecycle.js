@@ -1,7 +1,7 @@
 // Memory Lifecycle — 记忆写入、版本事件与软删除协调
 // 保留既有 REST 请求顺序和结果语义；事务/CAS 缺口不在此处伪装解决。
 
-import { getCategory, getTitle, now } from '../../utils/helpers.js';
+import { getCategory, getTitle, now, isMemoryType } from '../../utils/helpers.js';
 import {
     getCurrentMemoryByKey, insertMemoryRecord, insertMemoryEvent,
     updateMemoryRecord, softDeleteMemoryRecords, hasActiveMemory
