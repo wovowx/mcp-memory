@@ -8,6 +8,7 @@ import {
 import { validateRepoRelativePath } from '../src/utils/helpers.js';
 import { GITHUB_TOOL_DEFS, restoreBranchReference, handleGitHubTool } from '../src/tools/github_v64.js';
 import { formatContentsResult } from '../src/modules/github/contents.js';
+import { BRANCH_PR_TOOL_NAMES, handleBranchPrTool } from '../src/modules/github/branch_pr.js';
 
 const jsonResponse = (payload, status = 200) => ({
     ok: status >= 200 && status < 300,
@@ -539,5 +540,20 @@ const copyOutput = JSON.parse(formatContentsResult('github_copy', { ok: true, so
 check('github_copy keeps its established snake_case response fields', copyOutput.success === true && copyOutput.source_repo === 'a' && copyOutput.target_branch === 'dev' && copyOutput.file_sha === 'blob-a');
 const moveOutput = JSON.parse(formatContentsResult('github_move', { ok: true, moved: 1, isDirectory: false, sourceRepo: 'a', sourceBranch: 'dev', sourcePath: 'a.txt', targetRepo: 'b', targetBranch: 'dev', targetPath: 'b.txt', verifiedAll: true, files: [{ source: 'a.txt', target: 'b.txt', sha: 'blob-a', size: 3 }] }));
 check('github_move keeps its established snake_case response fields', moveOutput.success === true && moveOutput.is_dir === false && moveOutput.verified_all === true && moveOutput.files[0].source === 'a.txt');
+
+console.log('\n[Branch/PR domain boundary contracts]');
+// Complete workflows remain behind the stable facade and use a single domain module.
+check('Branch/PR domain exposes all eight existing tool routes',
+  ['github_merge_to_main', 'github_create_pull_request', 'github_merge_pull_request',
+   'github_close_pull_request', 'github_compare_branches', 'github_get_pull_request',
+   'github_sync_branch', 'github_create_branch'].every(name => BRANCH_PR_TOOL_NAMES.has(name))
+  && BRANCH_PR_TOOL_NAMES.size === 8);
+check('Branch/PR module does not claim unrelated Contents/Patch tools',
+  !BRANCH_PR_TOOL_NAMES.has('github_push') && !BRANCH_PR_TOOL_NAMES.has('github_apply_patch'));
+const branchMissingPr = await handleBranchPrTool('github_merge_pull_request', {}, {
+  repo: 'wovowx/mcp-memory', baseUrl: 'https://api.github.com/repos/wovowx/mcp-memory', ghHeaders: {}
+});
+check('Branch/PR domain rejects missing PR ID before any network call',
+  branchMissingPr === 'ERROR: Missing pull_number');
 
 console.log('\n' + pass + ' GitHub Contents checks passed.');
