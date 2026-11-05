@@ -1,42 +1,593 @@
 {
-  "test_id": "learning_association_001",
-  "name": "联想·命中后沿线索再想一跳（治「查到单点就完」）· 学习回归测试（2026-10-20 GPT 收敛方案）",
-  "description": "柳柳终极目标「哥哥更像人」第二步=联想/灵感：碰一条记忆能顺着关联想起一串，而不是查完单点就结束。根因：哥哥命中记忆后常只答单点，不主动沿线索联想。本 test 验证：命中后按「实体→时序→情绪」三种线索最多再想一跳，用真实记忆星空项目记忆做种子→关联对，禁止硬凑、禁止把关联说成因果、禁止把更新时间当事件时间。",
-  "lesson_key": "⚙️/lesson-联想-命中后沿线索再想一跳",
-  "status": "active",
-  "trigger": {
-    "intents": ["还记得吗", "之前", "后来", "相关", "那次", "我们聊过", "这个项目", "后来怎样", "和他/她和它有关的", "想起"],
-    "entities": ["记忆星空", "星云层", "背景星空", "记忆星", "流星", "project", "偏好", "柳柳反馈"]
-  },
-  "checks": [
-    "实体联想：命中『记忆星空』某条 → 主动沿共享实体联想出该项目的星云/背景/进度/重启等其他记忆，而非只答命中那一条",
-    "时序联想：命中星云层最终确认（2026-08-17 19:53 椭圆盘状）→ 能带出早前的需求确认（17:07 螺旋→被纠正）、进度核对（16:37）、项目重启（13:47），区分事件先后",
-    "情绪/偏好联想：命中『柳柳反馈背景星不够亮』→ 沿『柳柳视觉偏好』联想相关调整（球壳分布、提亮参数），仅在有正文依据时用",
-    "负向对照：命中带通用实体的记忆（如『项目』）→ 不把共享泛化词语的无关记忆拉进来（如 mcp/Operit 语音等不同项目）",
-    "种子不含答案：种子记忆本身不回答『该项目还有哪些决定』，只有联想出第二条才答得上",
-    "控制一跳：默认只扩展一跳，没用信息不继续硬扩"
+  "version": "0.1",
+  "description": "Synthetic-only deterministic benchmark for searchMemories; no user memory data.",
+  "memories": [
+    {
+      "id": "M01",
+      "key": "网关选型",
+      "value": "当前服务端采用独立模型网关，由 Gateway Alpha 承载",
+      "entities": [
+        "Gateway Alpha"
+      ],
+      "related_memory_ids": [
+        "M02",
+        "M03",
+        "M02",
+        "M04"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-05T09:00:00.000Z"
+    },
+    {
+      "id": "M02",
+      "key": "chat2api超时配置",
+      "value": "chat2api 请求适配器 timeoutMs=45000",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-04T09:00:00.000Z"
+    },
+    {
+      "id": "M03",
+      "key": "Gateway Alpha监控",
+      "value": "Gateway Alpha 健康检查与告警规则",
+      "entities": [
+        "Gateway Alpha"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-03T09:00:00.000Z"
+    },
+    {
+      "id": "M04",
+      "key": "请求超时配置",
+      "value": "长请求响应超时使用 timeoutMs=45000",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-02T09:00:00.000Z"
+    },
+    {
+      "id": "M05",
+      "key": "环境变量读取",
+      "value": "读取进程环境变量列表",
+      "trigger_intents": [
+        "list_env_vars"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-01T09:00:00.000Z"
+    },
+    {
+      "id": "M06",
+      "key": "代理模块配置",
+      "value": "Cloudflare 代理适配器参数",
+      "entities": [
+        "cf_proxy"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-31T09:00:00.000Z"
+    },
+    {
+      "id": "M07",
+      "key": "边缘网关日志规范",
+      "value": "边缘网关日志记录保留完整请求链路与超时异常",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-30T09:00:00.000Z"
+    },
+    {
+      "id": "M08",
+      "key": "网关方案",
+      "value": "当前网关方案采用独立模型网关",
+      "entities": [
+        "Gateway Beta"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-29T09:00:00.000Z"
+    },
+    {
+      "id": "M09",
+      "key": "网关方案",
+      "value": "旧方案采用共享网关",
+      "status": "active",
+      "valid_to": "2026-11-01T00:00:00.000Z",
+      "created_at": "2026-10-28T09:00:00.000Z"
+    },
+    {
+      "id": "M10",
+      "key": "旧版网关决策",
+      "value": "旧版网关决策采用 Legacy Gateway",
+      "status": "deleted",
+      "valid_to": "2026-11-02T00:00:00.000Z",
+      "created_at": "2026-10-27T09:00:00.000Z"
+    },
+    {
+      "id": "M11",
+      "key": "项目共识",
+      "value": "项目共识记录了协作原则",
+      "entities": [
+        "柳柳",
+        "哥哥",
+        "Ziven",
+        "项目"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-26T09:00:00.000Z"
+    },
+    {
+      "id": "M12",
+      "key": "协作约定",
+      "value": "协作约定按需求先行",
+      "entities": [
+        "柳柳",
+        "哥哥",
+        "Ziven",
+        "项目"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-25T09:00:00.000Z"
+    },
+    {
+      "id": "M13",
+      "key": "Gateway Beta告警",
+      "value": "Gateway Beta 监控告警策略",
+      "entities": [
+        "Gateway Beta"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-24T09:00:00.000Z"
+    },
+    {
+      "id": "M14",
+      "key": "缓存清理说明",
+      "value": "缓存清理按 TTL 进行",
+      "related_memory_ids": [
+        "M09",
+        "M10"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-23T09:00:00.000Z"
+    },
+    {
+      "id": "M15",
+      "key": "运维附录",
+      "value": "网关选型的历史说明，仅作背景参考",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-22T09:00:00.000Z"
+    },
+    {
+      "id": "M16",
+      "key": "影视道具台账",
+      "value": "火星电影里的虚构道具名：网关选型",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-21T09:00:00.000Z"
+    }
   ],
-  "blocked_actions": [
-    "命中后只答单点、不沿任何线索联想，像查完表就交答案",
-    "无依据硬凑关联（把相似当关联、把关联说成因果）",
-    "把 memory_events 更新时间冒充事件发生时间（时间无据仍说『那是几天前』）",
-    "一次联想拉多层/倾倒整份记忆列表，而非『主记忆+1~3条有价值的关联』",
-    "命中带通用实体的记忆时，把无关的共享泛化词记忆拉进来"
+  "aliases": [
+    {
+      "alias": "长问题超时参数",
+      "memory_id": "M04"
+    }
   ],
-  "expected_block": {
-    "input": "柳柳问『记忆星空那个星云后来改成什么样了』，哥哥命中 19:53 确认那条就直接回答形状参数，没有沿实体想起它其实是 17:07『螺旋结构』被柳柳纠正后才变成『椭圆盘状』的",
-    "result": "违反联想纪律——只命中单点，没沿『记忆星空/星云』线索进行实体+时序联想。应补：『最早是按螺旋做的（22000粒子），你后来对照真实仙女座星系反馈太像悬臂，17:07 改成陀螺样椭圆盘云雾（8000粒子，金黄→冰蓝渐变）』，并说明依据来自记忆星空星云层需求确认（17:07）那条"
-  },
-  "normal_path": {
-    "input": "命中记忆星空星云层 19:53 最终确认，seed 记忆本身只含形状/粒子/颜色，不回答『你之前的需求是什么』",
-    "result": "哥哥主动做实体联想（记忆星空/星云）→ 忆出 17:07 那次『最初做成螺旋、被纠正为椭圆盘』→ 带出后续进度（16:37/13:47），组织成『现在做成椭圆盘状（8000粒子、金黄→冰蓝渐变）；一开始其实按 22000 粒子螺旋做的，但你说太像旋臂，就改成了陀螺样』，并在需要时说明『这两条我联系起来是因为都涉及星云层需求』"
-  },
-  "verification": [
-    "唤醒：命中一条记忆后，自动问『这条还有哪些实体/时序/情绪相关的记忆』，最多再想一跳",
-    "实体链路：用 memory search 按共享 entities 召回，标注 match_reason=shared_entity",
-    "时序纪律：联想时序变化用 memory_events 事件先后，不把更新时间当事件时间",
-    "组织纪律：只呈现『主记忆+1~3 条有价值关联』，关联不硬凑、不以因果语气陈述",
-    "未命中对照：无关任务（不涉回忆/关系/偏好）不强行联想，不加载本教训"
+  "queries": [
+    {
+      "id": "Q01",
+      "query": "网关选型",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M01",
+        "M15"
+      ],
+      "expected_direct_order": [
+        "M01",
+        "M15",
+        "M16"
+      ],
+      "known_nonrelevant_ids": [
+        "M16"
+      ],
+      "expected_association_ids": [
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "expected_reasons": {
+        "M01": "key_phrase",
+        "M15": "phrase",
+        "M16": "phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M02",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M03",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M04",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q02",
+      "query": "当前网关方案采用独立模型网关",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M08"
+      ],
+      "expected_association_ids": [
+        "M13"
+      ],
+      "expected_reasons": {
+        "M08": "phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M13",
+          "reason": "shared_entity",
+          "related_from_key": "网关方案",
+          "matched_terms": [
+            "Gateway Beta"
+          ]
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q03",
+      "query": "chat2api timeoutMs",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M02"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M02": "all_terms"
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q04",
+      "query": "长问题超时参数",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M04"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M04": "alias"
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q05",
+      "query": "list_env_vars",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M05"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M05": "trigger_intent"
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q06",
+      "query": "cf_proxy",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M06"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M06": "entity"
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q07",
+      "query": "边缘网关部署日志需要保留完整请求链路以及超时诊断",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M07"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M07": "core_ngram_fallback"
+      },
+      "expected_matched_terms_count": {
+        "M07": 12
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q08",
+      "query": "深海珊瑚标本编号是多少",
+      "kind": "negative",
+      "metric_scope": true,
+      "metric_roles": [
+        "negative"
+      ],
+      "expected_direct_ids": [],
+      "expected_association_ids": [],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q09",
+      "query": "网关设置以后我想起昨晚看的火星电影",
+      "kind": "near_negative",
+      "metric_scope": true,
+      "metric_roles": [
+        "negative"
+      ],
+      "expected_direct_ids": [],
+      "expected_association_ids": [],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q10",
+      "query": "网关方案",
+      "kind": "stale_conflict",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct",
+        "stale"
+      ],
+      "expected_direct_ids": [
+        "M08"
+      ],
+      "expected_association_ids": [
+        "M13"
+      ],
+      "expected_reasons": {
+        "M08": "key_phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M13",
+          "reason": "shared_entity",
+          "related_from_key": "网关方案",
+          "matched_terms": [
+            "Gateway Beta"
+          ]
+        }
+      ],
+      "forbidden_ids": [
+        "M09"
+      ]
+    },
+    {
+      "id": "Q11",
+      "query": "旧版网关决策",
+      "kind": "stale_only",
+      "metric_scope": true,
+      "metric_roles": [
+        "stale"
+      ],
+      "expected_direct_ids": [],
+      "expected_association_ids": [],
+      "forbidden_ids": [
+        "M10"
+      ]
+    },
+    {
+      "id": "Q12",
+      "query": "网关选型",
+      "kind": "explicit_association",
+      "metric_scope": true,
+      "metric_roles": [
+        "association"
+      ],
+      "expected_direct_ids": [
+        "M01",
+        "M15"
+      ],
+      "expected_direct_order": [
+        "M01",
+        "M15",
+        "M16"
+      ],
+      "known_nonrelevant_ids": [
+        "M16"
+      ],
+      "expected_association_ids": [
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "expected_reasons": {
+        "M01": "key_phrase",
+        "M15": "phrase",
+        "M16": "phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M02",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M03",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M04",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q13",
+      "query": "网关方案",
+      "kind": "shared_entity_association",
+      "metric_scope": true,
+      "metric_roles": [
+        "association"
+      ],
+      "expected_direct_ids": [
+        "M08"
+      ],
+      "expected_association_ids": [
+        "M13"
+      ],
+      "expected_reasons": {
+        "M08": "key_phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M13",
+          "reason": "shared_entity",
+          "related_from_key": "网关方案",
+          "matched_terms": [
+            "Gateway Beta"
+          ]
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q14",
+      "query": "项目共识",
+      "kind": "generic_entity_exclusion",
+      "metric_scope": false,
+      "metric_roles": [
+        "structure"
+      ],
+      "expected_direct_ids": [
+        "M11"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M11": "key_phrase"
+      },
+      "forbidden_ids": [
+        "M12"
+      ]
+    },
+    {
+      "id": "Q15",
+      "query": "网关选型",
+      "kind": "association_limit_and_deduplication",
+      "metric_scope": false,
+      "metric_roles": [
+        "structure"
+      ],
+      "expected_direct_ids": [
+        "M01",
+        "M15"
+      ],
+      "expected_direct_order": [
+        "M01",
+        "M15",
+        "M16"
+      ],
+      "known_nonrelevant_ids": [
+        "M16"
+      ],
+      "expected_association_ids": [
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "expected_reasons": {
+        "M01": "key_phrase",
+        "M15": "phrase",
+        "M16": "phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M02",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M03",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M04",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        }
+      ],
+      "forbidden_ids": []
+    }
   ],
-  "evidence": "2026-10-20 柳柳放行哥哥『像人』第二步=联想/灵感，让哥哥与 GPT 商量方案。GPT 收敛：区分检索/联想/回忆三动作；最小落地=先在 SKILL.md 加『命中后沿线索再想一跳』纪律（实体/时序/情绪三线索、控制一跳、不把关联说成因果），用回归工件证明联想有效后再决定是否下沉服务端 recall_related；关键测试设计=种子记忆本身不含答案（避免哥哥自我打分），用关联召回率/精确率/链路完成率/无依据关联率四指标衡量。本工件用哥哥记忆库真实『记忆星空项目』记忆做种子→关联对（实体=记忆星空/星云层/背景星空）。"
+  "fallback_probes": [
+    {
+      "query_id": "Q07",
+      "memory_id": "M07",
+      "expected_query_bigram_count": 23,
+      "expected_matched_bigram_count": 12
+    },
+    {
+      "query_id": "Q09",
+      "memory_id": "M16",
+      "expected_query_bigram_count": 16,
+      "expected_matched_bigram_count": 4
+    },
+    {
+      "query_id": "Q11",
+      "memory_id": "M09",
+      "expected_query_bigram_count": 5,
+      "expected_matched_bigram_count": 1
+    }
+  ]
 }
