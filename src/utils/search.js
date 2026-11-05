@@ -2,14 +2,18 @@
 // 搜索历史（Supabase 版）
 // ============================================================
 export async function recordSearchKeyword(env, keyword) {
-    if (!keyword || keyword.trim().length === 0) return;
+    if (typeof keyword !== 'string' || keyword.trim().length === 0) return;
     try {
         const normalized = keyword.trim().toLowerCase();
         const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/search_history?keyword=eq.${encodeURIComponent(normalized)}&select=*`, {
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
         });
+        // A missing table or failed lookup must not be treated as an empty history,
+        // otherwise we attempt a misleading POST after the GET already failed.
+        if (!resp.ok) return;
         const existing = await resp.json();
-        if (existing && existing.length > 0) {
+        if (!Array.isArray(existing)) return;
+        if (existing.length > 0) {
             await fetch(`${env.SUPABASE_URL}/rest/v1/search_history?keyword=eq.${encodeURIComponent(normalized)}`, {
                 method: 'PATCH',
                 headers: {
@@ -39,7 +43,9 @@ export async function getSearchSuggestions(env, prefix) {
         const resp = await fetch(query, {
             headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
         });
+        if (!resp.ok) return [];
         const data = await resp.json();
-        return data.map(item => item.keyword);
+        if (!Array.isArray(data)) return [];
+        return data.map(item => item?.keyword).filter(keyword => typeof keyword === 'string');
     } catch { return []; }
 }
