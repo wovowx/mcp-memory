@@ -30,6 +30,7 @@ const allRecords = Object.fromEntries(Object.entries(BOOTSTRAP_KEYS).map(([name,
 
 function mockReads(options = {}) {
     const calls = [];
+    let unkeyedMemoryReads = 0;
     globalThis.fetch = async (url, init = {}) => {
         const target = new URL(String(url));
         const method = init.method || 'GET';
