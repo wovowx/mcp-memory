@@ -6,6 +6,32 @@
 // v2 新增：create_table / drop_table（自动建表/删表，走 exec_sql RPC）
 
 import { buildErrorResponse, jsonResponse } from '../utils/response.js';
+import { parseColumnDefinitions, quoteDdlIdentifier } from '../modules/database/ddl_parser.js';
+
+// DDL through the generic exec action must obey the same necessity gate as create_table.
+// The conservative keyword match intentionally prefers false positives over an unguarded schema change.
+const TABLE_CHANGE_SQL_PATTERN = /\b(?:CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|COMMENT|REINDEX|CLUSTER|VACUUM|DO|CALL|EXECUTE|IMPORT|SECURITY)\b/i;
+
+function hasTableChangeNecessity(args) {
+    return typeof args?.necessity === 'string' && args.necessity.trim().length > 0;
+}
+
+async function tableChangeGuardMessage(supabaseUrl, headers, operation) {
+    let tableList = '（获取现有表失败）';
+    try {
+        const listResp = await fetch(`${supabaseUrl}/rest/v1/`, { headers });
+        if (!listResp.ok) {
+            tableList = `（获取现有表失败：HTTP ${listResp.status}）`;
+        } else {
+            const listData = await listResp.json();
+            const tables = (listData.definitions && Object.keys(listData.definitions)) || [];
+            tableList = tables.length ? tables.join(', ') : '（schema 响应中没有可用表清单）';
+        }
+    } catch (e) {
+        tableList = '（获取现有表失败）';
+    }
+    return `❌ TABLE_CHANGE_GUARD_REQUIRED: ${operation} 前必须先过一遍现有表并证明必要性。\n当前已有表：${tableList}\n请传 necessity 参数说明：为什么现有表无法覆盖/不是重复造轮子（参照 database-overview.md）。`;
+}
 
 export async function handleDatabaseTool(name, safeArgs, env) {
     const supabaseUrl = env.SUPABASE_URL;
@@ -148,6 +174,9 @@ export async function handleDatabaseTool(name, safeArgs, env) {
         // ============================================
         if (action === 'exec') {
             if (!safeArgs.sql) return '❌ 缺少参数：需要 sql';
+            if (TABLE_CHANGE_SQL_PATTERN.test(String(safeArgs.sql)) && !hasTableChangeNecessity(safeArgs)) {
+                return await tableChangeGuardMessage(supabaseUrl, headers, '通过 exec 执行结构变更');
+            }
             const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
                 method: 'POST',
                 headers,
@@ -176,19 +205,20 @@ export async function handleDatabaseTool(name, safeArgs, env) {
             // v3（2026-09-09 Table Change Guard · 柳柳铁律）：加表前必须过现有表 + 证明必要性
             if (!safeArgs.table) return '❌ 缺少参数：需要 table（表名）';
             if (!safeArgs.columns) return '❌ 缺少参数：需要 columns（逗号分隔的列定义）';
-            if (!safeArgs.necessity) {
-                const listResp = await fetch(`${supabaseUrl}/rest/v1/`, { headers });
-                let tableList = '';
-                try {
-                    const listData = await listResp.json();
-                    const tables = (listData.definitions && Object.keys(listData.definitions)) || [];
-                    tableList = tables.join(', ');
-                } catch (e) { tableList = '（获取现有表失败）'; }
-                return '❌ TABLE_CHANGE_GUARD_REQUIRED: 建表前必须先过一遍现有表并证明必要性。\n当前已有表：' + tableList + '\n请传 necessity 参数说明：为什么现有表无法覆盖/不是重复造轮子（参照 database-overview.md）。';
+            if (!hasTableChangeNecessity(safeArgs)) {
+                return await tableChangeGuardMessage(supabaseUrl, headers, '建表');
             }
-            let sql = `CREATE TABLE IF NOT EXISTS public.${safeArgs.table} (${safeArgs.columns})`;
+            let tableIdentifier;
+            let columnsSql;
+            try {
+                tableIdentifier = quoteDdlIdentifier(safeArgs.table, '表名');
+                columnsSql = parseColumnDefinitions(safeArgs.columns);
+            } catch (e) {
+                return '❌ 输入校验失败：' + e.message;
+            }
+            let sql = 'CREATE TABLE IF NOT EXISTS public.' + tableIdentifier + ' (' + columnsSql.join(', ') + ')';
             if (safeArgs.rls !== false) {
-                sql += `;\nALTER TABLE public.${safeArgs.table} ENABLE ROW LEVEL SECURITY`;
+                sql += ';\nALTER TABLE public.' + tableIdentifier + ' ENABLE ROW LEVEL SECURITY';
             }
             const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
                 method: 'POST',
@@ -209,7 +239,16 @@ export async function handleDatabaseTool(name, safeArgs, env) {
         // ============================================
         if (action === 'drop_table' || action === 'dropTable') {
             if (!safeArgs.table) return '❌ 缺少参数：需要 table（表名）';
-            const sql = `DROP TABLE IF EXISTS public.${safeArgs.table} CASCADE`;
+            if (!hasTableChangeNecessity(safeArgs)) {
+                return await tableChangeGuardMessage(supabaseUrl, headers, '删表');
+            }
+            let tableIdentifier;
+            try {
+                tableIdentifier = quoteDdlIdentifier(safeArgs.table, '表名');
+            } catch (e) {
+                return '❌ 输入校验失败：' + e.message;
+            }
+            const sql = 'DROP TABLE IF EXISTS public.' + tableIdentifier + ' CASCADE';
             const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
                 method: 'POST',
                 headers,
