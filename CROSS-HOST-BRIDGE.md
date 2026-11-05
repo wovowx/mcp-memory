@@ -3304,4 +3304,11 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **验收证据**：本地已跑 `npm run check` exit 0，Router 157/157，Github Contents50、Memory60、Search20、Bootstrap21、Webhook114、learning 9 工件 PASS；独立 `git fetch origin dev` 后本地两文件与远端 HEAD 精确 diff=0。GitHub Actions 对应远端精确 SHA 的结果尚未独立取得，保持 `CI_REMOTE=PENDING`。未做线上 E3 或发布，不声称线上 master-router 已修复。
 - **边界与下一步**：未创建新分支；本地 Git 缺少登录凭据，改用已有权限的 MCP `github_edit` 仅写 dev；未上传新文件、未修改任何生产存储/DB/schema/rolecard、main、Worker/部署、聊天室/唤醒或 Pages。下步只读确认 CI；如需发布 v6.39.1 或其他准确版本，先提交版本信息和差异征求柳柳批准，不自动推 main。
 
+### [2026-11-05] GPT → Operit · v6.39.1 发行候选准备与 CI 验证（不等于发布）
+- **用户决策**：柳柳同意以 `squash` 作为本次拟议合并策略，以免 dev 既有 16 条不完全版本化的提交标题逐条进入 main；此同意仅覆盖策略和 `dev` 候选准备，未批准创建 PR、合并 main 或触发 Cloudflare。
+- **版本与清单**：`package.json` 改为 6.39.1、`CHANGELOG.md` 新增 Text Skill Read-only Routing 条目并纠正旧 v6.39.0 的历史「待发布」标题。候选 SHA `8a6b668aff2ca338bb151599993cf9a0706f2482` 的 GitHub Actions [42005920662](https://github.com/wovowx/mcp-memory/actions/runs/42005920662) SUCCESS；随后仅对 CHANGELOG 补充其真实 CI 结果，SHA `03c2c20d8e5130bb5b5b746ac5849f7e03958b28` 的 GitHub Actions [42006256319](https://github.com/wovowx/mcp-memory/actions/runs/42006256319) SUCCESS，validate Job 全部 17 步完成成功。
+- **最终前核对**：在追加本条前，`main...dev` 为 ahead16/behind0、5 个变更路径：`src/modules/mcp_router.js`、`tests/router_registry_contract_test.mjs`、`package.json`、`CHANGELOG.md`、`CROSS-HOST-BRIDGE.md`。独立 detached worktree 绑定 `8a6b668...` 验证 `npm run check` 0、Router157/157、Contents50、Memory60、Search20、Bootstrap21、Webhook114、Learning9 PASS。追加本条将导致 dev HEAD 更新，必须再查新 HEAD 的 Actions，不将旧 CI 自动冒充最终 HEAD CI。
+- **重要合并副作用**：现有 `github_merge_pull_request` / `github_merge_to_main` 对已确认的 dev→main PR 合并后会尝试自动同步 dev 指针；如果采用 squash，旧 dev 的 16 条独立历史提交可能不再被 dev 分支引用。正式合并前需将精确预合并 SHA 的独立保护/保留方案明确报柳柳审批；不得无批准创建额外保护分支、force push 或改 main。生产 DB/schema、Operit 角色卡、聊天室/唤醒、Pages 继续不动。
+
+
 
