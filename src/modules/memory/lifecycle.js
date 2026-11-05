@@ -27,14 +27,18 @@ export async function putMemory(env, key, data) {
         }
         const nowTs = now();
         const oldVersion = existing.version || 1;
-        const eventResp = await memoryWriteFetch(() => insertMemoryEvent(env, {
+        const event = {
             memory_id: existing.id,
             event_type: 'update',
             version: oldVersion,
-            old_value: existing.value,
+            old_value: hasExplicitType
+                ? { value: existing.value, type: existing.type ?? null }
+                : existing.value,
             actor: 'agent',
             reason: 'memory update (version chain)'
-        }));
+        };
+        if (hasExplicitType) event.new_value = { value: data.value, type: data.type };
+        const eventResp = await memoryWriteFetch(() => insertMemoryEvent(env, event));
         if (!eventResp.ok) {
             return { ok: false, stage: 'history', status: eventResp.status, error: 'history event write failed' };
         }
