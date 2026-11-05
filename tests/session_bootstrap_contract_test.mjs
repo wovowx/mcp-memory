@@ -113,7 +113,7 @@ check('missing unique checkpoint cannot be replaced by other memories', missingC
 calls = mockReads({ failStats: true });
 const failedStats = await buildSessionBootstrap(env);
 check('failed current memory stats forces BLOCKED', failedStats.status === 'BLOCKED'
-    && failedStats.blockers.includes('memory_stats_invalid'));
+    && failedStats.blockers.includes('memory_stats_error'));
 
 calls = mockReads({ missingKey: BOOTSTRAP_KEYS.navigation });
 const noNavigation = await buildSessionBootstrap(env);
