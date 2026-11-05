@@ -43,12 +43,14 @@ export async function putMemory(env, key, data) {
             return { ok: false, stage: 'history', status: eventResp.status, error: 'history event write failed' };
         }
 
-        const updateResp = await memoryWriteFetch(() => updateMemoryRecord(env, existing.id, {
+        const updateData = {
             value: data.value,
             version: oldVersion + 1,
             status: 'active',
             updated_at: data.updated_at || nowTs
-        }));
+        };
+        if (hasExplicitType) updateData.type = data.type;
+        const updateResp = await memoryWriteFetch(() => updateMemoryRecord(env, existing.id, updateData));
         if (!updateResp.ok) {
             return { ok: false, stage: 'update', status: updateResp.status, error: 'memory update failed' };
         }
