@@ -286,7 +286,9 @@ export async function buildSessionContext(env, args = {}) {
 
     if (topic) {
         try {
-            const hits = await searchMemories(env, topic);
+            const search = await searchMemoriesWithStatus(env, topic);
+            result.related_sources = search.sources;
+            const hits = search.results;
             const reservedKeys = new Set(Object.values(BOOTSTRAP_KEYS));
             const eligible = hits.filter(hit => hit?.status === 'active' && hit.valid_to == null &&
                 !reservedKeys.has(hit.key));
