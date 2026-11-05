@@ -309,6 +309,18 @@ try {
   check('tools/list advertises one copy each of the existing Bootstrap and Context static tools',
     ['session_bootstrap', 'session_context'].every(name => recovered.filter(t => t.name === name).length === 1) &&
     recovered.find(t => t.name === 'session_context')?.inputSchema?.properties?.topic?.type === 'string');
+  const discoveredMemorySchema = recovered.find(tool => tool.name === 'memory')?.inputSchema;
+  check('tools/list exposes optional memory type enum without changing required action',
+    discoveredMemorySchema?.properties?.type?.enum?.join(',') === 'fact,quote,inference,agreement' &&
+    discoveredMemorySchema?.required?.join(',') === 'action' &&
+    !discoveredMemorySchema.required.includes('type'));
+  memoryWriteBodies = []; usagePatchCount = 0;
+  t = await callTool('memory', { action: 'remember', key: 'core/invalid-type', value: 'not stored', type: 'opinion' });
+  check('dispatchGuard rejects invalid memory type before any business write or usage count',
+    t.includes('[INVALID_ARGS_SCHEMA]') && memoryWriteBodies.length === 0 && usagePatchCount === 0);
+  t = await callTool('memory', { action: 'remember', key: 'core/typed-router', value: 'quoted text', type: 'quote' });
+  check('valid memory type passes Router schema and reaches lifecycle persistence',
+    t.includes('已新建记忆') && memoryWriteBodies.some(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && call.body?.type === 'quote'));
   memoriesRestCount = 0; t = await callTool('memory_move', {});
   check('memory_move 空参→缺参', t.includes('需要 key 和 newCategory')); check('memory_move 不访问 memories/events', memoriesRestCount === 0);
   memoriesRestCount = 0; otherRestCount = 0; usagePatchCount = 0; t = await callTool('category_move_category', {});
