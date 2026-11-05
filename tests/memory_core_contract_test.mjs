@@ -216,6 +216,17 @@ console.log('\n[Lifecycle contracts]');
     check('update succeeds', update.ok === true);
     check('update writes event before updating memory', eventIndex >= 0 && patchIndex > eventIndex);
     check('update increments the existing version', calls[patchIndex]?.body?.version === 4);
+    check('untyped update omits type from PATCH and keeps legacy string event snapshot',
+        calls[patchIndex]?.body?.type === undefined && calls[eventIndex]?.body?.old_value === 'old');
+
+    calls.length = 0;
+    const typeUpdate = await putMemory(env, existing.key, { value: 'new typed value', type: 'agreement' });
+    const typeEvent = calls.find(call => call.method === 'POST' && call.url.includes('/rest/v1/memory_events'))?.body;
+    const typePatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='))?.body;
+    check('explicit type update persists the requested type', typeUpdate.ok === true && typePatch?.type === 'agreement');
+    check('typed update records old/new value and type in JSONB event snapshots',
+        typeEvent?.old_value?.value === 'old' && typeEvent?.old_value?.type === 'quote' &&
+        typeEvent?.new_value?.value === 'new typed value' && typeEvent?.new_value?.type === 'agreement');
 
     existing = null;
     calls.length = 0;
