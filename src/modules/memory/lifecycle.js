@@ -21,6 +21,10 @@ export async function putMemory(env, key, data) {
     }
 
     if (existing) {
+        const hasExplicitType = Object.prototype.hasOwnProperty.call(data || {}, 'type') && data.type !== undefined;
+        if (hasExplicitType && !isMemoryType(data.type)) {
+            return { ok: false, stage: 'validation', error: 'invalid memory type' };
+        }
         const nowTs = now();
         const oldVersion = existing.version || 1;
         const eventResp = await memoryWriteFetch(() => insertMemoryEvent(env, {
