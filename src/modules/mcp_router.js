@@ -160,10 +160,9 @@ async function getToolSchema(env, name) {
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
     if (schemaOverride) return schemaOverride;
-    if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
-        return skill.input_schema;
-    }
-    return null;
+    const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : null;
+    if (name === 'memory') return withMemoryTypeSchema(schema || {});
+    return schema;
 }
 // v6.35.7：dispatchGuard 改 async + 接收 env，前缀未匹配查注册表兜底
 // 有边界的 JSON Schema 子集：type / enum / required / properties / items / minimum / maximum。
