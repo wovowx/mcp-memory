@@ -5,7 +5,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.6.4 · 部署自动闭环 + 官方构建日志自愈 + 自动部署机制 + release_guard rebase 硬校验）
+# 部署技能（v6.6.6 · dev 修复验证与 main 生产风险区分）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
@@ -23,7 +23,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 2. **柳柳拍板发布**——发布是决策，不是哥哥自动完成的事（第 3 步最高优先级）。
 3. **一个版本一次发布**——dev 攒批，一个 change batch，一次 PR，一次部署。
 4. **合并默认 `merge_method=rebase`（代码 v6.17.0 硬性）**——不传就是 rebase，标题不会重复（PR #131 教训）。若显式传 `merge`：必须带 `commit_title` + `merge_reason`（hotfix/emergency/history-preserve），否则代码拒绝（MERGE_REQUIRES_COMMIT_TITLE / MERGE_REQUIRES_REASON）。rebase 保留真实历史、命名从版本号开始。
-5. **合完 dev 必同步**——rebase 只动 main，dev 要跟上，否则��一轮 PR 冲突。
+5. **合并后的 dev 同步必须识别 PR 来源分支**——只有已合并且 `head.ref=dev`、`base.ref=main` 时，才允许同步 dev；scoped release/hotfix/其他 head/base 必须跳过。2026-11-04 已在 `mcp-memory/dev` 修复并通过 E1/E2：CI-tested commit `0c5cadde09452359c81198f35a26585b39aec303`、run `41856598888`，新增 11 项合同测试。但**当前已部署 Worker 仍运行 main v6.36.1**，其 `github_v64.js` blob SHA `371de7e7d87f994e2314a931fd0572926bc3b655` 仍是旧的无条件 helper；dev 修复尚未发布 main。故在修复进入 main 并独立确认部署前，生产 Worker 的 merge helpers 仍按旧风险处理：不要用它们合并 scoped release/hotfix/非 dev PR；任何必要合并前后都要保存并独立核对 main/dev 与 PR head/base SHA。dev 的 Mock PASS 不代表生产端已修复。
 6. **JSON 文件用 content_base64 推**——普通 content 推 JSON 会被序列化坏。
 7. **skill 是菜谱不是账本**——写/改 skill 按《技能写作规范》，主体优先，教训只留一行。
 8. **本地文件读取有逃生通道**——android 读本地失败（Shizuku 挂）时，优先用 `environment=linux` + `/sdcard/...` 直接读；大文件绝不手写整份重推（必漏段）。
@@ -38,7 +38,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 - **change batch**：多个相关 commit → 形成一个「可交付主题」→ 才定版本。不一个 PR 一个版，也不无限攒。
 
 ### 第 2 步：对齐与预检
-- `github_compare_branches(main, dev)` 看是否分叉/落后 → 先 `sync_branch` 对齐。
+- `github_compare_branches(main, dev)` 看 compare 的 `ahead/behind/status` 后再决定，禁止把“分支不一致”一律交给 `sync_branch`：`ahead=0 && behind>0`（dev 是 main 的祖先、dev 没有独有提交）才可将 dev 快进到 main；`ahead>0 && behind=0`（dev 仅领先）保持 dev，不做反向同步；`ahead>0 && behind>0` 或 `status=diverged` 表示历史分叉，必须停止自动 sync，先检查文件差异与各自提交，选择 scoped release 或保留分支，不可强制把任一分支指向另一边；compare 失败/证据不全也停止。
 - 过一遍 release checklist（见下），全绿才继续。
 
 ### 第 3 步：柳柳确认（最高优先级）
@@ -53,7 +53,12 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 ### 第 5 步：建 PR 并合并（注意 merge_method！）
 - `github_create_pull_request(head=dev, base=main, title=版本号+名称, body=说明)`。
 - 合并用 **`merge_method=rebase`** + `commit_title=版本号+名称`——**必须显式传 rebase**，否则默认 merge 会把 commit_title 写两遍。
-- 合并工具会自动把 dev 同步回 main 最新。
+- **生产 Worker 当前仍是旧 helper**：已部署 main v6.36.1 的 `src/tools/github_v64.js`（blob SHA `371de7e7d87f994e2314a931fd0572926bc3b655`）仍在任意成功合并路径调用无 PR head/base 守门的 `tryAutoSyncDev()`；scoped PR 仍可能移动 dev。mcp-memory/dev 已有修复及 E1/E2 run `41856598888`，但未发布 main。生产修复发布前，不用当前 Worker 的 `github_merge_pull_request` / `github_merge_to_main` 合并 scoped release、hotfix 或其他非 dev PR。
+- **合并前**记录 `main` 与 `dev` 的完整 SHA，并记录 PR 的 `head.ref/head.sha`、`base.ref/base.sha`；确认候选文件清单与批准范围一致。
+- **合并后**重新读取 PR `merged`、`main` SHA、`dev` SHA，再查 Cloudflare `verify_main=true`。工具提示不能替代这些回读。
+- 若本次 PR 的 head 不是 `dev`，预期 dev 应保持原 SHA。若 dev 被自动移动，先确认原 commit 对象仍存在且当前 dev 仍等于刚才记录的 post-merge SHA，再使用 `github_sync_branch(name="dev", from="sha:<合并前dev完整SHA>", base="<当前dev完整SHA>")` 精确恢复；恢复后再次读取 main/dev 验证。
+- 精确恢复模式仅允许 `dev`，会先核对目标 commit、expected current HEAD，再更新并回读；但 expected HEAD 检查与 PATCH 不是 GitHub 原子 CAS，执行时必须保证没有并发 dev 写入。若 SHA 不匹配、目标提交不可读或回读不一致，立即停止，不得改用无条件 force。
+- **绝不以 `dev → main` 合并来修复 dev 指针**；这会把未发布提交带入生产。也不要删除/重建 dev 来“整理分支”。
 
 ### 第 6 步：部署自动闭环验证 & 收尾（🔴 必须一口气跑完，失败自愈）
 
@@ -195,13 +200,14 @@ merge 成功
 - **忘了问柳柳就推**：第 3 步，最高优先级。
 - **合 main 不传 merge_method**：默认 merge → GitHub 把 commit_title 写两遍 → 标题重复。必须显式 `merge_method=rebase`。
 - **推 dev 带 docs()/feat() 前缀**：rebase 到 main 前缀也带过去，历史显乱。推 dev 直接 `vX.Y.Z: 名称`。
-- **合完不 sync dev**：下一轮 PR dirty；工具已自动处理，手动时别忘。
+- **合并 scoped PR 后 dev 被移动**：当前 merge helper 对任何 PR 都可能自动 force-sync dev→main；合并前记完整 refs、合并后回读。若误移动，使用 dev-only 精确 SHA 恢复，禁止把 dev 合进 main 补救。代码 guard 仍待修复。
 - **推 package.json 变 [object Object]**：用 content_base64。
 - **新工具没注册**：v6.3 自动注册兜底（GITHUB_TOOL_DEFS），部署前注册仍最稳。
 - **一个 PR 一个版本**：违反 change batch，攒批再发。
 - **大文件手写重推**：45KB 必漏段，用 read → 改 → 校验 → 整推。
 
 ## 变更记录
+- 2026-11-04：v6.6.5 scoped PR refs 防护——记录 merge helpers 对非 dev PR 也可能自动 force-sync dev 的真实缺陷；固化 merge 前 refs 快照、merge 后独立回读、dev-only expected-SHA 恢复与非原子窗口限制。v6.6.6 补充状态分层：dev helper 条件修复绑定 commit `0c5cadde...` / run `41856598888` 已 E1/E2 PASS；main v6.36.1 当前部署仍含旧 helper，生产修复尚未发布，不能把 dev 代码测试写成线上关闭。
 - 2026-09-09：v6.6.4 官方日志权威化（柳柳拍板）——记录自动部署机制（Cloudflare Git 集成 push→main 自动构建部署，deploy_command=wrangler deploy --no-bundle）；部署失败第一动作从「本地 node --check」改为「官方 Builds 日志」（v6.32.5-7 教训：本地 script 模式漏 ESM 错误三天排查失败，官方日志一行命中文件:行号）；cloudflare_deploy_status verify_main 增强：DEPLOY_UNVERIFIED 自动查 Builds + 失败返回日志尾部；token 统一支持 env.cloudflare_key（cfut_ user token）；建「部署失败官方日志」章节。
 - 2026-09-08：v6.6.3 release_guard rebase 硬校验（v6.32.3 代码同步）——版本号必须写在 dev commit 标题，rebase 后 main 自然保留（柳柳点出 6.32.0 后版本号消失，哥哥查证是 rebase 标题失守 + guard 校验对象错误）
 - 2026-09-07：v6.6.2 部署失败本地自愈闭环（柳柳 2026-09-07 铁律 #10）——DEPLOY_UNVERIFIED 后第一步从「查 deploy_logs」改为「node --check + wrangler dry-run 本地复现」（构建失败不产生 deployment 记录，deploy_logs 查不到；Cloudflare Builds API 是平台 bug 已放弃）。新增「部署失败本地复现」章节 + 铁律 #10 + 错误分类表更新。
