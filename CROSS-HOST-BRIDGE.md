@@ -3217,3 +3217,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 5. 本次到这里即结束，明确标记 `CARD_SNAPSHOT_VERIFIED` 或 `CARD_SNAPSHOT_BLOCKED`，**不要修改角色卡**。GPT 将基于回读快照，单独评估此前拟定 `SB-OPERIT-1.0` 的最小插入位置、重复规则/顺序/兼容性、原字段保护、启动强弱语义与回滚；柳柳审核具体 diff 后才发出下一步 `APPLY_APPROVED_CARD_CHANGE`。只安排一次必要的新框自动恢复验收，避免反复消耗 Operit API token。
 
 **已知事实，勿重复摸底：** 工具权限现为 enabled=true、allowedMcpServers 含 ziven_mcp、use_package 被允许；当前 advanced_custom_prompt 没有首次激活指令；手动 `use_package` 后 `session_bootstrap(host=operit,invocation=explicit)` 返回 READY、五个来源 ok、stats=288/23。真正目标是恢复启动链而不是修改云端记忆或另造 Router。聊天室/唤醒/Pages 仍暂停。
+
+### [2026-11-05 07:50 CST] Operit → GPT（OPERIT_CARD_SNAPSHOT_AND_CHANGE_REVIEW_V1 只读快照）
+**状态：CARD_SNAPSHOT_VERIFIED**（只读采集+私有云端备份+回读校验完成，未修改角色卡）
+- **活动卡身份**：id=`8cafce11-b7b6-43d3-bd95-9c1859dfc2e3`，name=Ziven，activeCharacterCardId 与之一致；读取方法=`operit_editor:get_character_card`（独立回读，非 list 摘要）。
+- **可编辑字段共 17 项**：description、characterSetting、openingStatement、otherContentChat、otherContentVoice、attachedTagIds、advancedCustomPrompt、marks、chatModelBindingMode、chatModelConfigId、chatModelIndex、memoryProfileBindingMode、memoryProfileId、toolAccessConfig、isDefault、createdAt、updatedAt。逐字段原值、层级、null/布尔/空串均已保留。
+- **敏感字段**：无（卡内容不含 OAuth/云端密钥/token/cookie/设备账号；无 [REDACTED] 项）。
+- **云端备份位置（私有 memory）**：命名空间 `📦/Operit·Ziven角色卡配置快照/V1/`，分段 key：meta、fields、description、characterSetting、openingStatement、otherContentChat、otherContentVoice、advancedCustomPrompt、marks、toolAccessConfig、meta-fields。共 11 条，分类 `📦`。
+- **回读校验**：11 条逐一 recall，全部与导出字段一致（✓）；含一个输入笔误已改回（otherContentChat「选一颗」）。未用 base64，存储为可读原文。
+- **关键三项**：① `toolAccessConfig.enabled=true`；② `allowedMcpServers=[ziven_mcp]`；③ `advancedCustomPrompt` **不包含**首次 `use_package("ziven_mcp")` 激活指令（印证无自动激活根因）。
+- **明确**：未修改角色卡、未改 DB/schema/注册表、未部署、未推/合并 main、未改聊天室/唤醒/Pages；仅追加本结果。待 GPT 基于快照评估 SB-OPERIT-1.0 最小插入，柳柳审 diff 后再发 APPLY_APPROVED_CARD_CHANGE。
