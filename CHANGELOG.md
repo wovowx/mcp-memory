@@ -10,7 +10,7 @@
 - 既有 `src/skills/process/huan-kuang-liu-cheng/SKILL.md` 加入 ChatGPT/Operit 宿主适配：可调用新入口时获取恢复证据，仍需宿主加载完整 persona 并核对权限；入口未暴露时回退 SB-FRAME-1.0 逐项精确读取。只有已独立证实的 startup hook 能声称自动冷启动，MCP 不能单方控制第三方 App。
 
 ### Regression and limits
-- 新增 `tests/session_bootstrap_contract_test.mjs` 19 项合同 + `npm run test:bootstrap`；将 E2 Bootstrap 步骤接入现有 GitHub Actions CI。涵盖当前/旧快照、精确 key、身份或 checkpoint 缺失、stats 失败、辅助来源缺失、状态字段缺失、异常、schema 拒绝、只发 GET、不探测 tools/list、不自动 usage 写入、不泄露身份与主档全文、不擅自授予权限。
+- 新增 `tests/session_bootstrap_contract_test.mjs` **21 项合同** + `npm run test:bootstrap`；将 E2 Bootstrap 步骤接入现有 GitHub Actions CI。涵盖最新/历史快照、active_focus/next_action/do_not_repeat 工作状态字段、超过30天陈旧或无效时间戳的降级、精确 key、身份或 checkpoint 缺失、stats 失败、辅助来源缺失、异常、schema 拒绝、仅发 GET、不探测 tools/list、不自动 usage 写入、不泄露私人身份/主档全文、不擅自授予权限。
 - 源码测试 `mcp-memory/dev` SHA `94da9ef205a9de5765e75c01140f0de3245f575b` 的 learning-regression `41977307272` SUCCESS：E1/全部 E2（P2 19/19，Router/Patch 154/154、其余回归）通过；最终候选 SHA 与 CI 需版本化完成后独立回读。
 - 真实 ChatGPT/Operit 首轮自动触发、插件工具刷新、实际 MCP endpoint / 生产数据读取、完整人格装载及跨宿主首轮一致性 **E3 NOT RUN**；本版没有推 main / 部署 Worker。过去 A6/A7 的限定证据不能迁移为本版 E3。
 - 本轮不触碰聊天室、唤醒链、Agent Runtime、生产数据库/schema 或权限配置；对外开放、发布与 Cloudflare 自动部署需要柳柳逐版本另行批准。
