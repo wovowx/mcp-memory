@@ -2,7 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.40.1] - 2026-11-05（MCP Tool Discovery Read-only · 仅 dev 候选，未获 main/部署授权）
+
+### Fixed
+- `tools/list` 不再调用隐式的 `syncChatTools(env)`，防止 ChatGPT/其他宿主刷新工具清单时因聊天室 Skill 缺项而向生产注册表 POST。该请求现在只读取已有技能清单，并在结果中补充独立静态 `session_bootstrap` / `session_context` 工具定义；不会写 `skills`、usage、记忆或聊天室数据。
+- 保留原已注册工具的名称/Schema/路由，保留原有 `tools/call` 显式聊天室分派和 `syncChatTools` 行为（未修改任何聊天室业务工具）。未注册的聊天室工具不会再由**发现请求**自动创建；如其缺项，属于暂停领域的独立治理事项，不在本次修复范围内。
+
+### Regression and authorization boundary
+- 柳柳明确批准在 `dev` 做这一最小只读发现切片；整体架构 v1.9、Roadmap v1.30 已先于代码更新。本地 `npm run check` exit0，Router/Registry/Patch **162/162**（新增5项：零写入、保留已注册聊天工具、缺项不补注册、重复发现稳定、两个静态恢复入口唯一）、Session/Context36/36、GitHub Contents50、Memory Core60、Search20、Webhook/Agnes114、Learning9工件 PASS。全部为离线 E1/E2，GitHub CI 与真实宿主刷新 E3 以最终 dev SHA 另行验证。
+- **没有授权或执行** PR、main、Cloudflare 部署、宿主插件刷新、线上 `tools/list`、生产 DB/schema、聊天室 handler/Agent 唤醒、Operit 卡、Pages/Web 或密钥操作；仅在 v6.40.0 Worker #533 已上线的基础上准备 v6.40.1 候选。
+
 ## [v6.40.0] - 2026-11-05（Session Context v0.1 · dev 发行候选，尚未申请 main 发布）
+
+> 下方为正式发布前原始测试快照；后经柳柳逐版本批准，v6.40.0 已由 PR #327 squash 合 main=f48f92c24867836079440d2e2118f9b2e7d16056，Worker #533 / cc0abc9d verify_main=VERIFIED，显式 session_context 线上 E3 返回 SC-RUNTIME-0.1/READY。发布全证据见 Bridge，旧「未部署」表述仅作历史保存。
 
 ### Added
 - 新增只读 MCP 场景工具 session_context（contract_version=SC-RUNTIME-0.1）。在现有 MCP 激活前提下复用 Session Bootstrap 对权威身份/检查点来源与状态的核验，再精确读取唯一当前检查点的工作阶段、下一步、禁止重复、decision/evidence 有界摘要；仅在提供有效 topic 时调用 Memory Core 检索最多3条当前有效关联记忆，附来源、match_reason、截断标志；不把历史覆盖层、关联线索、缺失决定当成柳柳的当前决定。
