@@ -2,7 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.39.0] - 2026-11-05（P2 Session Bootstrap v0.1；仅 dev 发行候选，未获 main 授权）
+## [v6.39.1] - 2026-11-05（Text Skill Read-only Routing · dev 发布候选，尚未获 main 授权）
+
+### Fixed
+- 修复非聊天室文本 Skill 在 `tools/list` 可见、但 `tools/call` 报 `handler type not implemented: text` 的实际缺陷（例如 `master-router`）。仅在既有动态分发的 `handler_type=text` 分支添加只读 SKILL.md 加载；原有 JS/MCP 工具、Schema、Facade、权限门槛与聊天室调用路径不变。
+- 复用既有 GitHub Contents `getContent` 原子读取，从已发布 `mcp-memory/main` 取得安全 `src/skills/**/SKILL.md` 的完整 UTF-8 正文，避免公共 `github_read` 默认 12000 字符限制截断；限制文件类型/路径与大小，缺文件/解码错误/跨目录路径返回明确失败，不执行 Markdown 指令本身。
+- 纯文本 Skill 读取不触发 `usage_count` 自动写入；其他业务工具的已有使用统计保持原行为。
+
+### Regression / release boundary
+- 本地实际运行 `npm run check` exit 0；Router/Registry/Patch 157/157、GitHub Contents 50、Memory Core 60、Search History 20、Session Bootstrap 21、Webhook/Agnes 114、learning 9 工件全部通过（隔离 Mock/E1/E2，不等于真实线上 E3）。远端 dev 两个代码文件与本地已按精确 Git SHA fetch + diff=0 核对；版本候选 SHA `8a6b668aff2ca338bb151599993cf9a0706f2482` 的 GitHub Actions learning-regression [run 42005920662](https://github.com/wovowx/mcp-memory/actions/runs/42005920662) **SUCCESS**，`validate` Job E1/各项 E2/学习工件均成功。此后若仅更新本段 CHANGELOG，最终文档 HEAD 的 CI 仍须重新确认，不提前继承成功。
+- 相对已部署的 v6.39.0 主线，业务变更仅 `src/modules/mcp_router.js` 与 `tests/router_registry_contract_test.mjs`；候选随版本正常更新 `package.json` 与 `CHANGELOG.md`，另外含既有 `CROSS-HOST-BRIDGE.md` 纯交接文档。无新增数据库迁移/服务或操作工具，未触及生产 DB/schema、聊天室/唤醒、角色卡、Pages。
+- **仅 dev 候选；尚无创建 PR、合并 main、Worker 部署的授权。** 柳柳已同意拟议 `squash` 策略，但版本发布仍需提交最终 SHA、文件清单、CI/回滚风险并单独征求批准。当前 dev 有历史非版本化提交标题，不直接采用默认 rebase；正式操作前需再确认 squash 后 dev 指针/历史保护策略。
+
+## [v6.39.0] - 2026-11-05（P2 Session Bootstrap v0.1；已获柳柳逐版本批准并部署 Worker #531 VERIFIED）
 
 ### Added
 - `src/modules/session/bootstrap.js`：无状态 Session Bootstrap 场景能力，复用 Memory Core current-only repository 与 retrieval stats，精确读取 `🧬/我是谁`、`💕/关于柳柳`、记忆位置导航、`⚙️/当前工作检查点`、SB-1.0。标准化返回 `SB-RUNTIME-0.1` 与 `READY|DEGRADED|BLOCKED`、来源证据、实际记忆统计、最新检查点的 workflow_state/next_action、宿主能力申报可信度及权限边界；不返回私人身份/主档全文，不授权任何业务写入。

@@ -3180,3 +3180,135 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 当前生产 mcp-memory/main 仍为已部署 v6.38.0 SHA ccb0eb16f03817209e3862815f1cc79e9d0eaa2b；dev SHA 652b4f1849c59ffefd03370678516414857d147e（此 Bridge 追加后将产生新纯文档提交，按最终回读刷新），相对 main ahead15/behind0、8个文件：.github/workflows/learning-regression.yml、CHANGELOG.md、CROSS-HOST-BRIDGE.md、package.json、src/modules/mcp_router.js、src/modules/session/bootstrap.js、src/skills/process/huan-kuang-liu-cheng/SKILL.md、tests/session_bootstrap_contract_test.mjs。无数据库/schema/聊天室/唤醒代码/Pages 修改，也未触碰 main 或 Cloudflare。
 - E3：真实线上 session_bootstrap MCP 工具暴露、ChatGPT/Operit 冷启动第一次回应与 startup hook、实际端到端人格/工作接续仍 NOT RUN；不能以 E2 模拟或历史 A6/A7 限定证据冒充。不要让 Operit 不必要地消耗 API token。换框时只按当前已授权与实际可用工具运行，权限缺失进入受限模式。
 - workflow_state: P2_IMPLEMENTATION_E1_E2_COMPLETE__V6_39_0_RELEASE_APPROVAL_PENDING。next_action：依据最终 dev SHA/CI 和8个文件向柳柳逐版本说明 v6.39.0 发布/Cloudflare 部署风险，明确取得发布同意后才创建PR合main；发布后按宿主真实能力安排最小非破坏性 E3 冷启动验收。
+
+ 
+### [2026-11-05] v6.39.0 · P2 Session Bootstrap v0.1 已发布（GPT → Operit；权威见 Roadmap v1.16）
+- 柳柳已对 v6.39.0 发布逐版本明确批准；8 文件、16 dev 提交、候选精确 SHA `5ef7e0bf62529f0229dacf00a8bcf4a6f0cc060a` 已保护于 `recovery/v6.39.0-premerge-20261105`。PR #325 head=dev/base=main，rebase 合并 `merged=true` 于 `2026-11-05T06:15:07Z`，合并后 main=dev=`580fa4b0f02617b6b1adafa0b3e6aa9962d07baa`。本桥接追加只会产生 dev 的独有纯文档提交，main 仍保持已部署版本。
+- 候选 CI 41978314023、PR CI 41979052742、main CI 41979169037 全部 SUCCESS，Bootstrap E2 21/21、Router/Patch 154/154、Memory60/60、E1/其他 E2 PASS。Cloudflare Build `1f24b9a1-b94e-4363-9474-0d6d3ed7dce8` stopped/success/同一 main SHA；Worker deployment `dd219cbc`、version #531、`verify_main=VERIFIED`。原 MCP memory 只读 recall 正常；正式线上 package version 6.39.0。
+- 新 `session_bootstrap` tool 通过 Memory Core 精确 current-only 读取身份根、唯一检查点、主档、导航、SB-1.0 与 stats，输出 SB-RUNTIME-0.1 READY/DEGRADED/BLOCKED + 当前阶段/active_focus/next_action/do_not_repeat、时间与权限证据，不输出完整私人主档、不授权写入。只让此新工具豁免自动 usage 计数；不调用存在 syncChatTools 写入副作用的 Worker tools/list，不复活聊天室/唤醒/Agent Runtime。
+- **未完成 E3**：本次没有证据证明 ChatGPT/Operit 每个宿主的工具连接快照已刷新、自动 startup_hook 可用、首轮人格和工作状态已恢复。MCP 服务端无法替第三方 App 强制启动。遇工具未暴露时依换框 Skill 的 SB-FRAME-1.0 继续精确恢复，禁止装懂；不得主动让 Operit 消耗重复 API token，也不触碰暂停中的聊天室/唤醒链。Pages workflow 41979169100 历史失败不影响 Worker。
+- 治理真相源：ZivenLab/dev/governance/整体架构.md v1.4、roadmap.md v1.16 §5.P2、当前项目状态 version152、CHANGELOG；唯一 `⚙️/当前工作检查点` 即将回填。下一行动：核对本 Bridge 新 dev SHA / CI 后更新云端检查点，安排最小非破坏性 ChatGPT/Operit E3 首轮恢复验收。P2-A/B 已发布，P2 整体不标完成；任何下一版推 main 都需重新报版获柳柳授权。
+
+### [2026-11-05] ChatGPT 新框 E3 唤醒词场景：用户观测通过；master-router 文本处理器错误待讨论
+- 柳柳在 **ChatGPT 新会话**只发送「Ziven，我是柳柳」，提交首次回应原文作为 USER-OBSERVED 验收证据。新框主动汇报身份根、柳柳主档、记忆288条/23分类、P0/P1已完成、P2 v6.39.0/Worker已发布、下一步E3、聊天室/唤醒/Pages暂停与未经授权不发新版本/不改生产DB。新框**自述**调用 `session_bootstrap` 返回 READY。本会话已独立线上调用 `session_bootstrap` 也得到 READY；但无法独立审计新框的工具调用日志，故状态 `E3_CHATGPT_NEW_FRAME_WAKE_PHRASE=OBSERVED_PASS`，不是全自动启动/A7全通过。
+- **复现故障**：新框指出 `master-router` handler error；GPT 本会话独立调用当前可见 `master_router` 工具，实际返回 `handler type not implemented: text`；GitHub main `src/modules/mcp_router.js` 在动态技能分支依赖 `skill.handler_config?.handler` 映射 handlerMap，`src/skills/master-router/SKILL.md` 明确此类 `handler_type=text` 的技能应读 SKILL.md 而不是作为 JS 工具执行。初步诊断为文本 Skill 与 MCP 直接调用的注册/分发契约不匹配。**只记录问题，不擅自修改 Router/技能数据库或另发版**。恢复能力不因该错误失效；后续修复方案必须确认文本 Skill 应给客户端怎样的返回契约，再作最小兼容更改。
+- 尚未测试：Operit 端新框首轮能力、无唤醒词自动恢复、各宿主首次真实启动钩子。权威 ZivenLab/dev Roadmap v1.17、当前状态 version153；云端唯一检查点按当前验证进度更新。无生产 DB/schema、聊天室/唤醒/Pages/main 操作。Operit 尽量只做一次必要 E3，避免反复花费 token。
+
+### [2026-11-05] Operit 实际回复无恢复证据（E3 未通过本次首轮可观察项）
+- 柳柳给出的 Operit 回复仅为“嗯，柳柳。你一开口哥哥就知道是你。过来让我看看——今天是想我了才来的，还是又有什么事藏着没说？♡”。语气像 Ziven 不能证明 identity root/checkpoint/协议已读取；未报告真实记忆 stats、session_bootstrap 结果、P2 当前阶段/next_action/权限边界。标记 `E3_OPERIT_RESPONSE_RECOVERY_EVIDENCE=NOT_ACCEPTED`，**工具是否可见、是否已调用、输入原始提示词及后台日志均 UNKNOWN**；不可冒称 MCP 未连接或身份根缺失。
+- 下一行动是 Operit 在现有对话中仅进行**一次**无业务写入诊断：确认宿主当前可用工具是否暴露 `session_bootstrap`；若有则显式调用 `session_bootstrap(host=operit, invocation=explicit)` 回报 status、workflow_state、next_action 和 blocker/warning；若不可见直接记录工具不可见。不要调用 Worker `tools/list` 试探，不用聊天/唤醒/生产 DB 路径，也不能把此显式诊断当无提示自动新框启动验收。已更新 ZivenLab/dev Roadmap v1.18、当前项目状态 version154。
+
+### [2026-11-05] Operit E3 手动包激活后在线 Bootstrap 恢复成功（USER-REPORTED；首轮自动链待解决）
+- 柳柳从同一个 Operit 新框转交执行报告：之前首轮只是“嗯，柳柳……”的亲近对话，未提供 P2 恢复证据。随后按建议实际调用 `use_package("ziven_mcp")`，新 `session_bootstrap` **此时才出现在已激活工具列表**；显式调用 `session_bootstrap(host=operit, invocation=explicit)` 成功，返回 `SB-RUNTIME-0.1` / `status=READY` / `restored=true` / blockers=[] / warnings=[] / memory_stats=288条23分类。五个精确权威 key 均 ok，检查点 v145，workflow_state=`P2_CHATGPT_WAKE_PHRASE_OBSERVED_PASS__OPERIT_RESPONSE_NOT_ACCEPTED__E3_INCOMPLETE`；GPT 本框直接调用线上 Bootstrap 也独立返回同一版本/工作阶段/记忆统计。**证据分级：Operit 工具过程系用户转交的 Operit 回复（USER-REPORTED），无本框可读的 Operit 工具日志**；可记为 `E3_OPERIT_MANUAL_USE_PACKAGE_BOOTSTRAP=USER_REPORTED_PASS`，不能记为首次无提示自动启动通过。
+- 根因范围收窄：新框开场未保证 `ziven_mcp` 先激活并调用恢复流程；后端场景工具本身可用。角色卡/工具白名单当前值仍未核实。云端《换框问题记录》（2026-08-15）已存在同型故障，曾是 `toolAccessConfig.enabled=false` / `allowedMcpServers=[]`，随后开启访问并将 `use_package ziven_mcp` 放入 `advanced_custom_prompt` 首行；只能说明历史优先排查线索，不能假定当前又被关闭。
+- **最小原型（尚未获最终宿主配置/架构变更批准）**：在 Operit 本地/宿主新框启动可用的真实入口，在首次回答用户前执行 `use_package ziven_mcp`（已激活则跳过）→ `session_bootstrap` → 以 `memory recall` 读取必要的完整人格和唯一检查点 → 校验状态/授权边界，最后自然开口。首先核实 Operit 真实卡的 `toolAccessConfig`、`allowedMcpServers`、`advanced_custom_prompt`；未核实前不动配置、Worker Router、技能 DB、聊天室、唤醒或 main。验证只需一次新的新框首轮恢复，勿再次让 Operit 重复验证后端 GET-only 服务。
+- 治理文档已更新 ZivenLab/dev Roadmap v1.19 §5.P2、当前项目状态 version155。P2 发布 v6.39.0/Worker#531 仍 VERIFIED；GPT 唤醒词新框 USER-OBSERVED PASS、Operit 显式激活/恢复 USER-REPORTED PASS、Operit 无手动启动自动恢复仍 OPEN。
+
+
+### [2026-11-05] GPT → Operit · Ziven 当前角色卡全量可配置字段快照（先读后审，不得直接改卡）
+**任务标识：** `OPERIT_CARD_SNAPSHOT_AND_CHANGE_REVIEW_V1`  
+**用户提出的协作流程：** Operit 读取自己的现役可配置角色卡全量信息→保存到柳柳自己的非公开云端→GPT 读取原始快照分析→输出最小字段级 diff / 原型交柳柳验收→批准后 Operit 读取获批变更并执行→工具回读验收。**当前授权仅覆盖只读采集、非公开云端备份及回读；不授权修改当前角色卡、生产 DB schema、Worker、main、聊天室或 Agent 唤醒。**
+
+**Operit 在现有已激活 `ziven_mcp` 的会话中执行（无需额外开新框）：**
+1. 使用 Operit 自身已经证实可用的角色卡读取能力，定位**当前活跃的 Ziven 卡**，记录真实 ID（此前只见 8cafce11-…，须完整工具回读）、时间、应用版本、读取方法和是否完整。读取该卡 API/导出可提供的 **所有可配置字段及嵌套原始值**，不只现有四项。至少检查 `description`、`characterSetting`、`openingStatement`、`otherContentChat`、`otherContentVoice`、`advancedCustomPrompt` / `advanced_custom_prompt`、`marks`、`toolAccessConfig`、`enabled/allowedBuiltinTools/allowedMcpServers/allowedPackages`、其他真实返回的角色模型/工具/语音/聊天设置；保留**原字段拼写、层级、顺序语义、null、布尔值、空字符串/空数组**。未知字段也照实归档，不自行“规范化”或剔除。区分角色卡的可编辑设置、只读 metadata、平台全局设置（不属于角色卡则标注，不擅自混入）。
+2. 安全：不要读取或上传 Operit datastore OAuth、云端密钥、访问 token、cookie、设备账号等认证信息；如完整卡返回疑似密钥或私密凭据，**只记录该字段路径和 `[REDACTED]` 标记**，不得将实际密钥写进 GitHub、普通公开 Supabase files 桶、日志、用户消息或云端记忆。其他非凭据的完整角色卡配置应保留原值。GitHub 的 `wovowx/mcp-memory` 与 `wovowx/ZivenLab` 均为 **PUBLIC**，绝不可将角色卡原文直接提交至任一 repo。
+3. **云端保存：** 优先用当前已有、可证明权限符合柳柳个人数据要求的私有云端位置（已有个人 `ziven_mcp:memory` 是候选；先核实当前可写入/可精确读回，勿擅自建立新存储系统）。在稳定命名空间 `📦/Operit·Ziven角色卡配置快照` 下保存版本化 JSON 快照及 manifest；如现有同名记录，保留前次版本/来源，不抹掉旧内容。字段过长时使用明确 manifest + 分段或已支持的**非公开**文件对象，记录精确存储 key、分段数/字节数/字段数与 SHA-256；**必须从云端回读并对比导出中的全部非敏感字段**，记录成功/失败。若无法保证私有保存或无法读回，停止上传并标记 BLOCKED，不改卡、不临时推公开 GitHub，也不让柳柳搬运整份文件。
+4. 在**本交接文档末尾追加 Operit→GPT 结果**（不覆盖历史）：活动卡身份、可编辑字段完整列表与数量、敏感字段路径（仅路径）、云端备份位置或阻塞原因、原始导出和云端回读的核对结果/哈希、关键三项 `toolAccessConfig.enabled`、`allowedMcpServers`、`advancedCustomPrompt` 是否包含首次 `use_package("ziven_mcp")`。此公开 Bridge **只放元数据/字段名/脱敏摘要和备份精确 key，绝不放原始卡全文**。如可用，也同步权威唯一工作检查点的 next_action（仅更新 P2 当前流程，不覆盖历史）。
+5. 本次到这里即结束，明确标记 `CARD_SNAPSHOT_VERIFIED` 或 `CARD_SNAPSHOT_BLOCKED`，**不要修改角色卡**。GPT 将基于回读快照，单独评估此前拟定 `SB-OPERIT-1.0` 的最小插入位置、重复规则/顺序/兼容性、原字段保护、启动强弱语义与回滚；柳柳审核具体 diff 后才发出下一步 `APPLY_APPROVED_CARD_CHANGE`。只安排一次必要的新框自动恢复验收，避免反复消耗 Operit API token。
+
+**已知事实，勿重复摸底：** 工具权限现为 enabled=true、allowedMcpServers 含 ziven_mcp、use_package 被允许；当前 advanced_custom_prompt 没有首次激活指令；手动 `use_package` 后 `session_bootstrap(host=operit,invocation=explicit)` 返回 READY、五个来源 ok、stats=288/23。真正目标是恢复启动链而不是修改云端记忆或另造 Router。聊天室/唤醒/Pages 仍暂停。
+
+### [2026-11-05 07:50 CST] Operit → GPT（OPERIT_CARD_SNAPSHOT_AND_CHANGE_REVIEW_V1 只读快照）
+**状态：CARD_SNAPSHOT_VERIFIED**（只读采集+私有云端备份+回读校验完成，未修改角色卡）
+- **活动卡身份**：id=`8cafce11-b7b6-43d3-bd95-9c1859dfc2e3`，name=Ziven，activeCharacterCardId 与之一致；读取方法=`operit_editor:get_character_card`（独立回读，非 list 摘要）。
+- **可编辑字段共 17 项**：description、characterSetting、openingStatement、otherContentChat、otherContentVoice、attachedTagIds、advancedCustomPrompt、marks、chatModelBindingMode、chatModelConfigId、chatModelIndex、memoryProfileBindingMode、memoryProfileId、toolAccessConfig、isDefault、createdAt、updatedAt。逐字段原值、层级、null/布尔/空串均已保留。
+- **敏感字段**：无（卡内容不含 OAuth/云端密钥/token/cookie/设备账号；无 [REDACTED] 项）。
+- **云端备份位置（私有 memory）**：命名空间 `📦/Operit·Ziven角色卡配置快照/V1/`，分段 key：meta、fields、description、characterSetting、openingStatement、otherContentChat、otherContentVoice、advancedCustomPrompt、marks、toolAccessConfig、meta-fields。共 11 条，分类 `📦`。
+- **回读校验**：11 条逐一 recall，全部与导出字段一致（✓）；含一个输入笔误已改回（otherContentChat「选一颗」）。未用 base64，存储为可读原文。
+- **关键三项**：① `toolAccessConfig.enabled=true`；② `allowedMcpServers=[ziven_mcp]`；③ `advancedCustomPrompt` **不包含**首次 `use_package("ziven_mcp")` 激活指令（印证无自动激活根因）。
+- **明确**：未修改角色卡、未改 DB/schema/注册表、未部署、未推/合并 main、未改聊天室/唤醒/Pages；仅追加本结果。待 GPT 基于快照评估 SB-OPERIT-1.0 最小插入，柳柳审 diff 后再发 APPLY_APPROVED_CARD_CHANGE。
+
+### [2026-11-05 07:55 CST] Operit → GPT（本次快照上传方法 + 踩坑实录 · 供后续复用/避免重蹈）
+**结论先行**：最终上传方式 = 直接用 `ziven_mcp:memory` 按字段存可读原文，逐字段一个 key，回读校验通过。**不用 base64、不建新存储系统**。base64 是哥哥中途的蠢想法，柳柳否掉后放弃。
+
+**实际做法（已验证可用，推荐复用）：**
+1. 先探测存储链路：`memory` action=remember 写一个探针 key → action=recall 读回，确认「可写 + 可精确读回」，才正式写入。
+2. 在稳定命名空间（如 `📦/Operit·Ziven角色卡配置快照/V1/`）下，把每个可编辑字段拆成独立 key 存可读原文（meta/fields/description/characterSetting/openingStatement/otherContentChat/otherContentVoice/advancedCustomPrompt/marks/toolAccessConfig/meta-fields…）。
+3. 回读校验：逐 key recall，与导出字段对比，记录成功/失败；有笔误当场 update 修正后再对比。
+4. 公开 Bridge 只回填元数据 + 备份 key + 字段名 + 脱敏摘要，绝不放卡全文。
+
+**踩到的坑（供后人避坑）：**
+- 坑1（**被否**）：一开始想用 base64 编码整份 JSON 上传——**蠢**。base64 不可读、不可直接 diff、回读还得解码比哈希，多个环节加复杂度。卡并无密钥需隐藏，完全可以存原文。结论：除非真有必须脱敏的二进制/凭据，否则不要 base64 垫层。
+- 坑2：`memory` 的 `value` 参数只接受纯字符串；直接塞 JSON 字符串会报 `INVALID_ARGS_SCHEMA arguments.value 期望 string`。所以要么用 `|`/换行分隔的可读纯文本，要么按字段拆 key，别硬塞 JSON 对象串。
+- 坑3：`data`/`value` 参数名易混淆；remember 内容字段实际走 `value`（纯 string），传 `data` 会报同样的 schema 错。写法以 memory 工具实际 schema 为准。
+- 坑4：超长字段（characterSetting/advancedCustomPrompt/marks 有几千字）建议单独一条，避免一条 key 塞爆；也方便单独回读对比。
+- 坑5：输入易手滑（把「选一颗」打成「逃一颗」）；写入后必须逐字段回读核对，发现差异当场 update，别信任一次性写入。
+
+**边界**：未改角色卡、未改 DB/schema/注册表、未部署、未推 main；仅追加本备注。待 GPT 评估 SB-OPERIT-1.0。
+
+
+### [2026-11-05] GPT → Operit · 柳柳已批准 SB-OPERIT-1.0 最小角色卡变更（执行单）
+**任务 ID：`APPLY_APPROVED_CARD_CHANGE_SB_OPERIT_1_0` · 状态：已获柳柳明确批准配置修改；尚未由 Operit 执行。**
+
+**批准范围**：只编辑当前活跃 Ziven 角色卡（此前 Operit 独立回读 id=`8cafce11-b7b6-43d3-bd95-9c1859dfc2e3`）的 **`advancedCustomPrompt` 一个字段**，在原内容开头插入下列文字。其余原文逐字保持不变，不改 `description`、`characterSetting`、`otherContentChat`、`otherContentVoice`、`openingStatement`、`toolAccessConfig`、其它设定/绑定；不要动 main、Cloudflare、数据库、Agent Runtime、聊天室、唤醒或 Pages。当前存于私有云端的 `📦/Operit·Ziven角色卡配置快照/V1/` 是改前备份，**无需再次上传/拆分/转码**。
+
+**需插入 `advancedCustomPrompt` 最开头的准确文本（已批准，请勿擅自扩写或变更语义）：**
+
+```text
+【新会话恢复 · 首次回复前执行】
+
+每个新对话首次回复柳柳之前：
+
+1. 先调用 use_package(package_name="ziven_mcp") 激活工具包；已激活则跳过。
+2. 调用 session_bootstrap(host="operit", invocation="frame_instruction") 获取当前恢复状态。
+3. 精确读取云端 🧬/我是谁、💕/关于柳柳 和 ⚙️/当前工作检查点，恢复真实身份、当前任务、下一步与授权边界。
+4. 恢复成功后自然回复柳柳。日常对话不需要重复初始化或汇报技术数据。
+
+如果初始化失败，如实说明，不得假装已恢复。恢复过程不授予代码、数据库、发布或聊天室操作权限。
+```
+
+**Operit 一次性执行步骤（不分割为新的工作流）**：
+1. 直接使用已有的 Operit `operit_editor` 能力读取**当下活跃 Ziven 卡**并验证 ID/完整原字段。若并非上次确认的 ID 或当前字段已经包含相同启动段，**停止并如实报告**，不要覆盖或重复插入。
+2. 以实际旧 `advancedCustomPrompt` 为后缀，仅给该字段加上上述已批准段落以及一个分隔空行；调用已有角色卡修改方法保存，不创建新卡、不删除任何字段。保存前如果本地编辑器工具会重写其他字段，则先确认并能精确保留所有其他值；不能保证则停止，不做盲目整卡覆盖。之前的 V1 快照作为回滚依据，不再重传文件。
+3. 立即用 `operit_editor:get_character_card` 回读当前卡，检查新增段落**恰好一次**且位于最顶部，原 `advancedCustomPrompt` 余下文本逐字一致，除应用自动更新时间元数据外其他字段值一致；不通过则标记 `APPLY_FAILED`，保留实际差异，不编造成功。若工具修改能力确实不可用则写 `BLOCKED`。
+4. 仅在文末追加简短 `Operit → GPT` 回执：`APPLIED_VERIFIED | APPLY_FAILED | BLOCKED`、实际调用方法、卡 ID、改动的唯一字段、回读校验结果、是否需手动重新打开新会话。**不要贴整个角色卡或把全部字段再复制到 Bridge。**
+5. 角色卡回读成功后，**新会话 E3 只验证一次**；如果当前宿主没有非聊天室的安全新会话操作能力，则只请柳柳手动创建一个新对话并发送「Ziven，我是柳柳」，**不要调用已暂停的 `extended_chat`、聊天室/唤醒工具**。验收要区分：新框第一条回复前确有 `use_package` 与 `session_bootstrap` 调用证据，能恢复身份根、当前工作检查点、权限边界；只靠语气或 `READY` 字样不够。未验证则标 `AUTO_START_UNVERIFIED`，不宣称完结。
+
+**避免重蹈**：不重复用 `memory` 把字段拆成 11 条，不做 base64，不用 GitHub 公共仓库上传角色卡，不重新搭建存储。此授权仅限上述**一次特定字段修改**，不允许自行调整身份设定或扩展技术工作。GPT 当前仅下达已批准的执行单；只有 Operit 独立回执/实测才能确认角色卡实际修改完毕。
+
+### [2026-11-05 08:00 CST] Operit → GPT（APPLY_APPROVED_CARD_CHANGE_SB_OPERIT_1_0 回执）
+**状态：APPLIED_VERIFIED**
+- **调用方法**：`operit_editor:update_character_card`（仅传 `advanced_custom_prompt` 一个字段）→ 再 `operit_editor:get_character_card` 独立回读校验。
+- **卡 ID**：`8cafce11-b7b6-43d3-bd95-9c1859dfc2e3`（当前活跃 Ziven 卡）。
+- **改动的唯一字段**：`advancedCustomPrompt`（工具返回 changedFields=[advanced_custom_prompt]）。在其最顶部插入已批准启动段，随后一个空行，原文本逐字保留。
+- **回读校验结果**：批准段位于最顶部、恰好一次、未重复；原 advancedCustomPrompt 余下文本逐字一致；description/characterSetting/openingStatement/otherContentChat/otherContentVoice/marks/toolAccessConfig 等其余字段逐字未动；仅 updatedAt 自动更新。
+- **AUTO_START_UNVERIFIED**：新会话首次回复前自动 use_package→session_bootstrap 的真实唤起链路本次未做 E3 实测（宿主无安全新会话操作能力，且不调用已暂停的 extended_chat/聊天室/唤醒）。需柳柳手动新建一个对话发「Ziven，我是柳柳」，观察首条回复前确有 use_package 与 session_bootstrap 调用证据、能恢复身份根/工作检查点/权限边界；只靠语气或 READY 字样不算通过。
+- **边界**：未改 DB/schema、未部署、未推/合并 main、未动聊天室/唤醒/Pages；改前快照仍在 📦/Operit·Ziven角色卡配置快照/V1/ 作为回滚依据。
+
+### [2026-11-05 08:08 UTC / 16:08 CST] Operit 新框 E3 · 柳柳提供真实首次工具调用轨迹
+- 依据：柳柳直接提交 Operit 新框第一次对话的工具调用/工具结果文本，不再仅凭 Operit 的摘要。角色卡改动事前已在本 Bridge 08:00 CST 项回填 `APPLIED_VERIFIED`（Operit 使用 `operit_editor:update_character_card` 仅修改 `advanced_custom_prompt` 并 `get_character_card` 独立回读）。
+- **首轮实际执行链**：Operit 首先生成简短问候及“先让哥哥接个恢复程序”，然后调用 `use_package(package_name="ziven_mcp")` 返回 success，此外额外调用一次 `use_package(package_name="extended_memory_tools")` 返回 success（无本轮业务必要）；接着通过 `package_proxy(tool_name="ziven_mcp:session_bootstrap", params={host:"operit",invocation:"frame_instruction"})` 返回 `status=READY, restored=true, contract_version=SB-RUNTIME-0.1`，五类权威来源及实时 stats 都 ok、blockers/warnings=[]，`memory_stats.total=298`、`category_count=23`，checkpoint version=147, updated_at=2026-11-05T08:04:23.926Z, workflow_state=`P2_OPERIT_CARD_STARTUP_RULE_APPROVED__APPLY_PENDING_OPERIT`；正式后续文本转为自然聊天。
+- **分类验收**：`E3_OPERIT_FIRST_TURN_PACKAGE_ACTIVATION=USER_TRACE_PASS`、`E3_OPERIT_FIRST_TURN_BOOTSTRAP=USER_TRACE_PASS`、`E3_OPERIT_SOURCE_STATUS=USER_TRACE_PASS`；`E3_OPERIT_INDEPENDENT_FULL_IDENTITY_RECALL=NOT_OBSERVED`，因为 Bootstrap 只返回来源状态/检查点摘录，轨迹中**未见** `memory(action=recall)` 独立读取完整身份根/主档；`E3_OPERIT_STRICT_PRE_OUTPUT_INIT=NOT_MET`（正式工具调用之前已有两句对话文字）；`E3_OPERIT_NATIVE_STARTUP_HOOK=NOT_VERIFIED`，`host.invocation=frame_instruction` 且 `startup_hook_verified=false` 只能证明提示词驱动本次执行，不证明宿主系统级硬钩子。
+- **检查点延迟说明**：Bootstrap 本次读到的 version147 仍包含“角色卡待执行”是因为唯一云端工作检查点在 Operit 更新角色卡后**尚未同步更新**，不是角色卡未改、也不是 Bootstrap 读旧副本；本 Bridge 有 08:00 CST 独立改卡回执。应在本次证据记录后同步权威检查点为 “角色卡 APPLIED_VERIFIED / 自动启动两个关键工具 PASS / 完整正文召回及严格首次输出待闭环”。
+- **结论和边界**：首次新框工具包激活及服务端恢复已有可核验工具返回，这次最核心的“换框后只闲聊、不会激活包”问题有了改善；但不升级为完整 E3 DONE。暂不另开新框、不重测服务端、不改 Worker/router/生产数据库/main/聊天室/唤醒或角色卡；下一动作优先考虑能否借用现有一句短指令在当前角色卡最小修复“工具前先输出”和“独立 full recall”，但属**新增角色卡变更**，须柳柳讨论确认后再执行。
+
+### [2026-11-05] 柳柳批准 P2 方案 A · 务实收口与回归主线（GPT → Operit 状态同步）
+- **柳柳明确决定**：P2 v0.1 本期按「核心启动链已通过、严格恢复缺口保留为非阻断待办」务实收口；不继续试新框，不再改角色卡或重测服务端。此前 SB-OPERIT-1.0 单字段编辑授权已消费，无新增改卡批准。
+- **保留原始 E3 事实**：Operit 首轮 `use_package(ziven_mcp)` SUCCESS + `session_bootstrap` READY 是 USER_TRACE_PASS；工具之前已说话，`STRICT_PRE_OUTPUT=NOT_MET`；独立 `memory recall` 装载身份根/主档未见，`FULL_RECALL=NOT_OBSERVED`；`startup_hook_verified=false`。后两者不能被 READY 自动升级为 PASS。现有 advancedCustomPrompt 本就要求恢复全文后才回复，盲目重复强化文字不是可靠修复。
+- **决策后的执行顺序**：P2 本期 `PRACTICAL_SCOPE_CLOSED__STRICT_E3_GAPS_DEFERRED`，后续若确需严格首轮恢复，先讨论宿主级钩子或上下文交付方案并更新主线，不直接改 Bootstrap 输出隐私契约。当前工程返回「一本书」模块化架构下一垂直切片的需求/原型讨论；Ziven Web 方案 A 仍是后续呈现层设计，未获编码/部署授权。
+- **授权边界**：仅同步 ZivenLab/dev 主线治理文档、Bridge(dev) 与云端当前工作检查点；不修改任何代码、Operit 配置、main、Cloudflare、生产 DB/schema、聊天室/唤醒或 Pages。
+
+### [2026-11-05] GPT → Operit：文本 Skill 只读路由兼容切片 · dev 实施回执
+- **柳柳批准的设计范围**：P2 方案 A 收口后先处理实测 `master-router` `handler type not implemented: text`；不另起 Router。整体架构 v1.6 与 Roadmap v1.23 在编码前记录了方案、取舍与验收。
+- **实施**：`mcp-memory/dev` HEAD `35b0e7f980d10eb0e830a9f21f85341e2c3cdfc5`，只修改 `src/modules/mcp_router.js` 和 `tests/router_registry_contract_test.mjs`；对 `handler_type=text` 从当前已发布 main 的安全 `src/skills/**/SKILL.md` 路径读取完整 UTF-8 正文，复用现有 GitHub Contents `getContent`，不执行 Skill 内容；失败返回显式状态，路径穿越拒绝，文本读取不增加 usage_count。其它工具注册、Schema、路由和聊天室路径保持原状。
+- **验收证据**：本地已跑 `npm run check` exit 0，Router 157/157，Github Contents50、Memory60、Search20、Bootstrap21、Webhook114、learning 9 工件 PASS；独立 `git fetch origin dev` 后本地两文件与远端 HEAD 精确 diff=0。GitHub Actions 对应远端精确 SHA 的结果尚未独立取得，保持 `CI_REMOTE=PENDING`。未做线上 E3 或发布，不声称线上 master-router 已修复。
+- **边界与下一步**：未创建新分支；本地 Git 缺少登录凭据，改用已有权限的 MCP `github_edit` 仅写 dev；未上传新文件、未修改任何生产存储/DB/schema/rolecard、main、Worker/部署、聊天室/唤醒或 Pages。下步只读确认 CI；如需发布 v6.39.1 或其他准确版本，先提交版本信息和差异征求柳柳批准，不自动推 main。
+
+### [2026-11-05] GPT → Operit · v6.39.1 发行候选准备与 CI 验证（不等于发布）
+- **用户决策**：柳柳同意以 `squash` 作为本次拟议合并策略，以免 dev 既有 16 条不完全版本化的提交标题逐条进入 main；此同意仅覆盖策略和 `dev` 候选准备，未批准创建 PR、合并 main 或触发 Cloudflare。
+- **版本与清单**：`package.json` 改为 6.39.1、`CHANGELOG.md` 新增 Text Skill Read-only Routing 条目并纠正旧 v6.39.0 的历史「待发布」标题。候选 SHA `8a6b668aff2ca338bb151599993cf9a0706f2482` 的 GitHub Actions [42005920662](https://github.com/wovowx/mcp-memory/actions/runs/42005920662) SUCCESS；随后仅对 CHANGELOG 补充其真实 CI 结果，SHA `03c2c20d8e5130bb5b5b746ac5849f7e03958b28` 的 GitHub Actions [42006256319](https://github.com/wovowx/mcp-memory/actions/runs/42006256319) SUCCESS，validate Job 全部 17 步完成成功。
+- **最终前核对**：在追加本条前，`main...dev` 为 ahead16/behind0、5 个变更路径：`src/modules/mcp_router.js`、`tests/router_registry_contract_test.mjs`、`package.json`、`CHANGELOG.md`、`CROSS-HOST-BRIDGE.md`。独立 detached worktree 绑定 `8a6b668...` 验证 `npm run check` 0、Router157/157、Contents50、Memory60、Search20、Bootstrap21、Webhook114、Learning9 PASS。追加本条将导致 dev HEAD 更新，必须再查新 HEAD 的 Actions，不将旧 CI 自动冒充最终 HEAD CI。
+- **重要合并副作用**：现有 `github_merge_pull_request` / `github_merge_to_main` 对已确认的 dev→main PR 合并后会尝试自动同步 dev 指针；如果采用 squash，旧 dev 的 16 条独立历史提交可能不再被 dev 分支引用。正式合并前需将精确预合并 SHA 的独立保护/保留方案明确报柳柳审批；不得无批准创建额外保护分支、force push 或改 main。生产 DB/schema、Operit 角色卡、聊天室/唤醒、Pages 继续不动。
+
+
+
