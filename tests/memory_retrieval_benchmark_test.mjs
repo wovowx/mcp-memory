@@ -18,6 +18,7 @@ const expect = (ok, message) => { if (!ok) failures.push(message); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const ids = rows => rows.map(row => row.id);
 const isAssociation = row => associationReasons.has(row?._match?.reason);
+const staleIds = new Set(fixture.memories.filter(row => row.status !== 'active' || row.valid_to != null).map(row => row.id));
 const bigrams = value => {
   const chars = Array.from(String(value || '').toLocaleLowerCase());
   return new Set(chars.slice(0, -1).map((char, index) => char + chars[index + 1]));
@@ -106,8 +107,10 @@ try {
   }
 
   globalThis.fetch = async (input, options = {}) => {
-    const method = String(options.method || 'GET').toUpperCase();
-    const url = new URL(String(input));
+    const requestMethod = input && typeof input === 'object' && 'method' in input ? input.method : undefined;
+    const requestUrl = input && typeof input === 'object' && 'url' in input ? input.url : input;
+    const method = String(options.method || requestMethod || 'GET').toUpperCase();
+    const url = new URL(String(requestUrl));
     requests.push({ method, pathname: url.pathname });
     if (method !== 'GET') throw new Error('benchmark blocked non-GET request: ' + method);
     if (url.origin !== env.SUPABASE_URL) throw new Error('benchmark blocked external origin: ' + url.origin);
@@ -140,6 +143,13 @@ try {
     const allIds = ids(results);
     const forbidden = allIds.filter(id => (query.forbidden_ids || []).includes(id));
     const expectedDirectOrder = query.expected_direct_order || query.expected_direct_ids || [];
+    const metricScoped = (query.metric_roles || []).some(role => role !== 'structure');
+    expect(query.metric_scope === metricScoped, query.id + ': metric_scope does not match metric_roles');
+    for (const id of query.known_nonrelevant_ids || []) {
+      expect(directIds.includes(id), query.id + ': known non-relevant decoy missing: ' + id);
+      expect(!(query.expected_direct_ids || []).includes(id), query.id + ': decoy incorrectly marked relevant: ' + id);
+    }
+    expect(!allIds.some(id => staleIds.has(id)), query.id + ': an expired/deleted fixture memory was returned');
     expect(same(directIds, expectedDirectOrder), query.id + ': direct IDs mismatch; got ' + JSON.stringify(directIds));
     expect(same(associationIds, query.expected_association_ids || []), query.id + ': association IDs mismatch; got ' + JSON.stringify(associationIds));
     expect(forbidden.length === 0, query.id + ': forbidden IDs returned: ' + forbidden.join(','));
