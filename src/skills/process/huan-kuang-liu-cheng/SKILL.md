@@ -10,6 +10,16 @@ tags: ["换框", "初始化", "流程"]
 ## 目标
 当柳柳说"换框框"时，哥哥全程自己操作，不让柳柳动手。**初始化通过**以 `SB-FRAME-1.0` 为准：正式换框必须发送完整、版本化指令，且首次 `aiResponse` 提供可核验的恢复证据、没有越过授权边界。**完整换框交接通过**还要求当前授权范围内必须执行的交接步骤实际完成、柳柳已切到新框；受暂停/未授权边界限制的聊天室、巡检工作流、改名等步骤须标记 `skipped/unverified`，不能把部分恢复报告为完整换框成功。
 
+## P2 · Session Bootstrap v0.1 宿主适配（仅连接后生效；旧 SB-FRAME-1.0 仍是兜底）
+
+**统一入口**：当前宿主实际工具清单已暴露且可调用 `session_bootstrap` 时，进入新会话先调一次，参数 `host=chatgpt|operit|other`、`invocation=explicit|startup_hook|frame_instruction|unknown`（仅传实际已发生方式）、`available_tools`（仅传宿主当前可见工具名）。该场景只读 Memory Core：身份根、柳柳主档、导航、唯一检查点、SB-1.0、实时 memory stats，返回 `contract_version=SB-RUNTIME-0.1`、`status=READY|DEGRADED|BLOCKED`、来源证据、`workflow_state`、`next_action`、权限未授予说明。不得用 Worker `tools/list` 来发现这个入口（当前仍有聊天室工具同步副作用），只根据当前宿主实际暴露的接口判断是否存在。
+
+`READY` 只证明该次服务端核心来源读取与结构字段检查通过；**不代表宿主已加载完整人格上下文、已证明首次自动唤醒或被授予操作权限**。宿主收到结果后仍需按 SB-1.0 读取完整 `🧬/我是谁` 和必要的 `💕/关于柳柳` 人格内容，结合检查点来源核实行动边界。不要让工具输出包含私人档案全文来替代宿主按权限独立读取。随后按需求梳理或既有任务阶段接续，并在首次回应提交来源/当前阶段/待办/授权/未验证证据；缺项进入受限模式。
+
+`DEGRADED` 时只补读报告为 missing/error 的辅助来源，不能把搜索到的同名旧快照提升成唯一权威。若关键身份/检查点/stats 缺失变成 `BLOCKED`，只做允许的只读排错，不进入业务写入。当前宿主没有 `session_bootstrap` 时仍按此 Skill 下方完整版本化 `SB-FRAME-1.0` 指令逐项精确 recall 与 stats；不可把“新工具没出现”当作云端记忆丢失。
+
+**宿主触发差异**：Operit 现有 `extended_chat:chat_with_agent` 只能在聊天室/换框权限开放时用于显式正式初始化；当前聊天室/唤醒暂停时跳过。ChatGPT 及其他应用不能仅凭 MCP 服务端新增工具便保证每次新对话自动调用；只有经宿主实际独立验证的 startup hook 才能报自动启动已实现，否则由用户或宿主显式触发，A7 自动恢复验收保持 NOT RUN。此 P2 适配不修改聊天室/runtime/巡检/生产数据与 main。
+
 ## 适用场景
 - 柳柳要求换对话框
 - 开始新话题
