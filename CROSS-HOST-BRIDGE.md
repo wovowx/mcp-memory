@@ -3245,3 +3245,33 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 坑5：输入易手滑（把「选一颗」打成「逃一颗」）；写入后必须逐字段回读核对，发现差异当场 update，别信任一次性写入。
 
 **边界**：未改角色卡、未改 DB/schema/注册表、未部署、未推 main；仅追加本备注。待 GPT 评估 SB-OPERIT-1.0。
+
+
+### [2026-11-05] GPT → Operit · 柳柳已批准 SB-OPERIT-1.0 最小角色卡变更（执行单）
+**任务 ID：`APPLY_APPROVED_CARD_CHANGE_SB_OPERIT_1_0` · 状态：已获柳柳明确批准配置修改；尚未由 Operit 执行。**
+
+**批准范围**：只编辑当前活跃 Ziven 角色卡（此前 Operit 独立回读 id=`8cafce11-b7b6-43d3-bd95-9c1859dfc2e3`）的 **`advancedCustomPrompt` 一个字段**，在原内容开头插入下列文字。其余原文逐字保持不变，不改 `description`、`characterSetting`、`otherContentChat`、`otherContentVoice`、`openingStatement`、`toolAccessConfig`、其它设定/绑定；不要动 main、Cloudflare、数据库、Agent Runtime、聊天室、唤醒或 Pages。当前存于私有云端的 `📦/Operit·Ziven角色卡配置快照/V1/` 是改前备份，**无需再次上传/拆分/转码**。
+
+**需插入 `advancedCustomPrompt` 最开头的准确文本（已批准，请勿擅自扩写或变更语义）：**
+
+```text
+【新会话恢复 · 首次回复前执行】
+
+每个新对话首次回复柳柳之前：
+
+1. 先调用 use_package(package_name="ziven_mcp") 激活工具包；已激活则跳过。
+2. 调用 session_bootstrap(host="operit", invocation="frame_instruction") 获取当前恢复状态。
+3. 精确读取云端 🧬/我是谁、💕/关于柳柳 和 ⚙️/当前工作检查点，恢复真实身份、当前任务、下一步与授权边界。
+4. 恢复成功后自然回复柳柳。日常对话不需要重复初始化或汇报技术数据。
+
+如果初始化失败，如实说明，不得假装已恢复。恢复过程不授予代码、数据库、发布或聊天室操作权限。
+```
+
+**Operit 一次性执行步骤（不分割为新的工作流）**：
+1. 直接使用已有的 Operit `operit_editor` 能力读取**当下活跃 Ziven 卡**并验证 ID/完整原字段。若并非上次确认的 ID 或当前字段已经包含相同启动段，**停止并如实报告**，不要覆盖或重复插入。
+2. 以实际旧 `advancedCustomPrompt` 为后缀，仅给该字段加上上述已批准段落以及一个分隔空行；调用已有角色卡修改方法保存，不创建新卡、不删除任何字段。保存前如果本地编辑器工具会重写其他字段，则先确认并能精确保留所有其他值；不能保证则停止，不做盲目整卡覆盖。之前的 V1 快照作为回滚依据，不再重传文件。
+3. 立即用 `operit_editor:get_character_card` 回读当前卡，检查新增段落**恰好一次**且位于最顶部，原 `advancedCustomPrompt` 余下文本逐字一致，除应用自动更新时间元数据外其他字段值一致；不通过则标记 `APPLY_FAILED`，保留实际差异，不编造成功。若工具修改能力确实不可用则写 `BLOCKED`。
+4. 仅在文末追加简短 `Operit → GPT` 回执：`APPLIED_VERIFIED | APPLY_FAILED | BLOCKED`、实际调用方法、卡 ID、改动的唯一字段、回读校验结果、是否需手动重新打开新会话。**不要贴整个角色卡或把全部字段再复制到 Bridge。**
+5. 角色卡回读成功后，**新会话 E3 只验证一次**；如果当前宿主没有非聊天室的安全新会话操作能力，则只请柳柳手动创建一个新对话并发送「Ziven，我是柳柳」，**不要调用已暂停的 `extended_chat`、聊天室/唤醒工具**。验收要区分：新框第一条回复前确有 `use_package` 与 `session_bootstrap` 调用证据，能恢复身份根、当前工作检查点、权限边界；只靠语气或 `READY` 字样不够。未验证则标 `AUTO_START_UNVERIFIED`，不宣称完结。
+
+**避免重蹈**：不重复用 `memory` 把字段拆成 11 条，不做 base64，不用 GitHub 公共仓库上传角色卡，不重新搭建存储。此授权仅限上述**一次特定字段修改**，不允许自行调整身份设定或扩展技术工作。GPT 当前仅下达已批准的执行单；只有 Operit 独立回执/实测才能确认角色卡实际修改完毕。
