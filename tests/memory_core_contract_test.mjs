@@ -395,6 +395,92 @@ console.log('\n[Memory association v0.1 contracts]');
 }
 
 
+console.log('\n[Retrieval reliability contracts]');
+{
+    const hit = {
+        id: 'reliability-hit', key: 'core/project-plan',
+        value: 'project plan confirmed', status: 'active', valid_to: null,
+        created_at: '2026-11-05T00:00:00Z'
+    };
+    const successFetch = async url => {
+        const requestUrl = String(url);
+        if (requestUrl.includes('/rest/v1/memories?select=')) {
+            return { ok: true, status: 200, json: async () => [hit] };
+        }
+        if (requestUrl.includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        throw new Error('unexpected reliability request: ' + requestUrl);
+    };
+
+    globalThis.fetch = successFetch;
+    const ok = await searchMemoriesWithStatus(env, 'project plan');
+    check('both retrieval sources successful with a hit returns OK',
+        ok.status === 'OK' && ok.results[0]?.id === hit.id &&
+        ok.sources.memories.status === 'ok' && ok.sources.aliases.status === 'ok');
+
+    globalThis.fetch = successFetch;
+    const empty = await searchMemoriesWithStatus(env, 'needle-that-does-not-exist');
+    check('both retrieval sources successful without a hit returns EMPTY',
+        empty.status === 'EMPTY' && empty.results.length === 0);
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) {
+            return { ok: false, status: 503, json: async () => ({}) };
+        }
+        return { ok: true, status: 200, json: async () => [hit] };
+    };
+    const partialHttp = await searchMemoriesWithStatus(env, 'project plan');
+    check('alias HTTP failure returns PARTIAL and preserves direct memory hits',
+        partialHttp.status === 'PARTIAL' && partialHttp.results[0]?.id === hit.id &&
+        partialHttp.sources.aliases.error_code === 'http_error');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) throw new Error('alias network down');
+        return { ok: true, status: 200, json: async () => [hit] };
+    };
+    const partialNetwork = await searchMemoriesWithStatus(env, 'project plan');
+    check('alias network failure returns PARTIAL instead of discarding primary results',
+        partialNetwork.status === 'PARTIAL' && partialNetwork.results.some(row => row.id === hit.id) &&
+        partialNetwork.sources.aliases.error_code === 'network_error');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => ({ invalid: true }) };
+        }
+        return { ok: true, status: 200, json: async () => [hit] };
+    };
+    const partialShape = await searchMemoriesWithStatus(env, 'project plan');
+    check('alias invalid response shape is PARTIAL, not EMPTY',
+        partialShape.status === 'PARTIAL' && partialShape.sources.aliases.error_code === 'invalid_response_shape');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        return { ok: false, status: 503, json: async () => ({}) };
+    };
+    const errorHttp = await searchMemoriesWithStatus(env, 'project plan');
+    check('required memories HTTP failure returns ERROR and no results',
+        errorHttp.status === 'ERROR' && errorHttp.results.length === 0 &&
+        errorHttp.sources.memories.error_code === 'http_error');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        return { ok: true, status: 200, json: async () => ({ invalid: true }) };
+    };
+    const errorShape = await searchMemoriesWithStatus(env, 'project plan');
+    check('required memories invalid response shape returns ERROR',
+        errorShape.status === 'ERROR' && errorShape.sources.memories.error_code === 'invalid_response_shape');
+
+    globalThis.fetch = successFetch;
+    const legacy = await searchMemories(env, 'project plan');
+    check('legacy array retrieval facade remains compatible and exposes non-enumerable status',
+        Array.isArray(legacy) && legacy[0]?.id === hit.id && legacy.search_status === 'OK');
+}
+
 console.log('\n[Lifecycle relocation contracts]');
 {
     const source = {
