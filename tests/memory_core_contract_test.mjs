@@ -887,8 +887,9 @@ console.log('\n[Transfer contracts]');
     const typedImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && call.body?.key === 'core/type-new');
     const nullImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && call.body?.key === 'core/type-null');
     check('import applies explicit legal type to existing and new memories',
-        typedImport.ok && typedImport.updated === 1 && typedImport.added === 1 &&
-        typedImportPatch?.body?.type === 'agreement' && typedImportInsert?.body?.type === 'quote');
+        typedImport.ok && typedImport.updated === 1 && typedImport.added === 2 &&
+        typedImportPatch?.body?.type === 'agreement' && typedImportInsert?.body?.type === 'quote' &&
+        nullImportInsert && !Object.prototype.hasOwnProperty.call(nullImportInsert.body, 'type'));
     calls.length = 0;
     const invalidTypeImport = await importMemories(env, [
         { key: 'core/invalid-import', value: 'bad type', type: 'opinion' }
