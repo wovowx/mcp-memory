@@ -3310,5 +3310,11 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **最终前核对**：在追加本条前，`main...dev` 为 ahead16/behind0、5 个变更路径：`src/modules/mcp_router.js`、`tests/router_registry_contract_test.mjs`、`package.json`、`CHANGELOG.md`、`CROSS-HOST-BRIDGE.md`。独立 detached worktree 绑定 `8a6b668...` 验证 `npm run check` 0、Router157/157、Contents50、Memory60、Search20、Bootstrap21、Webhook114、Learning9 PASS。追加本条将导致 dev HEAD 更新，必须再查新 HEAD 的 Actions，不将旧 CI 自动冒充最终 HEAD CI。
 - **重要合并副作用**：现有 `github_merge_pull_request` / `github_merge_to_main` 对已确认的 dev→main PR 合并后会尝试自动同步 dev 指针；如果采用 squash，旧 dev 的 16 条独立历史提交可能不再被 dev 分支引用。正式合并前需将精确预合并 SHA 的独立保护/保留方案明确报柳柳审批；不得无批准创建额外保护分支、force push 或改 main。生产 DB/schema、Operit 角色卡、聊天室/唤醒、Pages 继续不动。
 
+### [2026-11-05] GPT → Operit · v6.39.1 Text Skill 正式发布/部署/E3 闭环
+- **柳柳单独发布授权**：已批准 v6.39.1 的一条恢复引用、squash 合并 main、Cloudflare 自动部署与上线后只读测试；不附带生产 DB/schema、聊天室/唤醒、Operit 角色卡或 Pages 变更授权。
+- **精确发布证据**：候选 `mcp-memory/dev=ac9992f3e8c2b6c3a602b0501809b224b08472cb`，原 `main=580fa4b0f02617b6b1adafa0b3e6aa9962d07baa`（ahead18/behind0、5文件），候选 Actions [42006453028](https://github.com/wovowx/mcp-memory/actions/runs/42006453028) SUCCESS。创建后独立验证唯一 `recovery/v6.39.1-premerge-20261105` 精确指向 `ac9992f3`。PR [#326](https://github.com/wovowx/mcp-memory/pull/326) head=dev/base=main、5文件，经 squash 合并并回读 `merged=true`，`main=dev=e0b0fc43690d543d5ddda754b08b57f55cf22037`；main learning-regression [42007801917](https://github.com/wovowx/mcp-memory/actions/runs/42007801917) SUCCESS。
+- **Worker 与真实 E3**：Cloudflare build `a8cc9d06-bd9a-494e-b439-4697a7518dc4`，deployment `26774ef7`，version #532，`verify_main=VERIFIED`。生产 `ziven_mcp:master_router({})` 只读调用返回 `TEXT_SKILL_LOADED: master-router`、`Source: wovowx/mcp-memory@main/src/skills/master-router/SKILL.md` 和完整文件文本，旧 `handler type not implemented: text` 未出现；仅判该实测路径 PASS。GitHub Pages [42007801900](https://github.com/wovowx/mcp-memory/actions/runs/42007801900) 仍 FAILURE，系冻结方向既有故障，与 Worker #532 VERIFIED 区分。
+- **后续与权限**：此条仅在合并后 `mcp-memory/dev` 追加纯交接文档，因此 dev 可能比 main 多一条文档提交，不将它冒认为新代码版本或生产部署。ZivenLab/dev Roadmap v1.26、当前项目状态 version160 同步。P2 严格恢复缺口仍列待办；Ziven Web 方案 A 暂只设计。**当前回到「一本书」架构下一切片需求/原型讨论；无新的代码/main/部署授权。**
+
 
 
