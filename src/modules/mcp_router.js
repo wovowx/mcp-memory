@@ -434,10 +434,11 @@ export async function handleMCPRequest(body, env) {
         return { ok: true, data: { jsonrpc: '2.0', id, result: { protocolVersion: negotiated, capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'ZivenAgent', version: '6.5.0' } } } };
     }
     if (method === 'tools/list') {
-        await syncChatTools(env);
+        // Discovery must be side-effect-free: never register paused chat tools
+        // (or write any registry rows) merely because a host refreshes its list.
         const skills = await getCachedSkills(env);
         const tools = skills.map(s => ({ name: s.name, description: s.description, inputSchema: getExposedInputSchema(s) }));
-        // Static tool needs no Supabase registry write; existing tools/list side effects remain a known separate issue.
+        // Recovery workflows remain discoverable without registry writes.
         if (!tools.some(tool => tool.name === SESSION_BOOTSTRAP_TOOL.name)) {
             tools.push({ name: SESSION_BOOTSTRAP_TOOL.name, description: SESSION_BOOTSTRAP_TOOL.description, inputSchema: SESSION_BOOTSTRAP_TOOL.input_schema });
         }
