@@ -13,7 +13,7 @@ function check(label, condition) {
     passed++;
     console.log('  ✅ ' + label);
 }
-const currentText = '【2026-11-05 latest】\n- active_focus: P2跨宿主恢复\n- **workflow_state=P2_BOOTSTRAP_IMPLEMENTING**。next_action：落实合同测试\n- next_action: 验证恢复接口\n--- 旧工作检查点（仅历史） ---\n- workflow_state=OLD_STATE\n- next_action: 不应使用历史任务';
+const currentText = '【2026-11-05 latest】\n- active_focus: P2跨宿主恢复\n- do_not_repeat: 不重复P1审计\n- **workflow_state=P2_BOOTSTRAP_IMPLEMENTING**。next_action：落实合同测试\n- next_action: 验证恢复接口\n--- 旧工作检查点（仅历史） ---\n- workflow_state=OLD_STATE\n- next_action: 不应使用历史任务';
 const sourceValues = {
     identity: 'PRIVATE_IDENTITY_MUST_NOT_LEAK',
     profile: 'PRIVATE_PROFILE_MUST_NOT_LEAK',
@@ -72,7 +72,9 @@ check('all authoritative current sources and current memory stats give READY',
     && ready.memory_stats.total === 5 && ready.memory_stats.category_count === 5);
 check('explicit checkpoint phase and next action are recovered',
     ready.current_work.workflow_state === 'P2_BOOTSTRAP_IMPLEMENTING'
-    && ready.current_work.next_action?.includes('验证恢复接口'));
+    && ready.current_work.next_action?.includes('验证恢复接口')
+    && ready.current_work.active_focus === 'P2跨宿主恢复'
+    && ready.current_work.do_not_repeat === '不重复P1审计');
 check('bootstrap never grants code, merge, deployment or DB permissions',
     ready.permissions.granted_by_bootstrap === false && ready.permissions.permitted_next_step === 'verify_scope_and_approval');
 check('private identity and profile contents are not emitted',
@@ -118,6 +120,20 @@ calls = mockReads({ overrides: { [BOOTSTRAP_KEYS.checkpoint]: {
 const missingFields = await buildSessionBootstrap(env);
 check('incomplete current checkpoint is not treated as fully restored',
     missingFields.status === 'DEGRADED' && missingFields.warnings.includes('checkpoint_fields_incomplete'));
+
+calls = mockReads({ overrides: { [BOOTSTRAP_KEYS.checkpoint]: {
+    ...allRecords[BOOTSTRAP_KEYS.checkpoint], updated_at: '2026-01-01T00:00:00Z'
+} } });
+const stale = await buildSessionBootstrap(env);
+check('checkpoint older than 30 days is DEGRADED and cannot claim READY',
+    stale.status === 'DEGRADED' && stale.warnings.includes('checkpoint_stale'));
+
+calls = mockReads({ overrides: { [BOOTSTRAP_KEYS.checkpoint]: {
+    ...allRecords[BOOTSTRAP_KEYS.checkpoint], updated_at: 'not-an-iso-date'
+} } });
+const invalidTimestamp = await buildSessionBootstrap(env);
+check('unverifiable checkpoint time degrades recovery evidence',
+    invalidTimestamp.status === 'DEGRADED' && invalidTimestamp.warnings.includes('checkpoint_timestamp_unverified'));
 
 calls = mockReads({ errorKey: BOOTSTRAP_KEYS.protocol });
 const brokenProtocol = await buildSessionBootstrap(env);
