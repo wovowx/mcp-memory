@@ -2,6 +2,16 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.36.2] - 2026-11-05
+### Fixed（Branch/PR 自动同步保护）
+- 仅在从 GitHub PR metadata 确认 PR 已合并且 head.ref=dev、base.ref=main 时，才允许合并后同步 dev。
+- scoped release、hotfix、其他 head/base、PR metadata 读取失败/解析失败/字段不完整、未确认 merged=true 或 main SHA 无效时均 fail closed，不移动 dev。
+- 两个合并入口统一传递 PR 编号并执行同一守门逻辑；工具名、Schema 与既有调用入口保持不变。
+
+### Regression
+- 将 11 项 Branch/PR auto-sync 合同测试纳入 main 已有的 GitHub Contents contract 测试入口；不修改 CI workflow。
+- 本候选 PR 的 E1/E2 CI：待运行（NOT RUN）；真实 GitHub PR/ref auto-sync E3：NOT RUN。
+
 ## [v6.36.1] - 2026-11-04
 ### Fixed
 - 修复 Cloudflare Worker 中 GitHub Contents 请求调用全局 fetch 时丢失 receiver 导致的 `Illegal invocation`。
