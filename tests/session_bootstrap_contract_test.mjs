@@ -256,7 +256,8 @@ check('a missing recorded decision cannot be presented as verified READY context
 calls = mockReads({ failAliases: true });
 const relatedUnavailable = await buildSessionContext(env, { topic: '项目笔记' });
 check('related retrieval errors degrade the optional context without inventing results',
-    relatedUnavailable.status === 'DEGRADED' && relatedUnavailable.related_status === 'unavailable');
+    relatedUnavailable.status === 'DEGRADED' && relatedUnavailable.related_status === 'partial' &&
+    relatedUnavailable.related_sources?.aliases?.error_code === 'network_error');
 
 calls = mockReads();
 const tooLong = await buildSessionContext(env, { topic: 'A'.repeat(121) });
