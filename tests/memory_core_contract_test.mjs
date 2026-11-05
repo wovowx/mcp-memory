@@ -289,6 +289,8 @@ console.log('\n[Retrieval contracts]');
     check('one-hop related memory is included after direct match',
         matches.some(memory => memory.id === 'related') &&
         matches.findIndex(memory => memory.id === 'related') > matches.findIndex(memory => memory.id === 'rule'));
+    check('explicit association carries the source key',
+        matches.find(memory => memory.id === 'related')?._match?.related_from_key === '💕/做技术不劝柳柳休息');
     check('unrelated candidate is not included', !matches.some(memory => memory.id === 'decoy'));
 
     const negative = await searchMemories(env, '昨晚看的火星电影叫什么');
@@ -297,6 +299,80 @@ console.log('\n[Retrieval contracts]');
     const exact = await searchMemories(env, '做技术不劝柳柳休息');
     check('exact phrase is ranked as a direct match',
         exact[0]?.id === 'rule' && exact[0]?._match?.reason !== 'core_ngram_fallback');
+}
+
+console.log('\n[Memory association v0.1 contracts]');
+{
+    const sourceKey = '⚙️/网关选型记录';
+    const rows = [
+        { id: 'seed', key: sourceKey, value: '网关选型决定采用独立模型网关',
+            entities: ['Ziven Web', 'Cloudflare', '柳柳'],
+            related_memory_ids: ['linked', 'expired', 'linked'],
+            status: 'active', valid_to: null, created_at: '2026-11-01T00:00:00Z' },
+        { id: 'linked', key: '⚙️/通话回声', value: '语音回声排查结论',
+            status: 'active', valid_to: null, created_at: '2026-10-30T00:00:00Z' },
+        { id: 'entity-best', key: '⚙️/页面部署', value: '部署入口规划',
+            entities: ['Ziven Web', 'Cloudflare'],
+            status: 'active', valid_to: null, created_at: '2026-11-02T00:00:00Z' },
+        { id: 'entity-next', key: '⚙️/游戏设计', value: '小游戏展示入口',
+            entities: ['Ziven Web'],
+            status: 'active', valid_to: null, created_at: '2026-11-03T00:00:00Z' },
+        { id: 'entity-overflow', key: '⚙️/旧费用估算', value: '预算估算',
+            entities: ['Ziven Web'],
+            status: 'active', valid_to: null, created_at: '2026-10-01T00:00:00Z' },
+        { id: 'generic-only', key: '💕/饮品习惯', value: '无关的日常偏好',
+            entities: ['柳柳', '项目', 'Ziven'],
+            status: 'active', valid_to: null, created_at: '2026-11-05T00:00:00Z' },
+        { id: 'expired', key: '⚙️/过期方案', value: '被取代的旧设计',
+            entities: ['Ziven Web'], status: 'active', valid_to: '2026-11-03T00:00:00Z',
+            created_at: '2026-11-04T00:00:00Z' },
+        { id: 'deleted', key: '⚙️/删除的意见', value: '废弃内容',
+            entities: ['Ziven Web'], status: 'deleted', valid_to: null,
+            created_at: '2026-11-04T00:00:00Z' },
+        { id: 'unrelated', key: '⚙️/无关项目', value: '互不相关的资料',
+            entities: ['Other Project'], status: 'active', valid_to: null,
+            created_at: '2026-11-04T00:00:00Z' }
+    ];
+    const methods = [];
+    globalThis.fetch = async (url, options = {}) => {
+        const requestUrl = String(url);
+        methods.push(options.method || 'GET');
+        if (requestUrl.includes('/rest/v1/memories?select=')) {
+            return { ok: true, status: 200, json: async () => rows };
+        }
+        if (requestUrl.includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        if (requestUrl.includes('/rest/v1/search_history?')) {
+            return { ok: false, status: 404, json: async () => ({}) };
+        }
+        throw new Error('unexpected association request: ' + requestUrl);
+    };
+
+    const hits = await searchMemories(env, '网关选型');
+    check('direct result is followed by at most three distinct associations',
+        hits.length === 4 && hits.map(row => row.id).join(',') === 'seed,linked,entity-best,entity-next');
+    check('explicit linked memory has source and one-hop reason',
+        hits[1]?._match?.reason === 'related_memory' &&
+        hits[1]?._match?.related_from_key === sourceKey);
+    check('shared entity links select business evidence and include provenance',
+        hits[2]?._match?.reason === 'shared_entity' &&
+        hits[2]?._match?.matched_terms?.includes('Cloudflare') &&
+        hits[2]?._match?.related_from_key === sourceKey);
+    check('generic identifiers never act as sole association evidence',
+        !hits.some(row => row.id === 'generic-only'));
+    check('expired, deleted, overflow and unrelated memories are excluded',
+        !hits.some(row => ['expired', 'deleted', 'entity-overflow', 'unrelated'].includes(row.id)));
+    check('no direct match does not fabricate an entity association',
+        (await searchMemories(env, '彻底不存在的查询词')).length === 0);
+    check('the association retrieval primitive only performs reads',
+        methods.every(method => method === 'GET'));
+
+    const output = await handleMemoryTool('memory', { action: 'search', keyword: '网关选型' }, env);
+    check('existing memory.search facade displays association source and shared entity',
+        output.includes('[match_reason=shared_entity]') &&
+        output.includes('[关联来源=' + sourceKey + ']') &&
+        output.includes('[共同实体=Ziven Web、Cloudflare]'));
 }
 
 
