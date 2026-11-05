@@ -915,7 +915,7 @@ console.log('\n[Transfer contracts]');
 console.log('\n[Transfer facade parity contracts]');
 {
     const rows = [
-        { id: 'current', key: 'core/current', value: 'current body', status: 'active', valid_to: null, created_at: '2026-11-03T00:00:00Z', updated_at: '2026-11-03T00:00:00Z' },
+        { id: 'current', key: 'core/current', value: 'current body', type: 'quote', status: 'active', valid_to: null, created_at: '2026-11-03T00:00:00Z', updated_at: '2026-11-03T00:00:00Z' },
         { id: 'expired', key: 'core/expired', value: 'expired body', status: 'active', valid_to: '2026-11-02T00:00:00Z', created_at: '2026-11-01T00:00:00Z' },
         { id: 'deleted', key: 'core/deleted', value: 'deleted body', status: 'deleted', valid_to: '2026-11-02T00:00:00Z', created_at: '2026-11-01T00:00:00Z' }
     ];
