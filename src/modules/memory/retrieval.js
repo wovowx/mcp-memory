@@ -127,7 +127,7 @@ function readSourceFailure(error) {
     };
 }
 
-export async function searchMemoriesWithStatus(env, keyword) {
+export async function searchMemories(env, keyword) {
     const query = String(keyword || '').trim();
     if (!query) throw new TypeError('search keyword is required');
 
