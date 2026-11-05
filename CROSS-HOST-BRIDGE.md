@@ -3351,6 +3351,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **严格等级**：`CHATGPT_PLUGIN_TOOL_DISCOVERY=PASS`、`CHATGPT_HOST_EXPLICIT_SESSION_CONTEXT_E3=PASS`。不代表 ChatGPT 新对话会自动调用、首次回复前完成全量身份根/柳柳主档正文加载或 P2 严格跨宿主恢复已全通过；`startup_hook_verified=false`、可选 topic 宿主 E3 NOT RUN、Operit 本轮未重测。
 - **下一行动**：结束 v6.40.1 已批准的发布＋插件刷新闭环，返回「一本书」架构主线，根据整体架构与 Roadmap 讨论下一可复用垂直切片原型；未来 main/部署仍需新版本批准。此次只在 dev 交接文档新增本回执，不修改生产代码/角色卡/数据库/聊天室或 Web。
 
+### [2026-11-05] Memory Association v0.1 · v6.41.0 只在 dev 实现，E1/E2/CI PASS（GPT → Operit）
+- **批准依据**：柳柳看到「命中一条能联想起相关几条」需求草案 v0.1、六条范围与五项验收文字原型后明确回复「同意」，选择先做记忆关联，不插队重开新框严格恢复。实际 main 已有 src/modules/github/branch_pr.js，不重复拆分旧候选模块。已按流程在编码前更新 wovowx/ZivenLab/dev/governance/整体架构.md v1.12、roadmap.md v1.34 和状态驾驶舱 version166。
+- **本次 dev 代码范围**：src/modules/memory/retrieval.js 复用现有当前态检索和一跳显式 related_memory_ids，扩展共享业务 entities（排除仅通用称谓的误关联），保证直接命中优先、显式优先、关联补充≤3、去重、源 key/具体共同实体、已失效不返回；src/tools/memory_unified.js 在已有 memory.search Facade 显示 match_reason、来源和实体，工具名/Schema 不变；tests/memory_core_contract_test.mjs 增8项 Mock 合同；package.json v6.41.0、CHANGELOG.md 加发版候选记录。**没有新增模块、工具或数据库表，时序/情绪关联未改。**
+- **可复核测试**：独立 detached dev 基线 fc4eb7cd570da1e89cffe0f47361cddefbd0f619 下实现，本地 npm run check exit0、Memory Core **69/69**、GitHub Contents **50/50**、Search History **20/20**、Router/Patch **162/162**、Bootstrap/Session Context **36/36**、learning 9工件 PASS。五个文件分别经 github_edit(dev) 写入，Verified=true；本地代码与拉回的远端 dev 仅遗留原文件 EOF 末尾换行风格差异（git diff --ignore-space-at-eol 为空），语义内容一致。
+- **远端 E1/E2 CI**：最终五文件源码/版本候选 SHA=89aa2f05197c847734504ac232bcf9e0cddbca99；GitHub Actions [42025476524](https://github.com/wovowx/mcp-memory/actions/runs/42025476524) 对该精确 SHA learning-regression completed SUCCESS，validate job 全17项 steps success，包括 E1、Memory Core E2、Router、Session、Release Guard、学习工件。仅 E1/E2／GitHub CI，不冒称线上 Worker E3。
+- **发布边界**：生产 main=c9324b4f2e4013ed1e7edcd455bb40450a5b8dfe、Cloudflare Worker v6.40.1/#534 **未改变**；没有 PR/合 main/部署、生产 DB/schema/数据、聊天室/唤醒、Operit 角色卡、Pages/Web/DNS、密钥、付费模型调用。追加本交接会产生一个 Bridge-only dev commit，需以追加后的 HEAD 重新核实 CI；下一次正式 v6.41.0 发布须先递交完整准确版本单征得柳柳单独批准。
+
+
+
 
 
 
