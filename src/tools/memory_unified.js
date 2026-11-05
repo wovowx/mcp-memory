@@ -100,11 +100,13 @@ export async function handleMemoryTool(name, safeArgs, env) {
                         const version = record.version || 1;
                         const history = events.length === 0
                             ? '暂无事件记录'
-                            : events.map(event =>
-                                '- [v' + event.version + '] ' + formatTime(event.created_at) + ' ' +
-                                (event.reason || event.event_type || 'update') + '：' +
-                                String(event.old_value || '').substring(0, 80)
-                            ).join('\n');
+                            : events.map(event => {
+                                const oldValue = formatHistorySnapshot(event.old_value);
+                                const newValue = event.new_value === undefined || event.new_value === null
+                                    ? '' : ' → ' + formatHistorySnapshot(event.new_value);
+                                return '- [v' + event.version + '] ' + formatTime(event.created_at) + ' ' +
+                                    (event.reason || event.event_type || 'update') + '：' + oldValue + newValue;
+                            }).join('\n');
                         return '📌 ' + state + '（v' + version + '，事件 ' + events.length + ' 条）\n' +
                             history + '\n💡 记录值：' + String(record.value || '').substring(0, 120);
                     });
