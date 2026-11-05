@@ -163,7 +163,9 @@ console.log('\n[Retired-key history contracts]');
     const output = await handleMemoryTool('memory', { action: 'history', key: 'core/retired-rule' }, env);
     check('legacy history action remains readable after soft delete',
         output.includes('已软删除') && output.includes('历史记录') &&
-        output.includes('retired value') && output.includes('correction'));
+        output.includes('retired value') && output.includes('correction') &&
+        output.includes('当前性质：未标注') && output.includes('older value') &&
+        output.includes('previous value [type=quote]') && output.includes('corrected value [type=agreement]'));
 }
 
 console.log('\n[Lifecycle contracts]');
