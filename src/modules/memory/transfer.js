@@ -3,7 +3,7 @@
 
 import { getMemoryByKey, getCurrentMemories } from './repository.js';
 import { putMemory } from './lifecycle.js';
-import { now } from '../../utils/helpers.js';
+import { now, isMemoryType } from '../../utils/helpers.js';
 
 export async function importMemories(env, items, options = {}) {
     if (!Array.isArray(items)) {
