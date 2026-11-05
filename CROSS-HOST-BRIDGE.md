@@ -3144,3 +3144,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 已在 mcp-memory/dev 准备候选版本 `v6.37.0: P0 Core Modules Recovery`（`package.json` 升至 6.37.0；`CHANGELOG.md` 追加详细候选记录）；候选代码 SHA `16436fec5d4b4fc57b7da4af3f92648c9d67750c`，Actions run `41967809261` 全部 E1/E2 SUCCESS。main 保持 `e145651bb579d5e6a7b0fedba6a304e70f1ed05a`，比较 ahead39/behind0、33 文件，聊天室/唤醒源码无变化。
 - 本 Bridge 记录将形成一个额外的 dev 文档提交，必须以提交后的最终 dev SHA 和最新 CI SUCCESS 为候选审批依据。E3 真正 Supabase/Agnes/Cloudflare/GitHub PR/ref 行为仍 NOT RUN。旧 dev `4aa0cd0` 仍没有独立 Git ref 保护。生产 Worker main 未改变。
 - **审批门槛**：将 v6.37.0 具体范围、最终 SHA/CI、E3 限制、部署及回滚计划提供柳柳；柳柳明确批准本版本后才可创建 PR / 合入 main。若尚未批准，保持候选 dev，不得调用 `github_merge_to_main` 或其他 main 合并工具。P1 架构编码另行验收。
+
+
+### [2026-11-05 12:50 CST] GPT → Operit：v6.37.0 P0 已发布/Cloudflare Worker 已 VERIFIED
+- 柳柳单独批准 v6.37.0 main 发布。PR #323 head=dev/base=main 已于 2026-11-05T04:41:08Z rebase 合并，GitHub 独立 readback merged=true；合并后 main=dev=`08d065b66061043f9a4766184176df10cfa7c05b`。候选 SHA `98ea1b543d79f8d20fcd7c04935f5d55a75b1d1c` 已在 `recovery/v6.37.0-premerge-20261105` 保护并独立验证；旧开发成果保存至精确候选分支、没有重复 PR ref 覆盖事故。
+- 版本发布对应 33 文件，无聊天室/唤醒源码或生产 DB/schema 变更；代码仓 package=6.37.0，CHANGELOG 已随 PR 合入。候选 CI run 41967892278、PR CI run 41969220275、main CI run 41969331209 均 SUCCESS，E1/E2 完整通过。
+- Cloudflare Workers Git Build uuid `a3232a8e-51fb-465f-a8ce-c22d8cea4558`，build_outcome=success，trigger SHA `08d065b6`；最新 Worker deployment `27806f1a`、version #529，verify_main=VERIFIED。部署后非破坏性 Smoke：Ziven MCP memory recall（⚙️/当前工作检查点）正常、github_get_pull_request(323) 查询 merged=true。真实第三方业务 API/生产写入 E3 NOT RUN。
+- GitHub Pages 工作流 run 41969331221（与 Worker build 无关）FAILURE：`actions/upload-pages-artifact@v2` 引用了废弃 `actions/upload-artifact@v3`；v6.36.2 就有同类失败。Pages 属暂停域，本次不修复。
+- 原旧 dev `4aa0cd0` 仍可按 SHA 读，但 432 个旧独有提交没有长期 ref，不能说完整恢复原历史。P0 只恢复指定领域，未覆盖旧 Pages/呈现模块。恢复前 dev 保护分支 `recovery/p0-preintegration-20261105` 仍在。
+- 权威状态：ZivenLab/dev/governance/roadmap.md v1.10 §5.0、当前项目状态 version148、治理 CHANGELOG；云端唯一 ⚙️/当前工作检查点。**当前 next_action=P1「核心职责边界稳定」方案/原型讨论，涉及 Branch/PR 独立模块设计须柳柳另行定案，不能直接编码。** 本条只是交接资料更新，在 dev 形成一条新文档提交；main 仍为已部署 SHA `08d065b6`，不会自动部署。Operit 不需执行测试。
