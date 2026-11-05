@@ -1,6 +1,6 @@
 # Changelog
 
-所有重要变更将记录在此文件中.
+所有重要变更将记录在此文件中。
 ## [v6.42.0] - 2026-11-06（Memory Type Write Contract · dev 候选；main/部署未获批准）
 
 ### Added
