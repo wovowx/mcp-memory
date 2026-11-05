@@ -5,7 +5,7 @@ import {
 } from '../src/modules/memory/repository.js';
 import { putMemory, deleteMemory, renameMemory, moveMemory } from '../src/modules/memory/lifecycle.js';
 import {
-    searchMemories, listMemoryCategories, listMemories, listMemoriesByCategory,
+    searchMemories, searchMemoriesWithStatus, listMemoryCategories, listMemories, listMemoriesByCategory,
     listMemoriesByDate, getMemoryStats, getRandomMemory
 } from '../src/modules/memory/retrieval.js';
 import { handleMemoryTool } from '../src/tools/memory_unified.js';
