@@ -3153,3 +3153,11 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - GitHub Pages 工作流 run 41969331221（与 Worker build 无关）FAILURE：`actions/upload-pages-artifact@v2` 引用了废弃 `actions/upload-artifact@v3`；v6.36.2 就有同类失败。Pages 属暂停域，本次不修复。
 - 原旧 dev `4aa0cd0` 仍可按 SHA 读，但 432 个旧独有提交没有长期 ref，不能说完整恢复原历史。P0 只恢复指定领域，未覆盖旧 Pages/呈现模块。恢复前 dev 保护分支 `recovery/p0-preintegration-20261105` 仍在。
 - 权威状态：ZivenLab/dev/governance/roadmap.md v1.10 §5.0、当前项目状态 version148、治理 CHANGELOG；云端唯一 ⚙️/当前工作检查点。**当前 next_action=P1「核心职责边界稳定」方案/原型讨论，涉及 Branch/PR 独立模块设计须柳柳另行定案，不能直接编码。** 本条只是交接资料更新，在 dev 形成一条新文档提交；main 仍为已部署 SHA `08d065b6`，不会自动部署。Operit 不需执行测试。
+
+
+### [2026-11-05] P1 已验收原型 → 实施完成 dev E1/E2；v6.38.0 待发布批准
+- 柳柳已连续确认 Branch/PR 单一领域模块 + Patch 独立工作流的施工原型。ZivenLab/dev 整体架构 v1.3、Roadmap v1.12 §5.P1、当前项目状态 version149 已更新。先确立架构，再写代码。
+- mcp-memory/dev 新增 src/modules/github/branch_pr.js 和 src/modules/patch_workflow.js；github_v64.js 仅保留原 Facade/schema/repo/token/release guard 与委托入口；Branch/PR 的 8 类方法和 metadata fail-closed/exact dev ref 恢复均委托到 domain；Patch 原子校验仍在 patch_engine.js，proposal claim → GitHub PUT → applied / partial / unknown 状态工作流已迁移，外部工具名称/参数/返回契约不变。
+- 新增 6 项领域边界合同，不删旧测试；代码+测试 SHA 158cdc036f48f80ca86730a03a6a087e3fd36cd0 的 GitHub Actions 41971350369 SUCCESS；升级 package version 6.38.0 / CHANGELOG 后 dev SHA b762546810ec183112c95337b64f6fcf7d7a9715 的 Actions 41971533005 再次 SUCCESS：E1 静态，E2 Contents、Webhook/Agnes、Memory60、Search20、Release Guard、Learning artifacts、Router/Patch 154/154 全部通过。真正 PR/ref / Supabase Patch 写入 E3 NOT RUN。
+- 此次仅 mcp-memory/dev；main 仍为已部署的 v6.37.0 SHA 08d065b66061043f9a4766184176df10cfa7c05b。后续本 Bridge 追加会使 dev 多一条纯文档提交，须依最终 SHA 的 CI 为发布审批证据。没有操作 main/生产数据库/聊天室/唤醒链/Pages。
+- 注意 P1 早期开发提交标题沿用了 v6.37.0，发行候选 v6.38.0；发布时应告知柳柳历史提交标题风险与合并策略，不擅自强制重写 dev。只有柳柳针对 v6.38.0 准确变更及部署范围另行批准后才允许合 main。下一步：最终 SHA+CI 检查 → 提交发布信息与风险 → 等待版本批准。Operit 不需运行测试。
