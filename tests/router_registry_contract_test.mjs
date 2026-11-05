@@ -278,7 +278,7 @@ globalThis.fetch = async (url, opts = {}) => {
   if (s.includes('/rest/v1/patch_proposals') && m === 'POST') { patchProposalPostCount++; return { ok: true, status: 201, json: async () => [{ id: 'mock-proposal-id' }], text: async () => '' }; }
   if (s.includes('/rest/v1/rpc/exec_sql')) { ddlRpcCount++; lastExecSql = JSON.parse(opts.body || '{}').sql || ''; return { ok: true, status: 200, text: async () => '', json: async () => [] }; }
   if (s.endsWith('/rest/v1/')) { tableListCount++; return { ok: true, status: 200, json: async () => ({ definitions: { memories: {}, memory_events: {} } }) }; }
-  if (s.includes('/rest/v1/memories') || s.includes('/rest/v1/memory_events')) { memoriesRestCount++; return { ok: true, status: 200, json: async () => [] }; }
+  if (s.includes('/rest/v1/memories') || s.includes('/rest/v1/memory_events')) { memoriesRestCount++; if (['POST', 'PATCH'].includes(m)) memoryWriteBodies.push({ url: s, method: m, body: opts.body ? JSON.parse(opts.body) : null }); return { ok: true, status: 200, json: async () => [] }; }
   if (s.includes('/rest/v1/')) { otherRestCount++; return { ok: true, status: 200, json: async () => [] }; }
   throw new Error('unexpected mock fetch: ' + s);
 };
