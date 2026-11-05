@@ -179,7 +179,11 @@ export async function handleMemoryTool(name, safeArgs, env) {
         else {
             const keywords = safeArgs.keyword.trim().split(/\s+/).filter(k => k.length > 0);
             const { limit, cursor } = parsePagination(safeArgs);
-            const matched = await searchMemories(env, safeArgs.keyword.trim());
+            const search = await searchMemoriesWithStatus(env, safeArgs.keyword.trim());
+            if (search.status === 'ERROR') {
+                text = '❌ [search_status=ERROR] 主记忆数据读取失败。检索未完成，不能判断是否存在相关记忆。';
+            } else {
+                const matched = search.results;
             let startIndex = 0;
             if (cursor) { const idx = matched.findIndex(i => i.id === cursor); if (idx !== -1) startIndex = idx + 1; }
             const page = matched.slice(startIndex, startIndex + limit);
