@@ -260,6 +260,20 @@ check('related retrieval errors degrade the optional context without inventing r
     relatedUnavailable.related_sources?.aliases?.error_code === 'network_error');
 
 calls = mockReads();
+const noMatchesContext = await buildSessionContext(env, { topic: 'needle-not-in-memory' });
+check('successful topic search with no matches is distinct from source failure',
+    noMatchesContext.status === 'READY' && noMatchesContext.related_status === 'no_matches'
+    && noMatchesContext.related_sources?.memories?.status === 'ok'
+    && noMatchesContext.related_sources?.aliases?.status === 'ok');
+
+calls = mockReads({ failMemorySearch: true });
+const memoryUnavailable = await buildSessionContext(env, { topic: '项目笔记' });
+check('required topic memory-source failure degrades context as unavailable',
+    memoryUnavailable.status === 'DEGRADED' && memoryUnavailable.related_status === 'unavailable'
+    && memoryUnavailable.related_sources?.memories?.error_code === 'http_error'
+    && memoryUnavailable.related_memories.length === 0);
+
+calls = mockReads();
 const tooLong = await buildSessionContext(env, { topic: 'A'.repeat(121) });
 check('overlong topic blocked before network reads', tooLong.status === 'BLOCKED'
     && tooLong.errors.includes('topic_too_long') && calls.length === 0);
