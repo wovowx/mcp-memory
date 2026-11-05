@@ -1,138 +1,195 @@
-// Isolated contract tests for src/utils/search.js. All network calls are mocked.
-import { recordSearchKeyword, getSearchSuggestions } from '../src/utils/search.js';
+// Deterministic synthetic-only benchmark for searchMemories; no Supabase or search-history writes.
+import { readFile } from 'node:fs/promises';
+import { searchMemories } from '../src/modules/memory/retrieval.js';
 
-const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
+const fixture = JSON.parse(await readFile(new URL('./fixtures/memory_retrieval_benchmark_v0_1.json', import.meta.url), 'utf8'));
+const env = { SUPABASE_URL: 'https://memory-retrieval-benchmark.invalid', SUPABASE_ANON_KEY: 'synthetic-benchmark-key' };
+const associationReasons = new Set(['related_memory', 'shared_entity']);
 const originalFetch = globalThis.fetch;
-let calls = [];
-let pass = 0;
-let fail = 0;
+const requests = [];
+const failures = [];
+const reports = [];
+const expect = (ok, message) => { if (!ok) failures.push(message); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const ids = rows => rows.map(row => row.id);
+const isAssociation = row => associationReasons.has(row?._match?.reason);
+const bigrams = value => {
+  const chars = Array.from(String(value || '').toLocaleLowerCase());
+  return new Set(chars.slice(0, -1).map((char, index) => char + chars[index + 1]));
+};
 
-function check(name, condition) {
-    if (condition) {
-        pass++;
-        console.log('  ✅ ' + name);
-    } else {
-        fail++;
-        console.log('  ❌ ' + name);
+function checkAssociationMetadata(query, rows) {
+  const expected = new Map((query.expected_association_metadata || []).map(item => [item.memory_id, item]));
+  for (const row of rows) {
+    const target = expected.get(row.id);
+    if (!target) { expect(false, query.id + ': unexpected association provenance for ' + row.id); continue; }
+    expect(row._match?.reason === target.reason, query.id + ': ' + row.id + ' reason mismatch');
+    expect(row._match?.related_from_key === target.related_from_key, query.id + ': ' + row.id + ' source key mismatch');
+    expect(same(row._match?.matched_terms || [], target.matched_terms || []), query.id + ': ' + row.id + ' matched terms mismatch');
+  }
+}
+
+function calculateMetrics() {
+  const direct = reports.filter(row => row.roles.includes('direct'));
+  const positive = direct.filter(row => row.expectedDirect.length);
+  const relevantTotal = positive.reduce((sum, row) => sum + row.expectedDirect.length, 0);
+  const recall = k => {
+    const found = positive.reduce((sum, row) => {
+      const relevant = new Set(row.expectedDirect);
+      return sum + row.direct.slice(0, k).filter(id => relevant.has(id)).length;
+    }, 0);
+    return relevantTotal ? found / relevantTotal : null;
+  };
+  const reciprocal = positive.map(row => {
+    const rank = row.direct.findIndex(id => row.expectedDirect.includes(id));
+    return rank < 0 ? 0 : 1 / (rank + 1);
+  });
+  const precisionRows = direct.flatMap(row => row.direct.slice(0, 3).map(id => ({
+    relevant: row.expectedDirect.includes(id)
+  })));
+  const negative = reports.filter(row => row.roles.includes('negative'));
+  const stale = reports.filter(row => row.roles.includes('stale'));
+  const association = reports.filter(row => row.roles.includes('association'));
+  const associationTotal = association.reduce((sum, row) => sum + row.expectedAssociation.length, 0);
+  const associationFound = association.reduce((sum, row) => {
+    const found = new Set(row.associations.slice(0, 3));
+    return sum + row.expectedAssociation.filter(id => found.has(id)).length;
+  }, 0);
+  let provenanceCorrect = 0;
+  let provenanceTotal = 0;
+  for (const report of association) {
+    for (const actual of report.associationRows) {
+      provenanceTotal++;
+      const expected = report.expectedMetadata.find(item => item.memory_id === actual.id);
+      if (expected && actual.reason === expected.reason &&
+          actual.related_from_key === expected.related_from_key &&
+          same(actual.matched_terms || [], expected.matched_terms || [])) provenanceCorrect++;
     }
-}
-
-function response(status, payload) {
-    return {
-        ok: status >= 200 && status < 300,
-        status,
-        json: async () => payload,
-        text: async () => JSON.stringify(payload)
-    };
-}
-
-function invalidJsonResponse(status = 200) {
-    return {
-        ok: status >= 200 && status < 300,
-        status,
-        json: async () => { throw new Error('mock invalid JSON'); },
-        text: async () => 'not-json'
-    };
-}
-
-function mockSequence(...steps) {
-    calls = [];
-    const queue = [...steps];
-    globalThis.fetch = async (url, options = {}) => {
-        const request = {
-            url: String(url),
-            method: (options.method || 'GET').toUpperCase(),
-            body: options.body ? JSON.parse(options.body) : undefined
-        };
-        calls.push(request);
-        if (!queue.length) throw new Error('unexpected extra fetch: ' + request.url);
-        const next = queue.shift();
-        if (next instanceof Error) throw next;
-        return next;
-    };
+  }
+  return {
+    direct: {
+      recall_at_1: recall(1),
+      recall_at_3: recall(3),
+      mrr_macro: reciprocal.length ? reciprocal.reduce((a, b) => a + b, 0) / reciprocal.length : null,
+      precision_at_3: precisionRows.length ? precisionRows.filter(row => row.relevant).length / precisionRows.length : null,
+      positive_query_count: positive.length,
+      expected_direct_count: relevantTotal,
+      precision_candidate_count: precisionRows.length
+    },
+    negative_false_hit_rate: negative.length ? negative.filter(row => row.direct.length).length / negative.length : null,
+    stale_hit_rate: stale.length ? stale.filter(row => row.forbidden.length).length / stale.length : null,
+    association: {
+      recall_at_3: associationTotal ? associationFound / associationTotal : null,
+      provenance_accuracy: provenanceTotal ? provenanceCorrect / provenanceTotal : null,
+      expected_association_count: associationTotal,
+      actual_association_count: provenanceTotal
+    }
+  };
 }
 
 try {
-    // recordSearchKeyword: normalize input and never write after a failed lookup.
-    mockSequence();
-    await recordSearchKeyword(env, '   ');
-    check('空白关键词不发请求', calls.length === 0);
+  expect(fixture.memories.length === 16, 'fixture must contain exactly 16 memories');
+  expect(fixture.queries.length === 16, 'fixture must contain exactly 16 queries');
+  for (const probe of fixture.fallback_probes || []) {
+    const query = fixture.queries.find(row => row.id === probe.query_id);
+    const memory = fixture.memories.find(row => row.id === probe.memory_id);
+    const grams = bigrams(query?.query);
+    const combined = (String(memory?.key || '') + ' ' + String(memory?.value || '')).toLocaleLowerCase();
+    const matched = [...grams].filter(gram => combined.includes(gram));
+    expect(grams.size === probe.expected_query_bigram_count, probe.query_id + ': bigram count drifted');
+    expect(matched.length === probe.expected_matched_bigram_count, probe.query_id + ': overlap count drifted');
+  }
 
-    mockSequence();
-    await recordSearchKeyword(env, null);
-    check('空值关键词不发请求', calls.length === 0);
+  globalThis.fetch = async (input, options = {}) => {
+    const method = String(options.method || 'GET').toUpperCase();
+    const url = new URL(String(input));
+    requests.push({ method, pathname: url.pathname });
+    if (method !== 'GET') throw new Error('benchmark blocked non-GET request: ' + method);
+    if (url.origin !== env.SUPABASE_URL) throw new Error('benchmark blocked external origin: ' + url.origin);
+    if (url.pathname === '/rest/v1/memories') {
+      expect(url.searchParams.get('select') === '*', 'memories select must be *');
+      expect(url.searchParams.get('status') === 'eq.active', 'memories request must filter active rows');
+      expect(url.searchParams.get('valid_to') === 'is.null', 'memories request must filter current rows');
+      // Return stale rows deliberately: repository's local isCurrentMemory filter must reject them.
+      return { ok: true, status: 200, json: async () => fixture.memories };
+    }
+    if (url.pathname === '/rest/v1/memory_aliases') {
+      expect(url.searchParams.get('select') === 'memory_id', 'alias request must select memory_id only');
+      const filter = url.searchParams.get('alias') || '';
+      if (!filter.startsWith('ilike.%') || !filter.endsWith('%')) throw new Error('unexpected alias filter: ' + filter);
+      const needle = filter.slice('ilike.%'.length, -1).toLocaleLowerCase();
+      const rows = fixture.aliases.filter(item => item.alias.toLocaleLowerCase().includes(needle))
+        .map(item => ({ memory_id: item.memory_id }));
+      return { ok: true, status: 200, json: async () => rows };
+    }
+    throw new Error('benchmark blocked unexpected path: ' + url.pathname);
+  };
 
-    mockSequence(response(200, [{ keyword: 'alpha beta', count: 2 }]), response(204, null));
-    await recordSearchKeyword(env, '  ALPHA BETA ');
-    check('历史查询关键词 trim/lowercase', calls[0]?.url.includes('keyword=eq.alpha%20beta'));
-    check('已有历史走 PATCH 且 count 加一', calls.length === 2 && calls[1].method === 'PATCH' && calls[1].body.count === 3);
+  for (const query of fixture.queries) {
+    const start = requests.length;
+    const results = await searchMemories(env, query.query);
+    const direct = results.filter(row => !isAssociation(row));
+    const associated = results.filter(isAssociation);
+    const directIds = ids(direct);
+    const associationIds = ids(associated);
+    const allIds = ids(results);
+    const forbidden = allIds.filter(id => (query.forbidden_ids || []).includes(id));
+    const expectedDirectOrder = query.expected_direct_order || query.expected_direct_ids || [];
+    expect(same(directIds, expectedDirectOrder), query.id + ': direct IDs mismatch; got ' + JSON.stringify(directIds));
+    expect(same(associationIds, query.expected_association_ids || []), query.id + ': association IDs mismatch; got ' + JSON.stringify(associationIds));
+    expect(forbidden.length === 0, query.id + ': forbidden IDs returned: ' + forbidden.join(','));
+    expect(new Set(allIds).size === allIds.length, query.id + ': duplicate result IDs');
+    expect(associated.length <= 3, query.id + ': association cap exceeded');
+    const firstAssociation = results.findIndex(isAssociation);
+    expect(firstAssociation < 0 || results.slice(firstAssociation).every(isAssociation), query.id + ': direct result after association');
+    expect(direct.length > 0 || associated.length === 0, query.id + ': association without direct hit');
+    for (const [id, reason] of Object.entries(query.expected_reasons || {})) {
+      expect(results.find(row => row.id === id)?._match?.reason === reason, query.id + ': reason mismatch for ' + id);
+    }
+    for (const [id, count] of Object.entries(query.expected_matched_terms_count || {})) {
+      expect((results.find(row => row.id === id)?._match?.matched_terms || []).length === count, query.id + ': matched_terms count mismatch for ' + id);
+    }
+    checkAssociationMetadata(query, associated);
+    expect(requests.length - start === 2, query.id + ': expected two GET requests');
+    reports.push({
+      id: query.id,
+      roles: query.metric_roles || [],
+      expectedDirect: query.expected_direct_ids || [],
+      expectedAssociation: query.expected_association_ids || [],
+      expectedMetadata: query.expected_association_metadata || [],
+      direct: directIds,
+      associations: associationIds,
+      associationRows: associated.map(row => ({
+        id: row.id,
+        reason: row._match?.reason,
+        related_from_key: row._match?.related_from_key,
+        matched_terms: row._match?.matched_terms || []
+      })),
+      forbidden
+    });
+  }
 
-    mockSequence(response(200, []), response(201, []));
-    await recordSearchKeyword(env, '  NeW-Key ');
-    check('无历史走 POST 并规范化关键词', calls.length === 2 && calls[1].method === 'POST' && calls[1].body.keyword === 'new-key' && calls[1].body.count === 1);
+  expect(requests.length === fixture.queries.length * 2, 'expected exactly 32 requests');
+  expect(requests.every(row => row.method === 'GET'), 'all requests must be GET');
+  expect(requests.every(row => ['/rest/v1/memories', '/rest/v1/memory_aliases'].includes(row.pathname)), 'request path allowlist violated');
 
-    mockSequence(response(404, { message: 'search_history missing' }));
-    await recordSearchKeyword(env, 'alpha');
-    check('GET 404 不继续 PATCH/POST', calls.length === 1);
-
-    mockSequence(response(500, [{ keyword: 'alpha', count: 4 }]));
-    await recordSearchKeyword(env, 'alpha');
-    check('GET 500 即使返回数组也不当成有效历史', calls.length === 1);
-
-    mockSequence(new Error('mock network down'));
-    let recordRejected = false;
-    try { await recordSearchKeyword(env, 'alpha'); } catch { recordRejected = true; }
-    check('查询网络失败被隔离且不追加写请求', !recordRejected && calls.length === 1);
-
-    mockSequence(invalidJsonResponse(200));
-    recordRejected = false;
-    try { await recordSearchKeyword(env, 'alpha'); } catch { recordRejected = true; }
-    check('查询 JSON 解析失败被隔离且不追加写请求', !recordRejected && calls.length === 1);
-
-    mockSequence(response(200, [{ keyword: 'alpha', count: 1 }]), response(500, { message: 'patch failed' }));
-    recordRejected = false;
-    try { await recordSearchKeyword(env, 'alpha'); } catch { recordRejected = true; }
-    check('PATCH 非 2xx 不抛错且不触发额外请求', !recordRejected && calls.length === 2 && calls[1].method === 'PATCH');
-
-    mockSequence(response(200, []), response(500, { message: 'post failed' }));
-    recordRejected = false;
-    try { await recordSearchKeyword(env, 'alpha'); } catch { recordRejected = true; }
-    check('POST 非 2xx 不抛错且不触发额外请求', !recordRejected && calls.length === 2 && calls[1].method === 'POST');
-
-    // getSearchSuggestions: respect response status, payload shape, normalization and limit.
-    mockSequence(response(200, [{ keyword: 'alpha' }, { keyword: 'alpine' }]));
-    const suggestions = await getSearchSuggestions(env, '  ALP ');
-    check('建议结果返回关键词列表', Array.isArray(suggestions) && suggestions.join(',') === 'alpha,alpine');
-    check('建议查询固定 limit=20 且 prefix trim/lowercase', calls.length === 1 && calls[0].url.includes('limit=20') && calls[0].url.includes('keyword=ilike.alp%'));
-
-    mockSequence(response(200, [{ keyword: 'alpha' }]));
-    await getSearchSuggestions(env, '   ');
-    check('空白 prefix 不追加过滤条件', calls.length === 1 && calls[0].url.includes('limit=20') && !calls[0].url.includes('&keyword='));
-
-    mockSequence(response(404, [{ keyword: 'must-not-leak' }]));
-    const missingTableSuggestions = await getSearchSuggestions(env, 'a');
-    check('建议查询 404 即使返回数组也返回空列表', Array.isArray(missingTableSuggestions) && missingTableSuggestions.length === 0);
-
-    mockSequence(response(500, [{ keyword: 'must-not-leak' }]));
-    const serverErrorSuggestions = await getSearchSuggestions(env, 'a');
-    check('建议查询 500 不读取错误状态下的数组', Array.isArray(serverErrorSuggestions) && serverErrorSuggestions.length === 0);
-
-    mockSequence(response(200, { message: 'malformed shape' }));
-    const malformedSuggestions = await getSearchSuggestions(env, 'a');
-    check('非数组 JSON 建议载荷返回空列表', Array.isArray(malformedSuggestions) && malformedSuggestions.length === 0);
-
-    mockSequence(invalidJsonResponse(200));
-    const invalidSuggestions = await getSearchSuggestions(env, 'a');
-    check('建议 JSON 解析失败返回空列表', Array.isArray(invalidSuggestions) && invalidSuggestions.length === 0);
-
-    mockSequence(new Error('mock suggestion network down'));
-    const networkSuggestions = await getSearchSuggestions(env, 'a');
-    check('建议网络失败返回空列表', Array.isArray(networkSuggestions) && networkSuggestions.length === 0);
-
-    check('全部测试请求均指向隔离 mock origin', calls.every(call => call.url.startsWith('https://mock.supabase.co/')));
+  const report = {
+    benchmark: 'memory-retrieval-v0.1',
+    fixture_version: fixture.version,
+    synthetic_only: true,
+    request_count: requests.length,
+    metrics: calculateMetrics(),
+    queries: reports.map(row => ({ id: row.id, direct_ids: row.direct, association_ids: row.associations, forbidden_hits: row.forbidden }))
+  };
+  console.log('\n[memory-retrieval-benchmark] Candidate baseline metrics (not auto-saved):');
+  console.log(JSON.stringify(report, null, 2));
+  if (failures.length) {
+    console.error('\n[memory-retrieval-benchmark] FAILED: ' + failures.length + ' failure(s)');
+    for (const failure of failures) console.error(' - ' + failure);
+    process.exitCode = 1;
+  } else {
+    console.log('\n[memory-retrieval-benchmark] PASS: 16 queries, provenance and GET-only contracts passed.');
+  }
 } finally {
-    globalThis.fetch = originalFetch;
+  globalThis.fetch = originalFetch;
 }
-
-console.log('===== ' + pass + ' 通过 / ' + fail + ' 失败 =====');
-process.exit(fail ? 1 : 0);
