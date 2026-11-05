@@ -289,6 +289,103 @@ console.log('\n[Lifecycle contracts]');
         verificationFailure.stage === 'verify' && verificationFailure.ok === false);
 }
 
+console.log('\n[Memory Type facade contracts]');
+{
+    const calls = [];
+    const createdBodies = [];
+    let current = null;
+    let searchRows = [];
+    globalThis.fetch = async (url, options = {}) => {
+        const requestUrl = String(url);
+        const method = options.method || 'GET';
+        const body = options.body ? JSON.parse(options.body) : null;
+        calls.push({ url: requestUrl, method, body });
+
+        if (method === 'GET' && requestUrl.includes('/rest/v1/memories?key=')) {
+            const match = requestUrl.match(/key=eq\.([^&]+)/);
+            const key = match ? decodeURIComponent(match[1]) : '';
+            return { ok: true, status: 200, json: async () => current?.key === key ? [current] : [] };
+        }
+        if (method === 'GET' && requestUrl.includes('/rest/v1/memories?select=')) {
+            return { ok: true, status: 200, json: async () => searchRows };
+        }
+        if (method === 'GET' && requestUrl.includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        if (method === 'GET' && requestUrl.includes('/rest/v1/search_history')) {
+            return { ok: false, status: 404, json: async () => ({}) };
+        }
+        if (method === 'POST' && requestUrl.includes('/rest/v1/memory_events')) {
+            return { ok: true, status: 201 };
+        }
+        if (method === 'PATCH' && requestUrl.includes('/rest/v1/memories?id=')) {
+            return { ok: true, status: 204 };
+        }
+        if (method === 'POST' && requestUrl.endsWith('/rest/v1/memories')) {
+            createdBodies.push(body);
+            return { ok: true, status: 201 };
+        }
+        throw new Error('unexpected memory type request: ' + method + ' ' + requestUrl);
+    };
+
+    const invalid = await handleMemoryTool('memory', {
+        action: 'remember', key: 'core/invalid-type', value: 'must not write', type: 'opinion'
+    }, env);
+    check('direct memory handler rejects invalid type before any fetch',
+        invalid.includes('无效的记忆性质') && calls.length === 0);
+
+    const typedRemember = await handleMemoryTool('memory', {
+        action: 'remember', key: 'core/type-quote', value: 'original words', type: 'quote'
+    }, env);
+    check('remember persists an explicit legal type',
+        typedRemember.includes('已新建记忆') && createdBodies.some(row => row.key === 'core/type-quote' && row.type === 'quote'));
+
+    const untypedRemember = await handleMemoryTool('memory', {
+        action: 'remember', key: 'core/type-unmarked', value: 'not classified'
+    }, env);
+    check('legacy remember without type leaves the nullable column unmarked',
+        untypedRemember.includes('已新建记忆') && createdBodies.some(row =>
+            row.key === 'core/type-unmarked' && !Object.prototype.hasOwnProperty.call(row, 'type')));
+
+    current = {
+        id: 'type-update', key: 'core/type-update', value: 'before', type: 'quote',
+        version: 2, status: 'active', valid_to: null, created_at: '2026-11-01T00:00:00Z'
+    };
+    calls.length = 0;
+    await handleMemoryTool('memory', { action: 'update', key: current.key, value: 'after without reclassification' }, env);
+    const untypedPatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
+    check('update without type preserves existing type by omitting it from PATCH',
+        untypedPatch?.body?.type === undefined);
+
+    calls.length = 0;
+    await handleMemoryTool('memory', {
+        action: 'update', key: current.key, value: 'confirmed rule', type: 'agreement'
+    }, env);
+    const typedPatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
+    const typedEvent = calls.find(call => call.method === 'POST' && call.url.includes('/rest/v1/memory_events'))?.body;
+    check('update with explicit type persists the new type',
+        typedPatch?.body?.type === 'agreement');
+    check('typed update writes structured old/new event snapshots',
+        typedEvent?.old_value?.value === 'before' && typedEvent?.old_value?.type === 'quote' &&
+        typedEvent?.new_value?.value === 'confirmed rule' && typedEvent?.new_value?.type === 'agreement');
+
+    current = {
+        id: 'type-unmarked', key: 'core/type-unmarked', value: 'not classified', type: null,
+        version: 1, status: 'active', valid_to: null, created_at: '2026-11-01T00:00:00Z'
+    };
+    const recall = await handleMemoryTool('memory', { action: 'recall', key: current.key }, env);
+    check('recall labels SQL NULL type as 未标注', recall.includes('性质：未标注'));
+
+    searchRows = [
+        { id: 'unmarked', key: 'core/type-unmarked', value: 'typeprobe unmarked body', type: null, status: 'active', valid_to: null, created_at: '2026-11-01T00:00:00Z' },
+        { id: 'quote', key: 'core/type-quote', value: 'typeprobe quoted words', type: 'quote', status: 'active', valid_to: null, created_at: '2026-11-02T00:00:00Z' },
+        { id: 'legacy', key: 'core/type-legacy', value: 'typeprobe legacy value', type: 'legacy-custom', status: 'active', valid_to: null, created_at: '2026-11-03T00:00:00Z' }
+    ];
+    const searchOutput = await handleMemoryTool('memory', { action: 'search', keyword: 'typeprobe' }, env);
+    check('search distinguishes unmarked, legal and unknown historical types',
+        searchOutput.includes('[未标注]') && searchOutput.includes('[quote]') && searchOutput.includes('[未知类型:legacy-custom]'));
+}
+
 console.log('\n[Retrieval contracts]');
 {
     const rows = [
