@@ -880,7 +880,8 @@ console.log('\n[Transfer contracts]');
     calls.length = 0;
     const typedImport = await importMemories(env, [
         { key: 'core/update', value: 'typed import update', type: 'agreement' },
-        { key: 'core/type-new', value: 'typed import insert', type: 'quote' }
+        { key: 'core/type-new', value: 'typed import insert', type: 'quote' },
+        { key: 'core/type-null', value: 'unmarked import insert', type: null }
     ], { invalidAsFailed: true });
     const typedImportPatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
     const typedImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories'));
