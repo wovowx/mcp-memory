@@ -91,3 +91,34 @@ export function validateRepoRelativePath(value, { allowRoot = false } = {}) {
     }
     return { ok: true, path: value, encodedPath: segments.map(encodeURIComponent).join('/') };
 }
+
+// Shared Memory Type contract: one allow-list drives Router validation and user-facing labels.
+export const MEMORY_TYPES = Object.freeze(['fact', 'quote', 'inference', 'agreement']);
+
+export function isMemoryType(value) {
+    return typeof value === 'string' && MEMORY_TYPES.includes(value);
+}
+
+export function formatMemoryType(value) {
+    if (value === undefined || value === null || value === '') return '未标注';
+    return isMemoryType(value) ? value : '未知类型:' + String(value);
+}
+
+export function withMemoryTypeSchema(schema) {
+    const base = schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {};
+    const properties = base.properties && typeof base.properties === 'object' && !Array.isArray(base.properties)
+        ? base.properties
+        : {};
+    return {
+        ...base,
+        type: base.type || 'object',
+        properties: {
+            ...properties,
+            type: {
+                type: 'string',
+                enum: [...MEMORY_TYPES],
+                description: '记忆性质（remember/update 时使用）：fact=有来源事实或已验证结论；quote=保留说话者原话；inference=明确标注的不确定推断；agreement=柳柳明确确认的规则/决定/偏好。省略表示未标注，不自动推断。'
+            }
+        }
+    };
+}
