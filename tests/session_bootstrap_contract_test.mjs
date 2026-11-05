@@ -51,6 +51,8 @@ function mockReads(options = {}) {
                 return { ok: true, status: 200, json: async () => overridden ? [overridden] : [] };
             }
             if (options.failStats) return { ok: false, status: 503, json: async () => ({ message: 'unavailable' }) };
+            unkeyedMemoryReads++;
+            if (options.failMemorySearch && unkeyedMemoryReads > 1) return { ok: false, status: 503, json: async () => ({ message: 'unavailable' }) };
             return { ok: true, status: 200, json: async () => [...Object.values(allRecords), ...(options.relatedRows || [])] };
         }
         if (target.pathname.endsWith('/rest/v1/memory_aliases')) {
