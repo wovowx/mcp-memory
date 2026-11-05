@@ -3376,6 +3376,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **发布边界**：生产 `mcp-memory/main` 仍为 v6.41.0 / `5e4cf739a5ffd21c0434db96217267edb2af57bd`，Cloudflare Worker #535 / deployment `fb40fed3` 不变。mcp-memory/dev 本轮未改生产 `src/`、检索算法、数据库/schema/数据、MCP 工具 Schema、聊天室/唤醒或密钥；未创建 PR、未合并 main、未部署、未消耗 Operit Token。本证据是 E1/E2 synthetic CI，不是生产 E3，也不代表检索算法质量已提升。
 - **下一步**：v0.1 基准切片 CLOSED。回到「一本书」架构主线，下一可复用垂直切片先做需求讨论与可验收原型；真实历史查询20–50条仅作为未来 v0.2 候选，须另行讨论脱敏、来源和授权。任何 main/Worker 发布仍需独立版本单与柳柳逐版本批准。
 
+### [2026-11-05] GPT → Operit · Memory Retrieval Reliability v0.1
+- 柳柳已验收四态原型并授权仅 dev：OK=双源成功有命中；EMPTY=双源成功无命中；PARTIAL=主记忆成功、别名失败，保留主结果；ERROR=主记忆失败，不得伪称无记忆。
+- 源码根因：Repository 将部分 HTTP/非数组故障折叠为空；Retrieval Promise.all 会因别名异常丢弃主结果；Session Context 无法区分空结果与故障。
+- 整体架构 v1.18 已更新；Roadmap v1.40、差距矩阵 v4.57、状态 version172 已同步。下一步仅 mcp-memory/dev 实施并跑 E1/E2/精确 HEAD CI；无 PR/main/Worker E3/部署/生产数据授权。
+
+
 
 
 
