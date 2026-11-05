@@ -2,6 +2,16 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.41.0] - 2026-11-05（Memory Association v0.1 · dev 候选；main/部署未获批准）
+
+### Added
+- 在原 `searchMemories` 中复用已有有效态仓储与关键词/别名/CJK fallback 检索：直接结果后最多补3条一跳关联，优先显式 `related_memory_ids`，再按共享业务 `entities` 补齐；去重、保留直接命中排序、排除非当前记录和仅通用称谓造成的误关联。无直接命中不凭空生成关联，不做时序/情绪猜测。
+- 关联结果保留旧 `_match.reason`，追加来源 `related_from_key`、共享实体 `matched_terms`；现有 `memory.search` Facade 在结果中显示来源和共同实体，不新增工具、Schema、数据库字段或依赖。
+
+### Regression and authorization boundary
+- 柳柳已明确同意 `v0.1` 需求/文字原型；已先更新整体架构 v1.12 与 Roadmap v1.34。本地 `npm run check`、Memory Core 69/69、Router/Patch 162/162、Session/Context 36/36、learning 9 个工件均 PASS；精确最终 `dev` SHA 的远端 CI 与线上 E3 将独立回读，未取证前标 PENDING/NOT RUN。
+- 仅授权 `dev` 实施与回归。**未授权** PR、`main` 合并、Cloudflare Worker 部署、生产 DB/schema、聊天室/唤醒、Operit 卡、Web/Pages/DNS、密钥或付费测试。下一次 main 发布须另报精确版本/变更/CI/影响并获柳柳同意。
+
 ## [v6.40.1] - 2026-11-05（MCP Tool Discovery Read-only · 仅 dev 候选，未获 main/部署授权）
 
 ### Fixed
