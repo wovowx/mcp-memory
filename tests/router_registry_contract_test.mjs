@@ -250,7 +250,7 @@ fixture.push({
 const textSkillContent = '# Master router\n' + '文本技能完整读取。'.repeat(1800) + '\nEND_OF_TEXT_SKILL';
 let textSkillMode = 'ok', textSkillFetchCount = 0;
 let registryMode = 'ok'; let memoriesRestCount = 0; let usagePatchCount = 0; let otherRestCount = 0; let patchProposalPostCount = 0;
-let skillsWriteMethods = [];
+let skillsWriteMethods = []; let memoryWriteBodies = [];
 let ddlRpcCount = 0; let tableListCount = 0; let lastExecSql = '';
 const origFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts = {}) => {
