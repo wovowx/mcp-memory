@@ -119,16 +119,40 @@ function businessEntities(memory) {
  * one hop (explicit IDs first, then shared business entities), with at most
  * three additions and source evidence kept below all direct matches.
  */
+function readSourceFailure(error) {
+    const allowedCodes = new Set(['http_error', 'network_error', 'invalid_json', 'invalid_response_shape']);
+    return {
+        status: 'error',
+        error_code: allowedCodes.has(error?.code) ? error.code : 'read_failed'
+    };
+}
+
 export async function searchMemories(env, keyword) {
     const query = String(keyword || '').trim();
     if (!query) return [];
 
-    const [all, aliasIdsRaw] = await Promise.all([
+    const [memoryOutcome, aliasOutcome] = await Promise.allSettled([
         getCurrentMemories(env),
         getMemoryAliasIds(env, query)
     ]);
-    const aliasIds = new Set(aliasIdsRaw);
-    const current = all;
+    const sources = {
+        memories: memoryOutcome.status === 'fulfilled'
+            ? { status: 'ok', count: memoryOutcome.value.length }
+            : readSourceFailure(memoryOutcome.reason),
+        aliases: aliasOutcome.status === 'fulfilled'
+            ? { status: 'ok', count: aliasOutcome.value.length }
+            : readSourceFailure(aliasOutcome.reason)
+    };
+    if (memoryOutcome.status === 'rejected') {
+        const error = new Error('Memory search could not read the required memories source');
+        error.name = 'MemorySearchError';
+        error.code = 'memory_source_unavailable';
+        error.search_status = 'ERROR';
+        error.sources = sources;
+        throw error;
+    }
+    const current = memoryOutcome.value;
+    const aliasIds = new Set(aliasOutcome.status === 'fulfilled' ? aliasOutcome.value : []);
     const terms = splitTerms(query);
 
     let direct = current
@@ -198,7 +222,35 @@ export async function searchMemories(env, keyword) {
             });
         }
     }
-    return direct.concat(related);
+    const results = direct.concat(related);
+    const status = aliasOutcome.status === 'rejected'
+        ? 'PARTIAL'
+        : results.length > 0 ? 'OK' : 'EMPTY';
+    Object.defineProperty(results, 'search_status', {
+        value: status, enumerable: false, configurable: false
+    });
+    Object.defineProperty(results, 'search_sources', {
+        value: sources, enumerable: false, configurable: false
+    });
+    return results;
+}
+
+export async function searchMemoriesWithStatus(env, keyword) {
+    const query = String(keyword || '').trim();
+    if (!query) throw new TypeError('search keyword is required');
+    try {
+        const results = await searchMemories(env, query);
+        return {
+            status: results.search_status || (results.length > 0 ? 'OK' : 'EMPTY'),
+            results,
+            sources: results.search_sources || {}
+        };
+    } catch (error) {
+        if (error?.search_status === 'ERROR') {
+            return { status: 'ERROR', results: [], sources: error.sources || {} };
+        }
+        throw error;
+    }
 }
 
 export async function listMemoryCategories(env) {
