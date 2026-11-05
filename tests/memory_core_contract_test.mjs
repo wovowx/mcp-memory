@@ -100,6 +100,12 @@ console.log('\n[Repository contracts]');
     check('non-array current-memory response is not treated as an empty result',
         currentShapeError?.code === 'invalid_response_shape');
 
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => { throw new Error('invalid JSON'); } });
+    let currentJsonError;
+    try { await getCurrentMemories(env); } catch (error) { currentJsonError = error; }
+    check('invalid current-memory JSON is surfaced as invalid_json',
+        currentJsonError?.code === 'invalid_json');
+
     globalThis.fetch = async url => {
         if (String(url).includes('/rest/v1/memory_aliases')) throw new Error('offline');
         return { ok: true, status: 200, json: async () => [{ id: 'e-1', event_type: 'update' }] };
