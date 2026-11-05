@@ -2,7 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.39.1] - 2026-11-05（Text Skill Read-only Routing · dev 发布候选，尚未获 main 授权）
+## [v6.40.0] - 2026-11-05（Session Context v0.1 · dev 发行候选，尚未申请 main 发布）
+
+### Added
+- 新增只读 MCP 场景工具 session_context（contract_version=SC-RUNTIME-0.1）。在现有 MCP 激活前提下复用 Session Bootstrap 对权威身份/检查点来源与状态的核验，再精确读取唯一当前检查点的工作阶段、下一步、禁止重复、decision/evidence 有界摘要；仅在提供有效 topic 时调用 Memory Core 检索最多3条当前有效关联记忆，附来源、match_reason、截断标志；不把历史覆盖层、关联线索、缺失决定当成柳柳的当前决定。
+- 与 session_bootstrap 保持工具名、Schema、READY/DEGRADED/BLOCKED 状态和隐私契约互不替换；新增场景不输出私人主档全文、不自动授予执行权限，不探测 Worker tools/list、不会写业务记忆或增加 usage_count。新入口可用不代表第三方宿主会自动调用。
+- 仅修改 src/modules/session/bootstrap.js、src/modules/mcp_router.js 与 tests/session_bootstrap_contract_test.mjs 三个既有代码/测试文件，复用 Memory Core repository/retrieval，不新建存储/路由架构、不改聊天室、唤醒、数据库 schema、Operit 卡或 Pages。
+
+### Regression / boundary
+- 在已批准的整体架构 v1.7 与 Roadmap v1.27 先行定义原型后仅于 dev 实现；本地 npm run check exit0、Session Bootstrap+Context 36/36、Router/Registry/Patch 157/157、GitHub Contents50/50、Memory Core60/60、Search History20/20、Webhook/Agnes114/114、Learning9工件 PASS。额外误调用一个不存在的 release_guard_test.mjs 返回 MODULE_NOT_FOUND，不计入真实回归；现有 Release Guard 行为受 Router/CI 覆盖。
+- 三文件 dev 代码提交 SHA 61ae5b1edc602088e2ade09ce88bc1135818cbca 的 GitHub Actions [42011251463](https://github.com/wovowx/mcp-memory/actions/runs/42011251463) completed SUCCESS，validate 全部步骤通过；后续 package/CHANGELOG/Bridge 的最终候选 HEAD 需单独核实 CI，不能继承该 Run。
+- 线上 E3 NOT RUN：主线目前仍为 v6.39.1 Worker #532 VERIFIED；新功能尚未部署、未获柳柳逐版本 main 发布批准。真实 host 初次自动触发、私人身份全文装载和 P2 严格恢复缺口均不是本版已验证效果。
+
+## [v6.39.1] - 2026-11-05（Text Skill Read-only Routing · 已发布 Worker #532 VERIFIED）
 
 ### Fixed
 - 修复非聊天室文本 Skill 在 `tools/list` 可见、但 `tools/call` 报 `handler type not implemented: text` 的实际缺陷（例如 `master-router`）。仅在既有动态分发的 `handler_type=text` 分支添加只读 SKILL.md 加载；原有 JS/MCP 工具、Schema、Facade、权限门槛与聊天室调用路径不变。
@@ -12,7 +24,7 @@
 ### Regression / release boundary
 - 本地实际运行 `npm run check` exit 0；Router/Registry/Patch 157/157、GitHub Contents 50、Memory Core 60、Search History 20、Session Bootstrap 21、Webhook/Agnes 114、learning 9 工件全部通过（隔离 Mock/E1/E2，不等于真实线上 E3）。远端 dev 两个代码文件与本地已按精确 Git SHA fetch + diff=0 核对；版本候选 SHA `8a6b668aff2ca338bb151599993cf9a0706f2482` 的 GitHub Actions learning-regression [run 42005920662](https://github.com/wovowx/mcp-memory/actions/runs/42005920662) **SUCCESS**，`validate` Job E1/各项 E2/学习工件均成功。此后若仅更新本段 CHANGELOG，最终文档 HEAD 的 CI 仍须重新确认，不提前继承成功。
 - 相对已部署的 v6.39.0 主线，业务变更仅 `src/modules/mcp_router.js` 与 `tests/router_registry_contract_test.mjs`；候选随版本正常更新 `package.json` 与 `CHANGELOG.md`，另外含既有 `CROSS-HOST-BRIDGE.md` 纯交接文档。无新增数据库迁移/服务或操作工具，未触及生产 DB/schema、聊天室/唤醒、角色卡、Pages。
-- **仅 dev 候选；尚无创建 PR、合并 main、Worker 部署的授权。** 柳柳已同意拟议 `squash` 策略，但版本发布仍需提交最终 SHA、文件清单、CI/回滚风险并单独征求批准。当前 dev 有历史非版本化提交标题，不直接采用默认 rebase；正式操作前需再确认 squash 后 dev 指针/历史保护策略。
+- **发布前历史快照（已被本条覆盖）**：当时仅 dev 候选，需要逐版本授权。此后柳柳单独批准 v6.39.1 的精确 premerge 恢复引用、squash main、Cloudflare 自动部署和只读 E3；PR [#326](https://github.com/wovowx/mcp-memory/pull/326) merged，main=e0b0fc43690d543d5ddda754b08b57f55cf22037，Worker deployment 26774ef7/#532 verify_main=VERIFIED，现场 master_router 返回 TEXT_SKILL_LOADED 完整正文，main Actions 42007801917 SUCCESS。此项已收口，不是当前待审批任务。
 
 ## [v6.39.0] - 2026-11-05（P2 Session Bootstrap v0.1；已获柳柳逐版本批准并部署 Worker #531 VERIFIED）
 
