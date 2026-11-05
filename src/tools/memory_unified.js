@@ -75,7 +75,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
                 const chunkSize = safeArgs.chunk_size || 5000;
                 const offset = safeArgs.offset || 0;
                 if (content.length <= chunkSize) {
-                    text = '💡 ' + safeArgs.key + '\n📂 分类：' + data.category + '\n📝 内容：' + content + '\n📅 创建：' + formatTime(data.created_at) + '\n✏️ 更新：' + formatTime(data.updated_at);
+                    text = '💡 ' + safeArgs.key + '\n📂 分类：' + data.category + '\n🏷️ 性质：' + formatMemoryType(data.type) + '\n📝 内容：' + content + '\n📅 创建：' + formatTime(data.created_at) + '\n✏️ 更新：' + formatTime(data.updated_at);
                 } else {
                     const totalChunks = Math.ceil(content.length / chunkSize);
                     const currentChunk = Math.floor(offset / chunkSize) + 1;
