@@ -238,6 +238,7 @@ export async function buildSessionContext(env, args = {}) {
         current_work: null,
         confirmed_context: null,
         related_memories: [],
+        related_sources: null,
         related_status: topic ? 'pending' : 'not_requested',
         permissions: { granted_by_context: false, permitted_next_step: bootstrap.permissions.permitted_next_step },
         limitations: {
