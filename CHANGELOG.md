@@ -1,6 +1,20 @@
 # Changelog
 
-所有重要变更将记录在此文件中。
+所有重要变更将记录在此文件中.
+## [v6.42.0] - 2026-11-06（Memory Type Write Contract · dev 候选；main/部署未获批准）
+
+### Added
+- `memory` 工具增加可选顶层 `type` enum：`fact/quote/inference/agreement`。Worker 代码层共享 helper 同时扩展 tools/list 对外 Schema 与 dispatchGuard 校验，不写 Supabase skills 注册表、不修改数据库 Schema。
+- `remember` 仅在明确传入合法 type 时持久化；旧宿主省略时保持 SQL NULL。`update` 仅在显式传入时修改 type，省略时不发送 type 字段；`type=null` 不作为清除指令。
+- 显式修改 type 时，沿用 `memory_events.old_value/new_value` JSONB 保存 `{value,type}` 新旧快照；History 同时兼容旧 string 与新 object 事件。Recall/Search 对 NULL 显示“未标注”，未知历史值显式显示“未知类型”，不再把缺失 type 伪装成 fact。
+- Memory Transfer 导入/导出保留合法 type；旧导出缺少 type 或为 NULL 时不清除目标记录已有类型，新建记录保持未标注；拒绝未知枚举值。
+- Memory Management Skill 改为顶层 type 规则：agreement 必须由柳柳明确确认，inference 明示不确定性；不再要求把 type 写在 value 内，也不再默认 agreement。
+
+### Regression and authorization boundary
+- 新增 Router Schema/dispatch 与 Memory Core 的 Mock 合同，覆盖 optional enum、非法枚举零写入、typed/untyped remember、update 保留/显式修改、NULL/未知类型展示、legacy/new history snapshots、transfer import/export。
+- 候选代码仅写入 `mcp-memory/dev`；E1/E2 精确 HEAD CI 待运行/待回读。所有测试使用隔离 Mock/synthetic 数据，不写真实记忆。
+- 不修改 Supabase skills 注册表或数据库 Schema，不批量重标历史数据；不改 main、不创建 PR、不部署 Worker；E3 NOT RUN。Skill loader 仍从 main 读取，因此 dev Skill 候选需随未来获批发布才会在线生效。
+
 
 ## [v6.41.0] - 2026-11-05（Memory Association v0.1 · dev 候选；main/部署未获批准）
 
