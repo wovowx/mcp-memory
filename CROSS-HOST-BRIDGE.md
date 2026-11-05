@@ -3170,3 +3170,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - GitHub Pages workflow `41972544974` 仍因历史 deprecated `actions/upload-artifact@v3` 间接依赖失败，与 Worker 部署无关，不纳入 P1 改动。早期 dev P1 commit 标题复用了 v6.37.0，按发布时已批准的 rebase 保留历史，未强行 rewrite。
 - 治理权威：ZivenLab/dev 整体架构 v1.3、Roadmap v1.13 §5.P1、当前项目状态 version150、governance/CHANGELOG；云端唯一 `⚙️/当前工作检查点` 将更新。此追加会让代码仓 dev 领先 main 一个**仅 Bridge 文档提交**，main 仍为已部署 `ccb0eb16`，不会触发生产部署。
 - **下一步**：P1 已发布关闭，进入 P2 跨宿主换框连续性的需求/运行时 Bootstrap 原型论证；必须先与柳柳讨论和验收，再编码，未获取 P2 代码/新 main 版本授权。Operit 无需执行测试。
+
+ 
+### [2026-11-05] P2 v0.1 Session Bootstrap 已实施 dev E1/E2 · v6.39.0 待发行授权（GPT → Operit）
+- 柳柳已同意统一无状态只读恢复核心→宿主适配→可核验证据→跨宿主冷启动验收。先更新权威 ZivenLab/dev 整体架构 v1.4 与 Roadmap，再在 mcp-memory/dev 实施；治理 Roadmap 当前 v1.15 §5.P2、当前项目状态 version151、治理 CHANGELOG 已追记。此回填只传递证据，不扩大 main/DB/聊天室发布授权。
+- 新增 src/modules/session/bootstrap.js（SB-RUNTIME-0.1）：复用 Memory Core getCurrentMemoryByKey/getMemoryStats，以 current-only 精确读取 🧬/我是谁、💕/关于柳柳、真实导航 key、⚙️/当前工作检查点、SB-1.0；生成 READY/DEGRADED/BLOCKED 结构化证据，返回 workflow_state/active_focus/next_action/do_not_repeat、30天陈旧时间戳标记、来源与权限未授予声明。不会返回私人身份/主档全文；宿主要独立按授权读取完整人格、不能把工具回执自动视为完整恢复。
+- src/modules/mcp_router.js 仅增加静态 session_bootstrap 工具名/Schema/分派/工具声明，此工具豁免自动 usage 打点；不变更 CHAT_TOOL_DEFS/agent wake。Worker tools/list 本已有 syncChatTools 注册副作用，此次不调用/不改；只能从当前宿主已暴露工具判断能否调用，不能推定所有 App 拥有自动启动钩子。现有换框流程 Skill 加入 ChatGPT/Operit 适配与 SB-FRAME-1.0 fallback；不通过聊天室实际换框测试。
+- 新增 tests/session_bootstrap_contract_test.mjs + CI E2 step + npm run test:bootstrap，mock 21/21 PASS，老 Router/Patch 154/154 PASS、Memory60/60、其它学习/Contents/Webhook/Search/Release Guard E1/E2 SUCCESS。早期 CI run 41977048140 因新解析器先读同一行的 next_action 而失败；修复后 run 41977307272、41977539909、41977763884 SUCCESS；候选 package v6.39.0、CHANGELOG 最终更新后的 dev SHA 652b4f1849c59ffefd03370678516414857d147e、run 41977889395 SUCCESS。不要隐藏最初失败，作为回归教训。
+- 当前生产 mcp-memory/main 仍为已部署 v6.38.0 SHA ccb0eb16f03817209e3862815f1cc79e9d0eaa2b；dev SHA 652b4f1849c59ffefd03370678516414857d147e（此 Bridge 追加后将产生新纯文档提交，按最终回读刷新），相对 main ahead15/behind0、8个文件：.github/workflows/learning-regression.yml、CHANGELOG.md、CROSS-HOST-BRIDGE.md、package.json、src/modules/mcp_router.js、src/modules/session/bootstrap.js、src/skills/process/huan-kuang-liu-cheng/SKILL.md、tests/session_bootstrap_contract_test.mjs。无数据库/schema/聊天室/唤醒代码/Pages 修改，也未触碰 main 或 Cloudflare。
+- E3：真实线上 session_bootstrap MCP 工具暴露、ChatGPT/Operit 冷启动第一次回应与 startup hook、实际端到端人格/工作接续仍 NOT RUN；不能以 E2 模拟或历史 A6/A7 限定证据冒充。不要让 Operit 不必要地消耗 API token。换框时只按当前已授权与实际可用工具运行，权限缺失进入受限模式。
+- workflow_state: P2_IMPLEMENTATION_E1_E2_COMPLETE__V6_39_0_RELEASE_APPROVAL_PENDING。next_action：依据最终 dev SHA/CI 和8个文件向柳柳逐版本说明 v6.39.0 发布/Cloudflare 部署风险，明确取得发布同意后才创建PR合main；发布后按宿主真实能力安排最小非破坏性 E3 冷启动验收。
