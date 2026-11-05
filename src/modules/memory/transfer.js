@@ -42,10 +42,9 @@ export async function importMemories(env, items, options = {}) {
                 skipped++;
                 continue;
             }
-            const result = await putMemory(env, item.key, {
-                value: item.value,
-                updated_at: now()
-            });
+            const updateData = { value: item.value, updated_at: now() };
+            if (hasType) updateData.type = item.type;
+            const result = await putMemory(env, item.key, updateData);
             if (result?.ok) updated++;
             else failed++;
         } else {
