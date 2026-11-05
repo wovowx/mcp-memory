@@ -479,6 +479,35 @@ console.log('\n[Retrieval reliability contracts]');
     const legacy = await searchMemories(env, 'project plan');
     check('legacy array retrieval facade remains compatible and exposes non-enumerable status',
         Array.isArray(legacy) && legacy[0]?.id === hit.id && legacy.search_status === 'OK');
+
+    const facadeCalls = [];
+    globalThis.fetch = async url => {
+        const requestUrl = String(url);
+        facadeCalls.push(requestUrl);
+        if (requestUrl.includes('/rest/v1/memory_aliases')) throw new Error('alias offline');
+        if (requestUrl.includes('/rest/v1/search_history')) return { ok: false, status: 404, json: async () => ({}) };
+        if (requestUrl.includes('/rest/v1/memories?select=')) return { ok: true, status: 200, json: async () => [hit] };
+        throw new Error('unexpected partial facade request: ' + requestUrl);
+    };
+    const partialFacade = await handleMemoryTool('memory', { action: 'search', keyword: 'project plan' }, env);
+    check('Memory Facade labels partial results and preserves direct hits',
+        partialFacade.includes('[search_status=PARTIAL]') && partialFacade.includes('project plan confirmed'));
+    check('partial search retains the existing search-history success path',
+        facadeCalls.some(url => url.includes('/rest/v1/search_history')));
+
+    const errorCalls = [];
+    globalThis.fetch = async url => {
+        const requestUrl = String(url);
+        errorCalls.push(requestUrl);
+        if (requestUrl.includes('/rest/v1/memory_aliases')) return { ok: true, status: 200, json: async () => [] };
+        if (requestUrl.includes('/rest/v1/memories?select=')) return { ok: false, status: 503, json: async () => ({}) };
+        throw new Error('unexpected error facade request: ' + requestUrl);
+    };
+    const errorFacade = await handleMemoryTool('memory', { action: 'search', keyword: 'project plan' }, env);
+    check('Memory Facade reports ERROR without pretending zero matches',
+        errorFacade.includes('[search_status=ERROR]') && !errorFacade.includes('找到 0 条结果'));
+    check('failed primary retrieval does not record a successful search-history entry',
+        !errorCalls.some(url => url.includes('/rest/v1/search_history')));
 }
 
 console.log('\n[Lifecycle relocation contracts]');
