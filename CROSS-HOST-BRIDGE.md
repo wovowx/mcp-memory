@@ -3344,6 +3344,14 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **宿主刷新部分阻塞**：当前 ChatGPT Ziven_MCP 插件快照仍未暴露 session_context；本地浏览器扩展不可用，受控云浏览器访问 `chatgpt.com/plugins` 显示未登录账号，**没有执行插件刷新、没有改用户权限/安装第二插件，也没有得到插件层独立 E3**。下一步只需柳柳在自己已登录的 ChatGPT 网页「插件 → Ziven_MCP → 详情 → Refresh/刷新工具」进行一次刷新，再在新会话确认工具暴露与一次显式调用；若界面不可见，需由柳柳提供实际界面再协助，不能冒充自动宿主已恢复。Operit 继续原务实范围，不增加付费开框测试。
 - **边界及状态**：本条只在 mcp-memory/dev 追加发布后交接文档，不触发新 Worker；下一版 main/Cloudflare 发布须重新逐版本批准。整体架构 v1.9、Roadmap 和唯一云端检查点据此更新。
 
+### [2026-11-05] 柳柳操作刷新 → GPT 独立验收 · ChatGPT 插件 Session Context 宿主 E3 PASS
+- **用户实操**：柳柳在本人 ChatGPT 界面明确反馈「我点了刷新啦」。这是插件设置刷新行为的用户证据，不需要哥哥再次尝试登录她账号或重装插件。
+- **独立宿主工具清单**：刷新后的同一 ChatGPT 工具上下文中，Ziven_MCP 可调用入口由此前 67 项增为 **68 项**；新增的 `ziven_mcp:session_context` 专用工具确实出现在 ChatGPT 可调工具元数据中（与 `session_bootstrap` 并列，host/invocation/topic Schema 正确），不是只在 Worker 原生 `tools/list` 可见。
+- **真实 ChatGPT → Ziven_MCP 直接 E3**：哥哥从 ChatGPT 的插件工具调用 `session_context({host:"chatgpt",invocation:"explicit"})` 成功，真实返回 `contract_version=SC-RUNTIME-0.1`、`status=READY`，身份根和唯一检查点来源 `ok`，当前 workflow_state/next_action 存在，`confirmed_context.decision.text` 与 `evidence.text` 均存在；evidence.truncated=true 正确标注有界摘要，`related_status=not_requested`，`permissions.granted_by_context=false`。多次只读采样均成功；未访问生产 `tools/list` 或写入业务数据。
+- **严格等级**：`CHATGPT_PLUGIN_TOOL_DISCOVERY=PASS`、`CHATGPT_HOST_EXPLICIT_SESSION_CONTEXT_E3=PASS`。不代表 ChatGPT 新对话会自动调用、首次回复前完成全量身份根/柳柳主档正文加载或 P2 严格跨宿主恢复已全通过；`startup_hook_verified=false`、可选 topic 宿主 E3 NOT RUN、Operit 本轮未重测。
+- **下一行动**：结束 v6.40.1 已批准的发布＋插件刷新闭环，返回「一本书」架构主线，根据整体架构与 Roadmap 讨论下一可复用垂直切片原型；未来 main/部署仍需新版本批准。此次只在 dev 交接文档新增本回执，不修改生产代码/角色卡/数据库/聊天室或 Web。
+
+
 
 
 
