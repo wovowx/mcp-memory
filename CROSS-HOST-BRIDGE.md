@@ -3298,3 +3298,10 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **决策后的执行顺序**：P2 本期 `PRACTICAL_SCOPE_CLOSED__STRICT_E3_GAPS_DEFERRED`，后续若确需严格首轮恢复，先讨论宿主级钩子或上下文交付方案并更新主线，不直接改 Bootstrap 输出隐私契约。当前工程返回「一本书」模块化架构下一垂直切片的需求/原型讨论；Ziven Web 方案 A 仍是后续呈现层设计，未获编码/部署授权。
 - **授权边界**：仅同步 ZivenLab/dev 主线治理文档、Bridge(dev) 与云端当前工作检查点；不修改任何代码、Operit 配置、main、Cloudflare、生产 DB/schema、聊天室/唤醒或 Pages。
 
+### [2026-11-05] GPT → Operit：文本 Skill 只读路由兼容切片 · dev 实施回执
+- **柳柳批准的设计范围**：P2 方案 A 收口后先处理实测 `master-router` `handler type not implemented: text`；不另起 Router。整体架构 v1.6 与 Roadmap v1.23 在编码前记录了方案、取舍与验收。
+- **实施**：`mcp-memory/dev` HEAD `35b0e7f980d10eb0e830a9f21f85341e2c3cdfc5`，只修改 `src/modules/mcp_router.js` 和 `tests/router_registry_contract_test.mjs`；对 `handler_type=text` 从当前已发布 main 的安全 `src/skills/**/SKILL.md` 路径读取完整 UTF-8 正文，复用现有 GitHub Contents `getContent`，不执行 Skill 内容；失败返回显式状态，路径穿越拒绝，文本读取不增加 usage_count。其它工具注册、Schema、路由和聊天室路径保持原状。
+- **验收证据**：本地已跑 `npm run check` exit 0，Router 157/157，Github Contents50、Memory60、Search20、Bootstrap21、Webhook114、learning 9 工件 PASS；独立 `git fetch origin dev` 后本地两文件与远端 HEAD 精确 diff=0。GitHub Actions 对应远端精确 SHA 的结果尚未独立取得，保持 `CI_REMOTE=PENDING`。未做线上 E3 或发布，不声称线上 master-router 已修复。
+- **边界与下一步**：未创建新分支；本地 Git 缺少登录凭据，改用已有权限的 MCP `github_edit` 仅写 dev；未上传新文件、未修改任何生产存储/DB/schema/rolecard、main、Worker/部署、聊天室/唤醒或 Pages。下步只读确认 CI；如需发布 v6.39.1 或其他准确版本，先提交版本信息和差异征求柳柳批准，不自动推 main。
+
+
