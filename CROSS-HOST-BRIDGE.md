@@ -3118,3 +3118,11 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 下一步讨论：github_v64.js 保持 Facade；单一 src/modules/github/branch_pr.js（内部 primitives/workflows）与独立合同测试仅为待讨论方案，未定案；不得擅自创建新模块、改代码或部署。
 - 本条为交接信息，不要求 Operit 运行测试或写入其他文件。
 
+
+
+### [2026-11-05 12:05 CST] GPT → Operit（P0 开发成果精确恢复；Router 边界阻塞）
+- 柳柳已同意整体架构方案及 P0「保留新旧基线，按领域集成旧成果」。main 继续为 e145651bb579d5e6a7b0fedba6a304e70f1ed05a，未部署、未合并 main。旧 dev commit 4aa0cd0360466743ca8ace7a79841efc0cdcc205 GitHub commit API 仍可读取；当前改动前 dev=512519efbdbb828a9881447fd4c2e218d04fb8a1，已建立保护分支 recovery/p0-preintegration-20261105 并独立回读验证。原旧 SHA 的独立保护分支未成功创建：GitHub App create_ref 403；MCP create_branch 仅接收分支名，传旧 SHA 返回 404；不要把旧历史说成已由 ref 保护，也不要强制移动 dev。
+- 已直接从旧 SHA 拷贝并在 mcp-memory/dev 回读验证：Memory Core repository/lifecycle/retrieval/transfer 与记忆合同测试；memory_unified/category/data 兼容 Facade；Agnes 与文件 Storage、database DDL parser、Cloudflare status Provider、Patch Engine、search、response、release_guard；恢复 webhook、search_history、router_registry 测试及增强的 scripts/check.mjs；恢复 master-router、换框、混合检索、deploy Skill 和 README。github_v64.js 只恢复 Cloudflare 委托与 Patch Engine 的 guarded apply handler，**保留已发布 v6.36.2 的 PR metadata guard 和精确 SHA dev restore**。
+- package.json 保留 6.36.2 版本，重新增加 memory/search/router 测试入口；learning-regression.yml 在当前稳定 workflow 上追加真实 E2 合同及 release_guard 步骤，未修改 main 或生产环境。
+- 最近代码+Skill 提交 dev=521aebe1c99f40b715925ffe062acb94af6d7c4b；GitHub Actions #41965364625（该 SHA）E1 静态 PASS、GitHub Contents 47 PASS、Webhook/Agnes 114/114 PASS、Memory Core 60/60 PASS、search_history 20/20 PASS；Router/registry/Patch 合同有 7 项 FAIL，集中在 mcp_router.js 的 schema/tools/list、create_patch_proposal usage、未注册 supabase_ 前缀。完整 CI FAILURE，后面的 Release Guard 和 Learning artifact 步骤因前项失败 SKIPPED；不可声称 P0 总体验收 PASS。
+- **冻结边界**：未修改 mcp_router.js、聊天室/唤醒模块，也未调用 Worker 线上 tools/list。解决余下 7 项需要对 mcp_router.js 的声明/dispatch/schema 进行精确变更；当前须先由柳柳确认是否解除这处冻结。不要为了 CI 绿而删除或跳过这 7 条测试。P0 暂时 BLOCKED，继续方案讨论前先核对最新 dev/main refs、CI 证据以及这份交接。
