@@ -887,6 +887,11 @@ console.log('\n[Transfer contracts]');
     check('import applies explicit legal type to existing and new memories',
         typedImport.ok && typedImport.updated === 1 && typedImport.added === 1 &&
         typedImportPatch?.body?.type === 'agreement' && typedImportInsert?.body?.type === 'quote');
+    calls.length = 0;
+    const invalidTypeImport = await importMemories(env, [
+        { key: 'core/invalid-import', value: 'bad type', type: 'opinion' }
+    ], { invalidAsFailed: true });
+    check('import rejects unknown type before any database request', invalidTypeImport.failed === 1 && calls.length === 0);
 
     globalThis.fetch = async (url, options = {}) => {
         const requestUrl = String(url);
