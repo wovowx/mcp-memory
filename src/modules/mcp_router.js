@@ -9,7 +9,7 @@ import { handleDataTool } from '../tools/data.js';
 import { handleAITool } from '../tools/ai.js';
 import { handleGitHubTool, GITHUB_TOOL_DEFS } from '../tools/github_v64.js';
 import { getContent } from './github/contents.js';
-import { validateRepoRelativePath } from '../utils/helpers.js';
+import { validateRepoRelativePath, withMemoryTypeSchema } from '../utils/helpers.js';
 import { handleDatabaseTool } from '../tools/database.js';
 import { handleCategoryTool } from '../tools/category.js';
 import handleKnowledgeSkill from '../tools/knowledge.js';
