@@ -3379,7 +3379,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 ### [2026-11-05] GPT → Operit · Memory Retrieval Reliability v0.1
 - 柳柳已验收四态原型并授权仅 dev：OK=双源成功有命中；EMPTY=双源成功无命中；PARTIAL=主记忆成功、别名失败，保留主结果；ERROR=主记忆失败，不得伪称无记忆。
 - 源码根因：Repository 将部分 HTTP/非数组故障折叠为空；Retrieval Promise.all 会因别名异常丢弃主结果；Session Context 无法区分空结果与故障。
-- 整体架构 v1.18 已更新；Roadmap v1.40、差距矩阵 v4.57、状态 version172 已同步。下一步仅 mcp-memory/dev 实施并跑 E1/E2/精确 HEAD CI；无 PR/main/Worker E3/部署/生产数据授权。
+- 整体架构 v1.19、Roadmap v1.41、差距矩阵 v4.58、状态 version173 已同步；代码已在 mcp-memory/dev 完成，精确 HEAD `97d4cbd48ed94b0654a49838fa435ecc8e9dda7b` 的 CI run `42060784577` SUCCESS。未创建 PR、未合 main、未运行 E3、未部署。
 
 
 
