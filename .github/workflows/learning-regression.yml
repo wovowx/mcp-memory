@@ -47,3 +47,6 @@ jobs:
 
       - name: E2 - Router, registry and Patch Engine contracts (frozen Router regression gate)
         run: npm run test:contracts
+
+      - name: E2 - Session Bootstrap read-only recovery contracts
+        run: npm run test:bootstrap
