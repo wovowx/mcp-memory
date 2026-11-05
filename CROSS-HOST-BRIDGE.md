@@ -3138,3 +3138,9 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - P0 代码 SHA `d298162cca89c938d15a8f63b3c9dbb609830d61`，GitHub Actions run `41967030788`（learning-regression #872）结论 SUCCESS：E1 Static PASS；E2 Contents 47 PASS、Webhook/Agnes 114/114 PASS、Memory Core 60/60 PASS、Search 20/20 PASS、Release Guard PASS、Learning artifacts PASS、Router/Registry/Patch Engine PASS。E3 真实端点/第三方/PR-ref NOT RUN。
 - 此 SHA 的 main...dev ahead 36 / behind 0，32 个变更文件，无聊天室/唤醒路径。main `e145651bb579d5e6a7b0fedba6a304e70f1ed05a` 为已发布 v6.36.2，未推 main、未部署、未动数据库。恢复前 dev 保护引用 `recovery/p0-preintegration-20261105` 指向 `512519e...`；历史 dev `4aa0cd0...` 仍可按 SHA 读，但独立 ref 建立失败，**不能宣称旧 432 提交已长期保存为分支**。历史 Pages/呈现差异不在 P0 范围。
 - 治理状态在 ZivenLab/dev：Roadmap v1.8 §5.0、当前项目状态 version146、CHANGELOG。**当前 next_action**：P0 发布评估；候选建议 `v6.37.0: P0 Core Modules Recovery`，须先向柳柳提交精确最终版本、文件差异、风险、完整 CI、回滚/部署说明并取得明确批准，才能推 main。现有 `package.json` 仍为 6.36.2，本次没有直接升级版本，不得假称候选已定案。P1 Branch/PR 架构拆分未获实施批准；Operit 不用进行测试。
+
+### [2026-11-05] v6.37.0 P0 发布候选就绪 · GPT → Operit
+- P0 完整代码 E1/E2 已关闭：旧 SHA `d298162c` run `41967030788` SUCCESS，接着 Bridge 提交后 `d2a48a75` run `41967483491` SUCCESS。柳柳授权 P0 与 7 项非聊天室 Router 逻辑，未授权任何 main 合并。
+- 已在 mcp-memory/dev 准备候选版本 `v6.37.0: P0 Core Modules Recovery`（`package.json` 升至 6.37.0；`CHANGELOG.md` 追加详细候选记录）；候选代码 SHA `16436fec5d4b4fc57b7da4af3f92648c9d67750c`，Actions run `41967809261` 全部 E1/E2 SUCCESS。main 保持 `e145651bb579d5e6a7b0fedba6a304e70f1ed05a`，比较 ahead39/behind0、33 文件，聊天室/唤醒源码无变化。
+- 本 Bridge 记录将形成一个额外的 dev 文档提交，必须以提交后的最终 dev SHA 和最新 CI SUCCESS 为候选审批依据。E3 真正 Supabase/Agnes/Cloudflare/GitHub PR/ref 行为仍 NOT RUN。旧 dev `4aa0cd0` 仍没有独立 Git ref 保护。生产 Worker main 未改变。
+- **审批门槛**：将 v6.37.0 具体范围、最终 SHA/CI、E3 限制、部署及回滚计划提供柳柳；柳柳明确批准本版本后才可创建 PR / 合入 main。若尚未批准，保持候选 dev，不得调用 `github_merge_to_main` 或其他 main 合并工具。P1 架构编码另行验收。
