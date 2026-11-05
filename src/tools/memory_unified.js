@@ -108,7 +108,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
                                     (event.reason || event.event_type || 'update') + '：' + oldValue + newValue;
                             }).join('\n');
                         return '📌 ' + state + '（v' + version + '，事件 ' + events.length + ' 条）\n' +
-                            history + '\n💡 记录值：' + String(record.value || '').substring(0, 120);
+                            '📎 当前性质：' + formatMemoryType(record.type) + '\n' + history + '\n💡 记录值：' + String(record.value || '').substring(0, 120);
                     });
                     text = '📜 ' + safeArgs.key + ' 历史记录（' + histories.length + ' 条记录）：\n' + sections.join('\n\n');
                 }
