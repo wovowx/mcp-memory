@@ -10,7 +10,8 @@
 
 ### Regression
 - 将 11 项 Branch/PR auto-sync 合同测试纳入 main 已有的 GitHub Contents contract 测试入口；不修改 CI workflow。
-- 本候选 PR 的 E1/E2 CI：待运行（NOT RUN）；真实 GitHub PR/ref auto-sync E3：NOT RUN。
+- 候选 PR #322 的 CI run #831（`41947439304`，代码/测试 SHA `81c54096a18d76925ab7600769a728fe822967e1`）：learning-regression 全部步骤 SUCCESS；E1 `npm run check` PASS；E2 GitHub Contents contracts、webhook regression 与 learning artifacts 均 SUCCESS。
+- 上述 CI 后仅追加本 CHANGELOG 验证记录；源码与测试未变，最终 PR head 将再次执行完整 CI。真实 GitHub PR/ref auto-sync E3：NOT RUN。
 
 ## [v6.36.1] - 2026-11-04
 ### Fixed
