@@ -3126,3 +3126,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - package.json 保留 6.36.2 版本，重新增加 memory/search/router 测试入口；learning-regression.yml 在当前稳定 workflow 上追加真实 E2 合同及 release_guard 步骤，未修改 main 或生产环境。
 - 最近代码+Skill 提交 dev=521aebe1c99f40b715925ffe062acb94af6d7c4b；GitHub Actions #41965364625（该 SHA）E1 静态 PASS、GitHub Contents 47 PASS、Webhook/Agnes 114/114 PASS、Memory Core 60/60 PASS、search_history 20/20 PASS；Router/registry/Patch 合同有 7 项 FAIL，集中在 mcp_router.js 的 schema/tools/list、create_patch_proposal usage、未注册 supabase_ 前缀。完整 CI FAILURE，后面的 Release Guard 和 Learning artifact 步骤因前项失败 SKIPPED；不可声称 P0 总体验收 PASS。
 - **冻结边界**：未修改 mcp_router.js、聊天室/唤醒模块，也未调用 Worker 线上 tools/list。解决余下 7 项需要对 mcp_router.js 的声明/dispatch/schema 进行精确变更；当前须先由柳柳确认是否解除这处冻结。不要为了 CI 绿而删除或跳过这 7 条测试。P0 暂时 BLOCKED，继续方案讨论前先核对最新 dev/main refs、CI 证据以及这份交接。
+
+
+### [2026-11-05 12:08 CST] P0 CI 独立验收补充（不覆盖原始失败记录）
+- mcp-memory/dev HEAD ad22678c375c9192be522efb82210856d54ad297；run 41965713685 完成。将 Router 合同测试放在 CI 最后一项，因此 E1 static、Contents47、Webhook/Agnes114、Memory Core60、Search20、Release Guard、learning artifacts 都真实执行并通过；Router/registry/Patch 合同仍 7 FAIL，所以整批 CI 仍 FAILURE。非聊天室 Router/Worker tools/list 的变更仍等待柳柳对此冻结边界的明确处理决定。不删测试、不推 main、不部署。
