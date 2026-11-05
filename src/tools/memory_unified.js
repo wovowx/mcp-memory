@@ -6,7 +6,7 @@
 
 import {
     getCategory, getTitle, formatTime, generateId, now,
-    parsePagination, highlightText, isValidDate
+    parsePagination, highlightText, isValidDate, formatMemoryType, isMemoryType
 } from '../utils/helpers.js';
 import { recordSearchKeyword, getSearchSuggestions } from '../utils/search.js';
 import {
