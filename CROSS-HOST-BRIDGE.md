@@ -3366,6 +3366,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **记忆星球关系，非新立项**：云端原始记录 `⚙️/参考-GPT讨论·记忆星系数据支撑（2026-10-20）`、`⚙️/认知-记忆星球·权限分工+幸福碎片`、`⚙️/时间轴·记忆星球·index` 指出原计划用星系可视化共同回忆；本版关联召回与其底层线索复用有关，但没有实现每星单一主归属、锚点/关系证据审核、星空 UI、批注纠错、随机幸福碎片或时间轴；关联≠同星系，不擅自重启休眠项目。
 - **长期发布说明标准**：柳柳明确要求今后先说明版本给她带来的实际作用、前后变化和未覆盖边界，再列文件、版本号、SHA/CI/风险/部署；已更新 wovowx/ZivenLab/dev/governance/roadmap.md v1.36 §5.5、整体架构 v1.13、当前项目状态 version168。今后的每一版都需新批准；当前无 Operit 付费测试任务、不改生产数据库/聊天室/密钥、Web/DNS 或其他 main 发布。
 
+### [2026-11-05] GPT → Operit · Memory Retrieval Quality Benchmark v0.1（dev-only，E1/E2 CI PASS）
+
+- **本轮范围**：按已确认的 v0.1 详细原型，在 `mcp-memory/dev` 建立固定合成检索基准；Fixture 16条合成记忆/16条查询，runner 直接调用 `searchMemories`，以 GET-only fetch mock 隔离 Supabase；新增 npm script、learning-regression E2 step，并在首轮测量后冻结 baseline JSON。没有使用真实记忆、私人聊天或 Operit 数据。
+- **测试覆盖**：精确 key/短语/多词/alias/trigger/entity/CJK fallback、负向拒绝、词面 decoy、当前/过期冲突、仅旧记录、显式/共享实体关联、通用实体排除、关联≤3/去重、stale association 过滤、来源理由/实体证据。Mock 只允许 `/rest/v1/memories` 与 `/rest/v1/memory_aliases` 的 GET；非 GET、未知路径、外部 origin 均 fail closed。
+- **首轮测量与冻结基线**：测量 commit `9146d3c920d6d3816238083f1538002024f8d5ab` / Actions run [42043430775](https://github.com/wovowx/mcp-memory/actions/runs/42043430775)，16条查询、32次 GET。Recall@1=0.90、Recall@3=1.00、MRR=1.00、Direct Precision@3=0.9091、Negative False-Hit Rate=0、Stale Hit Rate=0、Association Recall@3=1.00、Association Provenance Accuracy=1.00。Precision@3 的唯一已知 decoy 是 Q01 的 M16，刻意保留作为误召回探针，不因单个样本改算法。
+- **最终实现验证**：冻结 baseline 后的实现 HEAD `e58c8e9ec64fcffd964c941a46f12ebd5cbba20a` / Actions run [42044490914](https://github.com/wovowx/mcp-memory/actions/runs/42044490914) SUCCESS；E1、Memory Core 69/69、benchmark、Search History、Release Guard、Learning artifacts、Router/Patch Engine、Session Bootstrap 全部通过。CI 校验 Fixture Git blob SHA，并只读比较非退化指标；baseline 不由 CI 自动覆盖。
+- **文档同步**：ZivenLab/dev 已更新整体架构 v1.17、Roadmap v1.39、当前项目状态 version171、架构差距矩阵 v4.56；测试集文档为 v1.8。只同步治理文档，没有发布 ZivenLab/main。
+- **发布边界**：生产 `mcp-memory/main` 仍为 v6.41.0 / `5e4cf739a5ffd21c0434db96217267edb2af57bd`，Cloudflare Worker #535 / deployment `fb40fed3` 不变。mcp-memory/dev 本轮未改生产 `src/`、检索算法、数据库/schema/数据、MCP 工具 Schema、聊天室/唤醒或密钥；未创建 PR、未合并 main、未部署、未消耗 Operit Token。本证据是 E1/E2 synthetic CI，不是生产 E3，也不代表检索算法质量已提升。
+- **下一步**：v0.1 基准切片 CLOSED。回到「一本书」架构主线，下一可复用垂直切片先做需求讨论与可验收原型；真实历史查询20–50条仅作为未来 v0.2 候选，须另行讨论脱敏、来源和授权。任何 main/Worker 发布仍需独立版本单与柳柳逐版本批准。
+
 
 
 
