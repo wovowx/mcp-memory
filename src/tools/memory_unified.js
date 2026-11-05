@@ -187,6 +187,8 @@ export async function handleMemoryTool(name, safeArgs, env) {
             text = '💡 找到 ' + matched.length + ' 条结果（显示 ' + page.length + ' 条）：\n' +
                 page.map(i => '- [' + getCategory(i.key) + '][' + (i.type || 'fact') + '] ' + highlightText(getTitle(i.key), keywords) + ': ' + highlightText(i.value, keywords) +
                     (i._match?.reason ? ' [match_reason=' + i._match.reason + ']' : '') +
+                    (i._match?.related_from_key ? ' [关联来源=' + i._match.related_from_key + ']' : '') +
+                    (i._match?.reason === 'shared_entity' ? ' [共同实体=' + (i._match.matched_terms || []).join('、') + ']' : '') +
                     '\n  💡 ' + formatTime(i.created_at)).join('\n') +
                 (nextCursor ? '\n\n💡 next_cursor: ' + nextCursor : '');
             await recordSearchKeyword(env, safeArgs.keyword.trim());
