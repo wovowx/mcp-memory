@@ -38,7 +38,7 @@ export async function importMemories(env, items, options = {}) {
         }
 
         if (existing) {
-            if (existing.value === item.value) {
+            if (existing.value === item.value && (!hasType || existing.type === item.type)) {
                 skipped++;
                 continue;
             }
