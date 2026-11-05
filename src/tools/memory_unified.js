@@ -43,6 +43,9 @@ export async function handleMemoryTool(name, safeArgs, env) {
     };
     const action = actionMap[name] || safeArgs.action || 'recall';
     let text = '';
+    if (safeArgs.type !== undefined && !isMemoryType(safeArgs.type)) {
+        return '❌ 无效的记忆性质 type：仅支持 ' + ['fact', 'quote', 'inference', 'agreement'].join(' / ');
+    }
 
     if (action === 'remember') {
         if (!safeArgs.key || !safeArgs.value) text = '❌ 缺少参数：需要 key 和 value';
