@@ -10,6 +10,7 @@ import { handlePatchWorkflow } from '../src/modules/patch_workflow.js';
 import { detectRepoType, validateRelease } from '../src/modules/release_guard.js';
 import { validateRepoRelativePath } from '../src/utils/helpers.js';
 import { buildErrorResponse, jsonResponse } from '../src/utils/response.js';
+import { CHAT_TOOL_DEFS } from '../src/tools/chat_mcp.js';
 
 const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
 let pass = 0, fail = 0;
@@ -239,9 +240,17 @@ const fixture = [
   { name: 'memory_remember', enabled: true, description: 'remember', handler_type: 'js', handler_config: { handler: 'memory' } },
   { name: 'create_patch_proposal', enabled: true, description: 'create proposal', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: null }
 ];
+// One previously registered chat tool must remain visible. Other chat tools
+// intentionally stay absent; merely listing tools must not register them.
+const registeredChatDef = CHAT_TOOL_DEFS[0];
+fixture.push({
+  name: registeredChatDef.name, enabled: true, description: registeredChatDef.description,
+  handler_type: 'js', handler_config: { handler: 'chat' }, input_schema: registeredChatDef.input_schema
+});
 const textSkillContent = '# Master router\n' + '文本技能完整读取。'.repeat(1800) + '\nEND_OF_TEXT_SKILL';
 let textSkillMode = 'ok', textSkillFetchCount = 0;
 let registryMode = 'ok'; let memoriesRestCount = 0; let usagePatchCount = 0; let otherRestCount = 0; let patchProposalPostCount = 0;
+let skillsWriteMethods = [];
 let ddlRpcCount = 0; let tableListCount = 0; let lastExecSql = '';
 const origFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts = {}) => {
@@ -249,6 +258,7 @@ globalThis.fetch = async (url, opts = {}) => {
   if (s.includes('/rest/v1/skills')) {
     if (registryMode === 'network') throw new Error('mock registry network down');
     if (registryMode === 'http500') return { ok: false, status: 500, text: async () => 'mock registry HTTP 500' };
+    if (['POST', 'PATCH', 'DELETE'].includes(m)) skillsWriteMethods.push(m);
     if (m === 'POST') return { ok: true, status: 201, json: async () => [] };
     if (m === 'PATCH' || s.includes('usage_count') || s.includes('last_used')) { usagePatchCount++; return { ok: true, status: 200, json: async () => [] }; }
     if (s.includes('enabled=eq.true')) return { ok: true, status: 200, json: async () => fixture };
@@ -281,7 +291,24 @@ try {
   registryMode = 'http500'; memoriesRestCount = 0; otherRestCount = 0;
   t = await callTool('memory_schema_probe_500'); check('500→TOOL_REGISTRY_UNAVAILABLE', t.includes('[TOOL_REGISTRY_UNAVAILABLE]')); check('500 不发业务 REST', memoriesRestCount === 0 && otherRestCount === 0);
   registryMode = 'ok';
+  skillsWriteMethods = []; usagePatchCount = 0; otherRestCount = 0;
   let names = await listTools(); check('list 含 memory', names.includes('memory')); check('list 无 memory_move', !names.includes('memory_move'));
+  check('tools/list never POST/PATCH/DELETE skills or write usage/business data',
+    skillsWriteMethods.length === 0 && usagePatchCount === 0 && otherRestCount === 0);
+  check('tools/list preserves an already-registered chat tool and its exposed schema',
+    names.includes(registeredChatDef.name) &&
+    (await listToolDefs()).find(t => t.name === registeredChatDef.name)?.inputSchema?.type === registeredChatDef.input_schema?.type);
+  check('tools/list does not auto-register missing paused chat tools',
+    CHAT_TOOL_DEFS.filter(d => d.name !== registeredChatDef.name).every(d => !names.includes(d.name)) &&
+    skillsWriteMethods.length === 0);
+  const firstDiscovery = [...names].sort().join('|');
+  const secondDiscovery = (await listTools()).sort().join('|');
+  check('repeated tools/list is stable and side-effect-free',
+    firstDiscovery === secondDiscovery && skillsWriteMethods.length === 0 && usagePatchCount === 0);
+  const recovered = await listToolDefs();
+  check('tools/list advertises one copy each of the existing Bootstrap and Context static tools',
+    ['session_bootstrap', 'session_context'].every(name => recovered.filter(t => t.name === name).length === 1) &&
+    recovered.find(t => t.name === 'session_context')?.inputSchema?.properties?.topic?.type === 'string');
   memoriesRestCount = 0; t = await callTool('memory_move', {});
   check('memory_move 空参→缺参', t.includes('需要 key 和 newCategory')); check('memory_move 不访问 memories/events', memoriesRestCount === 0);
   memoriesRestCount = 0; otherRestCount = 0; usagePatchCount = 0; t = await callTool('category_move_category', {});
