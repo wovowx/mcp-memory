@@ -2,6 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.39.0] - 2026-11-05（P2 Session Bootstrap v0.1；仅 dev 发行候选，未获 main 授权）
+
+### Added
+- `src/modules/session/bootstrap.js`：无状态 Session Bootstrap 场景能力，复用 Memory Core current-only repository 与 retrieval stats，精确读取 `🧬/我是谁`、`💕/关于柳柳`、记忆位置导航、`⚙️/当前工作检查点`、SB-1.0。标准化返回 `SB-RUNTIME-0.1` 与 `READY|DEGRADED|BLOCKED`、来源证据、实际记忆统计、最新检查点的 workflow_state/next_action、宿主能力申报可信度及权限边界；不返回私人身份/主档全文，不授权任何业务写入。
+- `src/modules/mcp_router.js` 最小接线：新增静态 `session_bootstrap` 工具名及固定 schema、工具调用分发与 tools/list 静态声明，无新增 skills 表行或 Registry 业务写入；仅该入口跳过 `autoIncrementUsage`。其本体不调用 Worker `tools/list`；当前已知 tools/list→syncChatTools 注册副作用仍存在，本版不改聊天室代码。
+- 既有 `src/skills/process/huan-kuang-liu-cheng/SKILL.md` 加入 ChatGPT/Operit 宿主适配：可调用新入口时获取恢复证据，仍需宿主加载完整 persona 并核对权限；入口未暴露时回退 SB-FRAME-1.0 逐项精确读取。只有已独立证实的 startup hook 能声称自动冷启动，MCP 不能单方控制第三方 App。
+
+### Regression and limits
+- 新增 `tests/session_bootstrap_contract_test.mjs` 19 项合同 + `npm run test:bootstrap`；将 E2 Bootstrap 步骤接入现有 GitHub Actions CI。涵盖当前/旧快照、精确 key、身份或 checkpoint 缺失、stats 失败、辅助来源缺失、状态字段缺失、异常、schema 拒绝、只发 GET、不探测 tools/list、不自动 usage 写入、不泄露身份与主档全文、不擅自授予权限。
+- 源码测试 `mcp-memory/dev` SHA `94da9ef205a9de5765e75c01140f0de3245f575b` 的 learning-regression `41977307272` SUCCESS：E1/全部 E2（P2 19/19，Router/Patch 154/154、其余回归）通过；最终候选 SHA 与 CI 需版本化完成后独立回读。
+- 真实 ChatGPT/Operit 首轮自动触发、插件工具刷新、实际 MCP endpoint / 生产数据读取、完整人格装载及跨宿主首轮一致性 **E3 NOT RUN**；本版没有推 main / 部署 Worker。过去 A6/A7 的限定证据不能迁移为本版 E3。
+- 本轮不触碰聊天室、唤醒链、Agent Runtime、生产数据库/schema 或权限配置；对外开放、发布与 Cloudflare 自动部署需要柳柳逐版本另行批准。
+
 ## [v6.38.0] - 2026-11-05（P1 Domain Boundaries，dev 发布候选，未合 main）
 ### Refactored
 - GitHub Branch/PR 统一收敛到 `src/modules/github/branch_pr.js`：分支 ref 创建、精确 SHA 恢复、普通同步、PR 创建/读取/关闭/合并、`github_merge_to_main` 复合流程与「仅 merged=true 且 dev→main 才允许同步 dev」门禁。保持工具入口、Schema、允许仓库校验、返回字符串和旧测试导出 `restoreBranchReference` 不变。
