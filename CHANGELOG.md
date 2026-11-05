@@ -2,6 +2,18 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.38.0] - 2026-11-05（P1 Domain Boundaries，dev 发布候选，未合 main）
+### Refactored
+- GitHub Branch/PR 统一收敛到 `src/modules/github/branch_pr.js`：分支 ref 创建、精确 SHA 恢复、普通同步、PR 创建/读取/关闭/合并、`github_merge_to_main` 复合流程与「仅 merged=true 且 dev→main 才允许同步 dev」门禁。保持工具入口、Schema、允许仓库校验、返回字符串和旧测试导出 `restoreBranchReference` 不变。
+- `github_apply_patch` 已批准 proposal 的多步执行改由 `src/modules/patch_workflow.js` 编排，原子 patch 校验/target policy 继续复用 `src/modules/patch_engine.js`；保留 claim、HTTP/部分成功/未知状态及 rollback_sha 等既有语义。
+- `src/tools/github_v64.js` 保留稳定对外 Facade、GitHub Contents 适配、注册及认证/发布门禁，将 Branch/PR 与 Patch 的内部流程委托领域模块；未变更 `src/modules/mcp_router.js`、Memory Core、聊天室/Agent 唤醒或 Supabase schema。
+
+### Regression
+- 在既有 GitHub Contents 测试增加 Branch/PR 独立模块工具名与拒绝缺参的合同；在 Router/Patch 测试增加 Patch workflow 在网络调用前拒绝无 proposal_id、main 分支和未授权仓库的合同。
+- 集成后 dev 源码 SHA `158cdc036f48f80ca86730a03a6a087e3fd36cd0` 对应 GitHub Actions learning-regression `41971350369` **SUCCESS**：E1 static/import；E2 GitHub Contents、Webhook/Agnes、Memory60、Search20、Release Guard、Learning artifacts、Router/Registry/Patch 154/154 PASS。正式发布候选最终 SHA 与 CI 另行回读。
+- E3 真实 GitHub PR/ref 合并、生产 Supabase Patch 写入与部署行为 **NOT RUN**。本版本尚未获柳柳逐版本 main 发布批准；不自动合并或触发 Cloudflare 部署。
+
+
 ## [v6.37.0] - 2026-11-05
 ### P0 Core Modules Recovery（恢复已完成但被历史 dev ref 移动遮蔽的开发切片）
 - 恢复 Memory Core 四模块（repository、lifecycle、retrieval、transfer）和 memory/category/data 工具 Facade，保留原有工具名和调用契约，修复失败与部分写入结果的传播。
