@@ -129,7 +129,8 @@ console.log('\n[Retired-key history contracts]');
         version: 3,
         status: 'deleted',
         valid_to: '2026-11-03T00:00:00Z',
-        created_at: '2026-10-01T00:00:00Z'
+        created_at: '2026-10-01T00:00:00Z',
+        type: null
     };
     globalThis.fetch = async url => {
         const requestUrl = String(url);
