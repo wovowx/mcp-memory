@@ -299,7 +299,17 @@ export async function buildSessionContext(env, args = {}) {
                 match_reason: hit._match?.reason || 'unknown',
                 excerpt: excerpt(hit.value, 240)
             }));
-            result.related_status = eligible.length ? 'matched_best_effort' : 'no_matches_or_source_unavailable';
+            if (search.status === 'OK') result.related_status = eligible.length ? 'matched_best_effort' : 'no_matches';
+            else if (search.status === 'EMPTY') result.related_status = 'no_matches';
+            else if (search.status === 'PARTIAL') {
+                result.related_status = 'partial';
+                result.warnings.push('topic_search_partial');
+                if (result.status === 'READY') result.status = 'DEGRADED';
+            } else {
+                result.related_status = 'unavailable';
+                result.warnings.push('topic_search_unavailable');
+                if (result.status === 'READY') result.status = 'DEGRADED';
+            }
         } catch (error) {
             result.related_status = 'unavailable';
             result.warnings.push('topic_search_failed');
