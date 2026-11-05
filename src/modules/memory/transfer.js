@@ -22,6 +22,13 @@ export async function importMemories(env, items, options = {}) {
             continue;
         }
 
+        const hasType = item.type !== undefined && item.type !== null && item.type !== '';
+        if (hasType && !isMemoryType(item.type)) {
+            if (invalidAsFailed) failed++;
+            else skipped++;
+            continue;
+        }
+
         let existing;
         try {
             existing = await getMemoryByKey(env, item.key);
