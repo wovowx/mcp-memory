@@ -874,6 +874,8 @@ console.log('\n[Transfer contracts]');
         imported.added === 1 && imported.updated === 1 && imported.skipped === 1 && imported.failed === 1);
     check('shared importer preserves source created_at on new records',
         insertCall?.body?.created_at === '2026-10-01T00:00:00Z');
+    const untypedUpdatePatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
+    check('legacy import without type does not overwrite an existing type', untypedUpdatePatch?.body?.type === undefined);
 
     globalThis.fetch = async (url, options = {}) => {
         const requestUrl = String(url);
