@@ -3334,7 +3334,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **柳柳批准范围**：在 v6.40.0 发布闭环后，同意仅针对 `tools/list` 枚举会顺带触发 `syncChatTools` 注册聊天室 Skill 的缺口做一次最小 `dev` 调整，现存聊天室业务 handler、实际调用路径及生产数据全部冻结。真正插件刷新、PR、main 与 Cloudflare 自动部署均无新授权。
 - **设计先行**：先更新 ZivenLab/dev/整体架构.md v1.9、Roadmap v1.30，原型是“仅 GET 当前已注册工具→附加静态 session_bootstrap/session_context→不创建任何数据库记录”。没有复制 Session Context 逻辑，没有新增独立路由或存储。已经注册的工具、Schema 和 `tools/call` 行为不变；缺失的聊天室工具不因发现请求自动补注册。
 - **实现/本地 E1/E2**：新 v6.40.1 候选仅修改 `src/modules/mcp_router.js`（取消 `tools/list` 的 syncChatTools 调用）、`tests/router_registry_contract_test.mjs`（新5项零写入/注册保留/缺项不补/重复稳定/静态工具唯一）和正常版本/CHANGELOG/Bridge。干净 detached worktree 基于发布后 dev=0ef917701ac4689bf83786bf59102156a3fbb34d；`npm run check` exit0，Router/Patch **162/162**、Session/Context36/36、Contents50、Memory60、Search20、Webhook/Agnes114、Learning9工件均 PASS。此为本地隔离合同，不是远端 GitHub CI/生产 E3。
-- **真实宿主状态**：Worker 仍为 v6.40.0 #533；ChatGPT 当前插件快照未暴露 `session_context`，插件刷新尚未执行；Operit 继续原 P2 务实恢复状态，不要求新框付费测试。下一步提交精确 dev 候选并核对 GitHub Actions；若要发版、刷新连接或上线 E3，必须另向柳柳报告版本/SHA/影响、取得单独批准。
+- **真实宿主状态与远端 CI**：Worker 仍为 v6.40.0 #533；ChatGPT 当前插件快照未暴露 `session_context`，插件刷新尚未执行；Operit 继续原 P2 务实恢复状态，不要求新框付费测试。上述五文件已写入 `mcp-memory/dev`，code+version+Bridge 精确 HEAD `a69fdd25a266ee636a95cf39bf007ab497c4c529`，五文件均独立以 `git show origin/dev:<path> | cmp` 比对本地测试版本一致；GitHub Actions [42017282811](https://github.com/wovowx/mcp-memory/actions/runs/42017282811) completed SUCCESS，validate Job 完成成功。该证据绑定 `a69fdd2`，本次纯 Bridge 回填会生成新的 dev SHA，需独立确认最新 SHA 的 CI 才能声称最终 HEAD 绿。当前对 main ahead6/behind0、仅5文件；正式发版、刷新连接或线上 E3 须先另向柳柳报告版本/SHA/影响、取得单独批准。
 
 
 
