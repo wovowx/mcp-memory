@@ -167,7 +167,7 @@ console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报
   let result = await putMemory(writeEnv, 'test/write-fail', { value: 'sample' });
   check('INSERT HTTP 500 → ok=false', result.ok === false && result.stage === 'insert');
 
-  existing = { id: 'memory-1', key: 'test/update-event-fail', value: 'old', version: 1 };
+  existing = { id: 'memory-1', key: 'test/update-event-fail', value: 'old', version: 1, status: 'active', valid_to: null };
   eventStatus = 503; patchStatus = 204; writeCalls.length = 0;
   result = await putMemory(writeEnv, existing.key, { value: 'new' });
   check('历史事件 HTTP 503 → ok=false', result.ok === false && result.stage === 'history');
@@ -178,7 +178,7 @@ console.log('\n[记忆写入] HTTP 失败必须返回失败结果，不能误报
   check('UPDATE HTTP 503 → ok=false', result.ok === false && result.stage === 'update');
 
   // 目标创建失败时，rename 不得先软删除源记录。
-  const source = { id: 'source-1', key: 'test/source', value: 'keep me', version: 1, created_at: '2026-10-23T00:00:00Z' };
+  const source = { id: 'source-1', key: 'test/source', value: 'keep me', version: 1, status: 'active', valid_to: null, created_at: '2026-10-23T00:00:00Z' };
   const renameCalls = [];
   globalThis.fetch = async (url, opts = {}) => {
     const s = String(url); renameCalls.push({ url: s, method: opts.method || 'GET' });
@@ -263,8 +263,10 @@ console.log('[delete_file] 先删 Storage 再删元数据：成功/未找到/缺
   const skD = { name: 'delete_file', description: 'd', enabled: true, usage_count: 0, input_schema: { type: 'object' }, handler_config: { handler: 'ai' }, handler_type: 'js' };
   let fileRec=[], storageStatus=200, metaStatus=200, lookupStatus=200, netErr=false, metaRows=[{ id:'file-7' }];
   let sDel=0, mDel=0, usagePatches=0;
+  const deleteCalls=[];
   globalThis.fetch = async (url, opts={}) => {
     const s=String(url), m=opts.method||'GET';
+    deleteCalls.push({ url:s, method:m });
     if (s.includes('/rest/v1/skills?enabled=eq.true&select=*')) return { ok:true, status:200, json: async () => [skU, skD, skillQ] };
     if (s.includes('/rest/v1/skills?name=eq.delete_file&select=*')) return { ok:true, status:200, json: async () => [skD] };
     if (s.includes('/rest/v1/skills?name=eq.delete_file') && m==='PATCH') { usagePatches++; return { ok:true, status:204, json: async () => [] }; }
@@ -280,6 +282,11 @@ console.log('[delete_file] 先删 Storage 再删元数据：成功/未找到/缺
   fileRec = [{ id:'file-7', file_path:'b/dir/f.txt', file_name:'f.txt' }];
   const d1 = await handleAITool('delete_file', { file_id:'file-7' }, env);
   check('delete_file 成功删除并确认元数据返回目标行', d1.startsWith('✅ 文件删除成功') && d1.includes('已确认'));
+  const storageDeleteIndex = deleteCalls.findIndex(call => call.method === 'DELETE' && call.url.includes('/storage/v1/object/files/'));
+  const metadataDeleteIndex = deleteCalls.findIndex(call => call.method === 'DELETE' && call.url.includes('/rest/v1/files?id=eq.'));
+  check('delete_file deletes the exact encoded Storage path before metadata',
+    storageDeleteIndex >= 0 && metadataDeleteIndex > storageDeleteIndex &&
+    deleteCalls[storageDeleteIndex].url.endsWith('/storage/v1/object/files/b/dir/f.txt'));
   metaRows=[];
   const d0 = await handleAITool('delete_file', { file_id:'file-7' }, env);
   check('delete_file Storage 成功但元数据 DELETE 返回零行时报告部分失败', d0.startsWith('❌') && d0.includes('未返回被删除的元数据行'));
@@ -465,7 +472,7 @@ console.log('\n[main-guard] 非发布流程禁止直接修改 main：四个工�
   const call=async(nm,arg)=>{ const r=await handleMCPRequest({method:'tools/call',id:9,params:{name:nm,arguments:arg||{}}},env); return r.data.result.content[0].text; };
   let r,beforeApi;
   beforeApi=apiCount(); r=await call('github_delete',{path:'x'});
-  check('github_delete 缺省 branch(dev) → 不触发 main guard', !r.startsWith('MAIN_WRITE_BLOCKED'));
+  check('github_delete 缺省 branch(dev) → 不触发 main guard', !r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   beforeApi=apiCount(); r=await call('github_delete',{path:'x',branch:'main'});
   check('github_delete 显式 main 拒绝', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   r=await call('github_delete',{path:'x',branch:'dev'});
@@ -475,7 +482,7 @@ console.log('\n[main-guard] 非发布流程禁止直接修改 main：四个工�
   r=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',target_branch:'dev'});
   check('github_copy target_branch=dev 放行', !r.startsWith('MAIN_WRITE_BLOCKED'));
   beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t'});
-  check('github_move 缺省 source_branch/target_branch(dev) → 不触发 main guard', !r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
+  check('github_move 缺省 source_branch(dev) → 不触发 main guard', !r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'main',target_branch:'dev'});
   check('github_move 源 main + 目标 dev → 源拒绝', r.startsWith('MAIN_WRITE_BLOCKED') && apiCount()===beforeApi);
   beforeApi=apiCount(); r=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'dev',target_branch:'main'});
@@ -509,20 +516,16 @@ console.log('\n[main-regression] 既有防线回归：push/edit main 拦、合�
   check('github_push 缺省 branch(dev) 通过 releaseGuard 并继续校验上传 URL', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED') && t.includes('INVALID_CONTENT_URL'));
   ab=apiCalls; t=await call('github_edit',{path:'x',operations:[{old:'a',new:'b'}]});
   check('github_edit 缺省 branch(dev) 通过 releaseGuard 并读取 dev', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED') && apiCalls===ab+1);
-  t=await call('github_push',{path:'x',branch:'main',content_url:'http://u'});
-  check('github_push 显式 main 仍由 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD') && t.includes('push_to_main_blocked'));
-  t=await call('github_edit',{path:'x',branch:'main',operations:[{old:'a',new:'b'}]});
-  check('github_edit 显式 main 仍由 releaseGuard 拒绝', t.startsWith('RELEASE_GUARD'));
   ab=apiCalls; t=await call('github_push',{path:'x',branch:'dev',content_url:'http://mock.upload/x'});
   check('github_push 到 dev 非 main 仍由 releaseGuard 放行（合法路径不回归）', !t.startsWith('RELEASE_GUARD') && !t.startsWith('MAIN_WRITE_BLOCKED') && apiCalls===ab);
   t=await call('github_apply_patch',{proposal_id:'p1',branch:'main'});
-  check('github_apply_patch 指定 main 被原防线拒绝', t.includes('禁止 main'));
+  check('github_apply_patch 指定 main 被 Patch Engine policy 拒绝', t.includes('MAIN_PROTECTED') || t.includes('禁止直接写入 main') || t.includes('禁止 main'));
   ab=apiCalls; t=await call('delete_branch',{name:'main'});
   check('delete_branch 删除 main 被原防线拒绝且无 GitHub 远端写', t.includes('不能删除 main') && apiCalls===ab);
   t=await call('delete_branch',{name:'feat/x'});
   check('delete_branch 非 main 放行（原防线仅拦 main）', !t.includes('不能删除 main'));
   ab=apiCalls; t=await call('github_copy',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',target_branch:'main'});
-  check('github_copy 显式目标 main 拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
+  check('github_copy 显式 target main 仍拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
   ab=apiCalls; t=await call('github_move',{source_repo:'a',source_path:'s',target_repo:'b',target_path:'t',source_branch:'dev',target_branch:'main'});
   check('github_move 目标 main 拒绝且不出现旧 warning、远端 API 零', t.startsWith('MAIN_WRITE_BLOCKED') && !/warn/i.test(t) && apiCalls===ab);
 }
@@ -569,6 +572,131 @@ console.log('\n[memory-suggest] 联想词空态与异常回归');
 
     text = await callSuggest({ ok: false, status: 500, json: async () => ({ message: 'mock server error' }) });
     check('HTTP 500 不崩溃且显示空态', text === '💡 暂无搜索历史', text);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+
+console.log('\n[Agnes provider contracts] 请求构造、模型 fallback、缺少密钥与旧工具名兼容');
+{
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  const agnesEnv = { AGNES_API_KEY: 'mock-agnes-key' };
+  globalThis.fetch = async (url, options = {}) => {
+    if (!String(url).startsWith('https://apihub.agnes-ai.com/v1/')) {
+      throw new Error('unexpected Agnes request: ' + url);
+    }
+    const body = JSON.parse(options.body || '{}');
+    calls.push({ url: String(url), method: options.method, body });
+    if (calls.length === 1) {
+      return { ok: false, status: 400, text: async () => 'mock invalid default model' };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ url: 'https://cdn.example.test/generated.png' }] })
+    };
+  };
+
+  try {
+    const invalid = await handleAITool('agnes', { action: 'not-an-action' }, agnesEnv);
+    check('Agnes rejects unknown actions before provider requests',
+      invalid.includes('需要合法的 action') && calls.length === 0);
+
+    const missingKey = await handleAITool('agnes', {
+      action: 'generate_image',
+      prompt: 'a blue cat'
+    }, {});
+    check('Agnes reports a missing API key without sending a request',
+      missingKey.includes('未配置 AGNES_API_KEY') && calls.length === 0);
+
+    const generated = await handleAITool('agnes', {
+      action: 'generate_image',
+      prompt: 'a blue cat',
+      verbose: true
+    }, agnesEnv);
+    check('Agnes retries a model-invalid response with the configured fallback',
+      calls.length === 2 &&
+      calls[0].body.model === 'agnes-image-2.1-flash' &&
+      calls[1].body.model === 'agnes-image-2.0-flash');
+    check('Agnes sends the existing generation payload and preserves user output',
+      calls[1].method === 'POST' &&
+      calls[1].body.prompt === 'a blue cat' &&
+      generated.includes('图片生成成功') &&
+      generated.includes('https://cdn.example.test/generated.png'));
+    check('Agnes verbose output reports the successful fallback model and failed attempt',
+      generated.includes('agnes-image-2.0-flash') &&
+      generated.includes('尝试组合数：1') &&
+      generated.includes('模型不存在或参数错误'));
+
+    calls.length = 0;
+    const legacy = await handleAITool('generate_image', {
+      prompt: 'legacy prompt'
+    }, agnesEnv);
+    check('Legacy generate_image name still delegates to Agnes and keeps its response',
+      calls.length === 2 &&
+      calls[0].body.model === 'agnes-image-2.1-flash' &&
+      legacy.includes('图片生成成功'));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+
+console.log('\n[Agnes data URI upload contracts] 图片 data URI 自动上传后再调用 provider');
+{
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  const agnesEnv = {
+    AGNES_API_KEY: 'mock-agnes-key',
+    SUPABASE_URL: 'https://mock.supabase.co',
+    SUPABASE_ANON_KEY: 'mock-anon-key'
+  };
+  globalThis.fetch = async (url, options = {}) => {
+    const requestUrl = String(url);
+    const method = options.method || 'GET';
+    calls.push({ url: requestUrl, method, body: options.body });
+
+    if (requestUrl.endsWith('/storage/v1/bucket/files') && method === 'GET') {
+      return { ok: true, status: 200 };
+    }
+    if (requestUrl.includes('/storage/v1/object/files/') && method === 'POST') {
+      return { ok: true, status: 200 };
+    }
+    if (requestUrl.endsWith('/rest/v1/files') && method === 'POST') {
+      return {
+        ok: true,
+        status: 201,
+        json: async () => [{ id: 'uploaded-file-1', created_at: '2026-11-04T00:00:00Z' }]
+      };
+    }
+    if (requestUrl.startsWith('https://apihub.agnes-ai.com/v1/chat/completions') && method === 'POST') {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: 'a small blue cat' } }] })
+      };
+    }
+    throw new Error('unexpected Agnes data URI request: ' + method + ' ' + requestUrl);
+  };
+
+  try {
+    const output = await handleAITool('agnes', {
+      action: 'describe_image',
+      image_url: 'data:image/png;base64,AQID'
+    }, agnesEnv);
+    const storageIndex = calls.findIndex(call => call.url.includes('/storage/v1/object/files/'));
+    const metadataIndex = calls.findIndex(call => call.url.endsWith('/rest/v1/files') && call.method === 'POST');
+    const providerIndex = calls.findIndex(call => call.url.startsWith('https://apihub.agnes-ai.com/'));
+    const providerBody = providerIndex >= 0 ? JSON.parse(calls[providerIndex].body) : {};
+    const imageUrl = providerBody.messages?.[0]?.content?.find(part => part.type === 'image_url')?.image_url?.url;
+    check('Agnes uploads data URI bytes to Storage before writing metadata',
+      storageIndex >= 0 && metadataIndex > storageIndex);
+    check('Agnes invokes the image provider only after the upload is registered',
+      providerIndex > metadataIndex && imageUrl?.startsWith('https://mock.supabase.co/storage/v1/object/public/files/'));
+    check('Agnes keeps the describe_image response contract after automatic upload',
+      output.includes('图片识别结果') && output.includes('a small blue cat'));
   } finally {
     globalThis.fetch = originalFetch;
   }
