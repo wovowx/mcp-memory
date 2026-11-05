@@ -1,51 +1,172 @@
-// ============================================================
-// 搜索历史（Supabase 版）
-// ============================================================
-export async function recordSearchKeyword(env, keyword) {
-    if (typeof keyword !== 'string' || keyword.trim().length === 0) return;
-    try {
-        const normalized = keyword.trim().toLowerCase();
-        const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/search_history?keyword=eq.${encodeURIComponent(normalized)}&select=*`, {
-            headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
-        });
-        // A missing table or failed lookup must not be treated as an empty history,
-        // otherwise we attempt a misleading POST after the GET already failed.
-        if (!resp.ok) return;
-        const existing = await resp.json();
-        if (!Array.isArray(existing)) return;
-        if (existing.length > 0) {
-            await fetch(`${env.SUPABASE_URL}/rest/v1/search_history?keyword=eq.${encodeURIComponent(normalized)}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ count: existing[0].count + 1, updated_at: new Date().toISOString() })
-            });
-        } else {
-            await fetch(`${env.SUPABASE_URL}/rest/v1/search_history`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ keyword: normalized, count: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-            });
+// P2 · Session Bootstrap v0.1. Stateless, evidence-first, no business writes.
+// Reuses Memory Core; no chatroom or Agent Runtime dependency.
+import { getCurrentMemoryByKey } from '../memory/repository.js';
+import { getMemoryStats } from '../memory/retrieval.js';
+
+export const BOOTSTRAP_CONTRACT_VERSION = 'SB-RUNTIME-0.1';
+export const BOOTSTRAP_KEYS = Object.freeze({
+    identity: '🧬/我是谁',
+    profile: '💕/关于柳柳',
+    navigation: '记忆位置导航（换框/换设备自举·2026-10-18）',
+    checkpoint: '⚙️/当前工作检查点',
+    protocol: '⚙️/恢复协议·Session Bootstrap SB-1.0'
+});
+export const SESSION_BOOTSTRAP_TOOL = Object.freeze({
+    name: 'session_bootstrap',
+    description: 'P2 跨宿主只读恢复：从唯一云端身份根、工作检查点、协议、导航与实时记忆统计生成可验证的 READY/DEGRADED/BLOCKED 恢复证据；不授予代码/数据库/发布权限，也不保证第三方 App 自动调用。',
+    input_schema: {
+        type: 'object',
+        properties: {
+            host: { type: 'string', enum: ['chatgpt', 'operit', 'other'] },
+            invocation: { type: 'string', enum: ['explicit', 'startup_hook', 'frame_instruction', 'unknown'] },
+            available_tools: { type: 'array', items: { type: 'string' } }
         }
-    } catch (e) {}
+    }
+});
+
+function extractLine(text, field) {
+    const match = new RegExp(field + '\\s*[=:：]\\s*([^\\n]+)', 'i').exec(text);
+    return match ? match[1].replace(/\*\*/g, '').trim() : null;
 }
-export async function getSearchSuggestions(env, prefix) {
+
+export function parseCheckpoint(value) {
+    if (typeof value !== 'string' || !value.trim()) return null;
+    // A versioned current overlay precedes all preserved historical snapshots.
+    const current = value.split(/\n---\s*(?:旧工作检查点|以下为历史|以下为旧|历史检查点)/)[0].slice(0, 6500);
+    const stateRaw = extractLine(current, 'workflow_state');
+    const workflowState = stateRaw ? (stateRaw.match(/^[a-zA-Z0-9_.-]+/) || [])[0] || null : null;
+    const nextAction = extractLine(current, 'next_action');
+    const activeFocus = extractLine(current, 'active_focus');
+    return {
+        workflow_state: workflowState,
+        active_focus: activeFocus ? activeFocus.slice(0, 280) : null,
+        next_action: nextAction ? nextAction.slice(0, 650) : null,
+        excerpt: current.slice(0, 1000),
+        excerpt_truncated: current.length > 1000,
+        structured_fields_verified: Boolean(workflowState && nextAction)
+    };
+}
+
+function publicSource(key, record, status, error) {
+    const source = { key, status, read_method: 'exact_active_current' };
+    if (record && status === 'ok') {
+        source.updated_at = record.updated_at || null;
+        source.version = record.version ?? null;
+    }
+    if (error) source.error = error;
+    return source;
+}
+
+async function fetchSource(env, key) {
     try {
-        let query = `${env.SUPABASE_URL}/rest/v1/search_history?select=keyword&order=count.desc&limit=20`;
-        if (prefix && prefix.trim().length > 0) {
-            query += `&keyword=ilike.${encodeURIComponent(prefix.trim().toLowerCase())}%`;
+        const row = await getCurrentMemoryByKey(env, key);
+        if (!row) return { record: null, source: publicSource(key, null, 'missing') };
+        if (row.key !== key || row.status !== 'active' || row.valid_to != null) {
+            return { record: null, source: publicSource(key, null, 'invalid', 'non_authoritative_record') };
         }
-        const resp = await fetch(query, {
-            headers: { 'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`, 'apikey': env.SUPABASE_ANON_KEY }
-        });
-        if (!resp.ok) return [];
-        const data = await resp.json();
-        if (!Array.isArray(data)) return [];
-        return data.map(item => item?.keyword).filter(keyword => typeof keyword === 'string');
-    } catch { return []; }
+        if (typeof row.value !== 'string' || !row.value.trim()) {
+            return { record: null, source: publicSource(key, null, 'invalid', 'empty_content') };
+        }
+        return { record: row, source: publicSource(key, row, 'ok') };
+    } catch (error) {
+        return { record: null, source: publicSource(key, null, 'error', String(error?.message || error)) };
+    }
+}
+
+function describeHost(args) {
+    const host = ['chatgpt', 'operit', 'other'].includes(args.host) ? args.host : 'other';
+    const invocation = ['explicit', 'startup_hook', 'frame_instruction'].includes(args.invocation)
+        ? args.invocation : 'unknown';
+    const tools = Array.isArray(args.available_tools)
+        ? [...new Set(args.available_tools.filter(v => typeof v === 'string' && v.trim()).map(v => v.trim()))].slice(0, 40)
+        : [];
+    return {
+        name: host,
+        invocation,
+        advertised_tools: tools,
+        capability_evidence: tools.length ? 'host_reported_not_tested' : 'unknown',
+        startup_hook_verified: false,
+        note: 'Host-reported capability is not independent execution evidence.'
+    };
+}
+
+/**
+ * No writes, no tools/list, no search fallback, no full private profile/identity
+ * content in the output. Permissions are never granted by restoration.
+ */
+export async function buildSessionBootstrap(env, args = {}) {
+    const host = describeHost(args && typeof args === 'object' ? args : {});
+    const names = Object.keys(BOOTSTRAP_KEYS);
+    const outcomes = await Promise.all(names.map(name => fetchSource(env, BOOTSTRAP_KEYS[name])));
+    const sources = Object.fromEntries(names.map((name, i) => [name, outcomes[i].source]));
+    const records = Object.fromEntries(names.map((name, i) => [name, outcomes[i].record]));
+
+    let stats = null;
+    let statsStatus = 'error';
+    let statsError = null;
+    try {
+        const result = await getMemoryStats(env);
+        if (Number.isInteger(result?.total) && result.total > 0 &&
+            Number.isInteger(result?.categoryCount) && result.categoryCount > 0) {
+            stats = { total: result.total, category_count: result.categoryCount };
+            statsStatus = 'ok';
+        } else {
+            statsStatus = 'invalid';
+            statsError = 'missing_or_empty_statistics';
+        }
+    } catch (error) {
+        statsError = String(error?.message || error);
+    }
+    sources.memory_stats = { status: statsStatus, read_method: 'current_memory_stats' };
+    if (statsError) sources.memory_stats.error = statsError;
+
+    const checkpoint = records.checkpoint ? parseCheckpoint(records.checkpoint.value) : null;
+    const blockers = [];
+    for (const name of ['identity', 'checkpoint', 'memory_stats']) {
+        if (sources[name].status !== 'ok') blockers.push(name + '_' + sources[name].status);
+    }
+    const warnings = [];
+    for (const name of ['profile', 'navigation', 'protocol']) {
+        if (sources[name].status !== 'ok') warnings.push(name + '_' + sources[name].status);
+    }
+    if (records.checkpoint && !checkpoint?.structured_fields_verified) {
+        warnings.push('checkpoint_fields_incomplete');
+    }
+    const status = blockers.length ? 'BLOCKED' : warnings.length ? 'DEGRADED' : 'READY';
+    return {
+        contract_version: BOOTSTRAP_CONTRACT_VERSION,
+        status,
+        restored: status === 'READY',
+        sources,
+        memory_stats: stats,
+        current_work: checkpoint ? {
+            workflow_state: checkpoint.workflow_state,
+            active_focus: checkpoint.active_focus,
+            next_action: checkpoint.next_action,
+            checkpoint_excerpt: checkpoint.excerpt,
+            excerpt_truncated: checkpoint.excerpt_truncated,
+            updated_at: records.checkpoint?.updated_at || null,
+            version: records.checkpoint?.version ?? null
+        } : null,
+        host,
+        blockers,
+        warnings,
+        permissions: {
+            granted_by_bootstrap: false,
+            permitted_next_step: status === 'BLOCKED' ? 'read_only_recovery' : 'verify_scope_and_approval',
+            note: 'A restored phase never authorizes coding, merging main, deployment, DB writes or paused chatroom actions.'
+        },
+        limitations: {
+            startup_hook: 'not_verified',
+            cross_host_first_reply: 'not_tested',
+            production_write_E3: 'not_run',
+            worker_tools_list: 'not_invoked_known_registration_side_effect',
+            tool_usage_telemetry: 'excluded_for_session_bootstrap_only'
+        }
+    };
+}
+
+export async function handleSessionBootstrap(name, safeArgs, env) {
+    if (name !== SESSION_BOOTSTRAP_TOOL.name) return 'ERROR: Unknown session tool: ' + name;
+    return JSON.stringify(await buildSessionBootstrap(env, safeArgs));
 }
