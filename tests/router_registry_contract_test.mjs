@@ -6,6 +6,7 @@ import { parseColumnDefinitions, quoteDdlIdentifier } from '../src/modules/datab
 import { handleGitHubTool } from '../src/tools/github_v64.js';
 import { handleCloudflareTool } from '../src/modules/cloudflare/worker_status.js';
 import { resolvePatchTargetPolicy, validatePatchTargetFile, validatePatch } from '../src/modules/patch_engine.js';
+import { handlePatchWorkflow } from '../src/modules/patch_workflow.js';
 import { detectRepoType, validateRelease } from '../src/modules/release_guard.js';
 import { validateRepoRelativePath } from '../src/utils/helpers.js';
 import { buildErrorResponse, jsonResponse } from '../src/utils/response.js';
@@ -779,6 +780,23 @@ console.log('\n[GitHub PR auto-sync contracts] only a merged dev → main PR may
   check('github_merge_to_main scoped release path also leaves dev unchanged',
     mergeToScoped.output.includes('已跳过 dev 自动同步') &&
     !mergeToScoped.calls.some(c => c.method === 'PATCH' && c.address.endsWith('/git/refs/heads/dev')));
+}
+
+console.log('\n[Extracted Patch workflow boundary contracts]');
+{
+  const noopEncoders = { base64ToUtf8: () => '', utf8ToBase64: () => '' };
+  const missing = await handlePatchWorkflow('github_apply_patch', {}, { GITHUB_REPO: 'wovowx/mcp-memory' }, noopEncoders);
+  check('Patch workflow rejects missing proposal_id without network access', missing === 'ERROR: Missing proposal_id');
+  const mainBlocked = await handlePatchWorkflow('github_apply_patch',
+    { proposal_id: 'p1-contract', branch: 'MAIN' },
+    { GITHUB_REPO: 'wovowx/mcp-memory' }, noopEncoders);
+  check('Patch workflow applies main branch guard before any network request',
+    mainBlocked.includes('MAIN_PROTECTED'));
+  const otherRepo = await handlePatchWorkflow('github_apply_patch',
+    { proposal_id: 'p1-contract', branch: 'dev', repo: 'other/unapproved' },
+    { GITHUB_REPO: 'wovowx/mcp-memory' }, noopEncoders);
+  check('Patch workflow applies repository allowlist before any network request',
+    otherRepo.includes('REPOSITORY_NOT_ALLOWED'));
 }
 
 console.log('===== ' + pass + ' 通过 / ' + fail + ' 失败 =====');
