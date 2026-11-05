@@ -877,6 +877,17 @@ console.log('\n[Transfer contracts]');
     const untypedUpdatePatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
     check('legacy import without type does not overwrite an existing type', untypedUpdatePatch?.body?.type === undefined);
 
+    calls.length = 0;
+    const typedImport = await importMemories(env, [
+        { key: 'core/update', value: 'typed import update', type: 'agreement' },
+        { key: 'core/type-new', value: 'typed import insert', type: 'quote' }
+    ], { invalidAsFailed: true });
+    const typedImportPatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
+    const typedImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories'));
+    check('import applies explicit legal type to existing and new memories',
+        typedImport.ok && typedImport.updated === 1 && typedImport.added === 1 &&
+        typedImportPatch?.body?.type === 'agreement' && typedImportInsert?.body?.type === 'quote');
+
     globalThis.fetch = async (url, options = {}) => {
         const requestUrl = String(url);
         const method = options.method || 'GET';
