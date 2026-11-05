@@ -1,8 +1,13 @@
 // Deterministic synthetic-only benchmark for searchMemories; no Supabase or search-history writes.
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { searchMemories } from '../src/modules/memory/retrieval.js';
 
-const fixture = JSON.parse(await readFile(new URL('./fixtures/memory_retrieval_benchmark_v0_1.json', import.meta.url), 'utf8'));
+const fixtureUrl = new URL('./fixtures/memory_retrieval_benchmark_v0_1.json', import.meta.url);
+const fixtureText = await readFile(fixtureUrl, 'utf8');
+const fixture = JSON.parse(fixtureText);
+const fixtureBlobSha = createHash('sha1').update('blob ' + Buffer.byteLength(fixtureText) + '\0' + fixtureText).digest('hex');
+const baseline = JSON.parse(await readFile(new URL('./fixtures/memory_retrieval_benchmark_v0_1.baseline.json', import.meta.url), 'utf8'));
 const env = { SUPABASE_URL: 'https://memory-retrieval-benchmark.invalid', SUPABASE_ANON_KEY: 'synthetic-benchmark-key' };
 const associationReasons = new Set(['related_memory', 'shared_entity']);
 const originalFetch = globalThis.fetch;
@@ -173,22 +178,60 @@ try {
   expect(requests.every(row => row.method === 'GET'), 'all requests must be GET');
   expect(requests.every(row => ['/rest/v1/memories', '/rest/v1/memory_aliases'].includes(row.pathname)), 'request path allowlist violated');
 
+  const metrics = calculateMetrics();
+  expect(baseline.schema_version === 1, 'baseline schema version mismatch');
+  expect(baseline.benchmark === 'memory-retrieval-v0.1', 'baseline benchmark id mismatch');
+  expect(baseline.fixture_version === fixture.version, 'baseline fixture version mismatch');
+  expect(baseline.fixture_blob_sha === fixtureBlobSha, 'fixture changed since the frozen baseline; review and explicitly re-freeze it');
+  expect(baseline.request_count === requests.length, 'baseline request count mismatch');
+
+  const higherIsBetter = [
+    ['direct.recall_at_1', baseline.metrics?.direct?.recall_at_1, metrics.direct.recall_at_1],
+    ['direct.recall_at_3', baseline.metrics?.direct?.recall_at_3, metrics.direct.recall_at_3],
+    ['direct.mrr_macro', baseline.metrics?.direct?.mrr_macro, metrics.direct.mrr_macro],
+    ['direct.precision_at_3', baseline.metrics?.direct?.precision_at_3, metrics.direct.precision_at_3],
+    ['association.recall_at_3', baseline.metrics?.association?.recall_at_3, metrics.association.recall_at_3],
+    ['association.provenance_accuracy', baseline.metrics?.association?.provenance_accuracy, metrics.association.provenance_accuracy]
+  ];
+  const lowerIsBetter = [
+    ['negative_false_hit_rate', baseline.metrics?.negative_false_hit_rate, metrics.negative_false_hit_rate],
+    ['stale_hit_rate', baseline.metrics?.stale_hit_rate, metrics.stale_hit_rate]
+  ];
+  for (const [name, previous, current] of higherIsBetter) {
+    expect(Number.isFinite(previous) && Number.isFinite(current), 'baseline metric must be numeric: ' + name);
+    if (Number.isFinite(previous) && Number.isFinite(current)) {
+      expect(current + 1e-12 >= previous, name + ' regressed: ' + previous + ' -> ' + current);
+    }
+  }
+  for (const [name, previous, current] of lowerIsBetter) {
+    expect(Number.isFinite(previous) && Number.isFinite(current), 'baseline metric must be numeric: ' + name);
+    if (Number.isFinite(previous) && Number.isFinite(current)) {
+      expect(current <= previous + 1e-12, name + ' regressed: ' + previous + ' -> ' + current);
+    }
+  }
+  expect(metrics.direct.positive_query_count === baseline.metrics.direct.positive_query_count, 'positive query count changed');
+  expect(metrics.direct.expected_direct_count === baseline.metrics.direct.expected_direct_count, 'expected direct target count changed');
+  expect(metrics.direct.precision_candidate_count === baseline.metrics.direct.precision_candidate_count, 'precision candidate count changed');
+  expect(metrics.association.expected_association_count === baseline.metrics.association.expected_association_count, 'expected association count changed');
+  expect(metrics.association.actual_association_count === baseline.metrics.association.actual_association_count, 'actual association count changed');
+
   const report = {
     benchmark: 'memory-retrieval-v0.1',
     fixture_version: fixture.version,
     synthetic_only: true,
     request_count: requests.length,
-    metrics: calculateMetrics(),
+    frozen_baseline: { measured_commit: baseline.measured_commit, workflow_run_id: baseline.workflow_run_id, fixture_blob_sha: baseline.fixture_blob_sha },
+    metrics,
     queries: reports.map(row => ({ id: row.id, direct_ids: row.direct, association_ids: row.associations, forbidden_hits: row.forbidden }))
   };
-  console.log('\n[memory-retrieval-benchmark] Candidate baseline metrics (not auto-saved):');
+  console.log('\n[memory-retrieval-benchmark] Metrics compared with frozen baseline (read-only):');
   console.log(JSON.stringify(report, null, 2));
   if (failures.length) {
     console.error('\n[memory-retrieval-benchmark] FAILED: ' + failures.length + ' failure(s)');
     for (const failure of failures) console.error(' - ' + failure);
     process.exitCode = 1;
   } else {
-    console.log('\n[memory-retrieval-benchmark] PASS: 16 queries, provenance and GET-only contracts passed.');
+    console.log('\n[memory-retrieval-benchmark] PASS: 16 queries, GET-only/provenance contracts and frozen-baseline non-regression passed.');
   }
 } finally {
   globalThis.fetch = originalFetch;
