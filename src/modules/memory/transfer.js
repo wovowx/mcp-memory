@@ -71,6 +71,7 @@ export async function getExportableMemories(env) {
     return current.map(item => ({
             key: item.key,
             value: item.value,
+            type: item.type ?? null,
             created_at: item.created_at,
             updated_at: item.updated_at
         }));
