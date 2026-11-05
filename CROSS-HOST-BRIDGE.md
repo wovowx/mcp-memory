@@ -3161,3 +3161,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 新增 6 项领域边界合同，不删旧测试；代码+测试 SHA 158cdc036f48f80ca86730a03a6a087e3fd36cd0 的 GitHub Actions 41971350369 SUCCESS；升级 package version 6.38.0 / CHANGELOG 后 dev SHA b762546810ec183112c95337b64f6fcf7d7a9715 的 Actions 41971533005 再次 SUCCESS：E1 静态，E2 Contents、Webhook/Agnes、Memory60、Search20、Release Guard、Learning artifacts、Router/Patch 154/154 全部通过。真正 PR/ref / Supabase Patch 写入 E3 NOT RUN。
 - 此次仅 mcp-memory/dev；main 仍为已部署的 v6.37.0 SHA 08d065b66061043f9a4766184176df10cfa7c05b。后续本 Bridge 追加会使 dev 多一条纯文档提交，须依最终 SHA 的 CI 为发布审批证据。没有操作 main/生产数据库/聊天室/唤醒链/Pages。
 - 注意 P1 早期开发提交标题沿用了 v6.37.0，发行候选 v6.38.0；发布时应告知柳柳历史提交标题风险与合并策略，不擅自强制重写 dev。只有柳柳针对 v6.38.0 准确变更及部署范围另行批准后才允许合 main。下一步：最终 SHA+CI 检查 → 提交发布信息与风险 → 等待版本批准。Operit 不需运行测试。
+
+
+### [2026-11-05] v6.38.0 P1 Domain Boundaries 已获批准并发布 · Workers VERIFIED（GPT → Operit）
+- 柳柳已经确认 P1 的 Branch/PR 单一领域模块、Patch 独立 workflow 原型，并针对 **v6.38.0** 明确批准使用 rebase PR 合并 main、自动部署 Cloudflare Worker。部署前 main 为 `08d065b66061043f9a4766184176df10cfa7c05b`；候选 dev `37aec2f55c104d7f92ccd58539e8193c63a10b06` 已回读独立保护于 `recovery/v6.38.0-premerge-20261105`。PR #324 `merged=true`（2026-11-05T05:12:32Z），main 和自动同步后的 dev 均为 `ccb0eb16f03817209e3862815f1cc79e9d0eaa2b`。
+- 发布范围合并前 main...dev ahead12/behind0、8 文件：branch_pr.js 新领域、patch_workflow.js 新领域、github_v64.js Facade 调整、两项测试、package v6.38.0、CHANGELOG 和历史 Bridge。工具名称、Schema、返回契约、repo/token allowlist、发布门禁不变；不修改聊天室/唤醒、生产数据库/schema、Pages 或 Worker 配置。
+- E1/E2：候选 `41971864457` SUCCESS，PR `41972458197` SUCCESS，main `41972545011` SUCCESS（GitHub Contents、Webhook/Agnes、Memory60、Search20、Router/Patch154/154、Release Guard、Learning artifacts，全部通过）。Cloudflare Workers Build `5695f750-bd93-4184-9e7d-ec5871a7bc56` outcome SUCCESS；deployment `f774584f`（version #530），`cloudflare_deploy_status(verify_main=true)` VERIFIED。部署后 MCP 只读 memory recall 和 github_get_pull_request(324) PASS；真实第三方/生产写入 E3 NOT RUN。
+- GitHub Pages workflow `41972544974` 仍因历史 deprecated `actions/upload-artifact@v3` 间接依赖失败，与 Worker 部署无关，不纳入 P1 改动。早期 dev P1 commit 标题复用了 v6.37.0，按发布时已批准的 rebase 保留历史，未强行 rewrite。
+- 治理权威：ZivenLab/dev 整体架构 v1.3、Roadmap v1.13 §5.P1、当前项目状态 version150、governance/CHANGELOG；云端唯一 `⚙️/当前工作检查点` 将更新。此追加会让代码仓 dev 领先 main 一个**仅 Bridge 文档提交**，main 仍为已部署 `ccb0eb16`，不会触发生产部署。
+- **下一步**：P1 已发布关闭，进入 P2 跨宿主换框连续性的需求/运行时 Bootstrap 原型论证；必须先与柳柳讨论和验收，再编码，未获取 P2 代码/新 main 版本授权。Operit 无需执行测试。
