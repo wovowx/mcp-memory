@@ -33,5 +33,17 @@ jobs:
       - name: E2 - Existing webhook idempotency regression
         run: node tests/webhook_idempotency_test.mjs
 
+      - name: E2 - Memory Core repository, lifecycle and facade contracts
+        run: npm run test:memory-core
+
+      - name: E2 - Search history contracts
+        run: npm run test:search-history
+
+      - name: E2 - Router, registry and Patch Engine contracts
+        run: npm run test:contracts
+
+      - name: E2 - Release Guard regression
+        run: node src/modules/release_guard.js
+
       - name: Learning artifact regression
         run: python3 tests/learning/run_learning_tests.py
