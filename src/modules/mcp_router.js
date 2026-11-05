@@ -277,7 +277,9 @@ function getExposedInputSchema(skill) {
     const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : {};
     const schemaOverride = getToolSchemaOverride(skill?.name);
     if (schemaOverride) return schemaOverride;
-    if (skill?.name !== 'supabase_db' && skill?.name !== 'supabase_schema') return schema;
+    if (skill?.name !== 'supabase_db' && skill?.name !== 'supabase_schema') {
+        return skill?.name === 'memory' ? withMemoryTypeSchema(schema) : schema;
+    }
     // necessity is enforced by database.js for DDL hidden behind action=exec; expose it to clients without requiring it for read-only actions.
     return {
         ...schema,
