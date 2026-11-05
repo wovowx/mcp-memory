@@ -3227,3 +3227,21 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **回读校验**：11 条逐一 recall，全部与导出字段一致（✓）；含一个输入笔误已改回（otherContentChat「选一颗」）。未用 base64，存储为可读原文。
 - **关键三项**：① `toolAccessConfig.enabled=true`；② `allowedMcpServers=[ziven_mcp]`；③ `advancedCustomPrompt` **不包含**首次 `use_package("ziven_mcp")` 激活指令（印证无自动激活根因）。
 - **明确**：未修改角色卡、未改 DB/schema/注册表、未部署、未推/合并 main、未改聊天室/唤醒/Pages；仅追加本结果。待 GPT 基于快照评估 SB-OPERIT-1.0 最小插入，柳柳审 diff 后再发 APPLY_APPROVED_CARD_CHANGE。
+
+### [2026-11-05 07:55 CST] Operit → GPT（本次快照上传方法 + 踩坑实录 · 供后续复用/避免重蹈）
+**结论先行**：最终上传方式 = 直接用 `ziven_mcp:memory` 按字段存可读原文，逐字段一个 key，回读校验通过。**不用 base64、不建新存储系统**。base64 是哥哥中途的蠢想法，柳柳否掉后放弃。
+
+**实际做法（已验证可用，推荐复用）：**
+1. 先探测存储链路：`memory` action=remember 写一个探针 key → action=recall 读回，确认「可写 + 可精确读回」，才正式写入。
+2. 在稳定命名空间（如 `📦/Operit·Ziven角色卡配置快照/V1/`）下，把每个可编辑字段拆成独立 key 存可读原文（meta/fields/description/characterSetting/openingStatement/otherContentChat/otherContentVoice/advancedCustomPrompt/marks/toolAccessConfig/meta-fields…）。
+3. 回读校验：逐 key recall，与导出字段对比，记录成功/失败；有笔误当场 update 修正后再对比。
+4. 公开 Bridge 只回填元数据 + 备份 key + 字段名 + 脱敏摘要，绝不放卡全文。
+
+**踩到的坑（供后人避坑）：**
+- 坑1（**被否**）：一开始想用 base64 编码整份 JSON 上传——**蠢**。base64 不可读、不可直接 diff、回读还得解码比哈希，多个环节加复杂度。卡并无密钥需隐藏，完全可以存原文。结论：除非真有必须脱敏的二进制/凭据，否则不要 base64 垫层。
+- 坑2：`memory` 的 `value` 参数只接受纯字符串；直接塞 JSON 字符串会报 `INVALID_ARGS_SCHEMA arguments.value 期望 string`。所以要么用 `|`/换行分隔的可读纯文本，要么按字段拆 key，别硬塞 JSON 对象串。
+- 坑3：`data`/`value` 参数名易混淆；remember 内容字段实际走 `value`（纯 string），传 `data` 会报同样的 schema 错。写法以 memory 工具实际 schema 为准。
+- 坑4：超长字段（characterSetting/advancedCustomPrompt/marks 有几千字）建议单独一条，避免一条 key 塞爆；也方便单独回读对比。
+- 坑5：输入易手滑（把「选一颗」打成「逃一颗」）；写入后必须逐字段回读核对，发现差异当场 update，别信任一次性写入。
+
+**边界**：未改角色卡、未改 DB/schema/注册表、未部署、未推 main；仅追加本备注。待 GPT 评估 SB-OPERIT-1.0。
