@@ -3,30 +3,61 @@
 // Loaded by github_v64.js (SRC: ../modules/patch_engine.js)
 // 2026-09-05 Ziven x GPT #751/#753 converged
 // ============================================================
+import { validateRepoRelativePath } from '../utils/helpers.js';
 
 // 校验 structured patch 是否可应用
 // patch = { file, changes: [{ start_line, delete_lines, insert_lines, delete_content? }] }
 export function validatePatch(fileContent, patch) {
   const errs = [];
-  if (!patch || !patch.file) errs.push('missing file');
-  if (!Array.isArray(patch.changes) || patch.changes.length === 0) errs.push('missing changes');
+  if (!patch || typeof patch !== 'object' || typeof patch.file !== 'string' || !patch.file.trim()) errs.push('missing file');
+  if (!patch || !Array.isArray(patch.changes) || patch.changes.length === 0) errs.push('missing changes');
   if (errs.length) return { ok: false, errors: errs };
 
   const lines = fileContent.split('\n');
   const total = lines.length;
+  const ranges = [];
 
   for (let i = 0; i < patch.changes.length; i++) {
     const ch = patch.changes[i];
+    if (!ch || typeof ch !== 'object' || Array.isArray(ch)) {
+      errs.push('change[' + i + '] must be an object');
+      continue;
+    }
     const start = ch.start_line;
-    const del = ch.delete_lines || 0;
-    if (typeof start !== 'number' || start < 1) { errs.push('change[' + i + '] start_line invalid: ' + start); continue; }
-    if (typeof del !== 'number' || del < 0) { errs.push('change[' + i + '] delete_lines invalid: ' + del); continue; }
+    const del = ch.delete_lines === undefined ? 0 : ch.delete_lines;
+    if (!Number.isInteger(start) || start < 1) { errs.push('change[' + i + '] start_line must be a positive integer: ' + start); continue; }
+    if (!Number.isInteger(del) || del < 0) { errs.push('change[' + i + '] delete_lines must be a non-negative integer: ' + del); continue; }
+    if (ch.insert_lines !== undefined && !Array.isArray(ch.insert_lines)) {
+      errs.push('change[' + i + '] insert_lines must be an array of strings');
+      continue;
+    }
+    if (del === 0 && (!Array.isArray(ch.insert_lines) || ch.insert_lines.length === 0)) {
+      errs.push('change[' + i + '] must delete or insert at least one line');
+      continue;
+    }
+    if (Array.isArray(ch.insert_lines) && ch.insert_lines.some(line => typeof line !== 'string' || line.includes('\n') || line.includes('\r'))) {
+      errs.push('change[' + i + '] insert_lines entries must be single lines');
+      continue;
+    }
+    if (ch.delete_content !== undefined && (!Array.isArray(ch.delete_content) || ch.delete_content.length !== del || ch.delete_content.some(line => typeof line !== 'string'))) {
+      errs.push('change[' + i + '] delete_content must contain exactly delete_lines strings');
+      continue;
+    }
     if (start > total + 1) { errs.push('change[' + i + '] start_line out of range: ' + start + ' > total+1=' + (total + 1)); continue; }
     if (start - 1 + del > total) { errs.push('change[' + i + '] delete range out of bounds: start=' + start + ' del=' + del + ' total=' + total); continue; }
     if (del > 0 && ch.delete_content) {
       for (let k = 0; k < del; k++) {
         if (lines[start - 1 + k] !== ch.delete_content[k]) { errs.push('change[' + i + '] delete_content mismatch at line ' + (start + k)); break; }
       }
+    }
+    ranges.push({ index: i, start, end: start + Math.max(del, 1) - 1 });
+  }
+
+  // Multiple operations touching the same line make the reverse-order splice ambiguous.
+  ranges.sort((a, b) => a.start - b.start || a.end - b.end);
+  for (let i = 1; i < ranges.length; i++) {
+    if (ranges[i].start <= ranges[i - 1].end) {
+      errs.push('change ranges overlap: change[' + ranges[i - 1].index + '] and change[' + ranges[i].index + ']');
     }
   }
   return { ok: errs.length === 0, errors: errs, lines, total };
@@ -43,6 +74,51 @@ export function applyPatch(fileContent, patch) {
     lines.splice(idx, c.delete_lines || 0, ...(c.insert_lines || []));
   }
   return { ok: true, content: lines.join('\n') };
+}
+
+// ============================================================
+// Patch Engine target policy
+// Default: dev only. Future branches can be explicitly authorized via
+// PATCH_ENGINE_ALLOWED_BRANCHES (comma-separated); main is never allowed here.
+// ============================================================
+export function resolvePatchTargetPolicy(repo, branch, env = {}) {
+  const targetRepo = String(repo || '').trim();
+  const targetBranch = String(branch || '').trim();
+  if (!targetRepo || !/^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(targetRepo)) {
+    return { ok: false, code: 'INVALID_REPOSITORY', reason: '目标仓库必须是合法的 owner/repo 标识，不能包含 URL 查询或路径控制字符' };
+  }
+  if (!targetBranch || targetBranch.startsWith('-')) {
+    return { ok: false, code: 'INVALID_BRANCH', reason: '目标分支无效' };
+  }
+  const canonicalBranch = targetBranch.replace(/^refs\/heads\//i, '');
+  if (/^refs\/heads\//i.test(canonicalBranch)) {
+    return { ok: false, code: 'INVALID_BRANCH', reason: '分支名不能重复包含 refs/heads/ 前缀' };
+  }
+  if (canonicalBranch.startsWith('-') || /[\u0000-\u0020\u007f]/.test(canonicalBranch)) {
+    return { ok: false, code: 'INVALID_BRANCH', reason: '目标分支包含 Git ref 不允许的前导短横线/空白或控制字符' };
+  }
+  if (canonicalBranch.toLowerCase() === 'main') {
+    return { ok: false, code: 'MAIN_PROTECTED', reason: 'github_apply_patch 禁止直接写入 main；请走独立发布审批流程' };
+  }
+  const configured = String(env.PATCH_ENGINE_ALLOWED_BRANCHES || 'dev')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const allowedBranches = new Set(configured.map(s => s.replace(/^refs\/heads\//i, '')).filter(s => s && !/^refs\/heads\//i.test(s) && !s.startsWith('-') && !/[\u0000-\u0020\u007f]/.test(s) && s.toLowerCase() !== 'main'));
+  if (!allowedBranches.has(canonicalBranch)) {
+    return { ok: false, code: 'BRANCH_NOT_ALLOWED', reason: `目标分支未获授权：${canonicalBranch}。允许分支：${Array.from(allowedBranches).join(', ') || '(none)'}` };
+  }
+  const configuredRepos = String(env.GITHUB_ALLOWED_REPOS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const defaultRepo = String(env.GITHUB_REPO || '').trim();
+  if (targetRepo !== defaultRepo && !configuredRepos.includes(targetRepo)) {
+    return { ok: false, code: 'REPOSITORY_NOT_ALLOWED', reason: `目标仓库未获授权：${targetRepo}。允许仓库：${[defaultRepo, ...configuredRepos].filter(Boolean).join(', ')}` };
+  }
+  return { ok: true, repo: targetRepo, branch: canonicalBranch };
+}
+
+// Preserve the Patch Engine-specific error code while reusing the shared path contract.
+export function validatePatchTargetFile(filePath) {
+  const result = validateRepoRelativePath(filePath);
+  return result.ok ? result : { ...result, code: 'INVALID_TARGET_PATH' };
 }
 
 // ============================================================
