@@ -129,7 +129,7 @@ function readSourceFailure(error) {
 
 export async function searchMemoriesWithStatus(env, keyword) {
     const query = String(keyword || '').trim();
-    if (!query) return [];
+    if (!query) throw new TypeError('search keyword is required');
 
     const [memoryOutcome, aliasOutcome] = await Promise.allSettled([
         getCurrentMemories(env),
