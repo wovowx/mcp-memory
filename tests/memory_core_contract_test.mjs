@@ -87,6 +87,25 @@ console.log('\n[Repository contracts]');
 
     const aliases = await getMemoryAliasIds(env, 'alias phrase');
     check('alias lookup discards malformed rows', aliases.length === 1 && aliases[0] === 'm-1');
+    globalThis.fetch = async () => ({ ok: false, status: 503, json: async () => ({}) });
+    let currentReadError;
+    try { await getCurrentMemories(env); } catch (error) { currentReadError = error; }
+    check('current-memory HTTP failure is surfaced with a stable source code',
+        currentReadError?.source === 'memories' && currentReadError?.code === 'http_error' &&
+        currentReadError?.http_status === 503);
+
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ rows: [] }) });
+    let currentShapeError;
+    try { await getCurrentMemories(env); } catch (error) { currentShapeError = error; }
+    check('non-array current-memory response is not treated as an empty result',
+        currentShapeError?.code === 'invalid_response_shape');
+
+    globalThis.fetch = async () => { throw new Error('offline'); };
+    let aliasNetworkError;
+    try { await getMemoryAliasIds(env, 'offline'); } catch (error) { aliasNetworkError = error; }
+    check('alias network failure is surfaced with a stable source code',
+        aliasNetworkError?.source === 'memory_aliases' && aliasNetworkError?.code === 'network_error');
+
     const events = await getMemoryEvents(env, 'm-1');
     check('event history returns rows', events.length === 1 && events[0].id === 'e-1');
 }
