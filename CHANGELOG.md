@@ -2,6 +2,20 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.37.0] - 2026-11-05
+### P0 Core Modules Recovery（恢复已完成但被历史 dev ref 移动遮蔽的开发切片）
+- 恢复 Memory Core 四模块（repository、lifecycle、retrieval、transfer）和 memory/category/data 工具 Facade，保留原有工具名和调用契约，修复失败与部分写入结果的传播。
+- 将 Agnes Provider、文件 Storage、受限 DDL Parser、Cloudflare Worker Status 和 Patch Engine 已完成的领域实现接回现有工具入口。未改聊天室与 Agent 唤醒逻辑。
+- 在 mcp_router.js 中恢复非聊天室工具的 Schema/工具列表声明、create_patch_proposal 使用统计与未注册 supabase_ 前缀拦截，保留原有 Chat 分派路径。
+- 复原发布守门、部分辅助模块与相关恢复/部署 Skill；保留 v6.36.2 GitHub Contents、PR metadata fail-closed 合并保护和 dev exact-SHA 恢复入口。未改变 Cloudflare 生产数据库或 Supabase schema。
+
+### Regression（发布候选，尚未合 main）
+- 恢复/扩展 Memory Core、Router/Registry/Patch、Search History、Webhook/Agnes、GitHub Contents 合同及 CI 工作流。非聊天室 Router 的七项既有失败已修复，测试未删除或跳过。
+- 恢复代码 dev SHA `d298162cca89c938d15a8f63b3c9dbb609830d61` 对应 GitHub Actions run `41967030788` SUCCESS；仅追加交接文档后的 dev SHA `d2a48a7591ac46c9ac914acd3a9f8c11d126b57a` 对应 run `41967483491` SUCCESS。v6.37.0 候选自身的 CI 以实际最终 SHA 为准，独立回读后报告。
+- 此处的证据属于 E1 静态与 E2 Mock/合同；真实 Supabase、Agnes、Cloudflare、GitHub PR/ref 等端点 E3 NOT RUN，线上部署 NOT DONE。
+- 恢复前 dev `512519efbdbb828a9881447fd4c2e218d04fb8a1` 已保护在 `recovery/p0-preintegration-20261105`；更早 dev `4aa0cd0360466743ca8ace7a79841efc0cdcc205` 仍可按 SHA 读，但暂未建立独立 ref。P0 只集成指定领域，不声称历史 432 个独有提交全部恢复。
+
+
 ## [v6.36.2] - 2026-11-05
 ### Fixed（Branch/PR 自动同步保护）
 - 仅在从 GitHub PR metadata 确认 PR 已合并且 head.ref=dev、base.ref=main 时，才允许合并后同步 dev。
