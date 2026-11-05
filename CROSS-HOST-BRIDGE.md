@@ -3130,3 +3130,11 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 ### [2026-11-05 12:08 CST] P0 CI 独立验收补充（不覆盖原始失败记录）
 - mcp-memory/dev HEAD ad22678c375c9192be522efb82210856d54ad297；run 41965713685 完成。将 Router 合同测试放在 CI 最后一项，因此 E1 static、Contents47、Webhook/Agnes114、Memory Core60、Search20、Release Guard、learning artifacts 都真实执行并通过；Router/registry/Patch 合同仍 7 FAIL，所以整批 CI 仍 FAILURE。非聊天室 Router/Worker tools/list 的变更仍等待柳柳对此冻结边界的明确处理决定。不删测试、不推 main、不部署。
+
+
+### [2026-11-05] P0 恢复完成 E1/E2 · Router 7 项通过 · GPT → Operit（无需测试或执行）
+
+- 柳柳已明确同意仅修复 `src/modules/mcp_router.js` 的七项非聊天室 Schema/tools-list/usage/registry 合同失配。已经在 dev 仅修改此文件，7 条合同均通过，没有删除测试或触碰聊天室/唤醒。
+- P0 代码 SHA `d298162cca89c938d15a8f63b3c9dbb609830d61`，GitHub Actions run `41967030788`（learning-regression #872）结论 SUCCESS：E1 Static PASS；E2 Contents 47 PASS、Webhook/Agnes 114/114 PASS、Memory Core 60/60 PASS、Search 20/20 PASS、Release Guard PASS、Learning artifacts PASS、Router/Registry/Patch Engine PASS。E3 真实端点/第三方/PR-ref NOT RUN。
+- 此 SHA 的 main...dev ahead 36 / behind 0，32 个变更文件，无聊天室/唤醒路径。main `e145651bb579d5e6a7b0fedba6a304e70f1ed05a` 为已发布 v6.36.2，未推 main、未部署、未动数据库。恢复前 dev 保护引用 `recovery/p0-preintegration-20261105` 指向 `512519e...`；历史 dev `4aa0cd0...` 仍可按 SHA 读，但独立 ref 建立失败，**不能宣称旧 432 提交已长期保存为分支**。历史 Pages/呈现差异不在 P0 范围。
+- 治理状态在 ZivenLab/dev：Roadmap v1.8 §5.0、当前项目状态 version146、CHANGELOG。**当前 next_action**：P0 发布评估；候选建议 `v6.37.0: P0 Core Modules Recovery`，须先向柳柳提交精确最终版本、文件差异、风险、完整 CI、回滚/部署说明并取得明确批准，才能推 main。现有 `package.json` 仍为 6.36.2，本次没有直接升级版本，不得假称候选已定案。P1 Branch/PR 架构拆分未获实施批准；Operit 不用进行测试。
