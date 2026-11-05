@@ -208,7 +208,7 @@ console.log('\n[Lifecycle contracts]');
         insertCall?.body?.version === 1 &&
         insertCall?.body?.status === 'active');
 
-    existing = { id: 'm-update', key: 'core/update', value: 'old', version: 3, status: 'active', valid_to: null };
+    existing = { id: 'm-update', key: 'core/update', value: 'old', version: 3, type: 'quote', status: 'active', valid_to: null };
     calls.length = 0;
     const update = await putMemory(env, existing.key, { value: 'new' });
     const eventIndex = calls.findIndex(call => call.url.includes('/rest/v1/memory_events'));
