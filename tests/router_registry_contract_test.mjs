@@ -347,7 +347,10 @@ try {
   delete textSkillFixture.file_path;
   usagePatchCount = 0; t = await callTool('memory_move', {}); check('memory_move 失败缺参不计数', usagePatchCount === 0);
   t = await callTool('memory_remember', {}); check('已注册 handler 返回参数失败不计数', t.startsWith('❌') && usagePatchCount === 0);
+  memoryWriteBodies = []; usagePatchCount = 0;
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
+  check('legacy untyped memory_remember remains valid and stores no inferred type',
+    t.includes('已新建记忆') && memoryWriteBodies.some(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && !Object.prototype.hasOwnProperty.call(call.body || {}, 'type')));
 
   const listedTools = await listToolDefs();
   const listedDbTool = listedTools.find(tool => tool.name === 'supabase_db');
