@@ -333,6 +333,11 @@ console.log('\n[Memory Type facade contracts]');
     }, env);
     check('direct memory handler rejects invalid type before any fetch',
         invalid.includes('无效的记忆性质') && calls.length === 0);
+    const explicitNull = await handleMemoryTool('memory', {
+        action: 'update', key: 'core/type-update', value: 'must not clear type', type: null
+    }, env);
+    check('explicit type=null is rejected rather than treated as a clear operation',
+        explicitNull.includes('无效的记忆性质') && calls.length === 0);
 
     const typedRemember = await handleMemoryTool('memory', {
         action: 'remember', key: 'core/type-quote', value: 'original words', type: 'quote'
