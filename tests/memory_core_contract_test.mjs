@@ -517,6 +517,9 @@ console.log('\n[Retrieval reliability contracts]');
         errorFacade.includes('[search_status=ERROR]') && !errorFacade.includes('找到 0 条结果'));
     check('failed primary retrieval does not record a successful search-history entry',
         !errorCalls.some(url => url.includes('/rest/v1/search_history')));
+    const statsFacade = await handleMemoryTool('memory', { action: 'stats' }, env);
+    check('Memory Facade reports stats source failure instead of zero counts',
+        statsFacade.includes('[stats_status=ERROR]') && !statsFacade.includes('总条数：0'));
 }
 
 console.log('\n[Lifecycle relocation contracts]');
