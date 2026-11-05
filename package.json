@@ -7,6 +7,7 @@
     "check": "node scripts/check.mjs",
     "test:github-contents": "node tests/github_contents_contract_test.mjs",
     "test:memory-core": "node tests/memory_core_contract_test.mjs",
+    "test:memory-retrieval-benchmark": "node tests/memory_retrieval_benchmark_test.mjs",
     "test:search-history": "node tests/search_history_contract_test.mjs",
     "test:contracts": "node tests/router_registry_contract_test.mjs",
     "test:bootstrap": "node tests/session_bootstrap_contract_test.mjs",
