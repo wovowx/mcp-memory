@@ -500,7 +500,7 @@ console.log('\n[Retrieval reliability contracts]');
     };
     const partialFacade = await handleMemoryTool('memory', { action: 'search', keyword: 'project plan' }, env);
     check('Memory Facade labels partial results and preserves direct hits',
-        partialFacade.includes('[search_status=PARTIAL]') && partialFacade.includes('project plan confirmed'));
+        partialFacade.includes('[search_status=PARTIAL]') && partialFacade.includes('**project** **plan** confirmed'));
     check('partial search retains the existing search-history success path',
         facadeCalls.some(url => url.includes('/rest/v1/search_history')));
 
