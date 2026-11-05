@@ -117,3 +117,124 @@ export async function queryFiles(env, filters = {}) {
     if (!resp.ok) { const errText = await resp.text(); throw new Error(`查询失败: ${resp.status} ${errText}`); }
     return await resp.json();
 }
+
+/**
+ * Update searchable file metadata without touching the stored object.
+ * Returns a structured result so tool facades can preserve their own wording.
+ */
+export async function updateFileMetadata(env, fileId, patch) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return { ok: false, code: 'not_configured' };
+
+    const response = await fetch(
+        `${supabaseUrl}/rest/v1/files?id=eq.${encodeURIComponent(fileId)}&select=id,file_name,category,tags,description`,
+        {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(patch)
+        }
+    );
+    if (!response.ok) {
+        return {
+            ok: false,
+            code: 'http_error',
+            status: response.status,
+            detail: await response.text()
+        };
+    }
+
+    const rows = await response.json();
+    if (!Array.isArray(rows) || rows.length === 0) return { ok: false, code: 'not_found' };
+    return { ok: true, row: rows[0] };
+}
+
+/**
+ * Delete a file object first and its metadata row second.
+ * A partial result is explicit: metadata is never removed unless Storage
+ * confirms deletion, and empty/invalid representations are not success.
+ */
+export async function deleteFileFromSupabase(env, fileId) {
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return { ok: false, code: 'not_configured' };
+
+    const headers = {
+        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey
+    };
+    const lookup = await fetch(
+        `${supabaseUrl}/rest/v1/files?select=id,file_path,file_name&id=eq.${encodeURIComponent(fileId)}`,
+        { headers }
+    );
+    if (!lookup.ok) {
+        return {
+            ok: false,
+            code: 'lookup_http',
+            status: lookup.status,
+            detail: await lookup.text()
+        };
+    }
+
+    const rows = await lookup.json();
+    if (!Array.isArray(rows) || rows.length === 0) return { ok: false, code: 'not_found' };
+    const file = rows[0];
+    if (typeof file.file_path !== 'string' || !file.file_path.trim()) {
+        return { ok: false, code: 'missing_path', file };
+    }
+
+    const objectPath = file.file_path.split('/').map(encodeURIComponent).join('/');
+    const storageResponse = await fetch(
+        `${supabaseUrl}/storage/v1/object/files/${objectPath}`,
+        { method: 'DELETE', headers }
+    );
+    if (!storageResponse.ok) {
+        return {
+            ok: false,
+            code: 'storage_http',
+            status: storageResponse.status,
+            detail: await storageResponse.text(),
+            file
+        };
+    }
+
+    const metadataResponse = await fetch(
+        `${supabaseUrl}/rest/v1/files?id=eq.${encodeURIComponent(fileId)}`,
+        {
+            method: 'DELETE',
+            headers: { ...headers, 'Prefer': 'return=representation' }
+        }
+    );
+    if (!metadataResponse.ok) {
+        return {
+            ok: false,
+            code: 'metadata_http',
+            status: metadataResponse.status,
+            detail: await metadataResponse.text(),
+            file,
+            partial: true
+        };
+    }
+
+    let deletedRows;
+    try {
+        deletedRows = await metadataResponse.json();
+    } catch (error) {
+        return {
+            ok: false,
+            code: 'metadata_unconfirmed',
+            error: error?.message || String(error),
+            file,
+            partial: true
+        };
+    }
+    if (!Array.isArray(deletedRows) || deletedRows.length === 0) {
+        return { ok: false, code: 'metadata_unconfirmed', file, partial: true };
+    }
+    return { ok: true, file };
+}
