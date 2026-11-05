@@ -239,6 +239,8 @@ const fixture = [
   { name: 'memory_remember', enabled: true, description: 'remember', handler_type: 'js', handler_config: { handler: 'memory' } },
   { name: 'create_patch_proposal', enabled: true, description: 'create proposal', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: null }
 ];
+const textSkillContent = '# Master router\n' + '文本技能完整读取。'.repeat(1800) + '\nEND_OF_TEXT_SKILL';
+let textSkillMode = 'ok', textSkillFetchCount = 0;
 let registryMode = 'ok'; let memoriesRestCount = 0; let usagePatchCount = 0; let otherRestCount = 0; let patchProposalPostCount = 0;
 let ddlRpcCount = 0; let tableListCount = 0; let lastExecSql = '';
 const origFetch = globalThis.fetch;
@@ -254,6 +256,15 @@ globalThis.fetch = async (url, opts = {}) => {
     const hit = nm ? fixture.find(x => x.name === decodeURIComponent(nm)) : null;
     return { ok: true, status: 200, json: async () => hit ? [hit] : [] };
   }
+  if (s.endsWith('/repos/wovowx/mcp-memory/contents/src/skills/master-router/SKILL.md?ref=main') && m === 'GET') {
+    textSkillFetchCount++;
+    if (textSkillMode === 'missing') return { ok: false, status: 404, json: async () => ({ message: 'Not Found' }) };
+    if (textSkillMode === 'directory') return { ok: true, status: 200, json: async () => ({ type: 'dir', path: 'src/skills/master-router/SKILL.md' }) };
+    return { ok: true, status: 200, json: async () => ({
+      type: 'file', path: 'src/skills/master-router/SKILL.md', encoding: 'base64',
+      size: Buffer.byteLength(textSkillContent), content: Buffer.from(textSkillContent).toString('base64')
+    }) };
+  }
   if (s.includes('/rest/v1/patch_proposals') && m === 'POST') { patchProposalPostCount++; return { ok: true, status: 201, json: async () => [{ id: 'mock-proposal-id' }], text: async () => '' }; }
   if (s.includes('/rest/v1/rpc/exec_sql')) { ddlRpcCount++; lastExecSql = JSON.parse(opts.body || '{}').sql || ''; return { ok: true, status: 200, text: async () => '', json: async () => [] }; }
   if (s.endsWith('/rest/v1/')) { tableListCount++; return { ok: true, status: 200, json: async () => ({ definitions: { memories: {}, memory_events: {} } }) }; }
@@ -261,7 +272,7 @@ globalThis.fetch = async (url, opts = {}) => {
   if (s.includes('/rest/v1/')) { otherRestCount++; return { ok: true, status: 200, json: async () => [] }; }
   throw new Error('unexpected mock fetch: ' + s);
 };
-const callTool = async (name, args = {}) => (await handleMCPRequest({ jsonrpc: '2.0', id: 'c', method: 'tools/call', params: { name, arguments: args } }, env)).data.result.content[0].text;
+const callTool = async (name, args = {}, context = env) => (await handleMCPRequest({ jsonrpc: '2.0', id: 'c', method: 'tools/call', params: { name, arguments: args } }, context)).data.result.content[0].text;
 const listToolDefs = async () => (await handleMCPRequest({ jsonrpc: '2.0', id: 'l', method: 'tools/list' }, env)).data.result.tools;
 const listTools = async () => (await listToolDefs()).map(t => t.name);
 try {
@@ -276,8 +287,25 @@ try {
   memoriesRestCount = 0; otherRestCount = 0; usagePatchCount = 0; t = await callTool('category_move_category', {});
   check('category→unknown tool', t.includes('unknown tool')); check('无业务写/不记 usage', memoriesRestCount === 0 && otherRestCount === 0 && usagePatchCount === 0);
   names = await listTools(); check('list 暴露 master-router', names.includes('master-router'));
-  usagePatchCount = 0; t = await callTool('master-router', {});
-  check('call→handler type not implemented', t.includes('handler type not implemented')); check('handler 缺失不再触发 usage PATCH（修复）', usagePatchCount === 0);
+  const textSkillEnv = { ...env, GITHUB_TOKEN: 'mock-gh-token', GITHUB_REPO: 'wovowx/mcp-memory' };
+  usagePatchCount = 0; textSkillFetchCount = 0; t = await callTool('master-router', {}, textSkillEnv);
+  check('text Skill loads complete UTF-8 SKILL.md from deployed main without 12000-char github_read truncation',
+    t.startsWith('TEXT_SKILL_LOADED: master-router') && t.includes('Source: wovowx/mcp-memory@main/src/skills/master-router/SKILL.md') &&
+    t.endsWith(textSkillContent) && textSkillContent.length > 12000 && textSkillFetchCount === 1);
+  check('read-only text Skill loading does not increment usage_count', usagePatchCount === 0);
+
+  textSkillMode = 'missing'; usagePatchCount = 0; t = await callTool('master-router', {}, textSkillEnv);
+  check('missing text Skill fails explicitly without usage writes', t === 'TEXT_SKILL_LOAD_FAILED: [NOT_FOUND]' && usagePatchCount === 0);
+  textSkillMode = 'directory'; usagePatchCount = 0; t = await callTool('master-router', {}, textSkillEnv);
+  check('non-file text Skill response fails closed', t === 'TEXT_SKILL_LOAD_FAILED: [INVALID_SOURCE_CONTENT]' && usagePatchCount === 0);
+  textSkillMode = 'ok';
+  const textSkillFixture = fixture.find(skill => skill.name === 'master-router');
+  textSkillFixture.file_path = 'src/skills/../private/SKILL.md';
+  const beforeInvalidPath = textSkillFetchCount;
+  t = await callTool('master-router', {}, textSkillEnv);
+  check('text Skill path traversal rejects without GitHub request or usage writes',
+    t === 'TEXT_SKILL_LOAD_FAILED: [INVALID_SKILL_PATH]' && textSkillFetchCount === beforeInvalidPath && usagePatchCount === 0);
+  delete textSkillFixture.file_path;
   usagePatchCount = 0; t = await callTool('memory_move', {}); check('memory_move 失败缺参不计数', usagePatchCount === 0);
   t = await callTool('memory_remember', {}); check('已注册 handler 返回参数失败不计数', t.startsWith('❌') && usagePatchCount === 0);
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
