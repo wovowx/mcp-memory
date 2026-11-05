@@ -196,6 +196,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
                     '\n  💡 ' + formatTime(i.created_at)).join('\n') +
                 (nextCursor ? '\n\n💡 next_cursor: ' + nextCursor : '');
             await recordSearchKeyword(env, safeArgs.keyword.trim());
+            }
         }
     }
     else if (action === 'list') {
