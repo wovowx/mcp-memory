@@ -122,7 +122,9 @@ export async function handleMemoryTool(name, safeArgs, env) {
         else {
             const existing = await getCurrentMemoryByKey(env, safeArgs.key);
             if (existing) {
-                const writeResult = await putMemory(env, safeArgs.key, { ...existing, value: safeArgs.value, updated_at: now() });
+                const updateData = { value: safeArgs.value, updated_at: now() };
+                if (safeArgs.type !== undefined) updateData.type = safeArgs.type;
+                const writeResult = await putMemory(env, safeArgs.key, updateData);
                 if (!writeResult?.ok) text = '❌ 更新失败（' + (writeResult?.stage || 'write') + '）：' + safeArgs.key;
                 else text = '✏️ 已更新：' + safeArgs.key + '\n📅 创建：' + formatTime(existing.created_at) + '\n✏️ 更新：' + formatTime(now());
             } else {
