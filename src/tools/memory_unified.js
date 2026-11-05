@@ -14,7 +14,7 @@ import {
 } from '../modules/memory/repository.js';
 import { putMemory, deleteMemory, renameMemory, moveMemory } from '../modules/memory/lifecycle.js';
 import {
-    searchMemories, listMemoryCategories, listMemories, listMemoriesByCategory,
+    searchMemoriesWithStatus, listMemoryCategories, listMemories, listMemoriesByCategory,
     listMemoriesByDate, getMemoryStats, getRandomMemory
 } from '../modules/memory/retrieval.js';
 import { importMemories, getExportableMemories } from '../modules/memory/transfer.js';
