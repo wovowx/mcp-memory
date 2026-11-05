@@ -223,10 +223,14 @@ export async function handleMemoryTool(name, safeArgs, env) {
         }
     }
     else if (action === 'stats') {
-        const stats = await getMemoryStats(env);
-        text = '💡 统计：\n总条数：' + stats.total + '\n分类数：' + stats.categoryCount +
-            '\n各分类：' + stats.categories.map(([category, count]) => category + '(' + count + '条)').join('、') +
-            '\n💡 最近一周新增：' + stats.weekCount + ' 条';
+        try {
+            const stats = await getMemoryStats(env);
+            text = '💡 统计：\n总条数：' + stats.total + '\n分类数：' + stats.categoryCount +
+                '\n各分类：' + stats.categories.map(([category, count]) => category + '(' + count + '条)').join('、') +
+                '\n💡 最近一周新增：' + stats.weekCount + ' 条';
+        } catch (error) {
+            text = '❌ [stats_status=ERROR] 记忆数据源读取失败，统计未完成（' + (error?.code || 'read_failed') + '）。';
+        }
     }
     else if (action === 'suggest') {
         const suggestions = await getSearchSuggestions(env, safeArgs.prefix || '');
