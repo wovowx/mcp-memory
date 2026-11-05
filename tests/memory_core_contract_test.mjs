@@ -838,7 +838,7 @@ console.log('\n[Transfer contracts]');
     const calls = [];
     const rows = {
         'core/same': { id: 'same', key: 'core/same', value: 'unchanged', version: 1, status: 'active', valid_to: null },
-        'core/update': { id: 'update', key: 'core/update', value: 'before', version: 2, status: 'active', valid_to: null }
+        'core/update': { id: 'update', key: 'core/update', value: 'before', version: 2, type: 'quote', status: 'active', valid_to: null }
     };
     globalThis.fetch = async (url, options = {}) => {
         const requestUrl = String(url);
