@@ -100,7 +100,10 @@ console.log('\n[Repository contracts]');
     check('non-array current-memory response is not treated as an empty result',
         currentShapeError?.code === 'invalid_response_shape');
 
-    globalThis.fetch = async () => { throw new Error('offline'); };
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) throw new Error('offline');
+        return { ok: true, status: 200, json: async () => [{ id: 'e-1', event_type: 'update' }] };
+    };
     let aliasNetworkError;
     try { await getMemoryAliasIds(env, 'offline'); } catch (error) { aliasNetworkError = error; }
     check('alias network failure is surfaced with a stable source code',
