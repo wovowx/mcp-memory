@@ -127,7 +127,7 @@ function readSourceFailure(error) {
     };
 }
 
-export async function searchMemories(env, keyword) {
+export async function searchMemoriesWithStatus(env, keyword) {
     const query = String(keyword || '').trim();
     if (!query) return [];
 
