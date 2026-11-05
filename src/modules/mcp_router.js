@@ -8,6 +8,8 @@ import { handleMemoryTool } from '../tools/memory_unified.js';
 import { handleDataTool } from '../tools/data.js';
 import { handleAITool } from '../tools/ai.js';
 import { handleGitHubTool, GITHUB_TOOL_DEFS } from '../tools/github_v64.js';
+import { getContent } from './github/contents.js';
+import { validateRepoRelativePath } from '../utils/helpers.js';
 import { handleDatabaseTool } from '../tools/database.js';
 import { handleCategoryTool } from '../tools/category.js';
 import handleKnowledgeSkill from '../tools/knowledge.js';
@@ -17,6 +19,59 @@ import { handleChatTool, CHAT_TOOL_DEFS } from '../tools/chat_mcp.js';
 import { handleCfProxyTool } from '../tools/cf_proxy.js';
 import { validateRelease } from './release_guard.js';
 import { SESSION_BOOTSTRAP_TOOL, handleSessionBootstrap } from './session/bootstrap.js';
+
+// Read-only text Skill adapter: reuse the GitHub Contents primitive and return
+// the full instructions as data. Never execute Markdown or write usage telemetry.
+const TEXT_SKILL_PATH = /^src\/skills\/(?:[\p{L}\p{N}_-]+\/)+SKILL\.md$/u;
+const TEXT_SKILL_NAME = /^[\p{L}\p{N}][\p{L}\p{N}_-]{0,79}$/u;
+const MAX_TEXT_SKILL_BYTES = 64 * 1024;
+
+function textSkillFailure(code) { return 'TEXT_SKILL_LOAD_FAILED: [' + code + ']'; }
+
+async function loadTextSkill(skill, env) {
+    const explicit = skill?.file_path ?? skill?.handler_config?.file_path;
+    const path = explicit !== undefined && explicit !== null
+        ? explicit
+        : (typeof skill?.name === 'string' && TEXT_SKILL_NAME.test(skill.name)
+            ? 'src/skills/' + skill.name + '/SKILL.md' : null);
+    if (typeof path !== 'string' || !TEXT_SKILL_PATH.test(path) || !validateRepoRelativePath(path).ok) {
+        return textSkillFailure('INVALID_SKILL_PATH');
+    }
+    if (!env.GITHUB_REPO || !env.GITHUB_TOKEN) return textSkillFailure('GITHUB_CONFIG_MISSING');
+    const repo = env.GITHUB_REPO;
+    const read = await getContent({
+        repo, env, fetchImpl: fetch, validateRepoRelativePath,
+        headers: {
+            Authorization: 'Bearer ' + env.GITHUB_TOKEN,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'User-Agent': 'Cloudflare-Worker-MCP/1.0'
+        }
+    }, { repo, path, branch: 'main' });
+    if (!read.ok) return textSkillFailure(read.code || 'SOURCE_UNAVAILABLE');
+    const data = read.data;
+    if (data?.type !== 'file' || data.path !== path || data.encoding !== 'base64' ||
+        typeof data.content !== 'string' || !data.content.length) {
+        return textSkillFailure('INVALID_SOURCE_CONTENT');
+    }
+    if (Number.isFinite(data.size) && data.size > MAX_TEXT_SKILL_BYTES) {
+        return textSkillFailure('CONTENT_TOO_LARGE');
+    }
+    let content;
+    try {
+        const encoded = data.content.replace(/\s+/g, '');
+        if (!encoded || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+            return textSkillFailure('INVALID_BASE64');
+        }
+        const binary = atob(encoded);
+        if (binary.length > MAX_TEXT_SKILL_BYTES) return textSkillFailure('CONTENT_TOO_LARGE');
+        content = new TextDecoder('utf-8', { fatal: true }).decode(
+            Uint8Array.from(binary, char => char.charCodeAt(0))
+        );
+    } catch { return textSkillFailure('CONTENT_DECODE_FAILED'); }
+    if (!content.trim()) return textSkillFailure('EMPTY_SKILL');
+    return 'TEXT_SKILL_LOADED: ' + skill.name + '\nSource: ' + repo + '@main/' + path + '\n\n' + content;
+}
 
 const handlerMap = {
     'memory': handleMemoryTool,
@@ -401,6 +456,7 @@ export async function handleMCPRequest(body, env) {
             return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'DISPATCH_GUARD_REJECT: [' + guard.code + '] ' + guard.reason + ' Expected: ' + guard.expected }] } } };
         }
         let text = '';
+        let readOnlyTextSkill = false;
         try {
             // 专用 handler 保留，但统一在下方 toolOk 中核对结果和使用统计。
             if (name === 'create_patch_proposal') {
@@ -444,14 +500,19 @@ export async function handleMCPRequest(body, env) {
                         text = await handleCreatePatchProposal(safeArgs, env);
                     } else text = 'unknown tool: ' + name;
                 } else {
-                    const handler = handlerMap[skill.handler_config?.handler];
-                    if (handler) text = await handler(name, safeArgs, env);
-                    else text = 'handler type not implemented: ' + skill.handler_type;
+                    if (skill.handler_type === 'text') {
+                        readOnlyTextSkill = true;
+                        text = await loadTextSkill(skill, env);
+                    } else {
+                        const handler = handlerMap[skill.handler_config?.handler];
+                        if (handler) text = await handler(name, safeArgs, env);
+                        else text = 'handler type not implemented: ' + skill.handler_type;
+                    }
                 }
             }
         } catch (e) { text = 'err: ' + e.message; }
-        const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:') && !text.startsWith('MAIN_WRITE_BLOCKED:') && !text.startsWith('unknown tool:') && !text.startsWith('handler type not implemented');
-        if (toolOk) await autoIncrementUsage(env, name);
+        const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:') && !text.startsWith('MAIN_WRITE_BLOCKED:') && !text.startsWith('unknown tool:') && !text.startsWith('handler type not implemented') && !text.startsWith('TEXT_SKILL_LOAD_FAILED:');
+        if (toolOk && !readOnlyTextSkill) await autoIncrementUsage(env, name);
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
     if (method === 'ping') return { ok: true, data: { jsonrpc: '2.0', id, result: {} } };
