@@ -81,7 +81,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
                     const currentChunk = Math.floor(offset / chunkSize) + 1;
                     const start = offset;
                     const end = Math.min(offset + chunkSize, content.length);
-                    text = '💡 ' + safeArgs.key + '\n📂 分类：' + data.category + '\n📝 内容（第 ' + currentChunk + '/' + totalChunks + ' 段）：\n' + content.slice(start, end) + '\n\n💡 继续：recall(key="' + safeArgs.key + '", offset=' + end + ', chunk_size=' + chunkSize + ')';
+                    text = '💡 ' + safeArgs.key + '\n📂 分类：' + data.category + '\n🏷️ 性质：' + formatMemoryType(data.type) + '\n📝 内容（第 ' + currentChunk + '/' + totalChunks + ' 段）：\n' + content.slice(start, end) + '\n\n💡 继续：recall(key="' + safeArgs.key + '", offset=' + end + ', chunk_size=' + chunkSize + ')';
                 }
             }
         }
