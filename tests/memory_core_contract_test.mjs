@@ -928,7 +928,7 @@ console.log('\n[Transfer facade parity contracts]');
 
     const exportRows = await getExportableMemories(env);
     check('shared export query keeps only active rows with null valid_to',
-        exportRows.length === 1 && exportRows[0].key === 'core/current');
+        exportRows.length === 1 && exportRows[0].key === 'core/current' && exportRows[0].type === 'quote');
 
     const unifiedOutput = await handleMemoryTool('memory_export', {}, env);
     const dataOutput = await handleDataTool('export', {}, env);
