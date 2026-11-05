@@ -175,7 +175,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
         }
     }
     else if (action === 'search') {
-        if (!safeArgs.keyword) text = '❌ 请输入搜索关键词';
+        if (!String(safeArgs.keyword || '').trim()) text = '❌ 请输入搜索关键词';
         else {
             const keywords = safeArgs.keyword.trim().split(/\s+/).filter(k => k.length > 0);
             const { limit, cursor } = parsePagination(safeArgs);
