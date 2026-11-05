@@ -3336,6 +3336,31 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **实现/本地 E1/E2**：新 v6.40.1 候选仅修改 `src/modules/mcp_router.js`（取消 `tools/list` 的 syncChatTools 调用）、`tests/router_registry_contract_test.mjs`（新5项零写入/注册保留/缺项不补/重复稳定/静态工具唯一）和正常版本/CHANGELOG/Bridge。干净 detached worktree 基于发布后 dev=0ef917701ac4689bf83786bf59102156a3fbb34d；`npm run check` exit0，Router/Patch **162/162**、Session/Context36/36、Contents50、Memory60、Search20、Webhook/Agnes114、Learning9工件均 PASS。此为本地隔离合同，不是远端 GitHub CI/生产 E3。
 - **真实宿主状态与远端 CI**：Worker 仍为 v6.40.0 #533；ChatGPT 当前插件快照未暴露 `session_context`，插件刷新尚未执行；Operit 继续原 P2 务实恢复状态，不要求新框付费测试。上述五文件已写入 `mcp-memory/dev`，code+version+Bridge 精确 HEAD `a69fdd25a266ee636a95cf39bf007ab497c4c529`，五文件均独立以 `git show origin/dev:<path> | cmp` 比对本地测试版本一致；GitHub Actions [42017282811](https://github.com/wovowx/mcp-memory/actions/runs/42017282811) completed SUCCESS，validate Job 完成成功。该证据绑定 `a69fdd2`，本次纯 Bridge 回填会生成新的 dev SHA，需独立确认最新 SHA 的 CI 才能声称最终 HEAD 绿。当前对 main ahead6/behind0、仅5文件；正式发版、刷新连接或线上 E3 须先另向柳柳报告版本/SHA/影响、取得单独批准。
 
+### [2026-11-05] GPT → Operit · v6.40.1 工具发现纯读修复正式发布/Worker #534/线上 E3
+- **柳柳新一轮明确批准**：收到 v6.40.1 精确候选信息（dev=1ced8ec68033f902597313c85bff899a8f3a78c0、CI 42017540534 成功、main...dev ahead7/behind0、5文件）后回复「好」，允许唯一精确恢复引用、dev→main squash PR、Cloudflare 自动部署、部署后受控 ChatGPT 插件刷新与只读 E3。此次授权不包括生产 DB/schema、聊天室 handler/唤醒、Operit 角色卡、Pages/Web/DNS、密钥改动。
+- **合并闭环**：预合并只建一条 `recovery/v6.40.1-premerge-20261105`，经独立 `git ls-remote` 回读精确指向候选 1ced8ec68033f902597313c85bff899a8f3a78c0。PR [#328](https://github.com/wovowx/mcp-memory/pull/328) head=dev/base=main、5文件、mergeable=true/clean、3 check-run SUCCESS；初始 `github_merge_pull_request` 因不能提供 commit_title 被 release_guard 正确拦截（未合并），之后通过具有明确 `commit_title="v6.40.1: Side-effect-free MCP Tool Discovery"` 的正式 `github_merge_to_main(merge_method=squash)` 复用同一 PR 成功。PR 独立回读 merged=true，`main=dev=c9324b4f2e4013ed1e7edcd455bb40450a5b8dfe`；唯一恢复引用仍指向原候选。main learning-regression [42018698604](https://github.com/wovowx/mcp-memory/actions/runs/42018698604) SUCCESS；Pages [42018698672](https://github.com/wovowx/mcp-memory/actions/runs/42018698672) FAILURE 为既有冻结方向故障，非 Worker 发布失败。
+- **Cloudflare 闭环**：Build `6d963784-54ee-430c-b99b-e026d1c6598a` 从 queued/running 到部署，Worker deployment `a4994702` / version **#534**；`cloudflare_deploy_status(verify_main=true)` 已独立返回 VERIFIED，对应 main c9324b4f。构建排队期间某工具错误地将 queued 兼作失败显示，已用真实 running 日志及最终 VERIFIED 纠正，不计失败发布。
+- **真实线上只读 E3（服务端）**：向生产 `https://mcp-memory.wovowx.workers.dev/mcp` 发 JSON-RPC `tools/list`（本版修复后的只读路由），实际返回 error=null、tool_count=68、`session_bootstrap` 恰好1次、`session_context` 恰好1次、topic schema 为 string；另 `tools/call session_context(host=chatgpt,invocation=explicit)` 返回 `SC-RUNTIME-0.1/READY`、related_status=not_requested。服务端线上列表可发现和显式调用 PASS；不推断宿主原生自动调用。纯读无写的直接合同基于 Router162/162 E2、源码移除隐式 syncChatTools 和线上清单响应，未对生产 Supabase 写入路径做侵入性探测。
+- **宿主刷新部分阻塞**：当前 ChatGPT Ziven_MCP 插件快照仍未暴露 session_context；本地浏览器扩展不可用，受控云浏览器访问 `chatgpt.com/plugins` 显示未登录账号，**没有执行插件刷新、没有改用户权限/安装第二插件，也没有得到插件层独立 E3**。下一步只需柳柳在自己已登录的 ChatGPT 网页「插件 → Ziven_MCP → 详情 → Refresh/刷新工具」进行一次刷新，再在新会话确认工具暴露与一次显式调用；若界面不可见，需由柳柳提供实际界面再协助，不能冒充自动宿主已恢复。Operit 继续原务实范围，不增加付费开框测试。
+- **边界及状态**：本条只在 mcp-memory/dev 追加发布后交接文档，不触发新 Worker；下一版 main/Cloudflare 发布须重新逐版本批准。整体架构 v1.9、Roadmap 和唯一云端检查点据此更新。
+
+### [2026-11-05] 柳柳操作刷新 → GPT 独立验收 · ChatGPT 插件 Session Context 宿主 E3 PASS
+- **用户实操**：柳柳在本人 ChatGPT 界面明确反馈「我点了刷新啦」。这是插件设置刷新行为的用户证据，不需要哥哥再次尝试登录她账号或重装插件。
+- **独立宿主工具清单**：刷新后的同一 ChatGPT 工具上下文中，Ziven_MCP 可调用入口由此前 67 项增为 **68 项**；新增的 `ziven_mcp:session_context` 专用工具确实出现在 ChatGPT 可调工具元数据中（与 `session_bootstrap` 并列，host/invocation/topic Schema 正确），不是只在 Worker 原生 `tools/list` 可见。
+- **真实 ChatGPT → Ziven_MCP 直接 E3**：哥哥从 ChatGPT 的插件工具调用 `session_context({host:"chatgpt",invocation:"explicit"})` 成功，真实返回 `contract_version=SC-RUNTIME-0.1`、`status=READY`，身份根和唯一检查点来源 `ok`，当前 workflow_state/next_action 存在，`confirmed_context.decision.text` 与 `evidence.text` 均存在；evidence.truncated=true 正确标注有界摘要，`related_status=not_requested`，`permissions.granted_by_context=false`。多次只读采样均成功；未访问生产 `tools/list` 或写入业务数据。
+- **严格等级**：`CHATGPT_PLUGIN_TOOL_DISCOVERY=PASS`、`CHATGPT_HOST_EXPLICIT_SESSION_CONTEXT_E3=PASS`。不代表 ChatGPT 新对话会自动调用、首次回复前完成全量身份根/柳柳主档正文加载或 P2 严格跨宿主恢复已全通过；`startup_hook_verified=false`、可选 topic 宿主 E3 NOT RUN、Operit 本轮未重测。
+- **下一行动**：结束 v6.40.1 已批准的发布＋插件刷新闭环，返回「一本书」架构主线，根据整体架构与 Roadmap 讨论下一可复用垂直切片原型；未来 main/部署仍需新版本批准。此次只在 dev 交接文档新增本回执，不修改生产代码/角色卡/数据库/聊天室或 Web。
+
+### [2026-11-05] Memory Association v0.1 · v6.41.0 只在 dev 实现，E1/E2/CI PASS（GPT → Operit）
+- **批准依据**：柳柳看到「命中一条能联想起相关几条」需求草案 v0.1、六条范围与五项验收文字原型后明确回复「同意」，选择先做记忆关联，不插队重开新框严格恢复。实际 main 已有 src/modules/github/branch_pr.js，不重复拆分旧候选模块。已按流程在编码前更新 wovowx/ZivenLab/dev/governance/整体架构.md v1.12、roadmap.md v1.34 和状态驾驶舱 version166。
+- **本次 dev 代码范围**：src/modules/memory/retrieval.js 复用现有当前态检索和一跳显式 related_memory_ids，扩展共享业务 entities（排除仅通用称谓的误关联），保证直接命中优先、显式优先、关联补充≤3、去重、源 key/具体共同实体、已失效不返回；src/tools/memory_unified.js 在已有 memory.search Facade 显示 match_reason、来源和实体，工具名/Schema 不变；tests/memory_core_contract_test.mjs 增8项 Mock 合同；package.json v6.41.0、CHANGELOG.md 加发版候选记录。**没有新增模块、工具或数据库表，时序/情绪关联未改。**
+- **可复核测试**：独立 detached dev 基线 fc4eb7cd570da1e89cffe0f47361cddefbd0f619 下实现，本地 npm run check exit0、Memory Core **69/69**、GitHub Contents **50/50**、Search History **20/20**、Router/Patch **162/162**、Bootstrap/Session Context **36/36**、learning 9工件 PASS。五个文件分别经 github_edit(dev) 写入，Verified=true；本地代码与拉回的远端 dev 仅遗留原文件 EOF 末尾换行风格差异（git diff --ignore-space-at-eol 为空），语义内容一致。
+- **远端 E1/E2 CI**：最终五文件源码/版本候选 SHA=89aa2f05197c847734504ac232bcf9e0cddbca99；GitHub Actions [42025476524](https://github.com/wovowx/mcp-memory/actions/runs/42025476524) 对该精确 SHA learning-regression completed SUCCESS，validate job 全17项 steps success，包括 E1、Memory Core E2、Router、Session、Release Guard、学习工件。仅 E1/E2／GitHub CI，不冒称线上 Worker E3。
+- **发布边界**：生产 main=c9324b4f2e4013ed1e7edcd455bb40450a5b8dfe、Cloudflare Worker v6.40.1/#534 **未改变**；没有 PR/合 main/部署、生产 DB/schema/数据、聊天室/唤醒、Operit 角色卡、Pages/Web/DNS、密钥、付费模型调用。追加本交接会产生一个 Bridge-only dev commit，需以追加后的 HEAD 重新核实 CI；下一次正式 v6.41.0 发布须先递交完整准确版本单征得柳柳单独批准。
+
+
+
+
 
 
 

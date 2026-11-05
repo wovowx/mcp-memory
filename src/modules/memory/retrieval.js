@@ -1,8 +1,12 @@
-// Memory Retrieval — 当前有效记忆检索、匹配评分与一跳关联
+// Memory Retrieval — 当前有效记忆检索、匹配评分与有界一跳关联
 // 不写业务记忆；搜索历史仍由 utils/search.js 处理。
 
 import { getCurrentMemories, getMemoryAliasIds } from './repository.js';
 import { parsePagination } from '../../utils/helpers.js';
+
+const MAX_ASSOCIATED_MEMORIES = 3;
+// 人名/泛化标签不构成足以召回另一条记忆的业务关联证据。
+const GENERIC_ASSOCIATION_ENTITIES = new Set(['柳柳', '哥哥', 'ziven', 'agent', '项目', 'project']);
 
 function normalize(value) {
     return String(value || '').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
@@ -96,11 +100,24 @@ function compareCandidates(a, b) {
     return new Date(b.created_at || 0) - new Date(a.created_at || 0);
 }
 
+function businessEntities(memory) {
+    const entities = new Map();
+    for (const item of Array.isArray(memory.entities) ? memory.entities : []) {
+        if (typeof item !== 'string') continue;
+        const name = item.trim();
+        const normalized = normalize(name);
+        if (normalized.length < 2 || GENERIC_ASSOCIATION_ENTITIES.has(normalized)) continue;
+        if (!entities.has(normalized)) entities.set(normalized, name);
+    }
+    return entities;
+}
+
 /**
  * Search active/current memories.
  * Priority: phrase/all-term/alias/context matches; only when those produce no
  * candidates, use a constrained CJK bigram fallback. Related memories expand
- * one hop and remain below direct matches.
+ * one hop (explicit IDs first, then shared business entities), with at most
+ * three additions and source evidence kept below all direct matches.
  */
 export async function searchMemories(env, keyword) {
     const query = String(keyword || '').trim();
@@ -126,22 +143,61 @@ export async function searchMemories(env, keyword) {
     direct.sort(compareCandidates);
 
     const matchedIds = new Set(direct.map(memory => memory.id));
+    const currentById = new Map(current.map(memory => [memory.id, memory]));
     const related = [];
     for (const hit of direct) {
+        if (related.length >= MAX_ASSOCIATED_MEMORIES) break;
         const ids = Array.isArray(hit.related_memory_ids) ? hit.related_memory_ids : [];
         for (const id of ids) {
+            if (related.length >= MAX_ASSOCIATED_MEMORIES) break;
             if (matchedIds.has(id)) continue;
-            const found = current.find(memory => memory.id === id);
+            const found = currentById.get(id);
             if (!found) continue;
             matchedIds.add(id);
             related.push({
                 ...found,
-                _match: { score: 0, reason: 'related_memory', matched_terms: [] }
+                _match: {
+                    score: 0, reason: 'related_memory', matched_terms: [],
+                    related_from_key: hit.key
+                }
             });
         }
     }
 
     related.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    if (related.length < MAX_ASSOCIATED_MEMORIES) {
+        const sources = direct.map(memory => ({ memory, entities: businessEntities(memory) }))
+            .filter(source => source.entities.size > 0);
+        const candidates = [];
+        for (const candidate of current) {
+            if (matchedIds.has(candidate.id)) continue;
+            const candidateEntities = businessEntities(candidate);
+            let best = null;
+            for (const source of sources) {
+                const shared = [...source.entities.entries()]
+                    .filter(([id]) => candidateEntities.has(id))
+                    .map(([, name]) => name);
+                if (shared.length > 0 && (!best || shared.length > best.shared.length)) {
+                    best = { source: source.memory, shared };
+                }
+            }
+            if (best) candidates.push({ candidate, ...best });
+        }
+        candidates.sort((a, b) =>
+            b.shared.length - a.shared.length ||
+            new Date(b.candidate.created_at || 0) - new Date(a.candidate.created_at || 0) ||
+            String(a.candidate.key || '').localeCompare(String(b.candidate.key || '')));
+        for (const { candidate, source, shared } of candidates.slice(0, MAX_ASSOCIATED_MEMORIES - related.length)) {
+            related.push({
+                ...candidate,
+                _match: {
+                    score: 0, reason: 'shared_entity', matched_terms: shared,
+                    related_from_key: source.key
+                }
+            });
+        }
+    }
     return direct.concat(related);
 }
 
