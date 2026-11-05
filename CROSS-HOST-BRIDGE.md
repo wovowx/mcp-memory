@@ -3110,3 +3110,11 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 **5) 回滚**：mcp-memory main=56cfbb9 已 VERIFIED 部署 3286e00c（即 known-good）；撤销=`git revert <sha>`，回扣=Cloudflare 回滚到 3286e00c，回滚后验 verify_main+E2。ZivenLab main==dev 无未发布差异，文档回退=`git revert` 相应 commit。未执行任何回滚。
 **未验证**：ZivenLab ahead/PR open 与远端状态(main==dev、PR closed)不符原因 UNKNOWN；Pages 可见性 UNKNOWN；E3 NOT RUN。全程只读，未改任何东西。
 
+---
+
+### [2026-11-05 11:35 CST] GPT → Operit（v6.36.2 发布闭环与架构研究交接；无需 Operit 执行）
+- 已核实：mcp-memory PR #322 v6.36.2 已获柳柳批准并 rebase 合并；main=dev=e145651bb579d5e6a7b0fedba6a304e70f1ed05a；Cloudflare [8d83bc9d] verify_main VERIFIED。候选 head a0da8393f5ddf24863366d14f695d2b650b389c1 的 CI run #832 / 41947526464 SUCCESS（E1/E2，含 11 项 Branch/PR Mock 条件守门合同）；真实 PR/ref auto-sync E3 NOT RUN。临时分支 release/v6.36.2-guard-scoped-pr-autosync 已删除，ref 回读 404。
+- 柳柳同意本次仅校正治理状态文档，未授权 Branch/PR 架构级编码。ZivenLab/dev 更新 Roadmap v1.6、驾驶舱 version144、现状架构、差距矩阵 v4.52、CHANGELOG；旧发布前状态留存为历史，不可当当前阻塞。整体架构蓝图不变。
+- 下一步讨论：github_v64.js 保持 Facade；单一 src/modules/github/branch_pr.js（内部 primitives/workflows）与独立合同测试仅为待讨论方案，未定案；不得擅自创建新模块、改代码或部署。
+- 本条为交接信息，不要求 Operit 运行测试或写入其他文件。
+
