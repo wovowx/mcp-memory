@@ -3330,6 +3330,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **Worker + 真实只读 E3**：Cloudflare build 3df3985b-f33、deployment cc0abc9d、version #533；cloudflare_deploy_status(verify_main=true)=VERIFIED 对应 f48f92c2。因当前 ChatGPT 插件快照尚未暴露新 session_context 专用工具，使用已有 HTTPS Worker /mcp 的**单次直接 JSON-RPC POST tools/call**（name=session_context，arguments={host:chatgpt,invocation:explicit}），不调用带副作用的 tools/list、不传 topic、不触发业务写入。线上实际响应 SC-RUNTIME-0.1、status=READY、唯一 checkpoint 来源=⚙️/当前工作检查点、identity/checkpoint 状态ok、workflow_state/next_action/decision/evidence 均存在、related_status=not_requested/related_count=0、granted_by_context=false；原 session_bootstrap 专用 MCP 只读调用仍 SB-RUNTIME-0.1/READY、granted_by_bootstrap=false。**只证明本次真实 resume_work E3 和旧入口兼容 E3；topic 关联线上 E3 NOT RUN、宿主自动启动/完整 persona 注入 NOT VERIFIED。**
 - **最新交接与下一步**：本条将仅在 mcp-memory/dev 追加纯文档提交，故 dev 后续可比 main ahead1；不可将它当成新生产代码发布或长久积压。ZivenLab/dev Roadmap/状态与云端唯一 ⚙️/当前工作检查点同步本版证据。Session Context v0.1 **本期交付/发版/Worker/E3 已闭环**；P2 严格自动新框缺口和未来 Ziven Web 方向保持原已确认边界。下一架构切片必须先需求讨论/原型，再编码；无新的 main/部署授权。
 
+### [2026-11-05] GPT → Operit · v6.40.1 MCP 工具发现纯读修复（仅 dev 候选）
+- **柳柳批准范围**：在 v6.40.0 发布闭环后，同意仅针对 `tools/list` 枚举会顺带触发 `syncChatTools` 注册聊天室 Skill 的缺口做一次最小 `dev` 调整，现存聊天室业务 handler、实际调用路径及生产数据全部冻结。真正插件刷新、PR、main 与 Cloudflare 自动部署均无新授权。
+- **设计先行**：先更新 ZivenLab/dev/整体架构.md v1.9、Roadmap v1.30，原型是“仅 GET 当前已注册工具→附加静态 session_bootstrap/session_context→不创建任何数据库记录”。没有复制 Session Context 逻辑，没有新增独立路由或存储。已经注册的工具、Schema 和 `tools/call` 行为不变；缺失的聊天室工具不因发现请求自动补注册。
+- **实现/本地 E1/E2**：新 v6.40.1 候选仅修改 `src/modules/mcp_router.js`（取消 `tools/list` 的 syncChatTools 调用）、`tests/router_registry_contract_test.mjs`（新5项零写入/注册保留/缺项不补/重复稳定/静态工具唯一）和正常版本/CHANGELOG/Bridge。干净 detached worktree 基于发布后 dev=0ef917701ac4689bf83786bf59102156a3fbb34d；`npm run check` exit0，Router/Patch **162/162**、Session/Context36/36、Contents50、Memory60、Search20、Webhook/Agnes114、Learning9工件均 PASS。此为本地隔离合同，不是远端 GitHub CI/生产 E3。
+- **真实宿主状态**：Worker 仍为 v6.40.0 #533；ChatGPT 当前插件快照未暴露 `session_context`，插件刷新尚未执行；Operit 继续原 P2 务实恢复状态，不要求新框付费测试。下一步提交精确 dev 候选并核对 GitHub Actions；若要发版、刷新连接或上线 E3，必须另向柳柳报告版本/SHA/影响、取得单独批准。
+
 
 
 
