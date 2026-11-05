@@ -181,7 +181,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
             const { limit, cursor } = parsePagination(safeArgs);
             const search = await searchMemoriesWithStatus(env, safeArgs.keyword.trim());
             if (search.status === 'ERROR') {
-                text = '❌ [search_status=ERROR] 主记忆数据读取失败。检索未完成，不能判断是否存在相关记忆。';
+                text = '❌ [search_status=ERROR] 主记忆数据读取失败（' + (search.sources?.memories?.error_code || 'read_failed') + '）。检索未完成，不能判断是否存在相关记忆。';
             } else {
                 const matched = search.results;
             let startIndex = 0;
