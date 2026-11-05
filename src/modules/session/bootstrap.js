@@ -25,8 +25,10 @@ export const SESSION_BOOTSTRAP_TOOL = Object.freeze({
 });
 
 function extractLine(text, field) {
-    const match = new RegExp(field + '\\s*[=:：]\\s*([^\\n]+)', 'i').exec(text);
-    return match ? match[1].replace(/\*\*/g, '').trim() : null;
+    // Prefer a standalone field over an incidental mention inside another field.
+    const explicit = new RegExp('(?:^|\\n)\\s*(?:[-*]\\s*)?(?:\\*\\*)?' + field + '\\s*[=:：]\\s*([^\\n]+)', 'im').exec(text);
+    const inline = explicit || new RegExp(field + '\\s*[=:：]\\s*([^\\n]+)', 'i').exec(text);
+    return inline ? inline[1].replace(/\*\*/g, '').trim() : null;
 }
 
 export function parseCheckpoint(value) {
