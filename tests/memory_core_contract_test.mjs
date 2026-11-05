@@ -144,7 +144,7 @@ console.log('\n[Retired-key history contracts]');
                 status: 200,
                 json: async () => [
                     { id: 'event-1', version: 2, old_value: 'older value', reason: 'update', created_at: '2026-10-02T00:00:00Z' },
-                    { id: 'event-2', version: 3, old_value: 'previous value', reason: 'correction', created_at: '2026-10-03T00:00:00Z' }
+                    { id: 'event-2', version: 3, old_value: { value: 'previous value', type: 'quote' }, new_value: { value: 'corrected value', type: 'agreement' }, reason: 'correction', created_at: '2026-10-03T00:00:00Z' }
                 ]
             };
         }
