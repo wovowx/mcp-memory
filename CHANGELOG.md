@@ -2,7 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.44.0] - 2026-11-06（L3 Reflection v0.1 · dev 候选，尚未发布）
+## [v6.45.0] - 2026-11-06（L4 Archive v0.1 · dev 候选，未发布）
+
+### 用户收益与实现
+- Ziven 对已知完整记忆 key 可以按需查过去的版本和事件，明确区分当前有效、软删除和其他非当前记录，历史仅用来解释过去，不自动恢复成事实。
+- 复用 `src/modules/memory/repository.js:getMemoryHistoryByKey/getMemoryEvents` 与 `src/tools/memory_unified.js:handleMemoryTool(history)`；没有新数据库表或平行 Archive 工具。历史读取结果明确 `history_status=OK|EMPTY|PARTIAL|ERROR`，保留 record ID、version、source_ref、记录时间和旧/新值片段。缺失事件、损坏返回、来源或 `new_value` 不再被伪装成完整历史。
+- 扩展 `src/utils/helpers.js:withMemoryTypeSchema` 公开 memory 的 `history` action，工具发现与 dispatch 使用同一 Schema；`src/modules/mcp_router.js` 添加可发现说明，未修改 Supabase skills registry；`src/skills/guide/记忆管理/SKILL.md` 添加按精确 key 追溯与证据缺口纪律。
+
+### E1/E2、兼容与授权边界
+- 扩展既有 Router/Registry 与 Memory Core synthetic 回归：检查 tools/list 与 dispatch 一致、旧 action 保留、注册表无需写入、旧/新事件值兼容、deleted 历史可见、证据 gap、records ERROR、events PARTIAL、只 GET 不写业务表、普通 current-only 路径不退化。复用现有 CI，无新测试框架或 MCP 工具。
+- 柳柳已确认 L4 v0.1 A 方案并批准 dev 编码与隔离测试；**没有批准 PR/main/Cloudflare 发布**。生产仍 v6.44.0 / Worker #537，宿主工具元数据需要在正式获准发布后再验收/必要时刷新。源代码/Mock CI 不能冒充真实宿主 E3。
+- 不修改数据库 Schema/实际记忆、skills 注册表、聊天室、唤醒、密钥、Operit 或 Pages；无真实私人历史读取。普通 recall/search/Core 仍 current-only。`memory` 工具现有 usage 计数副作用不在本切片改动范围内；只承诺历史仓储 GET-only。
+
+## [v6.44.0] - 2026-11-06（L3 Reflection v0.1 · 已发布 PR #331 / Worker #537 VERIFIED）
 
 ### 新能力与用户收益
 - 从「记录教训」进化到「候选反思有证据、有状态、可审核」：复用现有 `tests/learning/*.json`，区分学习工件的 `status=candidate` 与反思成熟度 `pending/validated/rejected/deferred`。未验证或有未处理反例的内容不生成晋升提案。
