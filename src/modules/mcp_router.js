@@ -443,7 +443,8 @@ export async function handleMCPRequest(body, env) {
         const tools = skills.map(s => ({
             name: s.name,
             description: s.name === 'memory'
-                ? [s.description, 'history：提供按完整 key 的显式只读历史查询；旧版本和事件账本不会被恢复为当前有效记忆。']
+                ? [s.description, 'history：提供按完整 key 的显式只读历史查询；旧版本和事件账本不会被恢复为当前有效记忆。',
+                    'health_check：记忆体检场景；默认 demo 合成预览，sample 仅在柳柳本次明确授权后元数据只读。']
                     .filter(Boolean).join('\n')
                 : s.description,
             inputSchema: getExposedInputSchema(s)
@@ -538,7 +539,11 @@ export async function handleMCPRequest(body, env) {
             }
         } catch (e) { text = 'err: ' + e.message; }
         const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:') && !text.startsWith('MAIN_WRITE_BLOCKED:') && !text.startsWith('unknown tool:') && !text.startsWith('handler type not implemented') && !text.startsWith('TEXT_SKILL_LOAD_FAILED:');
-        if (toolOk && !readOnlyTextSkill) await autoIncrementUsage(env, name);
+        // The metadata-only health report must be a genuinely read-only scene,
+        // including usage accounting. Do not create a side-effect on success.
+        if (toolOk && !readOnlyTextSkill && !(name === 'memory' && safeArgs.action === 'health_check')) {
+            await autoIncrementUsage(env, name);
+        }
         return { ok: true, data: { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }] } } };
     }
     if (method === 'ping') return { ok: true, data: { jsonrpc: '2.0', id, result: {} } };
