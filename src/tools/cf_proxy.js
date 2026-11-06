@@ -64,3 +64,147 @@ export const CF_PROXY_TOOL_DEF = {
         required: ['endpoint']
     }
 };
+
+ 
+// Scenario-level read-only Cloudflare Workers Observability query.
+// Reuse the cf_proxy credential/header primitive; NEVER expose arbitrary API
+// endpoints, token names, raw log lines, headers, bodies or account mutations.
+const LOG_WORKER = 'mcp-memory';
+const LOG_ARGS = new Set(['minutes', 'limit', 'status_filter']);
+
+export const CLOUDFLARE_LOGS_QUERY_TOOL = Object.freeze({
+    name: 'cloudflare_logs_query',
+    description: '查询 mcp-memory 最近 1-60 分钟已存储的 Cloudflare Workers 请求日志，只显示脱敏元数据。与 Live Tail 不同；查询为空不能证明请求未到达。',
+    input_schema: {
+        type: 'object',
+        properties: {
+            minutes: { type: 'integer', minimum: 1, maximum: 60, description: '最近多少分钟，默认15' },
+            limit: { type: 'integer', minimum: 1, maximum: 50, description: '最大返回条数，默认20' },
+            status_filter: { type: 'string', enum: ['all', 'error'], description: '默认all；error 仅过滤已读取的有限事件' }
+        },
+        additionalProperties: false
+    },
+    annotations: { title: 'Cloudflare Logs (read-only)', readOnlyHint: true,
+        destructiveHint: false, idempotentHint: true, openWorldHint: true }
+});
+
+function logResponse(status, reason, extra = {}) {
+    return JSON.stringify({
+        status, reason, worker: LOG_WORKER,
+        coverage: 'stored_logs_only_sampling_and_retention_unverified',
+        ...extra
+    });
+}
+function logId(value) {
+    return typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value) ? value : null;
+}
+function logTime(value) {
+    if (typeof value === 'string' && /^\d{4}-\d\d-\d\dT/.test(value)) {
+        const n = Date.parse(value);
+        return Number.isFinite(n) ? new Date(n).toISOString() : null;
+    }
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+        const ms = value < 100000000000 ? value * 1000 : value;
+        return Number.isFinite(new Date(ms).getTime()) ? new Date(ms).toISOString() : null;
+    }
+    return null;
+}
+function logStatus(value) {
+    const n = typeof value === 'number' ? value : Number(value);
+    return Number.isInteger(n) && n >= 100 && n <= 599 ? n : null;
+}
+function logMethod(value) {
+    return typeof value === 'string' && /^(GET|POST|PATCH|PUT|DELETE|OPTIONS|HEAD)$/.test(value)
+        ? value : null;
+}
+function logPath(value) {
+    if (typeof value !== 'string') return null;
+    try {
+        const p = new URL(value, 'https://worker.invalid').pathname;
+        return p === '/mcp' || p === '/' ? p : null;
+    } catch { return null; }
+}
+function sanitizeLogEvent(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const meta = raw.$metadata && typeof raw.$metadata === 'object' ? raw.$metadata : {};
+    // Server filter and local verification: never leak events for other Workers.
+    if (meta.service !== LOG_WORKER) return null;
+    const req = raw.request && typeof raw.request === 'object' ? raw.request : {};
+    const res = raw.response && typeof raw.response === 'object' ? raw.response : {};
+    const status = logStatus(meta.statusCode ?? meta.status ?? res.status);
+    const level = typeof meta.level === 'string' ? meta.level.toLowerCase() : null;
+    const error = Boolean(meta.error) || meta.spanStatus === 'error' ||
+        level === 'error' || (status !== null && status >= 500);
+    return {
+        timestamp: logTime(meta.startTime ?? meta.timestamp ?? raw.timestamp),
+        worker: LOG_WORKER,
+        method: logMethod(meta.method ?? req.method),
+        path: logPath(meta.url ?? req.url),
+        status_code: status,
+        outcome: error ? 'error' : (status === null ? 'unknown' : 'ok'),
+        trace_id: logId(meta.requestId ?? meta.traceId ?? meta.rayId)
+    };
+}
+
+// fetchImpl and nowMs are injectable only for deterministic synthetic E2.
+export async function handleCloudflareLogsQuery(args = {}, env = {}, fetchImpl = fetch, nowMs = Date.now()) {
+    if (!args || typeof args !== 'object' || Array.isArray(args) ||
+        Object.keys(args).some(k => !LOG_ARGS.has(k))) {
+        return logResponse('ERROR', 'invalid_arguments');
+    }
+    const minutes = args.minutes === undefined ? 15 : args.minutes;
+    const limit = args.limit === undefined ? 20 : args.limit;
+    const filter = args.status_filter === undefined ? 'all' : args.status_filter;
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60 ||
+        !Number.isInteger(limit) || limit < 1 || limit > 50 ||
+        !['all', 'error'].includes(filter)) {
+        return logResponse('ERROR', 'invalid_arguments');
+    }
+    const token = env.CLOUDFLARE_API_TOKEN, account = env.CLOUDFLARE_ACCOUNT_ID;
+    if (typeof token !== 'string' || !token || !logId(account)) {
+        return logResponse('UNAVAILABLE', 'credentials_not_configured');
+    }
+    if (!Number.isFinite(nowMs) || nowMs <= 0) return logResponse('ERROR', 'invalid_time');
+    const end = Math.floor(nowMs);
+    const body = {
+        queryId: 'ziven-logs-temporary', timeframe: { from: end - minutes * 60000, to: end },
+        view: 'events', limit, dry: true,
+        parameters: {
+            datasets: [], filterCombination: 'and',
+            filters: [{ key: '$metadata.service', operation: 'eq', type: 'string', value: LOG_WORKER }]
+        }
+    };
+    let response;
+    try {
+        response = await fetchImpl(
+            CF_API_BASE + 'accounts/' + encodeURIComponent(account) + '/workers/observability/telemetry/query',
+            { method: 'POST', headers: cloudflareBearerHeaders(token), body: JSON.stringify(body) }
+        );
+    } catch { return logResponse('ERROR', 'network_failure'); }
+    if (!response?.ok) {
+        const status = Number.isInteger(response?.status) ? response.status : null;
+        if (status === 401 || status === 403) return logResponse('UNAVAILABLE', 'token_permission_or_auth');
+        if (status === 404) return logResponse('UNAVAILABLE', 'endpoint_or_storage_unavailable');
+        return logResponse('ERROR', 'cloudflare_http_failure', { http_status: status });
+    }
+    let data;
+    try { data = await response.json(); }
+    catch { return logResponse('ERROR', 'invalid_json'); }
+    if (!data || typeof data !== 'object') return logResponse('ERROR', 'invalid_response_shape');
+    if (data.success === false) return logResponse('ERROR', 'cloudflare_query_rejected');
+    const group = data.result?.events;
+    if (!Array.isArray(group?.events)) return logResponse('ERROR', 'invalid_response_shape');
+    const parsed = group.events.map(sanitizeLogEvent);
+    if (parsed.some(e => e === null)) return logResponse('ERROR', 'unverifiable_worker_scope');
+    const selection = filter === 'error' ? parsed.filter(e => e.outcome === 'error') : parsed;
+    selection.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+    const events = selection.slice(0, limit);
+    return logResponse(events.length ? 'OK' : 'EMPTY',
+        events.length ? 'events_found' : 'no_matching_events_in_limited_result', {
+            queried_minutes: minutes, requested_limit: limit, status_filter: filter,
+            fetched_count: group.events.length,
+            reported_count: Number.isFinite(group.count) && group.count >= 0 ? group.count : null,
+            events
+        });
+}
+
