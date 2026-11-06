@@ -3443,6 +3443,14 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **精确证据**：dev SHA `e4d61d4eef8e825b7a78c269e77c28a886b160bc` / [GitHub Actions #42169666827](https://github.com/wovowx/mcp-memory/actions/runs/42169666827) completed SUCCESS；E1 npm run check / E2 Memory Core **120 passed 0 failed**（含 L4 合成证据合同）、Router/Registry、L3 Reflection **35/35**、Session **56/56** 及其它既有回归全部通过。合成 Mock，不读真实用户历史，不改业务 memory/events。
 - **未完成与后续**：生产仍 v6.44.0 / main `5eb7b9d7...` / Worker #537 `47fac1be` VERIFIED。代码前期 dev HEAD `e4d61d4...` 相对 main ahead11/behind0，净10路径（包括前次 Bridge-only）；现在写入本条 Bridge-only 后将重新核对最终 HEAD CI。正式发布须柳柳收到 v6.45.0 版本作用、完整 diff、验证结果、插件刷新要求、回滚基线后单独批准。宿主 ChatGPT action schema 在正式发布后可能仍需柳柳手动刷新；当前不要求刷新、不绕过 OpenAI 宿主安全检查。治理 Roadmap v1.55、记忆层设计 v2.10、状态 version187 已更新。M1 Core 完整宿主 E3 仍受平台安全拦截，独立 OPEN。
 
+### [2026-11-06] GPT → Operit · v6.45.0 已获发布批准，Worker #538 VERIFIED；L5 原型待验收
+- **用户授权**：柳柳阅读完整 v6.45.0 发布单（历史记忆查询价值、净10路径/12提交、E1/E2、Cloudflare 自动部署、回滚 v6.44.0 Worker #537、插件更新提示）后明确回复「好」。这是 v6.45.0 **逐版本发布授权**，不等于 L5 编码/生产记忆全量盘点授权。
+- **GitHub 真实发布**：PR [#332](https://github.com/wovowx/mcp-memory/pull/332) head=dev/base=main；发布基线 main `5eb7b9d76fe85d4a5fdbd0c3279a70b6f0dd23be`、候选 dev `4b072768a304e19342c7e085b1408da3708bde43`，changed_files=10、mergeable_state=clean、rebaseable=true；PR CI `42170743743` SUCCESS。`github_merge_pull_request(merge_method=rebase)` 返回合并成功；独立 GitHub GET 确认 `merged=true/state=closed`，main=dev=`4a9aef4a7d164a1a62aab340fe7a1efde1b96505`（compare identical）。合并后 main CI `42170815687`、dev CI `42170817732` SUCCESS。
+- **生产验证**：Cloudflare Worker **#538** / deployment `86cfeb29` / version hash `dbd870f9`；`cloudflare_deploy_status(verify_main=true)` 返回 **VERIFIED**，匹配 `main 4a9aef4a...`。上一部署 v6.44.0 / main `5eb7b9d7...` / Worker #537 / deployment `47fac1be` 作为回退参考。GitHub Pages 既有冻结 `42170815871` FAILED，与 Worker 成功部署无关，不在本次处理。
+- **已上线能力边界**：现有 `memory` Facade 的 `action=history` 已在 Worker 对外 Schema 合法开放；只按明确完整 key 读取过去记录，返回 OK/EMPTY/PARTIAL/ERROR 及证据 gap，过期/软删除材料不进入当前 recall。没有新数据表/新工具、没有自动归档或批量迁移/真实用户记忆写入。Memory Core 合成 E2 120/120 通过，**ChatGPT/Operit 宿主 E3 仍 NOT VERIFIED**。GPT 当前会话 MCP 插件工具快照仍缺 `history` 枚举；需要柳柳在准备体验时手动刷新插件信息，然后再做合法只读 E3。不得试图绕过安全拦截；M1 完整 Core 仍 BLOCKED_BY_HOST_SAFETY。
+- **主线交接**：governance roadmap v1.57、记忆层设计 v2.11、当前项目状态 version189 在 `wovowx/ZivenLab/dev`。L5 v0.1 先做**合成数据上的纯函数存量映射解释性报告**（候选），未获柳柳验收/未编码；真实 metadata-only 采样需再单独授权，不直接读私人全文/搬迁/删除/修改记忆。当前追加此 dev Bridge 文档仅为交接，不是新版本发布；需回读精确 HEAD 与 CI。
+
+
 
 
 
