@@ -5,6 +5,7 @@ import { handleDatabaseTool } from '../src/tools/database.js';
 import { parseColumnDefinitions, quoteDdlIdentifier } from '../src/modules/database/ddl_parser.js';
 import { handleGitHubTool } from '../src/tools/github_v64.js';
 import { handleCloudflareTool } from '../src/modules/cloudflare/worker_status.js';
+import { handleCloudflareLogsQuery } from '../src/tools/cf_proxy.js';
 import { resolvePatchTargetPolicy, validatePatchTargetFile, validatePatch } from '../src/modules/patch_engine.js';
 import { handlePatchWorkflow } from '../src/modules/patch_workflow.js';
 import { detectRepoType, validateRelease } from '../src/modules/release_guard.js';
@@ -15,6 +16,79 @@ import { CHAT_TOOL_DEFS } from '../src/tools/chat_mcp.js';
 const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
 let pass = 0, fail = 0;
 function check(name, cond, extra = '') { if (cond) { pass++; console.log('  ✅ ' + name); } else { fail++; console.log('  ❌ ' + name + ' ' + extra); } }
+
+console.log('\n[Cloudflare read-only Observability log query contracts]');
+{
+  let networkCalls = 0;
+  const fakeToken = 'SYNTHETIC_TOKEN_DO_NOT_EXPOSE';
+  const credentials = { CLOUDFLARE_API_TOKEN: fakeToken, CLOUDFLARE_ACCOUNT_ID: 'abc123account' };
+  const sampleEvents = [
+    { $metadata: { service: 'mcp-memory', requestId: 'request-123', startTime: 1800000000000, statusCode: 200 },
+      request: { method: 'POST', url: 'https://mcp-memory.example/mcp?token=HIDDEN_QUERY' },
+      source: 'PRIVATE_BODY_DO_NOT_EXPOSE', headers: { authorization: 'Bearer SECRET_IN_EVENT' } },
+    { $metadata: { service: 'mcp-memory', requestId: 'request-456', startTime: 1800000000100,
+        statusCode: 500, level: 'error', message: 'PRIVATE_MESSAGE_DO_NOT_EXPOSE' },
+      request: { method: 'GET', url: 'https://mcp-memory.example/not-approved?secret=hidden' } }
+  ];
+  const fakeFetch = async (url, opts) => {
+    networkCalls++;
+    check('Cloudflare query uses only the fixed telemetry query endpoint',
+      String(url) === 'https://api.cloudflare.com/client/v4/accounts/abc123account/workers/observability/telemetry/query' &&
+      opts.method === 'POST');
+    const body = JSON.parse(opts.body);
+    check('Cloudflare query uses bounded temporary events query scoped to mcp-memory',
+      body.view === 'events' && body.dry === true && body.limit === 2 &&
+      body.timeframe.from === 1800000000000 - 15 * 60000 &&
+      body.timeframe.to === 1800000000000 &&
+      JSON.stringify(body.parameters.filters) === JSON.stringify([{
+        key: '$metadata.service', operation: 'eq', type: 'string', value: 'mcp-memory'
+      }]) &&
+      opts.headers.Authorization === 'Bearer ' + fakeToken);
+    return { ok: true, status: 200, json: async () => ({
+      success: true, result: { events: { count: 2, events: sampleEvents } }
+    }) };
+  };
+  let raw = await handleCloudflareLogsQuery({limit: 2}, credentials, fakeFetch, 1800000000000);
+  let data = JSON.parse(raw);
+  check('Cloudflare logs return only approved fields and keep request IDs',
+    data.status === 'OK' && data.events.length === 2 &&
+    data.events[1].trace_id === 'request-123' &&
+    data.events[1].method === 'POST' && data.events[1].path === '/mcp' &&
+    data.events[0].path === null && data.worker === 'mcp-memory');
+  check('Cloudflare logs never expose tokens, queries, headers, message, source or raw request',
+    !raw.includes(fakeToken) && !raw.includes('HIDDEN_QUERY') &&
+    !raw.includes('PRIVATE_BODY') && !raw.includes('SECRET_IN_EVENT') &&
+    !raw.includes('PRIVATE_MESSAGE') && !raw.includes('not-approved'));
+  raw = await handleCloudflareLogsQuery({ limit: 2, status_filter: 'error' }, credentials, fakeFetch, 1800000000000);
+  data = JSON.parse(raw);
+  check('Cloudflare error-only selection is bounded and notes incomplete coverage',
+    data.status === 'OK' && data.events.length === 1 &&
+    data.events[0].outcome === 'error' && data.coverage.includes('unverified'));
+  const noFetch = async () => { throw new Error('network forbidden by validation'); };
+  check('Cloudflare logs reject missing credentials without network request',
+    JSON.parse(await handleCloudflareLogsQuery({}, {}, noFetch)).status === 'UNAVAILABLE');
+  check('Cloudflare logs reject arbitrary paths, tokens, methods and oversize time ranges',
+    JSON.parse(await handleCloudflareLogsQuery({ endpoint: '/accounts', minutes: 4 }, credentials, noFetch)).reason === 'invalid_arguments' &&
+    JSON.parse(await handleCloudflareLogsQuery({ minutes: 61 }, credentials, noFetch)).reason === 'invalid_arguments' &&
+    JSON.parse(await handleCloudflareLogsQuery({ limit: 51 }, credentials, noFetch)).reason === 'invalid_arguments');
+  const response = (status, payload) => async () => ({
+    ok: status < 400, status, json: async () => payload
+  });
+  check('Cloudflare permission denied is UNAVAILABLE without sensitive response content',
+    JSON.parse(await handleCloudflareLogsQuery({}, credentials, await response(403))).reason === 'token_permission_or_auth');
+  check('Cloudflare HTTP 500 and malformed JSON are ERROR rather than EMPTY',
+    JSON.parse(await handleCloudflareLogsQuery({}, credentials, await response(500))).status === 'ERROR' &&
+    JSON.parse(await handleCloudflareLogsQuery({}, credentials, async () => ({ok:true,json:async()=>{throw Error('private error')}}))).reason === 'invalid_json');
+  check('Cloudflare valid empty stored result is EMPTY but not no-request proof',
+    JSON.parse(await handleCloudflareLogsQuery({}, credentials, await response(200, { success:true, result:{events:{events:[],count:0}} }))).status === 'EMPTY');
+  check('Cloudflare mismatched worker event fails closed without logging other worker data',
+    JSON.parse(await handleCloudflareLogsQuery({}, credentials, await response(200, { success:true, result:{
+      events:{events:[{$metadata:{service:'other-worker',message:'OTHER_PRIVATE'},source:'LEAK'}]}
+    }}))).reason === 'unverifiable_worker_scope');
+  check('Cloudflare no results shape fails closed instead of returning EMPTY',
+    JSON.parse(await handleCloudflareLogsQuery({}, credentials, await response(200, {success:true,result:{}}))).reason === 'invalid_response_shape');
+  check('Cloudflare synthetic test executed only bounded local mock calls', networkCalls === 2);
+}
 
 console.log('\n[Cloudflare provider contracts] deploy status, deploy detail, build logs and verify_main');
 {
@@ -306,6 +380,21 @@ try {
   check('repeated tools/list is stable and side-effect-free',
     firstDiscovery === secondDiscovery && skillsWriteMethods.length === 0 && usagePatchCount === 0);
   const recovered = await listToolDefs();
+  const discoveredLogs = recovered.find(x => x.name === 'cloudflare_logs_query');
+  check('cloudflare_logs_query is explicitly visible once without exposing cf_proxy',
+    recovered.filter(x => x.name === 'cloudflare_logs_query').length === 1 &&
+    !recovered.some(x => x.name === 'cf_proxy') &&
+    discoveredLogs?.inputSchema?.properties?.status_filter?.enum?.join(',') === 'all,error');
+  check('cloudflare_logs_query accurately advertises read-only ToolAnnotations',
+    discoveredLogs?.annotations?.readOnlyHint === true &&
+    discoveredLogs?.annotations?.destructiveHint === false &&
+    discoveredLogs?.annotations?.openWorldHint === true);
+  usagePatchCount = 0;
+  let safeLogs = await callTool('cloudflare_logs_query', { minutes: 61 });
+  check('logs query rejects out-of-range values via shared dispatch schema', safeLogs.includes('DISPATCH_GUARD_REJECT'));
+  safeLogs = await callTool('cloudflare_logs_query', {});
+  check('logs query dispatch reaches safe handler without network credentials',
+    JSON.parse(safeLogs).status === 'UNAVAILABLE' && usagePatchCount === 0);
   check('tools/list advertises one copy each of the existing Bootstrap and Context static tools',
     ['session_bootstrap', 'session_context'].every(name => recovered.filter(t => t.name === name).length === 1) &&
     recovered.find(t => t.name === 'session_context')?.inputSchema?.properties?.topic?.type === 'string');
