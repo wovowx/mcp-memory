@@ -2,6 +2,23 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.50.0] - 2026-11-06（L5 只读存量映射 v0.1 · DEV CANDIDATE，未发布）
+
+### 柳柳能得到什么
+- 一份可解释的记忆视图建议：输入**合成元数据**，按证据把记录建议为 Core、Long-term、Archive 或待确认；单独对 Reflection 候选给出只读建议。每条保留理由、来源与疑点，重复 key 只提示不合并。
+- 这版只为将来整理真实记忆和记忆星球准备可靠规则，**现在不会盘点真实记忆、不会自动分层、不会改变实际召回**；示例报告可离线运行 `npm run memory-layer:preview` 查看。
+
+### 实施、兼容与严格边界
+- 新增 `src/modules/memory/layer_mapper.js` 纯函数、合成 fixture、离线预览及 E2 合同回归；复用从 Session Bootstrap 提取的 `src/modules/session/keys.js` 精确五源常量（旧 `bootstrap.js` 仍按原路径 re-export，避免两份漂移）。仅按现有六维元数据独立判断，不把 Category=📦 误作 Archive，不把 `agreement` 推断为 Core，不把反思候选混入普通记忆，也不把 active/current 当成事实真实性证明。
+- 保留五个精确启动 Core key；若元数据无法证明正文可读，仅标 `UNCERTAIN`，不自动注入。非当前记录可以建议历史视图，但不搬迁、不恢复、不删除。所有建议都是 `review_only`、`writes_executed=false`。
+- 不添加 MCP 公开工具或变更现有 Facade/Schema、Cloudflare 日志、数据库、Supabase 真实数据、skills registry、依赖、聊天室/唤醒。`tests/memory_layer_mapper_contract_test.mjs` 使用合成数据，校验只读、无网络、状态矛盾、来源缺口、重复 key、不修改输入；纳入既有 learning-regression CI。历史 recall/history/Session Core 不受本切片逻辑调用。
+
+### 授权与验收状态
+- 柳柳在明确看到方案 A 的合成只读原型后回复「好」，仅批准 `mcp-memory/dev` 编码及 E1/E2；**未批准 PR/main/Worker 发布、真实私人数据盘点或写入**。正式发布前再次提交 v6.50.0 的用户收益、准确 diff、CI、风险、费用与回滚参考，等柳柳逐版本同意。
+- 回滚参考为生产 v6.49.0 / main `74951419f1b05117fda96124d8e85ee463243a6c` / Cloudflare Worker #543 deployment `c47c9f5c`。本候选不更改持久日志默认关闭策略。
+
+---
+
 ## [v6.49.0] - 2026-11-06（M1 请求级关联诊断 · DEV CANDIDATE，未发布）
 
 ### 柳柳能得到什么
