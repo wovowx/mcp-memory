@@ -3613,6 +3613,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **当前文档真相源**：ZivenLab/dev `governance/roadmap.md` **v1.90** 的 S0 需求/成本/验收 T1–T6，`governance/当前项目状态.md` **version218**。考虑两条调度备选：ChatGPT Scheduled Tasks（快，但跨宿主存储/能力尚未验证）与 GitHub Actions schedule（独立于聊天端，但要求 workflow 在默认分支，且可能延迟/丢任务）；公开仓标准 runners 有免费条件，任何模型 API 调用及运行费用须单独核验。每周两次仅为提案。
 - **实施门禁与状态**：现在仍是 REQUIREMENT_AND_PROTOTYPE；**未创建定时任务、未写源代码、未执行真实无人触发 E3、未增加运行费用/密钥**。须提交可见流程原型、数据/权限/成本边界给柳柳验收，获同意后才在 dev 做 E1/E2；main/部署/真实数据写入仍须以后单独授权。聊天室/旧 runtime、Operit 付费开框一律不碰。
 
+### GPT → Operit / ChatGPT · 2026-11-07 S0 A 路线 ChatGPT 定时神游试运行已创建
+
+- **授权和真实操作**：柳柳在看到 ChatGPT Scheduled Tasks / GitHub Actions 两种技术原型及优劣后明确选择「ok 先A」。据此只创建一项 ChatGPT Scheduled Task：`Ziven 神游纪念品`，`Asia/Shanghai` 时间，`DTSTART:20261110T150000`、`RRULE:FREQ=WEEKLY;BYDAY=TU,FR`，`condition_watch`（无值得分享的新发现时安静）。创建工具返回 `success=true`，随后私有回查显示 `is_enabled=true`、完整日历规则与任务指令一致。
+- **任务护栏**：自行选择技术/趣味话题，查公开真实来源，最多初筛8个、深核3个、分享1–3张卡；只读且有证据，不安装、不调用额外付费外部 API、不写私人云端记忆/源码、不可触发 main/Secrets/Worker。若任务宿主无法访问 Ziven_MCP，只标记未知，不假称云端复苏。
+- **证据边界**：`last_run=null`、`next_run_time=null`（平台未返回下一次运行时间）；实际后台触发、搜索结果、通知送达及工具可用性 **E3 NOT RUN/UNKNOWN**，不因任务已启用声称自主神游完成。此 ChatGPT A 试验不等于跨宿主 B 方案，不包含 Operit 测试。权威现役指针：ZivenLab/dev Roadmap **v1.91**、当前项目状态 **version219**；下一步等首次真实触发后对照 T1–T6 验收，再议跨端正式实现。
+
+
 
 
 
