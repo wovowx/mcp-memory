@@ -7,6 +7,7 @@ import { parseColumnDefinitions, quoteDdlIdentifier } from '../src/modules/datab
 import { handleGitHubTool } from '../src/tools/github_v64.js';
 import { handleCloudflareTool } from '../src/modules/cloudflare/worker_status.js';
 import { handleCloudflareLogsQuery } from '../src/tools/cf_proxy.js';
+import mcpWorker from '../src/index.js';
 import { resolvePatchTargetPolicy, validatePatchTargetFile, validatePatch } from '../src/modules/patch_engine.js';
 import { handlePatchWorkflow } from '../src/modules/patch_workflow.js';
 import { detectRepoType, validateRelease } from '../src/modules/release_guard.js';
@@ -63,7 +64,7 @@ console.log('\n[Cloudflare read-only Observability log query contracts]');
       opts.method === 'POST');
     const body = JSON.parse(opts.body);
     check('Cloudflare query uses bounded temporary events query scoped to mcp-memory',
-      body.view === 'events' && body.dry === true && body.limit === 2 &&
+      body.view === 'events' && body.dry === true && body.limit === 6 &&
       body.timeframe.from === 1800000000000 - 15 * 60000 &&
       body.timeframe.to === 1800000000000 &&
       JSON.stringify(body.parameters.filters) === JSON.stringify([{
@@ -224,6 +225,74 @@ console.log('\n[Cloudflare read-only Observability log query contracts]');
     legacyEvent.event?.event_kind === 'http' && legacyEvent.event?.method === 'POST' &&
     legacyEvent.event?.path === '/mcp' && legacyEvent.event?.status_code === 200 &&
     legacyEvent.event?.outcome === 'ok');
+
+  const idA = 'a'.repeat(32), idB = 'b'.repeat(32), trace = 'c'.repeat(32);
+  const diag = (kind, phase, ids = {}, sourceExtra = {}) => ({
+    $metadata: workerMeta({ type: 'cf-worker-log', ...ids }),
+    source: { marker: 'ziven_mcp_diag_v1', tool_kind: kind, phase, ...sourceExtra }
+  });
+  const http = ids => ({
+    $metadata: workerMeta({ type:'cf-worker-event', trigger:'POST /mcp', ...ids }),
+    $workers: {eventType:'fetch', outcome:'ok'}
+  });
+  const syntheticLogs = async (events, limit = 20) => JSON.parse(await handleCloudflareLogsQuery(
+    {limit}, credentials, async () => ({ok:true,status:200,json:async()=>({
+      success:true,result:{events:{count:events.length,events}}
+    })}), 1800000000000));
+  let grouped = await syntheticLogs([
+    http({requestId:idA}),
+    diag('memory_recall','arrived',{requestId:idA}),
+    diag('memory_recall','response_formed',{requestId:idA}),
+    http({requestId:idB})
+  ]);
+  check('MCP diagnostic joins only identical Cloudflare request IDs with a completed phase',
+    grouped.status === 'OK' && grouped.events[0].mcp_tool_kind === 'memory_recall' &&
+    grouped.events[0].mcp_phase === 'response_formed' &&
+    grouped.events[3].mcp_tool_kind === null);
+  check('MCP diagnostic returns only fixed safe enums without raw marker or tool arguments',
+    !JSON.stringify(grouped).includes('ziven_mcp_diag_v1') &&
+    grouped.events.every(x => Object.keys(x).every(key => [
+      'timestamp','worker','event_kind','method','path','status_code',
+      'outcome','trace_id','mcp_tool_kind','mcp_phase'
+    ].includes(key))));
+  grouped = await syntheticLogs([
+    http({traceId:trace}),
+    diag('session_context','arrived',{traceId:trace}),
+    diag('session_context','server_error',{traceId:trace})
+  ]);
+  check('MCP diagnostic supports exact 32-hex Cloudflare trace fallback and server errors',
+    grouped.events[0].mcp_tool_kind === 'session_context' &&
+    grouped.events[0].mcp_phase === 'server_error');
+  grouped = await syntheticLogs([
+    http({traceId:trace}), http({traceId:trace}),
+    diag('session_context','arrived',{traceId:trace})
+  ]);
+  check('MCP diagnostic refuses trace-only links across multiple HTTP invocations',
+    grouped.events[0].mcp_tool_kind === null && grouped.events[1].mcp_tool_kind === null);
+  grouped = await syntheticLogs([
+    http({requestId:idA,traceId:trace}),
+    diag('session_bootstrap','arrived',{requestId:idB,traceId:trace}),
+    diag('memory_recall','arrived',{requestId:idA}, {private_secret:'DO_NOT_ECHO'}),
+    diag('memory_history','arrived',{requestId:'0'.repeat(32)})
+  ]);
+  check('MCP diagnostic refuses mismatched request IDs, hostile source keys and zero IDs',
+    grouped.events[0].mcp_tool_kind === null &&
+    !JSON.stringify(grouped).includes('DO_NOT_ECHO'));
+  grouped = await syntheticLogs([
+    http({requestId:idA}),
+    diag('memory_recall','arrived',{requestId:idA}),
+    diag('session_context','response_formed',{requestId:idA})
+  ]);
+  check('MCP diagnostic refuses conflicting tool kinds on the same invocation',
+    grouped.events[0].mcp_tool_kind === null && grouped.events[0].mcp_phase === null);
+  grouped = await syntheticLogs([
+    http({requestId:idA}),
+    diag('memory_recall','arrived',{requestId:idA}),
+    diag('memory_recall','response_formed',{requestId:idA}),
+    diag('memory_recall','server_error',{requestId:idA})
+  ], 1);
+  check('MCP diagnostic refuses conflicting terminal phases and preserves public limit',
+    grouped.events.length === 1 && grouped.events[0].mcp_phase === null);
 
 }
 
@@ -1114,6 +1183,40 @@ console.log('\n[Extracted Patch workflow boundary contracts]');
     { GITHUB_REPO: 'wovowx/mcp-memory' }, noopEncoders);
   check('Patch workflow applies repository allowlist before any network request',
     otherRepo.includes('REPOSITORY_NOT_ALLOWED'));
+}
+
+console.log('\n[Fixed-enum MCP entry diagnostics contract]');
+{
+  const originalFetch = globalThis.fetch, originalLog = console.log;
+  const diagnosticLines = [];
+  const diagnosticEnv = {SUPABASE_URL:'https://mock.supabase.co',SUPABASE_ANON_KEY:'mock-key'};
+  try {
+    console.log = (...args) => {
+      if (args[0]?.marker === 'ziven_mcp_diag_v1') diagnosticLines.push(args[0]);
+    };
+    globalThis.fetch = async () => ({ok:true,status:200,json:async()=>[],text:async()=>''});
+    const invoke = async (method, name, args = {}) => mcpWorker.fetch(new Request('https://worker.test/mcp', {
+      method:'POST',headers:{'content-type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0',id:'PRIVATE_JSONRPC_ID',method,
+        params:method==='tools/call'?{name,arguments:args}:{protocolVersion:'2025-03-26'}})
+    }), diagnosticEnv, {});
+    await invoke('initialize','',{});
+    await invoke('tools/call','memory',{action:'update',key:'PRIVATE_KEY',value:'PRIVATE_BODY'});
+    await invoke('tools/call','memory',{action:'recall',key:'PRIVATE_KEY'});
+    await invoke('tools/call','memory',{action:'history',key:'PRIVATE_KEY'});
+    await invoke('tools/call','session_context',{include_core:true,topic:'PRIVATE_TOPIC'});
+    await invoke('tools/call','session_bootstrap',{host:'chatgpt'});
+  } finally {
+    console.log = originalLog;
+    globalThis.fetch = originalFetch;
+  }
+  check('MCP entry emits exactly two fixed-stage logs for each selected read-only action',
+    diagnosticLines.length === 8 &&
+    ['memory_recall','memory_history','session_context','session_bootstrap']
+      .every(kind => diagnosticLines.filter(x=>x.tool_kind===kind).map(x=>x.phase).join(',') === 'arrived,response_formed'));
+  check('MCP entry never logs private parameters, response, session ID or other tool actions',
+    diagnosticLines.every(x=>Object.keys(x).sort().join(',')==='marker,phase,tool_kind') &&
+    !JSON.stringify(diagnosticLines).includes('PRIVATE_'));
 }
 
 console.log('===== ' + pass + ' 通过 / ' + fail + ' 失败 =====');
