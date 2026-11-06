@@ -18,7 +18,7 @@ import {
     listMemoriesByDate, getMemoryStats, getRandomMemory
 } from '../modules/memory/retrieval.js';
 import { importMemories, getExportableMemories } from '../modules/memory/transfer.js';
-import { handleMemoryHealthCheck } from '../modules/memory/layer_mapper.js';
+import { handleMemoryHealthCheck } from '../modules/memory/health_check.js';
 
 export { getMemoryByKey, getCurrentMemoryByKey, getAllMemories, findAuthoritativeKey, putMemory };
 
