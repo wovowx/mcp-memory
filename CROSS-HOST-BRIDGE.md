@@ -3499,6 +3499,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **未关闭事项**：当前真实HTTP事件的 `status_code=null`，因为可信HTTP statusCode不存在；不得把运行结果 `ok` 改写为HTTP200。旧 OpenAI 对完整私人 Core 的宿主 safety block 根因仍 UNKNOWN，且缺精确工具请求/Cloudflare event correlation，M1 完整 Core E3 仍 OPEN。下一步若需要单独的 correlation 方案，必须先讨论原型、再经柳柳验收及独立版本发布批准；不擅自加原始source、headers/body、Token/URL查询输出。L5轻量体检暂缓。
 - **权威交接**：ZivenLab/dev Roadmap v1.72、当前项目状态 version203；云端 ⚙️/当前工作检查点接着同步。此条仅提交至 mcp-memory/dev Bridge 用作跨宿主交接，不触发新生产发布。提交后按精确 Git SHA 和 GitHub Actions 复核。
 
+### [2026-11-06] GPT → Operit · v6.49.0 M1 请求级关联诊断 DEV E1/E2 CLOSED（未发布）
+- **柳柳授权**：Roadmap v1.74 的固定枚举请求关联方案 A 已验收；柳柳回复「好」，仅授权 `mcp-memory/dev` 代码与合成 E1/E2。不包含 PR/main、Cloudflare 自动部署、真实私人 Core E3、改 Token/采样/数据库/聊天室/唤醒。
+- **用户收益与实现**：现有 `/mcp` Worker 入口只对 `memory(recall|history)`、`session_context`、`session_bootstrap` 发最多2条 `marker/tool_kind/phase` 固定枚举日志；不记录参数、key、响应、JSON-RPC ID、Core 正文或秘密。`cloudflare_logs_query` 内部有限 3 倍（最多150）事件读取以容纳 invocation+诊断日志、保留公开 `limit` 上限，严格 CF requestId/traceId 匹配并将可选 `mcp_tool_kind/mcp_phase` 脱敏投影；不同请求、冲突 tool/phase、跨 Worker/伪造 source fail closed，不用时序猜测。`response_formed` 仅表示构造了服务端响应，不宣称业务成功或 HTTP200；无日志仅 NOT_OBSERVED。复用 `src/index.js` / `src/tools/cf_proxy.js`，不改 router 公开工具名/Schema。
+- **准确 dev 证据**：代码、测试、版本、Changelog 五个文件先经远端 `github_edit(dry_run)` 验证，再依次写入并逐文件 `Verified:true`。最终 `mcp-memory/dev` HEAD **`c798cd76a33c79de85ad9a01e68eba887e16c0f7`**、GitHub Actions [#42193610805](https://github.com/wovowx/mcp-memory/actions/runs/42193610805) **completed/success**；`validate` 17步骤全部 success。E1 `npm run check` 43 JS/import PASS；E2 Router/Registry **216/216**、Webhook **114/114**、Memory Core **120/120**、Session/Core **56/56**、Reflection **35/35**、GitHub Contents **50**、Search History **20/20**、检索16例与 Learning10工件 PASS。远端 dev 五个目标文件与本地测试版精确 diff 为零。
+- **边界与下一步**：生产仍 **v6.48.0 / main `a788a77d3400d1e7a76729bcc9ed740a00bf5220` / Worker #542 `891473d4` VERIFIED**；本次没有部署或真实日志 E3。`main...dev` 当前 ahead6/behind0，净6路径：本版五文件 + 本 Bridge 先前单独领先一提交；当前条目提交后会另有一个 docs-only dev 提交，须再次核对精确 HEAD/CI。待柳柳独立批准 v6.49.0 发布单后才 PR→main→Worker→合成只读 E3；原安全拦截根因仍 UNKNOWN，`status_code=null` 缺口未解决，L5 继续暂缓。
+
 
 
 
