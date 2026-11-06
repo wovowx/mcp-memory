@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import {
-    BOOTSTRAP_CORE_KEYS, mapMemoryMetadata, mapReflectionMetadata, buildMemoryLayerReport
+    BOOTSTRAP_CORE_KEYS, mapMemoryMetadata, mapReflectionMetadata, buildMemoryLayerReport,
+    explainMemoryLayerRow
 } from '../src/modules/memory/layer_mapper.js';
 import { BOOTSTRAP_KEYS } from '../src/modules/session/bootstrap.js';
 
@@ -90,6 +91,52 @@ try {
         mapReflectionMetadata(null).suggested_views[0] === 'UNCLASSIFIED'
         && mapReflectionMetadata(null).writes_executed === false);
 
+    const explain = id => explainMemoryLayerRow(byId(id));
+    check('readable provenance missing means no structured reference, not no real source',
+        explain('synthetic-unknown-005').provenance_label.includes('不等于记忆没有来源')
+        && explain('synthetic-unknown-005').trust_label.includes('不能核验'));
+    check('present provenance remains unverified, not automatically trusted',
+        explain('synthetic-core-001').provenance_label.includes('真实性尚未核验'));
+    check('missing type is explicitly unmarked and never default fact',
+        explain('synthetic-unknown-005').type_label.includes('性质未标注')
+        && explain('synthetic-unknown-005').type_label.includes('不能默认'));
+    check('agreement confirmation needs independent evidence',
+        explain('synthetic-rule-002').agreement_label.includes('依据仍待核验')
+        && explain('synthetic-rule-002').type_label.includes('不证明内容真实'));
+    check('current state is not proof of truthful content',
+        explain('synthetic-rule-002').validity_label.includes('仅据状态字段'));
+    check('unread Core candidate is human-readable UNCERTAIN and never promoted',
+        explain('synthetic-core-unverified-006').core_label.includes('不能自动纳入 Core')
+        && !byId('synthetic-core-unverified-006').suggested_views.includes('Core'));
+    check('Core with explicit readable-body input does not claim host loading',
+        explain('synthetic-core-001').core_label.includes('宿主实际装载仍须单独验收'));
+    check('historical suggestion stays read-only and does not migrate',
+        explain('synthetic-old-004').view_label.includes('Archive 历史视图候选（不迁移记忆）'));
+    check('conflicting validity is not silently presented as current',
+        explain('synthetic-conflict-008').validity_label.includes('状态冲突')
+        && explain('synthetic-conflict-008').view_label.includes('待人工确认'));
+    check('uncertainty codes yield understandable explanations',
+        explain('synthetic-unknown-005').issues.some(issue => issue.includes('结构化来源引用'))
+        && explain('synthetic-conflict-008').issues.some(issue => issue.includes('状态冲突')));
+    const explanationJSON = JSON.stringify(explain('synthetic-core-001'));
+    check('explanation omits raw id/key/provenance/evidence references',
+        !explanationJSON.includes('synthetic-core-001')
+        && !explanationJSON.includes('🧬/我是谁')
+        && !explanationJSON.includes('synthetic:root')
+        && !explanationJSON.includes('synthetic:input-row-1'));
+    const unknownIssue = explainMemoryLayerRow({
+        ...byId('synthetic-unknown-005'), uncertainties: ['private-untrusted-issue']
+    });
+    check('unrecognized uncertainty is explained without echoing private codes',
+        unknownIssue.issues.length === 1
+        && !JSON.stringify(unknownIssue).includes('private-untrusted-issue'));
+    check('formatter is deterministic and never mutates mapped data',
+        JSON.stringify(explain('synthetic-rule-002')) === JSON.stringify(explain('synthetic-rule-002'))
+        && JSON.stringify(report) === JSON.stringify(buildMemoryLayerReport(fixture)));
+    check('invalid mapped input is rejected rather than converted to trusted data',
+        (() => { try { explainMemoryLayerRow(null); return false; }
+            catch (e) { return e.message === 'mapped_memory_row_required'; } })());
+
     const preview = spawnSync(process.execPath, ['scripts/memory_layer_preview.mjs'], {
         cwd: new URL('..', import.meta.url), encoding: 'utf8'
     });
@@ -97,7 +144,9 @@ try {
     check('CLI preview accepts fixed synthetic fixture and never writes',
         result?.synthetic_only === true && result?.fixture_id === fixture.fixture_id
         && result?.writes_executed === false
-        && result?.memory_rows?.length === fixture.records.length);
+        && result?.memory_rows?.length === fixture.records.length
+        && result?.explanations?.length === fixture.records.length
+        && result.explanations.every(x => x.recommendation === 'review_only' && !x.writes_executed));
     console.log(`✅ L5 synthetic mapping contracts: ${passed} passed, 0 failed`);
 } finally {
     globalThis.fetch = previousFetch;
