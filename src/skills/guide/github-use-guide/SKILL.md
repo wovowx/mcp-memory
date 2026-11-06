@@ -15,6 +15,18 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 - **github-use-guide** = Git 纪律：PR 格式 / merge method / 分支流程 / commit 规范。
 - 每次进 main：先过 deploy 的 release checklist，再按本表执行 merge。
 
+## L3 v0.2 · 跨宿主选工具防复发（2026-11-07 柳柳批准 dev 原型）
+
+**触发**：在 ChatGPT / Operit / 其他宿主对 Ziven 仓库做 GitHub 读写，尤其更新已有文件，或任何 GitHub 连接器报 403 时。**本节覆盖的是当前宿主的能力选路，不是对所有宿主注入硬钩子。**
+
+1. **先确定场景**：repo、branch、读/改已有/建新/删除/提交合并；改已有文件在 dev 的首选目标是 `ziven_mcp.github_edit`。只读为 `ziven_mcp.github_read`。别因 ChatGPT UI 里出现通用 GitHub 连接器就默认用它。
+2. **核验本宿主真实工具清单和参数**：存在 Ziven MCP `github_edit` 时，读当前文件→用**唯一精确锚点** `dry_run=true`→实际 dev 写入→`github_read` 回读证据。不同宿主的展示名称可不同，应以真实 Schema/来源核对；未暴露不能假装存在。
+3. **遇 403 只判当前失败路径**：`Resource not accessible by integration` 只说明该连接器对该动作无权，先查另一已配置的 Ziven MCP 通道；**不能推断整个 GitHub/MCP 都没权限，也不能立即叫柳柳重复改 token**。若所有已验证允许的路径都不可用，明确停止并报告缺口。
+4. **main/部署仍独立门禁**：哪怕 `github_edit` 可调用，也不可将其用于未经批准的 main 直接写入；要走 deploy 发布单与 PR。跨宿主的 403 回退不会扩大授权。
+5. **闭环证据**：保留失败通道名称和错误类型、成功通道工具名称、dry_run/写/回读结果、宿主/任务范围；新框不提醒的独立选择才是 E3 行为验证。离线测试/本节文字不能代替 E3。
+
+**实际教训**：2026-11-07，在更新 `wovowx/ZivenLab/dev` 已有文档时，先调用通用 GitHub 连接器→403；随后使用真正可用的 Ziven MCP `github_use_guide` 和 `github_edit`，dry_run→写→回读成功。原因是工具选择，不是已证实的全局 GitHub 权限不足。见 L3 `learning_github_tool_route_001`；相似错误下次应由**主动识别能力→选对工具→验证**来规避。
+
 ## 工具对照表
 
 | 我想做什么 | 用什么 |
