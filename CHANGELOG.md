@@ -2,7 +2,24 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.45.0] - 2026-11-06（L4 Archive v0.1 · dev 候选，未发布）
+## [v6.46.0] - 2026-11-06（Cloudflare Observability · DEV CANDIDATE，未发布）
+
+### 柳柳能得到什么
+- 哥哥以后可以直接通过 Ziven MCP 的 `cloudflare_logs_query` 查看 `mcp-memory` 最近 1–60 分钟**已经存储的** Worker 日志元数据，省去反复要求柳柳人工打开 Cloudflare Live 截图。默认 15 分钟、最多返回 20 条；查询上限 50 条，支持已取回事件中的 `all|error` 过滤。
+- 当前只有工具代码和合成 Mock 已完成；**真实 Token 是否具备新版权限、Workers Logs 是否启用持久化均未 E3 验证**。实时 Live Tail 不是该 API 的历史存储查询；没有日志并不能证明请求没到达 Worker。
+
+### 实现与边界
+- 复用 `src/tools/cf_proxy.js` 的 Bearer Header 原子方法；在该文件增加固定账户变量 `CLOUDFLARE_ACCOUNT_ID` 和 `CLOUDFLARE_API_TOKEN` 的受限场景入口 `handleCloudflareLogsQuery`，仅访问官方 `POST /accounts/{account_id}/workers/observability/telemetry/query` 临时查询 API，`dry=true`，`view=events`，服务器筛选 + 本地再次验证 `$metadata.service=mcp-memory`。
+- `src/modules/mcp_router.js` 通过 tools/list 的静态定义和同一 dispatch Schema 合法开放工具，`readOnlyHint=true`、`destructiveHint=false`、`openWorldHint=true`，并**排除技能 usage 自动打点**，保持整个调用真正只读；没有把旧的多权限 `cf_proxy` 暴露给宿主。
+- 输出仅含时间、Worker 名、可识别的 HTTP method、限于 `/mcp` 或 `/` 的路径、有限 HTTP status、outcome 和不敏感追踪 ID；不返回原始日志 message/source/headers/body、查询参数、密钥或完整 URL。错误状态明确 `OK|EMPTY|UNAVAILABLE|ERROR`，不伪造统计或网络行为。
+- 不改现有 Cloudflare Token 内容/权限、Wrangler Observability 配置、Supabase Schema/skills registry、真实业务记忆、聊天室、唤醒、生产 Worker 或 main。
+
+### E1/E2/部署许可
+- `tests/router_registry_contract_test.mjs` 增加纯 Mock：固定 API 范围、只读请求、15 分钟窗口、限量、局部/服务端双层 Worker 筛选、机密字段脱敏、空结果/403/500/坏 JSON/错误事件处理、公开 tools/list Schema+Annotations、旧工具隐藏、dispatchGuard 及无 usage/registry 写。
+- 复用原有 `learning-regression` GitHub Actions 及 `npm run check`；本版最终 DEV HEAD 和对应 CI 在交接时精确记录。**dev E1/E2 不等于已经能从 ChatGPT 调用**。
+- 柳柳同意日志自查工具化方向、更新 Cloudflare Token 权限并要求哥哥推进开发，但未逐版本批准 v6.46.0 的 PR/main/自动部署。正式发布前须说明本版可感知收益、净 diff/测试、Worker 影响及 v6.45.0 回滚参考并等待明确授权。
+
+## [v6.45.0] - 2026-11-06（L4 Archive v0.1 · 已发布 PR #332 / Worker #538 VERIFIED）
 
 ### 用户收益与实现
 - Ziven 对已知完整记忆 key 可以按需查过去的版本和事件，明确区分当前有效、软删除和其他非当前记录，历史仅用来解释过去，不自动恢复成事实。
