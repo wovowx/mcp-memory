@@ -5,7 +5,7 @@ import {
 } from '../src/modules/memory/repository.js';
 import { putMemory, deleteMemory, renameMemory, moveMemory } from '../src/modules/memory/lifecycle.js';
 import {
-    searchMemories, listMemoryCategories, listMemories, listMemoriesByCategory,
+    searchMemories, searchMemoriesWithStatus, listMemoryCategories, listMemories, listMemoriesByCategory,
     listMemoriesByDate, getMemoryStats, getRandomMemory
 } from '../src/modules/memory/retrieval.js';
 import { handleMemoryTool } from '../src/tools/memory_unified.js';
@@ -87,6 +87,34 @@ console.log('\n[Repository contracts]');
 
     const aliases = await getMemoryAliasIds(env, 'alias phrase');
     check('alias lookup discards malformed rows', aliases.length === 1 && aliases[0] === 'm-1');
+    globalThis.fetch = async () => ({ ok: false, status: 503, json: async () => ({}) });
+    let currentReadError;
+    try { await getCurrentMemories(env); } catch (error) { currentReadError = error; }
+    check('current-memory HTTP failure is surfaced with a stable source code',
+        currentReadError?.source === 'memories' && currentReadError?.code === 'http_error' &&
+        currentReadError?.http_status === 503);
+
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ rows: [] }) });
+    let currentShapeError;
+    try { await getCurrentMemories(env); } catch (error) { currentShapeError = error; }
+    check('non-array current-memory response is not treated as an empty result',
+        currentShapeError?.code === 'invalid_response_shape');
+
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => { throw new Error('invalid JSON'); } });
+    let currentJsonError;
+    try { await getCurrentMemories(env); } catch (error) { currentJsonError = error; }
+    check('invalid current-memory JSON is surfaced as invalid_json',
+        currentJsonError?.code === 'invalid_json');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) throw new Error('offline');
+        return { ok: true, status: 200, json: async () => [{ id: 'e-1', event_type: 'update' }] };
+    };
+    let aliasNetworkError;
+    try { await getMemoryAliasIds(env, 'offline'); } catch (error) { aliasNetworkError = error; }
+    check('alias network failure is surfaced with a stable source code',
+        aliasNetworkError?.source === 'memory_aliases' && aliasNetworkError?.code === 'network_error');
+
     const events = await getMemoryEvents(env, 'm-1');
     check('event history returns rows', events.length === 1 && events[0].id === 'e-1');
 }
@@ -101,7 +129,8 @@ console.log('\n[Retired-key history contracts]');
         version: 3,
         status: 'deleted',
         valid_to: '2026-11-03T00:00:00Z',
-        created_at: '2026-10-01T00:00:00Z'
+        created_at: '2026-10-01T00:00:00Z',
+        type: null
     };
     globalThis.fetch = async url => {
         const requestUrl = String(url);
@@ -115,7 +144,7 @@ console.log('\n[Retired-key history contracts]');
                 status: 200,
                 json: async () => [
                     { id: 'event-1', version: 2, old_value: 'older value', reason: 'update', created_at: '2026-10-02T00:00:00Z' },
-                    { id: 'event-2', version: 3, old_value: 'previous value', reason: 'correction', created_at: '2026-10-03T00:00:00Z' }
+                    { id: 'event-2', version: 3, old_value: { value: 'previous value', type: 'quote' }, new_value: { value: 'corrected value', type: 'agreement' }, reason: 'correction', created_at: '2026-10-03T00:00:00Z' }
                 ]
             };
         }
@@ -134,7 +163,9 @@ console.log('\n[Retired-key history contracts]');
     const output = await handleMemoryTool('memory', { action: 'history', key: 'core/retired-rule' }, env);
     check('legacy history action remains readable after soft delete',
         output.includes('已软删除') && output.includes('历史记录') &&
-        output.includes('retired value') && output.includes('correction'));
+        output.includes('retired value') && output.includes('correction') &&
+        output.includes('当前性质：未标注') && output.includes('older value') &&
+        output.includes('previous value [type=quote]') && output.includes('corrected value [type=agreement]'));
 }
 
 console.log('\n[Lifecycle contracts]');
@@ -177,7 +208,7 @@ console.log('\n[Lifecycle contracts]');
         insertCall?.body?.version === 1 &&
         insertCall?.body?.status === 'active');
 
-    existing = { id: 'm-update', key: 'core/update', value: 'old', version: 3, status: 'active', valid_to: null };
+    existing = { id: 'm-update', key: 'core/update', value: 'old', version: 3, type: 'quote', status: 'active', valid_to: null };
     calls.length = 0;
     const update = await putMemory(env, existing.key, { value: 'new' });
     const eventIndex = calls.findIndex(call => call.url.includes('/rest/v1/memory_events'));
@@ -185,6 +216,17 @@ console.log('\n[Lifecycle contracts]');
     check('update succeeds', update.ok === true);
     check('update writes event before updating memory', eventIndex >= 0 && patchIndex > eventIndex);
     check('update increments the existing version', calls[patchIndex]?.body?.version === 4);
+    check('untyped update omits type from PATCH and keeps legacy string event snapshot',
+        calls[patchIndex]?.body?.type === undefined && calls[eventIndex]?.body?.old_value === 'old');
+
+    calls.length = 0;
+    const typeUpdate = await putMemory(env, existing.key, { value: 'new typed value', type: 'agreement' });
+    const typeEvent = calls.find(call => call.method === 'POST' && call.url.includes('/rest/v1/memory_events'))?.body;
+    const typePatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='))?.body;
+    check('explicit type update persists the requested type', typeUpdate.ok === true && typePatch?.type === 'agreement');
+    check('typed update records old/new value and type in JSONB event snapshots',
+        typeEvent?.old_value?.value === 'old' && typeEvent?.old_value?.type === 'quote' &&
+        typeEvent?.new_value?.value === 'new typed value' && typeEvent?.new_value?.type === 'agreement');
 
     existing = null;
     calls.length = 0;
@@ -245,6 +287,108 @@ console.log('\n[Lifecycle contracts]');
     const verificationFailure = await deleteMemory(env, 'core/failure');
     check('soft delete verification failure is not reported as success',
         verificationFailure.stage === 'verify' && verificationFailure.ok === false);
+}
+
+console.log('\n[Memory Type facade contracts]');
+{
+    const calls = [];
+    const createdBodies = [];
+    let current = null;
+    let searchRows = [];
+    globalThis.fetch = async (url, options = {}) => {
+        const requestUrl = String(url);
+        const method = options.method || 'GET';
+        const body = options.body ? JSON.parse(options.body) : null;
+        calls.push({ url: requestUrl, method, body });
+
+        if (method === 'GET' && requestUrl.includes('/rest/v1/memories?key=')) {
+            const match = requestUrl.match(/key=eq\.([^&]+)/);
+            const key = match ? decodeURIComponent(match[1]) : '';
+            return { ok: true, status: 200, json: async () => current?.key === key ? [current] : [] };
+        }
+        if (method === 'GET' && requestUrl.includes('/rest/v1/memories?select=')) {
+            return { ok: true, status: 200, json: async () => searchRows };
+        }
+        if (method === 'GET' && requestUrl.includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        if (method === 'GET' && requestUrl.includes('/rest/v1/search_history')) {
+            return { ok: false, status: 404, json: async () => ({}) };
+        }
+        if (method === 'POST' && requestUrl.includes('/rest/v1/memory_events')) {
+            return { ok: true, status: 201 };
+        }
+        if (method === 'PATCH' && requestUrl.includes('/rest/v1/memories?id=')) {
+            return { ok: true, status: 204 };
+        }
+        if (method === 'POST' && requestUrl.endsWith('/rest/v1/memories')) {
+            createdBodies.push(body);
+            return { ok: true, status: 201 };
+        }
+        throw new Error('unexpected memory type request: ' + method + ' ' + requestUrl);
+    };
+
+    const invalid = await handleMemoryTool('memory', {
+        action: 'remember', key: 'core/invalid-type', value: 'must not write', type: 'opinion'
+    }, env);
+    check('direct memory handler rejects invalid type before any fetch',
+        invalid.includes('无效的记忆性质') && calls.length === 0);
+    const explicitNull = await handleMemoryTool('memory', {
+        action: 'update', key: 'core/type-update', value: 'must not clear type', type: null
+    }, env);
+    check('explicit type=null is rejected rather than treated as a clear operation',
+        explicitNull.includes('无效的记忆性质') && calls.length === 0);
+
+    const typedRemember = await handleMemoryTool('memory', {
+        action: 'remember', key: 'core/type-quote', value: 'original words', type: 'quote'
+    }, env);
+    check('remember persists an explicit legal type',
+        typedRemember.includes('已新建记忆') && createdBodies.some(row => row.key === 'core/type-quote' && row.type === 'quote'));
+
+    const untypedRemember = await handleMemoryTool('memory', {
+        action: 'remember', key: 'core/type-unmarked', value: 'not classified'
+    }, env);
+    check('legacy remember without type leaves the nullable column unmarked',
+        untypedRemember.includes('已新建记忆') && createdBodies.some(row =>
+            row.key === 'core/type-unmarked' && !Object.prototype.hasOwnProperty.call(row, 'type')));
+
+    current = {
+        id: 'type-update', key: 'core/type-update', value: 'before', type: 'quote',
+        version: 2, status: 'active', valid_to: null, created_at: '2026-11-01T00:00:00Z'
+    };
+    calls.length = 0;
+    await handleMemoryTool('memory', { action: 'update', key: current.key, value: 'after without reclassification' }, env);
+    const untypedPatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
+    check('update without type preserves existing type by omitting it from PATCH',
+        untypedPatch?.body?.type === undefined);
+
+    calls.length = 0;
+    await handleMemoryTool('memory', {
+        action: 'update', key: current.key, value: 'confirmed rule', type: 'agreement'
+    }, env);
+    const typedPatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
+    const typedEvent = calls.find(call => call.method === 'POST' && call.url.includes('/rest/v1/memory_events'))?.body;
+    check('update with explicit type persists the new type',
+        typedPatch?.body?.type === 'agreement');
+    check('typed update writes structured old/new event snapshots',
+        typedEvent?.old_value?.value === 'before' && typedEvent?.old_value?.type === 'quote' &&
+        typedEvent?.new_value?.value === 'confirmed rule' && typedEvent?.new_value?.type === 'agreement');
+
+    current = {
+        id: 'type-unmarked', key: 'core/type-unmarked', value: 'not classified', type: null,
+        version: 1, status: 'active', valid_to: null, created_at: '2026-11-01T00:00:00Z'
+    };
+    const recall = await handleMemoryTool('memory', { action: 'recall', key: current.key }, env);
+    check('recall labels SQL NULL type as 未标注', recall.includes('性质：未标注'));
+
+    searchRows = [
+        { id: 'unmarked', key: 'core/type-unmarked', value: 'typeprobe unmarked body', type: null, status: 'active', valid_to: null, created_at: '2026-11-01T00:00:00Z' },
+        { id: 'quote', key: 'core/type-quote', value: 'typeprobe quoted words', type: 'quote', status: 'active', valid_to: null, created_at: '2026-11-02T00:00:00Z' },
+        { id: 'legacy', key: 'core/type-legacy', value: 'typeprobe legacy value', type: 'legacy-custom', status: 'active', valid_to: null, created_at: '2026-11-03T00:00:00Z' }
+    ];
+    const searchOutput = await handleMemoryTool('memory', { action: 'search', keyword: 'typeprobe' }, env);
+    check('search distinguishes unmarked, legal and unknown historical types',
+        searchOutput.includes('[未标注]') && searchOutput.includes('[quote]') && searchOutput.includes('[未知类型:legacy-custom]'));
 }
 
 console.log('\n[Retrieval contracts]');
@@ -375,6 +519,124 @@ console.log('\n[Memory association v0.1 contracts]');
         output.includes('[共同实体=Ziven Web、Cloudflare]'));
 }
 
+
+console.log('\n[Retrieval reliability contracts]');
+{
+    const hit = {
+        id: 'reliability-hit', key: 'core/project-plan',
+        value: 'project plan confirmed', status: 'active', valid_to: null,
+        created_at: '2026-11-05T00:00:00Z'
+    };
+    const successFetch = async url => {
+        const requestUrl = String(url);
+        if (requestUrl.includes('/rest/v1/memories?select=')) {
+            return { ok: true, status: 200, json: async () => [hit] };
+        }
+        if (requestUrl.includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        throw new Error('unexpected reliability request: ' + requestUrl);
+    };
+
+    globalThis.fetch = successFetch;
+    const ok = await searchMemoriesWithStatus(env, 'project plan');
+    check('both retrieval sources successful with a hit returns OK',
+        ok.status === 'OK' && ok.results[0]?.id === hit.id &&
+        ok.sources.memories.status === 'ok' && ok.sources.aliases.status === 'ok');
+
+    globalThis.fetch = successFetch;
+    const empty = await searchMemoriesWithStatus(env, 'needle-that-does-not-exist');
+    check('both retrieval sources successful without a hit returns EMPTY',
+        empty.status === 'EMPTY' && empty.results.length === 0);
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) {
+            return { ok: false, status: 503, json: async () => ({}) };
+        }
+        return { ok: true, status: 200, json: async () => [hit] };
+    };
+    const partialHttp = await searchMemoriesWithStatus(env, 'project plan');
+    check('alias HTTP failure returns PARTIAL and preserves direct memory hits',
+        partialHttp.status === 'PARTIAL' && partialHttp.results[0]?.id === hit.id &&
+        partialHttp.sources.aliases.error_code === 'http_error');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) throw new Error('alias network down');
+        return { ok: true, status: 200, json: async () => [hit] };
+    };
+    const partialNetwork = await searchMemoriesWithStatus(env, 'project plan');
+    check('alias network failure returns PARTIAL instead of discarding primary results',
+        partialNetwork.status === 'PARTIAL' && partialNetwork.results.some(row => row.id === hit.id) &&
+        partialNetwork.sources.aliases.error_code === 'network_error');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => ({ invalid: true }) };
+        }
+        return { ok: true, status: 200, json: async () => [hit] };
+    };
+    const partialShape = await searchMemoriesWithStatus(env, 'project plan');
+    check('alias invalid response shape is PARTIAL, not EMPTY',
+        partialShape.status === 'PARTIAL' && partialShape.sources.aliases.error_code === 'invalid_response_shape');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        return { ok: false, status: 503, json: async () => ({}) };
+    };
+    const errorHttp = await searchMemoriesWithStatus(env, 'project plan');
+    check('required memories HTTP failure returns ERROR and no results',
+        errorHttp.status === 'ERROR' && errorHttp.results.length === 0 &&
+        errorHttp.sources.memories.error_code === 'http_error');
+
+    globalThis.fetch = async url => {
+        if (String(url).includes('/rest/v1/memory_aliases')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
+        return { ok: true, status: 200, json: async () => ({ invalid: true }) };
+    };
+    const errorShape = await searchMemoriesWithStatus(env, 'project plan');
+    check('required memories invalid response shape returns ERROR',
+        errorShape.status === 'ERROR' && errorShape.sources.memories.error_code === 'invalid_response_shape');
+
+    globalThis.fetch = successFetch;
+    const legacy = await searchMemories(env, 'project plan');
+    check('legacy array retrieval facade remains compatible and exposes non-enumerable status',
+        Array.isArray(legacy) && legacy[0]?.id === hit.id && legacy.search_status === 'OK');
+
+    const facadeCalls = [];
+    globalThis.fetch = async url => {
+        const requestUrl = String(url);
+        facadeCalls.push(requestUrl);
+        if (requestUrl.includes('/rest/v1/memory_aliases')) throw new Error('alias offline');
+        if (requestUrl.includes('/rest/v1/search_history')) return { ok: false, status: 404, json: async () => ({}) };
+        if (requestUrl.includes('/rest/v1/memories?select=')) return { ok: true, status: 200, json: async () => [hit] };
+        throw new Error('unexpected partial facade request: ' + requestUrl);
+    };
+    const partialFacade = await handleMemoryTool('memory', { action: 'search', keyword: 'project plan' }, env);
+    check('Memory Facade labels partial results and preserves direct hits',
+        partialFacade.includes('[search_status=PARTIAL]') && partialFacade.includes('**project** **plan** confirmed'));
+    check('partial search retains the existing search-history success path',
+        facadeCalls.some(url => url.includes('/rest/v1/search_history')));
+
+    const errorCalls = [];
+    globalThis.fetch = async url => {
+        const requestUrl = String(url);
+        errorCalls.push(requestUrl);
+        if (requestUrl.includes('/rest/v1/memory_aliases')) return { ok: true, status: 200, json: async () => [] };
+        if (requestUrl.includes('/rest/v1/memories?select=')) return { ok: false, status: 503, json: async () => ({}) };
+        throw new Error('unexpected error facade request: ' + requestUrl);
+    };
+    const errorFacade = await handleMemoryTool('memory', { action: 'search', keyword: 'project plan' }, env);
+    check('Memory Facade reports ERROR without pretending zero matches',
+        errorFacade.includes('[search_status=ERROR]') && !errorFacade.includes('找到 0 条结果'));
+    check('failed primary retrieval does not record a successful search-history entry',
+        !errorCalls.some(url => url.includes('/rest/v1/search_history')));
+    const statsFacade = await handleMemoryTool('memory', { action: 'stats' }, env);
+    check('Memory Facade reports stats source failure instead of zero counts',
+        statsFacade.includes('[stats_status=ERROR]') && !statsFacade.includes('总条数：0'));
+}
 
 console.log('\n[Lifecycle relocation contracts]');
 {
@@ -581,7 +843,7 @@ console.log('\n[Transfer contracts]');
     const calls = [];
     const rows = {
         'core/same': { id: 'same', key: 'core/same', value: 'unchanged', version: 1, status: 'active', valid_to: null },
-        'core/update': { id: 'update', key: 'core/update', value: 'before', version: 2, status: 'active', valid_to: null }
+        'core/update': { id: 'update', key: 'core/update', value: 'before', version: 2, type: 'quote', status: 'active', valid_to: null }
     };
     globalThis.fetch = async (url, options = {}) => {
         const requestUrl = String(url);
@@ -617,6 +879,27 @@ console.log('\n[Transfer contracts]');
         imported.added === 1 && imported.updated === 1 && imported.skipped === 1 && imported.failed === 1);
     check('shared importer preserves source created_at on new records',
         insertCall?.body?.created_at === '2026-10-01T00:00:00Z');
+    const untypedUpdatePatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
+    check('legacy import without type does not overwrite an existing type', untypedUpdatePatch?.body?.type === undefined);
+
+    calls.length = 0;
+    const typedImport = await importMemories(env, [
+        { key: 'core/update', value: 'typed import update', type: 'agreement' },
+        { key: 'core/type-new', value: 'typed import insert', type: 'quote' },
+        { key: 'core/type-null', value: 'unmarked import insert', type: null }
+    ], { invalidAsFailed: true });
+    const typedImportPatch = calls.find(call => call.method === 'PATCH' && call.url.includes('/rest/v1/memories?id='));
+    const typedImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && call.body?.key === 'core/type-new');
+    const nullImportInsert = calls.find(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && call.body?.key === 'core/type-null');
+    check('import applies explicit legal type to existing and new memories',
+        typedImport.ok && typedImport.updated === 1 && typedImport.added === 2 &&
+        typedImportPatch?.body?.type === 'agreement' && typedImportInsert?.body?.type === 'quote' &&
+        nullImportInsert && !Object.prototype.hasOwnProperty.call(nullImportInsert.body, 'type'));
+    calls.length = 0;
+    const invalidTypeImport = await importMemories(env, [
+        { key: 'core/invalid-import', value: 'bad type', type: 'opinion' }
+    ], { invalidAsFailed: true });
+    check('import rejects unknown type before any database request', invalidTypeImport.failed === 1 && calls.length === 0);
 
     globalThis.fetch = async (url, options = {}) => {
         const requestUrl = String(url);
@@ -640,7 +923,7 @@ console.log('\n[Transfer contracts]');
 console.log('\n[Transfer facade parity contracts]');
 {
     const rows = [
-        { id: 'current', key: 'core/current', value: 'current body', status: 'active', valid_to: null, created_at: '2026-11-03T00:00:00Z', updated_at: '2026-11-03T00:00:00Z' },
+        { id: 'current', key: 'core/current', value: 'current body', type: 'quote', status: 'active', valid_to: null, created_at: '2026-11-03T00:00:00Z', updated_at: '2026-11-03T00:00:00Z' },
         { id: 'expired', key: 'core/expired', value: 'expired body', status: 'active', valid_to: '2026-11-02T00:00:00Z', created_at: '2026-11-01T00:00:00Z' },
         { id: 'deleted', key: 'core/deleted', value: 'deleted body', status: 'deleted', valid_to: '2026-11-02T00:00:00Z', created_at: '2026-11-01T00:00:00Z' }
     ];
@@ -653,7 +936,7 @@ console.log('\n[Transfer facade parity contracts]');
 
     const exportRows = await getExportableMemories(env);
     check('shared export query keeps only active rows with null valid_to',
-        exportRows.length === 1 && exportRows[0].key === 'core/current');
+        exportRows.length === 1 && exportRows[0].key === 'core/current' && exportRows[0].type === 'quote');
 
     const unifiedOutput = await handleMemoryTool('memory_export', {}, env);
     const dataOutput = await handleDataTool('export', {}, env);

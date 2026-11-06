@@ -9,7 +9,7 @@ import { handleDataTool } from '../tools/data.js';
 import { handleAITool } from '../tools/ai.js';
 import { handleGitHubTool, GITHUB_TOOL_DEFS } from '../tools/github_v64.js';
 import { getContent } from './github/contents.js';
-import { validateRepoRelativePath } from '../utils/helpers.js';
+import { validateRepoRelativePath, withMemoryTypeSchema } from '../utils/helpers.js';
 import { handleDatabaseTool } from '../tools/database.js';
 import { handleCategoryTool } from '../tools/category.js';
 import handleKnowledgeSkill from '../tools/knowledge.js';
@@ -160,10 +160,9 @@ async function getToolSchema(env, name) {
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
     if (schemaOverride) return schemaOverride;
-    if (skill && skill.input_schema && typeof skill.input_schema === 'object') {
-        return skill.input_schema;
-    }
-    return null;
+    const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : null;
+    if (name === 'memory') return withMemoryTypeSchema(schema || {});
+    return schema;
 }
 // v6.35.7：dispatchGuard 改 async + 接收 env，前缀未匹配查注册表兜底
 // 有边界的 JSON Schema 子集：type / enum / required / properties / items / minimum / maximum。
@@ -278,7 +277,9 @@ function getExposedInputSchema(skill) {
     const schema = skill?.input_schema && typeof skill.input_schema === 'object' ? skill.input_schema : {};
     const schemaOverride = getToolSchemaOverride(skill?.name);
     if (schemaOverride) return schemaOverride;
-    if (skill?.name !== 'supabase_db' && skill?.name !== 'supabase_schema') return schema;
+    if (skill?.name !== 'supabase_db' && skill?.name !== 'supabase_schema') {
+        return skill?.name === 'memory' ? withMemoryTypeSchema(schema) : schema;
+    }
     // necessity is enforced by database.js for DDL hidden behind action=exec; expose it to clients without requiring it for read-only actions.
     return {
         ...schema,

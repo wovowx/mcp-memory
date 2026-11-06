@@ -58,7 +58,8 @@ tags: ["记忆", "存档", "查询", "记忆管理", "分类"]
 ## 怎么存/查（工具用法）
 
 - **新增**：`ziven_mcp:memory(action="remember", key="分类/标题", value="内容")`（底层写入 memories 表）
-- **type 字段（读写时机 · 2026-10-18 增）**：新写记忆按内容设 `type`——fact(事实/记录)/quote(柳柳原话)/inference(推断)/agreement(规则约定)。写入时在 value 内标注 type，或明确该记忆的性质；不确定默认 `agreement`（防误当事实）。检索结果显示 `[type]` 元数据可自查。
+- **type 字段（独立元数据）**：`memory` 工具支持可选顶层参数 `type`，仅在 `remember/update` 时使用；不要把 type 写进 value 正文。合法值：`fact`（有来源的事实/记录或已验证结论）、`quote`（保留说话者原话）、`inference`（明确标注依据与不确定性的推断）、`agreement`（柳柳明确确认的规则/决定/偏好）。
+- **省略与更新规则**：新建时省略 type 表示 SQL NULL，界面显示“未标注”；更新时省略 type 保留原类型。不要传 `type=null` 清除类型；不确定性质时省略，不得默认 `agreement`，也不得把未验证推断标成 fact/agreement。
 - **更新**：`action="update", key=..., value=...`
 - **重命名/迁移**：`action="rename", old_key=..., new_key=...`
 - **查单条**：`get_memory_by_title(title="分类/标题")` 或 `ziven_mcp:memory(action="recall", key=...)`

@@ -1,8 +1,35 @@
 # Changelog
 
 所有重要变更将记录在此文件中。
+## [v6.43.0] - 2026-11-06（Memory Retrieval Reliability + Memory Type + Session Core v0.2 · dev 候选）
 
-## [v6.41.0] - 2026-11-05（Memory Association v0.1 · dev 候选；main/部署未获批准）
+### Added
+- 扩展现有 \`session_context\` 的可选 \`include_core:boolean\`，默认 false；仅显式 opt-in 返回 CORE-0.2 五个权威来源块，旧 \`session_bootstrap\` 与旧 \`session_context\` 摘要调用不泄露私人全文。
+- 复用同一份五源只读快照，避免 Bootstrap 与 Context 重复读取检查点；完整提取当前检查点覆盖段，历史覆盖层不进入 Core。
+- Core 采用 24,000 Unicode code points 完整块预算：身份/当前工作优先，其次主档、协议、导航，topic 摘要最后；预算不足整块省略并给出来源/原因/补读边界，不硬切内容。
+- 检索可靠性：主记忆源读取失败返回 ERROR，不再伪装成零结果；别名索引失败返回 PARTIAL 并保留直接命中；统计失败明确报错，不显示假零值。
+- 新增 16 条合成查询的固定检索基准，检查直接召回、负例误命中、过期记录排除、关联来源准确性与 GET-only；相对冻结基线只允许不退化。仅用合成数据，不读取真实用户记忆。
+
+### Regression and authorization boundary
+- E1/E2 合同覆盖旧调用兼容、tools/list Schema 与 dispatch 校验、五源单次 GET、完整块与历史排除、Unicode code points、末尾限制、预算降级、topic 预算、缺失/错误与零写入；Memory Core 覆盖类型写入/保留/历史快照/导入导出；检索基准覆盖 16 条合成查询。最终候选 SHA 与 CI 记录见本节更新后的验证证据。
+- 仅 \`mcp-memory/dev\` 候选；不改 Supabase registry、数据库 Schema、真实业务记忆、聊天室/唤醒、main 或 Worker 部署。ChatGPT/Operit 实际接收与冷启动仍需后续分别验收。
+
+## [v6.42.0] - 2026-11-06（Memory Type Write Contract · 纳入 v6.43.0 累积发布）
+
+### Added
+- `memory` 工具增加可选顶层 `type` enum：`fact/quote/inference/agreement`。Worker 代码层共享 helper 同时扩展 tools/list 对外 Schema 与 dispatchGuard 校验，不写 Supabase skills 注册表、不修改数据库 Schema。
+- `remember` 仅在明确传入合法 type 时持久化；旧宿主省略时保持 SQL NULL。`update` 仅在显式传入时修改 type，省略时不发送 type 字段；`type=null` 不作为清除指令。
+- 显式修改 type 时，沿用 `memory_events.old_value/new_value` JSONB 保存 `{value,type}` 新旧快照；History 同时兼容旧 string 与新 object 事件。Recall/Search 对 NULL 显示“未标注”，未知历史值显式显示“未知类型”，不再把缺失 type 伪装成 fact。
+- Memory Transfer 导入/导出保留合法 type；旧导出缺少 type 或为 NULL 时不清除目标记录已有类型，新建记录保持未标注；拒绝未知枚举值。
+- Memory Management Skill 改为顶层 type 规则：agreement 必须由柳柳明确确认，inference 明示不确定性；不再要求把 type 写在 value 内，也不再默认 agreement。
+
+### Regression and authorization boundary
+- 新增 Router Schema/dispatch 与 Memory Core 的 Mock 合同，覆盖 optional enum、非法枚举零写入、typed/untyped remember、update 保留/显式修改、NULL/未知类型展示、legacy/new history snapshots、transfer import/export。
+- 候选代码仅写入 `mcp-memory/dev`；E1/E2 最终累计候选验证统一记录在 v6.43.0 发布证据中。所有测试使用隔离 Mock/synthetic 数据，不写真实记忆。
+- 不修改 Supabase skills 注册表或数据库 Schema，不批量重标历史数据；不改 main、不创建 PR、不部署 Worker；E3 NOT RUN。Skill loader 仍从 main 读取，因此 dev Skill 候选需随未来获批发布才会在线生效。
+
+
+## [v6.41.0] - 2026-11-05（Memory Association v0.1 · 已发布：main 5e4cf739 / Worker #535 VERIFIED）
 
 ### Added
 - 在原 `searchMemories` 中复用已有有效态仓储与关键词/别名/CJK fallback 检索：直接结果后最多补3条一跳关联，优先显式 `related_memory_ids`，再按共享业务 `entities` 补齐；去重、保留直接命中排序、排除非当前记录和仅通用称谓造成的误关联。无直接命中不凭空生成关联，不做时序/情绪猜测。
@@ -12,7 +39,7 @@
 - 柳柳已明确同意 `v0.1` 需求/文字原型；已先更新整体架构 v1.12 与 Roadmap v1.34。本地 `npm run check`、Memory Core 69/69、Router/Patch 162/162、Session/Context 36/36、learning 9 个工件均 PASS；精确最终 `dev` SHA 的远端 CI 与线上 E3 将独立回读，未取证前标 PENDING/NOT RUN。
 - 仅授权 `dev` 实施与回归。**未授权** PR、`main` 合并、Cloudflare Worker 部署、生产 DB/schema、聊天室/唤醒、Operit 卡、Web/Pages/DNS、密钥或付费测试。下一次 main 发布须另报精确版本/变更/CI/影响并获柳柳同意。
 
-## [v6.40.1] - 2026-11-05（MCP Tool Discovery Read-only · 仅 dev 候选，未获 main/部署授权）
+## [v6.40.1] - 2026-11-05（MCP Tool Discovery Read-only · 已发布：main c9324b4f / Worker #534 VERIFIED）
 
 ### Fixed
 - `tools/list` 不再调用隐式的 `syncChatTools(env)`，防止 ChatGPT/其他宿主刷新工具清单时因聊天室 Skill 缺项而向生产注册表 POST。该请求现在只读取已有技能清单，并在结果中补充独立静态 `session_bootstrap` / `session_context` 工具定义；不会写 `skills`、usage、记忆或聊天室数据。
@@ -20,7 +47,7 @@
 
 ### Regression and authorization boundary
 - 柳柳明确批准在 `dev` 做这一最小只读发现切片；整体架构 v1.9、Roadmap v1.30 已先于代码更新。本地 `npm run check` exit0，Router/Registry/Patch **162/162**（新增5项：零写入、保留已注册聊天工具、缺项不补注册、重复发现稳定、两个静态恢复入口唯一）、Session/Context36/36、GitHub Contents50、Memory Core60、Search20、Webhook/Agnes114、Learning9工件 PASS。全部为离线 E1/E2，GitHub CI 与真实宿主刷新 E3 以最终 dev SHA 另行验证。
-- **没有授权或执行** PR、main、Cloudflare 部署、宿主插件刷新、线上 `tools/list`、生产 DB/schema、聊天室 handler/Agent 唤醒、Operit 卡、Pages/Web 或密钥操作；仅在 v6.40.0 Worker #533 已上线的基础上准备 v6.40.1 候选。
+- **发布证据**：main `c9324b4f2e4013ed1e7edcd455bb40450a5b8dfe`；Cloudflare Worker #534 / deployment `a4994702`，`verify_main=VERIFIED`。发布未包含宿主插件刷新、生产 DB/schema、聊天室 handler/Agent 唤醒、Operit 卡、Pages/Web 或密钥操作。
 
 ## [v6.40.0] - 2026-11-05（Session Context v0.1 · dev 发行候选，尚未申请 main 发布）
 

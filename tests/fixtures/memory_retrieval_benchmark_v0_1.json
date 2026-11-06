@@ -1,0 +1,614 @@
+{
+  "version": "0.1",
+  "description": "Synthetic-only deterministic benchmark for searchMemories; no user memory data.",
+  "memories": [
+    {
+      "id": "M01",
+      "key": "网关选型",
+      "value": "当前服务端采用独立模型网关，由 Gateway Alpha 承载",
+      "entities": [
+        "Gateway Alpha"
+      ],
+      "related_memory_ids": [
+        "M02",
+        "M03",
+        "M02",
+        "M04"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-05T09:00:00.000Z"
+    },
+    {
+      "id": "M02",
+      "key": "chat2api超时配置",
+      "value": "chat2api 请求适配器 timeoutMs=45000",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-04T09:00:00.000Z"
+    },
+    {
+      "id": "M03",
+      "key": "Gateway Alpha监控",
+      "value": "Gateway Alpha 健康检查与告警规则",
+      "entities": [
+        "Gateway Alpha"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-03T09:00:00.000Z"
+    },
+    {
+      "id": "M04",
+      "key": "请求超时配置",
+      "value": "长请求响应超时使用 timeoutMs=45000",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-02T09:00:00.000Z"
+    },
+    {
+      "id": "M05",
+      "key": "环境变量读取",
+      "value": "读取进程环境变量列表",
+      "trigger_intents": [
+        "list_env_vars"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-11-01T09:00:00.000Z"
+    },
+    {
+      "id": "M06",
+      "key": "代理模块配置",
+      "value": "Cloudflare 代理适配器参数",
+      "entities": [
+        "cf_proxy"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-31T09:00:00.000Z"
+    },
+    {
+      "id": "M07",
+      "key": "边缘网关日志规范",
+      "value": "边缘网关日志记录保留完整请求链路与超时异常",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-30T09:00:00.000Z"
+    },
+    {
+      "id": "M08",
+      "key": "网关方案",
+      "value": "当前网关方案采用独立模型网关",
+      "entities": [
+        "Gateway Beta"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-29T09:00:00.000Z"
+    },
+    {
+      "id": "M09",
+      "key": "网关方案",
+      "value": "旧方案采用共享网关",
+      "status": "active",
+      "valid_to": "2026-11-01T00:00:00.000Z",
+      "created_at": "2026-10-28T09:00:00.000Z"
+    },
+    {
+      "id": "M10",
+      "key": "旧版网关决策",
+      "value": "旧版网关决策采用 Legacy Gateway",
+      "status": "deleted",
+      "valid_to": "2026-11-02T00:00:00.000Z",
+      "created_at": "2026-10-27T09:00:00.000Z"
+    },
+    {
+      "id": "M11",
+      "key": "项目共识",
+      "value": "项目共识记录了协作原则",
+      "entities": [
+        "柳柳",
+        "哥哥",
+        "Ziven",
+        "项目"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-26T09:00:00.000Z"
+    },
+    {
+      "id": "M12",
+      "key": "协作约定",
+      "value": "协作约定按需求先行",
+      "entities": [
+        "柳柳",
+        "哥哥",
+        "Ziven",
+        "项目"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-25T09:00:00.000Z"
+    },
+    {
+      "id": "M13",
+      "key": "Gateway Beta告警",
+      "value": "Gateway Beta 监控告警策略",
+      "entities": [
+        "Gateway Beta"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-24T09:00:00.000Z"
+    },
+    {
+      "id": "M14",
+      "key": "缓存清理说明",
+      "value": "缓存清理按 TTL 进行",
+      "related_memory_ids": [
+        "M09",
+        "M10"
+      ],
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-23T09:00:00.000Z"
+    },
+    {
+      "id": "M15",
+      "key": "运维附录",
+      "value": "网关选型的历史说明，仅作背景参考",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-22T09:00:00.000Z"
+    },
+    {
+      "id": "M16",
+      "key": "影视道具台账",
+      "value": "火星电影里的虚构道具名：网关选型",
+      "status": "active",
+      "valid_to": null,
+      "created_at": "2026-10-21T09:00:00.000Z"
+    }
+  ],
+  "aliases": [
+    {
+      "alias": "长问题超时参数",
+      "memory_id": "M04"
+    }
+  ],
+  "queries": [
+    {
+      "id": "Q01",
+      "query": "网关选型",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M01",
+        "M15"
+      ],
+      "expected_direct_order": [
+        "M01",
+        "M15",
+        "M16"
+      ],
+      "known_nonrelevant_ids": [
+        "M16"
+      ],
+      "expected_association_ids": [
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "expected_reasons": {
+        "M01": "key_phrase",
+        "M15": "phrase",
+        "M16": "phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M02",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M03",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M04",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q02",
+      "query": "当前网关方案采用独立模型网关",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M08"
+      ],
+      "expected_association_ids": [
+        "M13"
+      ],
+      "expected_reasons": {
+        "M08": "phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M13",
+          "reason": "shared_entity",
+          "related_from_key": "网关方案",
+          "matched_terms": [
+            "Gateway Beta"
+          ]
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q03",
+      "query": "chat2api timeoutMs",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M02"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M02": "all_terms"
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q04",
+      "query": "长问题超时参数",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M04"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M04": "alias"
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q05",
+      "query": "list_env_vars",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M05"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M05": "trigger_intent"
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q06",
+      "query": "cf_proxy",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M06"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M06": "entity"
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q07",
+      "query": "边缘网关部署日志需要保留完整请求链路以及超时诊断",
+      "kind": "positive",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct"
+      ],
+      "expected_direct_ids": [
+        "M07"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M07": "core_ngram_fallback"
+      },
+      "expected_matched_terms_count": {
+        "M07": 12
+      },
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q08",
+      "query": "深海珊瑚标本编号是多少",
+      "kind": "negative",
+      "metric_scope": true,
+      "metric_roles": [
+        "negative"
+      ],
+      "expected_direct_ids": [],
+      "expected_association_ids": [],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q09",
+      "query": "网关设置以后我想起昨晚看的火星电影",
+      "kind": "near_negative",
+      "metric_scope": true,
+      "metric_roles": [
+        "negative"
+      ],
+      "expected_direct_ids": [],
+      "expected_association_ids": [],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q10",
+      "query": "网关方案",
+      "kind": "stale_conflict",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct",
+        "stale"
+      ],
+      "expected_direct_ids": [
+        "M08"
+      ],
+      "expected_association_ids": [
+        "M13"
+      ],
+      "expected_reasons": {
+        "M08": "key_phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M13",
+          "reason": "shared_entity",
+          "related_from_key": "网关方案",
+          "matched_terms": [
+            "Gateway Beta"
+          ]
+        }
+      ],
+      "forbidden_ids": [
+        "M09"
+      ]
+    },
+    {
+      "id": "Q11",
+      "query": "旧版网关决策",
+      "kind": "stale_only",
+      "metric_scope": true,
+      "metric_roles": [
+        "stale"
+      ],
+      "expected_direct_ids": [],
+      "expected_association_ids": [],
+      "forbidden_ids": [
+        "M10"
+      ]
+    },
+    {
+      "id": "Q12",
+      "query": "网关选型",
+      "kind": "explicit_association",
+      "metric_scope": true,
+      "metric_roles": [
+        "association"
+      ],
+      "expected_direct_ids": [
+        "M01",
+        "M15"
+      ],
+      "expected_direct_order": [
+        "M01",
+        "M15",
+        "M16"
+      ],
+      "known_nonrelevant_ids": [
+        "M16"
+      ],
+      "expected_association_ids": [
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "expected_reasons": {
+        "M01": "key_phrase",
+        "M15": "phrase",
+        "M16": "phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M02",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M03",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M04",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q13",
+      "query": "网关方案",
+      "kind": "shared_entity_association",
+      "metric_scope": true,
+      "metric_roles": [
+        "association"
+      ],
+      "expected_direct_ids": [
+        "M08"
+      ],
+      "expected_association_ids": [
+        "M13"
+      ],
+      "expected_reasons": {
+        "M08": "key_phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M13",
+          "reason": "shared_entity",
+          "related_from_key": "网关方案",
+          "matched_terms": [
+            "Gateway Beta"
+          ]
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q14",
+      "query": "项目共识",
+      "kind": "generic_entity_exclusion",
+      "metric_scope": false,
+      "metric_roles": [
+        "structure"
+      ],
+      "expected_direct_ids": [
+        "M11"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M11": "key_phrase"
+      },
+      "forbidden_ids": [
+        "M12"
+      ]
+    },
+    {
+      "id": "Q15",
+      "query": "网关选型",
+      "kind": "association_limit_and_deduplication",
+      "metric_scope": false,
+      "metric_roles": [
+        "structure"
+      ],
+      "expected_direct_ids": [
+        "M01",
+        "M15"
+      ],
+      "expected_direct_order": [
+        "M01",
+        "M15",
+        "M16"
+      ],
+      "known_nonrelevant_ids": [
+        "M16"
+      ],
+      "expected_association_ids": [
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "expected_reasons": {
+        "M01": "key_phrase",
+        "M15": "phrase",
+        "M16": "phrase"
+      },
+      "expected_association_metadata": [
+        {
+          "memory_id": "M02",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M03",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        },
+        {
+          "memory_id": "M04",
+          "reason": "related_memory",
+          "related_from_key": "网关选型",
+          "matched_terms": []
+        }
+      ],
+      "forbidden_ids": []
+    },
+    {
+      "id": "Q16",
+      "query": "缓存清理说明",
+      "kind": "stale_association_filter",
+      "metric_scope": true,
+      "metric_roles": [
+        "direct",
+        "stale"
+      ],
+      "expected_direct_ids": [
+        "M14"
+      ],
+      "expected_association_ids": [],
+      "expected_reasons": {
+        "M14": "key_phrase"
+      },
+      "forbidden_ids": [
+        "M09",
+        "M10"
+      ]
+    }
+  ],
+  "fallback_probes": [
+    {
+      "query_id": "Q07",
+      "memory_id": "M07",
+      "expected_query_bigram_count": 23,
+      "expected_matched_bigram_count": 12
+    },
+    {
+      "query_id": "Q09",
+      "memory_id": "M16",
+      "expected_query_bigram_count": 16,
+      "expected_matched_bigram_count": 4
+    },
+    {
+      "query_id": "Q11",
+      "memory_id": "M09",
+      "expected_query_bigram_count": 5,
+      "expected_matched_bigram_count": 1
+    }
+  ]
+}

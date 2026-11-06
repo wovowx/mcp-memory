@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "benchmark": "memory-retrieval-v0.1",
+  "fixture_version": "0.1",
+  "measured_at": "2026-11-05",
+  "measured_commit": "9146d3c920d6d3816238083f1538002024f8d5ab",
+  "workflow_run_id": 42043430775,
+  "fixture_blob_sha": "1ff72c722f01498045f4a1918d5fa9066ff091dc",
+  "request_count": 32,
+  "metrics": {
+    "direct": {
+      "recall_at_1": 0.9,
+      "recall_at_3": 1,
+      "mrr_macro": 1,
+      "precision_at_3": 0.9090909090909091,
+      "positive_query_count": 9,
+      "expected_direct_count": 10,
+      "precision_candidate_count": 11
+    },
+    "negative_false_hit_rate": 0,
+    "stale_hit_rate": 0,
+    "association": {
+      "recall_at_3": 1,
+      "provenance_accuracy": 1,
+      "expected_association_count": 4,
+      "actual_association_count": 4
+    }
+  },
+  "note": "First successful deterministic CI measurement on the synthetic v0.1 fixture. No production database, user memories, or Operit data were read. This baseline is reviewed and frozen; CI must compare against it and must never overwrite it automatically."
+}

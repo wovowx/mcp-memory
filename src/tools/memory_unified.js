@@ -6,7 +6,7 @@
 
 import {
     getCategory, getTitle, formatTime, generateId, now,
-    parsePagination, highlightText, isValidDate
+    parsePagination, highlightText, isValidDate, formatMemoryType, isMemoryType
 } from '../utils/helpers.js';
 import { recordSearchKeyword, getSearchSuggestions } from '../utils/search.js';
 import {
@@ -14,12 +14,20 @@ import {
 } from '../modules/memory/repository.js';
 import { putMemory, deleteMemory, renameMemory, moveMemory } from '../modules/memory/lifecycle.js';
 import {
-    searchMemories, listMemoryCategories, listMemories, listMemoriesByCategory,
+    searchMemoriesWithStatus, listMemoryCategories, listMemories, listMemoriesByCategory,
     listMemoriesByDate, getMemoryStats, getRandomMemory
 } from '../modules/memory/retrieval.js';
 import { importMemories, getExportableMemories } from '../modules/memory/transfer.js';
 
 export { getMemoryByKey, getCurrentMemoryByKey, getAllMemories, findAuthoritativeKey, putMemory };
+
+function formatHistorySnapshot(snapshot) {
+    if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
+        const value = snapshot.value == null ? '' : String(snapshot.value);
+        return value.substring(0, 80) + ' [type=' + formatMemoryType(snapshot.type) + ']';
+    }
+    return String(snapshot ?? '').substring(0, 80);
+}
 
 export async function handleMemoryTool(name, safeArgs, env) {
     // 兼容旧名称：memory_remember → remember 等
@@ -35,6 +43,9 @@ export async function handleMemoryTool(name, safeArgs, env) {
     };
     const action = actionMap[name] || safeArgs.action || 'recall';
     let text = '';
+    if (safeArgs.type !== undefined && !isMemoryType(safeArgs.type)) {
+        return '❌ 无效的记忆性质 type：仅支持 ' + ['fact', 'quote', 'inference', 'agreement'].join(' / ');
+    }
 
     if (action === 'remember') {
         if (!safeArgs.key || !safeArgs.value) text = '❌ 缺少参数：需要 key 和 value';
@@ -46,6 +57,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
                 if (authKey) text = '⚠️ 已有权威档「' + authKey + '」（标题同名）。请用这个完整 key 去 update，别新建默认分类副本（防冗余 · v6.39.0）';
                 else {
                     const data = { value: safeArgs.value, created_at: now(), updated_at: now() };
+                    if (safeArgs.type !== undefined) data.type = safeArgs.type;
                     const writeResult = await putMemory(env, safeArgs.key, data);
                     if (!writeResult?.ok) text = '❌ 新建记忆失败（' + (writeResult?.stage || 'write') + '）：' + safeArgs.key;
                     else text = '✅ 已新建记忆：' + safeArgs.key + '\n📂 分类：' + getCategory(safeArgs.key) + '\n📅 创建时间：' + formatTime(data.created_at);
@@ -63,13 +75,13 @@ export async function handleMemoryTool(name, safeArgs, env) {
                 const chunkSize = safeArgs.chunk_size || 5000;
                 const offset = safeArgs.offset || 0;
                 if (content.length <= chunkSize) {
-                    text = '💡 ' + safeArgs.key + '\n📂 分类：' + data.category + '\n📝 内容：' + content + '\n📅 创建：' + formatTime(data.created_at) + '\n✏️ 更新：' + formatTime(data.updated_at);
+                    text = '💡 ' + safeArgs.key + '\n📂 分类：' + data.category + '\n🏷️ 性质：' + formatMemoryType(data.type) + '\n📝 内容：' + content + '\n📅 创建：' + formatTime(data.created_at) + '\n✏️ 更新：' + formatTime(data.updated_at);
                 } else {
                     const totalChunks = Math.ceil(content.length / chunkSize);
                     const currentChunk = Math.floor(offset / chunkSize) + 1;
                     const start = offset;
                     const end = Math.min(offset + chunkSize, content.length);
-                    text = '💡 ' + safeArgs.key + '\n📂 分类：' + data.category + '\n📝 内容（第 ' + currentChunk + '/' + totalChunks + ' 段）：\n' + content.slice(start, end) + '\n\n💡 继续：recall(key="' + safeArgs.key + '", offset=' + end + ', chunk_size=' + chunkSize + ')';
+                    text = '💡 ' + safeArgs.key + '\n📂 分类：' + data.category + '\n🏷️ 性质：' + formatMemoryType(data.type) + '\n📝 内容（第 ' + currentChunk + '/' + totalChunks + ' 段）：\n' + content.slice(start, end) + '\n\n💡 继续：recall(key="' + safeArgs.key + '", offset=' + end + ', chunk_size=' + chunkSize + ')';
                 }
             }
         }
@@ -88,13 +100,15 @@ export async function handleMemoryTool(name, safeArgs, env) {
                         const version = record.version || 1;
                         const history = events.length === 0
                             ? '暂无事件记录'
-                            : events.map(event =>
-                                '- [v' + event.version + '] ' + formatTime(event.created_at) + ' ' +
-                                (event.reason || event.event_type || 'update') + '：' +
-                                String(event.old_value || '').substring(0, 80)
-                            ).join('\n');
+                            : events.map(event => {
+                                const oldValue = formatHistorySnapshot(event.old_value);
+                                const newValue = event.new_value === undefined || event.new_value === null
+                                    ? '' : ' → ' + formatHistorySnapshot(event.new_value);
+                                return '- [v' + event.version + '] ' + formatTime(event.created_at) + ' ' +
+                                    (event.reason || event.event_type || 'update') + '：' + oldValue + newValue;
+                            }).join('\n');
                         return '📌 ' + state + '（v' + version + '，事件 ' + events.length + ' 条）\n' +
-                            history + '\n💡 记录值：' + String(record.value || '').substring(0, 120);
+                            '📎 当前性质：' + formatMemoryType(record.type) + '\n' + history + '\n💡 记录值：' + String(record.value || '').substring(0, 120);
                     });
                     text = '📜 ' + safeArgs.key + ' 历史记录（' + histories.length + ' 条记录）：\n' + sections.join('\n\n');
                 }
@@ -108,7 +122,9 @@ export async function handleMemoryTool(name, safeArgs, env) {
         else {
             const existing = await getCurrentMemoryByKey(env, safeArgs.key);
             if (existing) {
-                const writeResult = await putMemory(env, safeArgs.key, { ...existing, value: safeArgs.value, updated_at: now() });
+                const updateData = { value: safeArgs.value, updated_at: now() };
+                if (safeArgs.type !== undefined) updateData.type = safeArgs.type;
+                const writeResult = await putMemory(env, safeArgs.key, updateData);
                 if (!writeResult?.ok) text = '❌ 更新失败（' + (writeResult?.stage || 'write') + '）：' + safeArgs.key;
                 else text = '✏️ 已更新：' + safeArgs.key + '\n📅 创建：' + formatTime(existing.created_at) + '\n✏️ 更新：' + formatTime(now());
             } else {
@@ -175,23 +191,28 @@ export async function handleMemoryTool(name, safeArgs, env) {
         }
     }
     else if (action === 'search') {
-        if (!safeArgs.keyword) text = '❌ 请输入搜索关键词';
+        if (!String(safeArgs.keyword || '').trim()) text = '❌ 请输入搜索关键词';
         else {
             const keywords = safeArgs.keyword.trim().split(/\s+/).filter(k => k.length > 0);
             const { limit, cursor } = parsePagination(safeArgs);
-            const matched = await searchMemories(env, safeArgs.keyword.trim());
+            const search = await searchMemoriesWithStatus(env, safeArgs.keyword.trim());
+            if (search.status === 'ERROR') {
+                text = '❌ [search_status=ERROR] 主记忆数据读取失败（' + (search.sources?.memories?.error_code || 'read_failed') + '）。检索未完成，不能判断是否存在相关记忆。';
+            } else {
+                const matched = search.results;
             let startIndex = 0;
             if (cursor) { const idx = matched.findIndex(i => i.id === cursor); if (idx !== -1) startIndex = idx + 1; }
             const page = matched.slice(startIndex, startIndex + limit);
             const nextCursor = matched.length > startIndex + limit ? page[page.length - 1]?.id : null;
-            text = '💡 找到 ' + matched.length + ' 条结果（显示 ' + page.length + ' 条）：\n' +
-                page.map(i => '- [' + getCategory(i.key) + '][' + (i.type || 'fact') + '] ' + highlightText(getTitle(i.key), keywords) + ': ' + highlightText(i.value, keywords) +
+            text = '[search_status=' + search.status + '] ' + (search.status === 'PARTIAL' ? '⚠️ 别名索引暂不可用，结果可能有遗漏。' : search.status === 'EMPTY' ? '必要数据源读取成功，没有找到匹配的记忆。' : '') + '💡 找到 ' + matched.length + ' 条结果（显示 ' + page.length + ' 条）：\n' +
+                page.map(i => '- [' + getCategory(i.key) + '][' + formatMemoryType(i.type) + '] ' + highlightText(getTitle(i.key), keywords) + ': ' + highlightText(i.value, keywords) +
                     (i._match?.reason ? ' [match_reason=' + i._match.reason + ']' : '') +
                     (i._match?.related_from_key ? ' [关联来源=' + i._match.related_from_key + ']' : '') +
                     (i._match?.reason === 'shared_entity' ? ' [共同实体=' + (i._match.matched_terms || []).join('、') + ']' : '') +
                     '\n  💡 ' + formatTime(i.created_at)).join('\n') +
                 (nextCursor ? '\n\n💡 next_cursor: ' + nextCursor : '');
             await recordSearchKeyword(env, safeArgs.keyword.trim());
+            }
         }
     }
     else if (action === 'list') {
@@ -218,10 +239,14 @@ export async function handleMemoryTool(name, safeArgs, env) {
         }
     }
     else if (action === 'stats') {
-        const stats = await getMemoryStats(env);
-        text = '💡 统计：\n总条数：' + stats.total + '\n分类数：' + stats.categoryCount +
-            '\n各分类：' + stats.categories.map(([category, count]) => category + '(' + count + '条)').join('、') +
-            '\n💡 最近一周新增：' + stats.weekCount + ' 条';
+        try {
+            const stats = await getMemoryStats(env);
+            text = '💡 统计：\n总条数：' + stats.total + '\n分类数：' + stats.categoryCount +
+                '\n各分类：' + stats.categories.map(([category, count]) => category + '(' + count + '条)').join('、') +
+                '\n💡 最近一周新增：' + stats.weekCount + ' 条';
+        } catch (error) {
+            text = '❌ [stats_status=ERROR] 记忆数据源读取失败，统计未完成（' + (error?.code || 'read_failed') + '）。';
+        }
     }
     else if (action === 'suggest') {
         const suggestions = await getSearchSuggestions(env, safeArgs.prefix || '');

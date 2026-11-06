@@ -3,7 +3,7 @@
 
 import { getMemoryByKey, getCurrentMemories } from './repository.js';
 import { putMemory } from './lifecycle.js';
-import { now } from '../../utils/helpers.js';
+import { now, isMemoryType } from '../../utils/helpers.js';
 
 export async function importMemories(env, items, options = {}) {
     if (!Array.isArray(items)) {
@@ -22,6 +22,13 @@ export async function importMemories(env, items, options = {}) {
             continue;
         }
 
+        const hasType = item.type !== undefined && item.type !== null && item.type !== '';
+        if (hasType && !isMemoryType(item.type)) {
+            if (invalidAsFailed) failed++;
+            else skipped++;
+            continue;
+        }
+
         let existing;
         try {
             existing = await getMemoryByKey(env, item.key);
@@ -31,21 +38,21 @@ export async function importMemories(env, items, options = {}) {
         }
 
         if (existing) {
-            if (existing.value === item.value) {
+            if (existing.value === item.value && (!hasType || existing.type === item.type)) {
                 skipped++;
                 continue;
             }
-            const result = await putMemory(env, item.key, {
-                value: item.value,
-                updated_at: now()
-            });
+            const updateData = { value: item.value, updated_at: now() };
+            if (hasType) updateData.type = item.type;
+            const result = await putMemory(env, item.key, updateData);
             if (result?.ok) updated++;
             else failed++;
         } else {
             const result = await putMemory(env, item.key, {
                 value: item.value,
                 created_at: item.created_at || now(),
-                updated_at: now()
+                updated_at: now(),
+                ...(hasType ? { type: item.type } : {})
             });
             if (result?.ok) added++;
             else failed++;
@@ -64,6 +71,7 @@ export async function getExportableMemories(env) {
     return current.map(item => ({
             key: item.key,
             value: item.value,
+            type: item.type ?? null,
             created_at: item.created_at,
             updated_at: item.updated_at
         }));

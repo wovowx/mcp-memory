@@ -232,7 +232,7 @@ check('buildErrorResponse keeps the default 400 status', defaultErrorResponse.st
 check('buildErrorResponse keeps the { error } body', JSON.stringify(await defaultErrorResponse.json()) === JSON.stringify({ error: 'default status' }));
 
 const fixture = [
-  { name: 'memory', enabled: true, description: 'memory tool', handler_type: 'js', handler_config: { handler: 'memory' } },
+  { name: 'memory', enabled: true, description: 'memory tool', handler_type: 'js', handler_config: { handler: 'memory' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string' }, key: { type: 'string' }, value: { type: 'string' } } } },
   { name: 'supabase_db', enabled: true, description: 'database', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['query', 'insert', 'update', 'delete', 'tables', 'exec'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' } } } },
   { name: 'supabase_schema', enabled: true, description: 'schema', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['create_table', 'drop_table', 'tables', 'exec', 'schema_dump'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' }, format: { type: 'string', enum: ['md', 'json'] }, rls: { type: 'boolean' } } } },
   { name: 'image_upload', enabled: true, description: 'media', handler_type: 'ai', handler_config: { handler: 'ai' } },
@@ -250,7 +250,7 @@ fixture.push({
 const textSkillContent = '# Master router\n' + '文本技能完整读取。'.repeat(1800) + '\nEND_OF_TEXT_SKILL';
 let textSkillMode = 'ok', textSkillFetchCount = 0;
 let registryMode = 'ok'; let memoriesRestCount = 0; let usagePatchCount = 0; let otherRestCount = 0; let patchProposalPostCount = 0;
-let skillsWriteMethods = [];
+let skillsWriteMethods = []; let memoryWriteBodies = [];
 let ddlRpcCount = 0; let tableListCount = 0; let lastExecSql = '';
 const origFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts = {}) => {
@@ -278,7 +278,7 @@ globalThis.fetch = async (url, opts = {}) => {
   if (s.includes('/rest/v1/patch_proposals') && m === 'POST') { patchProposalPostCount++; return { ok: true, status: 201, json: async () => [{ id: 'mock-proposal-id' }], text: async () => '' }; }
   if (s.includes('/rest/v1/rpc/exec_sql')) { ddlRpcCount++; lastExecSql = JSON.parse(opts.body || '{}').sql || ''; return { ok: true, status: 200, text: async () => '', json: async () => [] }; }
   if (s.endsWith('/rest/v1/')) { tableListCount++; return { ok: true, status: 200, json: async () => ({ definitions: { memories: {}, memory_events: {} } }) }; }
-  if (s.includes('/rest/v1/memories') || s.includes('/rest/v1/memory_events')) { memoriesRestCount++; return { ok: true, status: 200, json: async () => [] }; }
+  if (s.includes('/rest/v1/memories') || s.includes('/rest/v1/memory_events')) { memoriesRestCount++; if (['POST', 'PATCH'].includes(m)) memoryWriteBodies.push({ url: s, method: m, body: opts.body ? JSON.parse(opts.body) : null }); return { ok: true, status: 200, json: async () => [] }; }
   if (s.includes('/rest/v1/')) { otherRestCount++; return { ok: true, status: 200, json: async () => [] }; }
   throw new Error('unexpected mock fetch: ' + s);
 };
@@ -309,6 +309,18 @@ try {
   check('tools/list advertises one copy each of the existing Bootstrap and Context static tools',
     ['session_bootstrap', 'session_context'].every(name => recovered.filter(t => t.name === name).length === 1) &&
     recovered.find(t => t.name === 'session_context')?.inputSchema?.properties?.topic?.type === 'string');
+  const discoveredMemorySchema = recovered.find(tool => tool.name === 'memory')?.inputSchema;
+  check('tools/list exposes optional memory type enum without changing required action',
+    discoveredMemorySchema?.properties?.type?.enum?.join(',') === 'fact,quote,inference,agreement' &&
+    discoveredMemorySchema?.required?.join(',') === 'action' &&
+    !discoveredMemorySchema.required.includes('type'));
+  memoryWriteBodies = []; usagePatchCount = 0;
+  t = await callTool('memory', { action: 'remember', key: 'core/invalid-type', value: 'not stored', type: 'opinion' });
+  check('dispatchGuard rejects invalid memory type before any business write or usage count',
+    t.includes('[INVALID_ARGS_SCHEMA]') && memoryWriteBodies.length === 0 && usagePatchCount === 0);
+  t = await callTool('memory', { action: 'remember', key: 'core/typed-router', value: 'quoted text', type: 'quote' });
+  check('valid memory type passes Router schema and reaches lifecycle persistence',
+    t.includes('已新建记忆') && memoryWriteBodies.some(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && call.body?.type === 'quote'));
   memoriesRestCount = 0; t = await callTool('memory_move', {});
   check('memory_move 空参→缺参', t.includes('需要 key 和 newCategory')); check('memory_move 不访问 memories/events', memoriesRestCount === 0);
   memoriesRestCount = 0; otherRestCount = 0; usagePatchCount = 0; t = await callTool('category_move_category', {});
@@ -335,7 +347,10 @@ try {
   delete textSkillFixture.file_path;
   usagePatchCount = 0; t = await callTool('memory_move', {}); check('memory_move 失败缺参不计数', usagePatchCount === 0);
   t = await callTool('memory_remember', {}); check('已注册 handler 返回参数失败不计数', t.startsWith('❌') && usagePatchCount === 0);
+  memoryWriteBodies = []; usagePatchCount = 0;
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
+  check('legacy untyped memory_remember remains valid and stores no inferred type',
+    t.includes('已新建记忆') && memoryWriteBodies.some(call => call.method === 'POST' && call.url.endsWith('/rest/v1/memories') && !Object.prototype.hasOwnProperty.call(call.body || {}, 'type')));
 
   const listedTools = await listToolDefs();
   const listedDbTool = listedTools.find(tool => tool.name === 'supabase_db');

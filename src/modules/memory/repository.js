@@ -45,14 +45,52 @@ export async function getCurrentMemoryByKey(env, key) {
     return current.length > 0 ? current[0] : null;
 }
 
+async function readRowsForRetrieval(env, url, source) {
+    let response;
+    try {
+        response = await fetch(url, { headers: authHeaders(env) });
+    } catch {
+        const error = new Error(source + ' read failed: network_error');
+        error.name = 'MemoryRepositoryReadError';
+        error.source = source;
+        error.code = 'network_error';
+        throw error;
+    }
+    if (!response?.ok) {
+        const error = new Error(source + ' read failed: http_error');
+        error.name = 'MemoryRepositoryReadError';
+        error.source = source;
+        error.code = 'http_error';
+        error.http_status = Number.isInteger(response?.status) ? response.status : null;
+        throw error;
+    }
+    let rows;
+    try {
+        rows = await response.json();
+    } catch {
+        const error = new Error(source + ' read failed: invalid_json');
+        error.name = 'MemoryRepositoryReadError';
+        error.source = source;
+        error.code = 'invalid_json';
+        throw error;
+    }
+    if (!Array.isArray(rows)) {
+        const error = new Error(source + ' read failed: invalid_response_shape');
+        error.name = 'MemoryRepositoryReadError';
+        error.source = source;
+        error.code = 'invalid_response_shape';
+        throw error;
+    }
+    return rows;
+}
+
 export async function getCurrentMemories(env) {
-    const resp = await fetch(
+    const rows = await readRowsForRetrieval(
+        env,
         `${env.SUPABASE_URL}/rest/v1/memories?select=*&status=eq.active&valid_to=is.null`,
-        { headers: authHeaders(env) }
+        'memories'
     );
-    if (!resp.ok) return [];
-    const rows = await resp.json();
-    return Array.isArray(rows) ? rows.filter(isCurrentMemory) : [];
+    return rows.filter(isCurrentMemory);
 }
 
 export async function findAuthoritativeKey(env, key) {
@@ -67,13 +105,12 @@ export async function findAuthoritativeKey(env, key) {
 }
 
 export async function getMemoryAliasIds(env, keyword) {
-    const resp = await fetch(
+    const rows = await readRowsForRetrieval(
+        env,
         `${env.SUPABASE_URL}/rest/v1/memory_aliases?select=memory_id&alias=ilike.%25${encodeURIComponent(keyword)}%25`,
-        { headers: authHeaders(env) }
+        'memory_aliases'
     );
-    if (!resp.ok) return [];
-    const rows = await resp.json();
-    return Array.isArray(rows) ? rows.map(row => row?.memory_id).filter(Boolean) : [];
+    return rows.map(row => row?.memory_id).filter(Boolean);
 }
 
 export async function getMemoryEvents(env, memoryId) {

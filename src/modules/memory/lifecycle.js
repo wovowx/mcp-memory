@@ -1,7 +1,7 @@
 // Memory Lifecycle — 记忆写入、版本事件与软删除协调
 // 保留既有 REST 请求顺序和结果语义；事务/CAS 缺口不在此处伪装解决。
 
-import { getCategory, getTitle, now } from '../../utils/helpers.js';
+import { getCategory, getTitle, now, isMemoryType } from '../../utils/helpers.js';
 import {
     getCurrentMemoryByKey, insertMemoryRecord, insertMemoryEvent,
     updateMemoryRecord, softDeleteMemoryRecords, hasActiveMemory
@@ -21,26 +21,36 @@ export async function putMemory(env, key, data) {
     }
 
     if (existing) {
+        const hasExplicitType = Object.prototype.hasOwnProperty.call(data || {}, 'type') && data.type !== undefined;
+        if (hasExplicitType && !isMemoryType(data.type)) {
+            return { ok: false, stage: 'validation', error: 'invalid memory type' };
+        }
         const nowTs = now();
         const oldVersion = existing.version || 1;
-        const eventResp = await memoryWriteFetch(() => insertMemoryEvent(env, {
+        const event = {
             memory_id: existing.id,
             event_type: 'update',
             version: oldVersion,
-            old_value: existing.value,
+            old_value: hasExplicitType
+                ? { value: existing.value, type: existing.type ?? null }
+                : existing.value,
             actor: 'agent',
             reason: 'memory update (version chain)'
-        }));
+        };
+        if (hasExplicitType) event.new_value = { value: data.value, type: data.type };
+        const eventResp = await memoryWriteFetch(() => insertMemoryEvent(env, event));
         if (!eventResp.ok) {
             return { ok: false, stage: 'history', status: eventResp.status, error: 'history event write failed' };
         }
 
-        const updateResp = await memoryWriteFetch(() => updateMemoryRecord(env, existing.id, {
+        const updateData = {
             value: data.value,
             version: oldVersion + 1,
             status: 'active',
             updated_at: data.updated_at || nowTs
-        }));
+        };
+        if (hasExplicitType) updateData.type = data.type;
+        const updateResp = await memoryWriteFetch(() => updateMemoryRecord(env, existing.id, updateData));
         if (!updateResp.ok) {
             return { ok: false, stage: 'update', status: updateResp.status, error: 'memory update failed' };
         }

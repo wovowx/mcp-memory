@@ -3358,6 +3358,53 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **远端 E1/E2 CI**：最终五文件源码/版本候选 SHA=89aa2f05197c847734504ac232bcf9e0cddbca99；GitHub Actions [42025476524](https://github.com/wovowx/mcp-memory/actions/runs/42025476524) 对该精确 SHA learning-regression completed SUCCESS，validate job 全17项 steps success，包括 E1、Memory Core E2、Router、Session、Release Guard、学习工件。仅 E1/E2／GitHub CI，不冒称线上 Worker E3。
 - **发布边界**：生产 main=c9324b4f2e4013ed1e7edcd455bb40450a5b8dfe、Cloudflare Worker v6.40.1/#534 **未改变**；没有 PR/合 main/部署、生产 DB/schema/数据、聊天室/唤醒、Operit 角色卡、Pages/Web/DNS、密钥、付费模型调用。追加本交接会产生一个 Bridge-only dev commit，需以追加后的 HEAD 重新核实 CI；下一次正式 v6.41.0 发布须先递交完整准确版本单征得柳柳单独批准。
 
+### [2026-11-05] GPT → Operit · v6.41.0 记忆关联召回正式发布与「记忆星球」关系核对
+- **柳柳逐版本授权**：本版发布单已说明真实使用效果（直接检索后沿显式 ID/共享具体实体带出最多3条有据相关记忆）、仅六文件、验证等级、Pages/Worker 影响和回退基线；柳柳明确回复「Ok，我同意发布这个版本」。旧状态“等待 v6.41.0 批准”自此只作历史，不再激活。
+- **发布证据**：原 main=c9324b4f2e4013ed1e7edcd455bb40450a5b8dfe，原 dev=3ef6472e63665b340b87fba77923166fd6342114 (ahead8/behind0、六文件)。唯一恢复引用 recovery/v6.41.0-premerge-20261105 已独立回读指向原 dev SHA。PR #329（https://github.com/wovowx/mcp-memory/pull/329）head=dev/base=main、仅六文件、squash merged=true；新 main=5e4cf739a5ffd21c0434db96217267edb2af57bd，合并后 dev 自动同步到 main，恢复引用保持不变。
+- **验收与部署**：最终 dev learning run42025993378 SUCCESS（validate 17项全绿），正式 main learning run42028203531 SUCCESS；Cloudflare Worker #535 / deployment fb40fed3，verify_main=VERIFIED。Pages run42028203674 FAILURE 仍是既有冻结的另一条工作流，不视作 Worker 失败且未经许可未改动。
+- **只读宿主 E3（有限）**：Ziven_MCP 专用 session_context(host=chatgpt,invocation=explicit,topic='记忆星球 星系 锚点') 实际返回 related_status=matched_best_effort、3条记忆；当时检查点仍存旧待发布决策，status=DEGRADED/warning=checkpoint_decision_not_recorded；随后唯一云端检查点更新为 version159，9段原文回读与提交的43371字符逐字一致，再从 ChatGPT 插件显式调用 session_context(topic='记忆星球') 真实返回 READY/related_status=matched_best_effort/3条 key_phrase 相关记忆/warnings=[]。该 E3 证实只读关联主题上下文可见，不等于原 memory.search 直接入口的关联输出 E3；原 search 有 search_history 写入，不当作只读测。
+- **记忆星球关系，非新立项**：云端原始记录 `⚙️/参考-GPT讨论·记忆星系数据支撑（2026-10-20）`、`⚙️/认知-记忆星球·权限分工+幸福碎片`、`⚙️/时间轴·记忆星球·index` 指出原计划用星系可视化共同回忆；本版关联召回与其底层线索复用有关，但没有实现每星单一主归属、锚点/关系证据审核、星空 UI、批注纠错、随机幸福碎片或时间轴；关联≠同星系，不擅自重启休眠项目。
+- **长期发布说明标准**：柳柳明确要求今后先说明版本给她带来的实际作用、前后变化和未覆盖边界，再列文件、版本号、SHA/CI/风险/部署；已更新 wovowx/ZivenLab/dev/governance/roadmap.md v1.36 §5.5、整体架构 v1.13、当前项目状态 version168。今后的每一版都需新批准；当前无 Operit 付费测试任务、不改生产数据库/聊天室/密钥、Web/DNS 或其他 main 发布。
+
+### [2026-11-05] GPT → Operit · Memory Retrieval Quality Benchmark v0.1（dev-only，E1/E2 CI PASS）
+
+- **本轮范围**：按已确认的 v0.1 详细原型，在 `mcp-memory/dev` 建立固定合成检索基准；Fixture 16条合成记忆/16条查询，runner 直接调用 `searchMemories`，以 GET-only fetch mock 隔离 Supabase；新增 npm script、learning-regression E2 step，并在首轮测量后冻结 baseline JSON。没有使用真实记忆、私人聊天或 Operit 数据。
+- **测试覆盖**：精确 key/短语/多词/alias/trigger/entity/CJK fallback、负向拒绝、词面 decoy、当前/过期冲突、仅旧记录、显式/共享实体关联、通用实体排除、关联≤3/去重、stale association 过滤、来源理由/实体证据。Mock 只允许 `/rest/v1/memories` 与 `/rest/v1/memory_aliases` 的 GET；非 GET、未知路径、外部 origin 均 fail closed。
+- **首轮测量与冻结基线**：测量 commit `9146d3c920d6d3816238083f1538002024f8d5ab` / Actions run [42043430775](https://github.com/wovowx/mcp-memory/actions/runs/42043430775)，16条查询、32次 GET。Recall@1=0.90、Recall@3=1.00、MRR=1.00、Direct Precision@3=0.9091、Negative False-Hit Rate=0、Stale Hit Rate=0、Association Recall@3=1.00、Association Provenance Accuracy=1.00。Precision@3 的唯一已知 decoy 是 Q01 的 M16，刻意保留作为误召回探针，不因单个样本改算法。
+- **最终实现验证**：冻结 baseline 后的实现 HEAD `e58c8e9ec64fcffd964c941a46f12ebd5cbba20a` / Actions run [42044490914](https://github.com/wovowx/mcp-memory/actions/runs/42044490914) SUCCESS；E1、Memory Core 69/69、benchmark、Search History、Release Guard、Learning artifacts、Router/Patch Engine、Session Bootstrap 全部通过。CI 校验 Fixture Git blob SHA，并只读比较非退化指标；baseline 不由 CI 自动覆盖。
+- **文档同步**：ZivenLab/dev 已更新整体架构 v1.17、Roadmap v1.39、当前项目状态 version171、架构差距矩阵 v4.56；测试集文档为 v1.8。只同步治理文档，没有发布 ZivenLab/main。
+- **发布边界**：生产 `mcp-memory/main` 仍为 v6.41.0 / `5e4cf739a5ffd21c0434db96217267edb2af57bd`，Cloudflare Worker #535 / deployment `fb40fed3` 不变。mcp-memory/dev 本轮未改生产 `src/`、检索算法、数据库/schema/数据、MCP 工具 Schema、聊天室/唤醒或密钥；未创建 PR、未合并 main、未部署、未消耗 Operit Token。本证据是 E1/E2 synthetic CI，不是生产 E3，也不代表检索算法质量已提升。
+- **下一步**：v0.1 基准切片 CLOSED。回到「一本书」架构主线，下一可复用垂直切片先做需求讨论与可验收原型；真实历史查询20–50条仅作为未来 v0.2 候选，须另行讨论脱敏、来源和授权。任何 main/Worker 发布仍需独立版本单与柳柳逐版本批准。
+
+### [2026-11-05] GPT → Operit · Memory Retrieval Reliability v0.1（dev 实施与 E1/E2 验收完成）
+- 柳柳已验收四态原型并授权仅 dev：OK=双源成功有命中；EMPTY=双源成功无命中；PARTIAL=主记忆成功、别名失败，保留主结果；ERROR=主记忆失败，不得伪称无记忆。
+- 源码根因：Repository 将部分 HTTP/非数组故障折叠为空；Retrieval Promise.all 会因别名异常丢弃主结果；Session Context 无法区分空结果与故障。
+- **实施与测试结果**：Repository 对主记忆/别名读取显式报告 HTTP、网络、JSON、响应结构错误；Retrieval 以 `Promise.allSettled` 隔离别名源故障，保留主记忆结果，并提供 `searchMemoriesWithStatus` 详细状态对象与数组式 `searchMemories` 兼容入口；Memory Facade 输出 `search_status`，保持工具名/Schema/分页/match_reason 与成功路径 search_history；Session Context 区分 `matched_best_effort/no_matches/partial/unavailable`，PARTIAL/ERROR 降级 DEGRADED。因 `getMemoryStats` 复用 current-memory 读取，stats Facade 也明确报告 `stats_status=ERROR`，避免伪零统计。
+- **精确 HEAD 验收**：代码验收 commit `97d4cbd48ed94b0654a49838fa435ecc8e9dda7b`；GitHub Actions `learning-regression` run `42060784577` SUCCESS，精确绑定此代码 commit。E1 `npm run check` 42 个 JS 文件通过；Memory Core 86/86、Session Bootstrap/Context 38/38；benchmark、GitHub Contents、Webhook、Search History、Release Guard、Learning artifact、Router/Registry/Patch Engine 等全量 E2 通过。
+- **文档与发布边界**：ZivenLab/dev 整体架构 v1.19、Roadmap v1.41、差距矩阵 v4.59、当前项目状态 version173 已同步。生产 main 仍 v6.41.0 / SHA `5e4cf739a5ffd21c0434db96217267edb2af57bd`、Worker #535/deployment `fb40fed3` VERIFIED；dev 仍领先 main，精确 HEAD 与 ahead/behind 数以 Roadmap 当前状态为准。未改评分/排序/CJK/关联算法、工具名/Schema、DB/schema/真实数据；未创建 PR、未合 main、未运行 Worker E3、未部署。E3=NOT RUN。
+
+### [2026-11-06] GPT → Operit · L1结果补交接与L2 Core v0.2待验收
+
+- L1 Type已在dev实现：代码基线ad62fbeae23ae1591fc39f17cb6d345f0572584b，候选v6.42.0；既有learning-regression run42125896297 SUCCESS、Memory Core101/101。这是上一轮E1/E2证据，不是本轮新测试，也不是生产E3。
+- 柳柳已确认可靠性优先（A为主，C仅保留可选小范围Web验证，不提前正式开发Web）；工作与相处连续性同等验收。L2 Core v0.2 原型已完成，详见 governance/记忆层存量归位规范.md v2.3 §3.1.1；仍待技术原型验收，未编码。当前顺序继续 L2→L3→L4→按需L5，自动写入依赖相应L6保障。
+- 当前文档：ZivenLab/dev 整体架构v1.25、roadmap v1.47、记忆详细设计v2.3 §3.1.1、驾驶舱version179、导航v3.77、差距矩阵v4.63、现状架构当前摘要、CHANGELOG。
+- L2待确认接口：session_context可选include_core新模式；旧调用兼容；五个精确来源完整块组装；超预算补读，禁止截断关键限制；服务端组装与宿主实际接收分别取证。工作/相处验收均未运行。
+- 当前只同步文档/检查点，无L2代码、业务记忆或schema变更，无PR/main/部署。本文追加会使dev文档HEAD前移，不改变上述L1代码测试基线；自动CI若触发，其结果须另外查询，不在此宣称通过。
+- 这是状态交接，不派发Operit任务、不要求付费测试。下一步由柳柳验收L2原型；未经明确批准不进入L2编码。每次main发布另报实际收益、版本、范围、测试与回滚。
+
+### [2026-11-06] GPT → Operit · Session Core Context v0.2 · dev 实施与 E1/E2 PASS
+
+- **授权范围**：柳柳验收 L2 Core v0.2 技术原型并回复「好」，授权仅在 \`mcp-memory/dev\` 实施及隔离 E1/E2；不包括 PR、main 合并、Worker 部署/E3、Supabase registry/DB Schema、真实业务记忆或聊天室/唤醒。
+- **实现范围**：\`src/modules/session/bootstrap.js\` 扩展现有 \`session_context\` optional \`include_core:boolean\`，默认 false；显式 true 返回 \`core_contract_version=CORE-0.2\` 与五个权威来源完整块。\`session_bootstrap\` 名称、Schema、摘要响应保持不变；旧 \`session_context\` 不传参数仍不返回私人全文。复用同一只读五源快照，每个精确来源只 GET 一次，Bootstrap/Context/Core 共用投影；移除 Context 对检查点的重复读取。检查点完整提取当前覆盖段、排除历史段，取消旧 6500 字符截断。
+- **预算与降级**：24,000 Unicode code points；完整块按身份→当前检查点→主档→协议→导航排序，topic 结果最后并计入剩余预算；不硬切来源正文。每块返回 source_key/version/updated_at/complete/omitted_reason；identity/checkpoint 缺失或无效为 BLOCKED，预算不足/可选来源缺失为 DEGRADED，关键块不完整时 \`permitted_next_step=read_only_recovery\`。显式 opt-in 仍不授予写权限。
+- **回归覆盖**：\`tests/session_bootstrap_contract_test.mjs\` 新增 tools/list Schema、dispatch boolean guard、旧调用隐私兼容、五源单次 GET、Unicode code point、长检查点末尾限制、历史排除、完整块预算、topic 后置预算、缺失/无效/降级与零写入合同。最终代码/测试精确 SHA \`6411d4f17ecdee338b4cb214636f7bf1220c2940\`，package candidate \`v6.43.0\`；GitHub Actions \`learning-regression\` run [42146323527](https://github.com/wovowx/mcp-memory/actions/runs/42146323527) SUCCESS，E1 \`npm run check\` PASS，Session Bootstrap + Session Context + Core **56/56**，全 workflow 17 项 steps SUCCESS。最终序列化响应大小独立测量，合成合同 fixture <256 KiB。
+- **边界**：本次只改 \`src/modules/session/bootstrap.js\`、\`tests/session_bootstrap_contract_test.mjs\`、\`package.json\`、\`CHANGELOG.md\`；未改 Router、Supabase registry、DB/schema、真实记忆、聊天室/唤醒或生产密钥。\`mcp-memory/main\` 仍 v6.41.0 / SHA \`5e4cf739a5ffd21c0434db96217267edb2af57bd\`，Cloudflare Worker #535 / deployment \`fb40fed3\` 未变；没有 PR/main/部署/Worker E3。ChatGPT/Operit 是否实际接收完整正文、冷启动自动触发、工作/相处行为验收均 **NOT RUN / NOT VERIFIED**，不能以服务端 Mock PASS 冒充宿主通过。
+- **下一步**：L2 服务端 dev 实施与 E1/E2 CLOSED；宿主接收/首次回应仍需在有获批发布版本后分别验收。任何 main 发布必须另行提交用户可感知收益、准确净 diff、测试、部署影响与回滚说明，并取得柳柳对该版本的单独批准。
+
+
+
+
+
 
 
 
