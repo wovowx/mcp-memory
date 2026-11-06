@@ -110,17 +110,18 @@ export function withMemoryTypeSchema(schema) {
         ? base.properties
         : {};
     // A single schema helper serves tools/list and dispatchGuard. The existing
-    // memory/history handler must be advertised as a legal action, without
+    // memory/history/health_check handlers must be advertised as legal actions, without
     // narrowing old action choices or modifying the Supabase skills registry.
     const oldAction = properties.action && typeof properties.action === 'object' && !Array.isArray(properties.action)
         ? properties.action : { type: 'string' };
     const action = {
         ...oldAction,
-        description: [oldAction.description, 'history=按完整 key 只读查询历史记录与事件账本；不会恢复旧记忆']
+        description: [oldAction.description, 'history=按完整 key 只读查询历史记录与事件账本；不会恢复旧记忆',
+            'health_check=记忆体检场景；demo 默认合成、sample 须本次明确授权，只读元数据']
             .filter(Boolean).join('；')
     };
     if (Array.isArray(oldAction.enum)) {
-        action.enum = [...new Set([...oldAction.enum, 'history'])];
+        action.enum = [...new Set([...oldAction.enum, 'history', 'health_check'])];
     }
     return {
         ...base,
@@ -128,6 +129,14 @@ export function withMemoryTypeSchema(schema) {
         properties: {
             ...properties,
             action,
+            mode: {
+                type: 'string', enum: ['demo', 'sample'],
+                description: '仅 health_check 使用；默认 demo 无真实读取。sample 每次须柳柳明确同意。'
+            },
+            metadata_read_confirmed: {
+                type: 'boolean',
+                description: '仅 health_check(mode=sample) 使用；本次柳柳已明确许可读取最多12行记忆元数据。'
+            },
             type: {
                 type: 'string',
                 enum: [...MEMORY_TYPES],
