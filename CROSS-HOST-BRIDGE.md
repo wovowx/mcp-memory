@@ -3546,6 +3546,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **命名问题与修复**：此前 v6.49.0 的多个 GitHub rebase 子提交使用重复泛化标题，CHANGELOG v6.48/v6.49 发布后仍误标 DEV CANDIDATE；v6.50.0 已在发布前校正旧状态、补实际 CHANGELOG，并以明确的最终主分支 commit 标题合并。Cloudflare 部署描述策略若调整，须另按部署变更讨论并授权。
 - **运行边界与下一动作**：持久日志继续默认关闭，不动私人 Core、数据库 schema/数据、密钥、聊天室与唤醒；M1 Core 宿主拦截 UNKNOWN。下一工作是依 Roadmap 的「一本书」主线先讨论 **L5 v0.2 真实记忆只读抽样的需求和可验收原型**，柳柳明确同意前不能实际读取私人记忆、分层或迁移。不要把本次发布或 checkpoint READY 误写为 L5 E3、自动跨宿主恢复已通过。
 
+## 2026-11-06 · GPT→Operit 最新交接：L5 v0.2 真实元数据-only 小样本体检完成
+
+- **柳柳这次的单项授权**：在看过 L5 v0.2「最多12条真实 `memories` 元数据、只读、不读取 `value` 正文、不改写/迁移/扫描全库、工作与相处均验收」原型后明确回复「好」。这是一轮元数据采样授权，绝非未来所有真实记忆/内容/数据库/生产发布的通用许可。
+- **文档先行**：已先在 ZivenLab/dev `governance/记忆层存量归位规范.md` v2.16 §8.2 写入精确查询投影、预算、匿名输出、失败不降级及退出条件，再执行真实查询；现已补回匿名实测结果。Roadmap/dev v1.82、当前项目状态/dev version211 同步回写，旧状态快照保留。
+- **真实只读证据**：通过现有 `supabase_db(action=query,table=memories)` 共8次有界 SELECT，**每次明确 select 仅 `id,key,category,type,status,valid_to,updated_at,version,source_ref`，未读 `value`，未访问其他表**；五个精确启动 key 各1行，工作和相处各2行，较早更新时间3行，总共返回12行、交叠1行，去重11条。8次查询成功；交叠是采样重复，不是 DB 重复键。没有重试扩量、读正文或写入。
+- **匿名体检结果**：5个 Core key 均存在、11条独立样本均 `active+valid_to=null`，其中 `type` 未标注6/11、`source_ref` 空11/11，agreement 3/11 的确认依据仍 UNKNOWN。工作组除 Core 交叠外新增独立1条，相处组新增2条；较旧3条也 current，真正历史失效/Archive 样本0，不能宣称全库没有历史。按已发布 L5 映射规则，五个 Core 因未读正文 `body_readable` 不明，`core_inclusion=UNCERTAIN`，**没有证明实际 Core 装载成功**。本次仅据规则静态对照，不谎称已对真实输入运行离线 CLI。
+- **结论与权限**：**L5 v0.2 有界 metadata-only E3 COMPLETE / 历史与来源完整性 COVERAGE_PARTIAL**；`writes_executed=false`，只保存匿名指标及缺口，没有把真实 key、ID、source_ref 或记录正文提交到 GitHub。main/Worker 仍 v6.50.0/#544；仅 dev 治理文档及本 Bridge 写入，不合 main，不部署。云端唯一 `⚙️/当前工作检查点` 仍 version205，本次未获得对该记忆新的更新许可，所以没有调用 memory update。
+- **下一步**：回到「一本书」可靠性主线，提出「来源证明和 type 缺口如何只读显示」的可验收原型，并评估是否有必要单独抽历史样本；**读更多私人记录、任何正文、补写元数据、Schema/迁移、日志或主分支发布都需另行讨论与授权**。M1 宿主安全拦截及跨宿主自动恢复 E3 仍 UNKNOWN/NOT VERIFIED。
+
+
 
 
 
