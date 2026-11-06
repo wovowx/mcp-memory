@@ -3,6 +3,7 @@
 // 只负责 Supabase memories / memory_events / memory_aliases 访问。
 
 import { getTitle } from '../../utils/helpers.js';
+import { BOOTSTRAP_KEYS } from '../session/keys.js';
 
 function authHeaders(env, extra = {}) {
     return {
@@ -82,6 +83,61 @@ async function readRowsForRetrieval(env, url, source) {
         throw error;
     }
     return rows;
+}
+
+// L5: one bounded, metadata-only primitive for the memory-health scene.
+// A fresh explicit user authorization is required by the caller before invoking
+// this method; neither the default demo mode nor tool discovery invokes it.
+const HEALTH_METADATA_SELECT = 'id,key,category,type,status,valid_to,updated_at,version,source_ref';
+const HEALTH_MAX_ROWS = 12;
+
+export async function readMemoryHealthMetadataSample(env) {
+    const requests = [
+        ...Object.values(BOOTSTRAP_KEYS).map(key => ({ group: 'core', key, limit: 1 })),
+        { group: 'work', category: 'like.⚙️%', order: 'updated_at.desc', limit: 2 },
+        { group: 'relationship', category: 'like.💕%', order: 'updated_at.desc', limit: 2 },
+        { group: 'older', order: 'updated_at.asc', limit: 3 }
+    ];
+    const rows = [];
+    const groups = { core: 0, work: 0, relationship: 0, older: 0 };
+    let queried = 0;
+    for (const request of requests) {
+        const url = new URL(env.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/memories');
+        url.searchParams.set('select', HEALTH_METADATA_SELECT);
+        url.searchParams.set('limit', String(request.limit));
+        if (request.key) url.searchParams.set('key', 'eq.' + request.key);
+        if (request.category) url.searchParams.set('category', request.category);
+        if (request.order) url.searchParams.set('order', request.order);
+        queried++;
+        try {
+            const returned = await readRowsForRetrieval(env, url.toString(), 'memory_health_metadata');
+            if (returned.length > request.limit || rows.length + returned.length > HEALTH_MAX_ROWS) {
+                throw Object.assign(new Error('memory_health_sample_limit_exceeded'), { code: 'invalid_response_shape' });
+            }
+            // Defense in depth: even if an upstream mock/server unexpectedly adds
+            // a value/body field, never carry it into the scene's input objects.
+            const metadataRows = returned.map(raw => {
+                if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+                    throw Object.assign(new Error('memory_health_invalid_record_shape'), { code: 'invalid_response_shape' });
+                }
+                const projected = {};
+                for (const column of HEALTH_METADATA_SELECT.split(',')) {
+                    if (Object.prototype.hasOwnProperty.call(raw, column)) projected[column] = raw[column];
+                }
+                return projected;
+            });
+            rows.push(...metadataRows);
+            groups[request.group] += returned.length;
+        } catch (error) {
+            return {
+                status: rows.length ? 'PARTIAL' : 'ERROR', rows, groups,
+                query_count: queried, returned_rows: rows.length,
+                error_code: ['network_error', 'http_error', 'invalid_json', 'invalid_response_shape']
+                    .includes(error?.code) ? error.code : 'read_failed'
+            };
+        }
+    }
+    return { status: 'OK', rows, groups, query_count: queried, returned_rows: rows.length, error_code: null };
 }
 
 export async function getCurrentMemories(env) {
