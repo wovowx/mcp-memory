@@ -2,7 +2,26 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.47.0] - 2026-11-06（Workers Logs 持久化配置 · DEV CANDIDATE，未发布）
+## [v6.48.0] - 2026-11-06（Cloudflare 日志事件分类与安全字段映射 · DEV CANDIDATE，未发布）
+
+### 用户实际收益
+- 已上线的 `cloudflare_logs_query` 能查询到 Workers Logs，但 E3 返回的三条事件中 `method/path/status_code=null`。新增事件类型 `event_kind=http|scheduled|runtime_log|other|unknown`，优先区分 HTTP、每分钟 Cron、普通运行日志，避免把 cron 当成 MCP 请求。
+- 对可信 HTTP 调用，采用 Cloudflare 官方结构化 `$metadata.trigger/url/statusCode/type` 和 `$workers.eventType/event.request/outcome` 等固定白名单提取 HTTP method、仅 `/mcp` 或 `/` 路径及真实 HTTP 状态。缺失/相互冲突时仍保持 `null`，不推断「POST /mcp」或 HTTP 200。只针对真实事件验证后才能判断效果，不能把合成结果当作生产 E3。
+
+### 改动、兼容和安全
+- 仅调整 `src/tools/cf_proxy.js` 的 `sanitizeLogEvent` 与几个纯解析辅助函数；保留原 `cloudflare_logs_query` 名称、MCP 输入 Schema、Cloudflare telemetry/query 固定端点、已有 Token/认证、短时间窗、限量、读-only 注解和调用方式。
+- 已有输出字段不删除/不改类型，新增一项受控枚举 `event_kind`；`status_code` 只从官方 `$metadata.statusCode` 取，runtime outcome `ok` 不能伪造 HTTP 200，错误/成功判断来自严格白名单字段。
+- 不读取或返回原始 `source`、`$workers.event` 内容、Headers、Cookie、Token、正文、完整 URL/查询参数；`/other` 路径、冲突值、跨 Worker 事件拒绝或留空；保持 `status_filter=error` 的原有语义。
+- 本版不改 `wrangler.toml` 当前已生效的 100% Workers Logs 采样与存储设置、不改 Secrets、Cloudflare Token、DB/记忆/skills registry、暂停聊天室/唤醒、部署链路或新的 MCP 工具注册。
+
+### 开发授权与验收
+- 柳柳验收 Roadmap v1.69 的「先分类、再安全映射」技术原型，明确回复「好」，允许 dev 代码和 E1/E2；**不是**批准 v6.48.0 PR/main/Worker 自动部署。
+- `tests/router_registry_contract_test.mjs` 扩展完全合成 Mock，覆盖官方 fetch、scheduled/cron、运行日志、queue/other、unknown、trigger、嵌套 request、HTTP 状态码缺失、冲突值 fail-closed、恶意查询串和 source 不泄露、旧 fixture 兼容；代码+测试 HEAD `23d204a03367b118f948d871ec6ce91048c9a182` / [Actions #42187250709](https://github.com/wovowx/mcp-memory/actions/runs/42187250709) **SUCCESS**；Router/Registry **207/207**、Memory Core 120/120、Session/Core 56/56、Reflection 35/35、JS 43 文件 check PASS。版本及 Bridge 最终 HEAD 将再次验证。
+- 真实日志 E3 需要本版经**独立版本发布批准**后才能由生产 API 确认。即使查询返回 `event_kind=http` 和 `POST /mcp`，仍需同一 trace/request ID 才能精确关联某一次 MCP 调用；不宣称已解决 OpenAI 安全拦截原因。
+- 回滚基线：生产 v6.47.0 main `bedaa2b2dd0e71a3a52cc43af9b4b906ed253a82` / Worker #541 deployment `42551af3`，未主动修改生产。要发布需重新报告最新 dev/main 差异、CI、回滚信息并经柳柳明确同意。
+
+---
+## [v6.47.0] - 2026-11-06（Workers Logs 持久化配置 · 已发布 PR #334 / Worker #541 VERIFIED；以下 dev 候选措辞为当时历史快照）
 
 ### 用户收益与原因
 - 让已上线的 `cloudflare_logs_query` 能读取 **Workers Logs 历史存储事件**，而不仅能成功调用查询 API 却收到 `EMPTY`。在新工具 v6.46.0 的宿主 E3 中，ChatGPT 工具发现和实际查询成功，但两次最近15分钟查询均为 `EMPTY`（0 条），期间发起了一次虚构 key 的正常 `memory(recall)` 控制请求；尚不能断定是存储未开、采样或查询字段不匹配。
