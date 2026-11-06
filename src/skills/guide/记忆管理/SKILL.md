@@ -62,7 +62,8 @@ tags: ["记忆", "存档", "查询", "记忆管理", "分类"]
 - **省略与更新规则**：新建时省略 type 表示 SQL NULL，界面显示“未标注”；更新时省略 type 保留原类型。不要传 `type=null` 清除类型；不确定性质时省略，不得默认 `agreement`，也不得把未验证推断标成 fact/agreement。
 - **更新**：`action="update", key=..., value=...`
 - **重命名/迁移**：`action="rename", old_key=..., new_key=...`
-- **查单条**：`get_memory_by_title(title="分类/标题")` 或 `ziven_mcp:memory(action="recall", key=...)`
+- **查单条（当前有效）**：`get_memory_by_title(title="分类/标题")` 或 `ziven_mcp:memory(action="recall", key=...)`。普通 recall/search 不返回已撤销的旧决定。
+- **查历史（仅明确的过去意图）**：`ziven_mcp:memory(action="history", key="完整分类/标题")`。复用同一份 memories + memory_events 的历史视图，只按已确认的精确 key 查询；返回 `history_status=OK|EMPTY|PARTIAL|ERROR`。事件记录时间不能冒充现实发生时间；若缺 source_ref、事件或 new_value，必须保留 `evidence_gap/UNKNOWN`，不得补编故事。已软删除/过期的记录只能作为旧版本解释，绝不自动恢复为当前事实。宿主若仍显示旧版 action enum，要按既定流程在插件信息中手动刷新，不能绕过 schema 校验。
 - **搜索**：`query_memory(query="关键词")`
 - **按分类列**：`ziven_mcp:memory(action="by_category", category="💕")`
 
