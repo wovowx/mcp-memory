@@ -3556,6 +3556,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **空来源元数据的代码证据（无改动）**：main `src/tools/memory_unified.js` 常规 remember 仅传 value/时间/可选 type，未向 lifecycle 传 `source_ref`；`src/modules/memory/lifecycle.js` 仅在新建 data 已带该字段时保存，常规 update 无该字段 PATCH。因此 11/11 空字段与写入链一致，**不证明原记忆没有来源**。详细只读证据已补 ZivenLab/dev §8.2；是否改公开契约、字段/来源展示或回填，必须另行讨论确认。
 - **下一步**：回到「一本书」可靠性主线，提出「来源证明和 type 缺口如何只读显示」的可验收原型，并评估是否有必要单独抽历史样本；**读更多私人记录、任何正文、补写元数据、Schema/迁移、日志或主分支发布都需另行讨论与授权**。M1 宿主安全拦截及跨宿主自动恢复 E3 仍 UNKNOWN/NOT VERIFIED。
 
+## 2026-11-06 · GPT→Operit 最新交接：L5 v0.3 中文可信度解释报告 dev E1/E2 CLOSED
+
+- **柳柳确认与范围**：L5 v0.2 有界元数据体检后，哥哥出示「有效仅状态 / 性质未标注 / 结构化来源缺失不等于无来源 / agreement 依据未知 / Core 可读未核验」的可验收解释卡片，建议 A：**复用现有 mapper 与疑点规则，新增只读解释报告层，只在 dev 以合成数据编码测试**。柳柳明确回复「好」。本授权不包括额外私人记忆读取、来源补写、公开 MCP/schema 变化、main 或 Worker 部署。
+- **文档先行**：ZivenLab/dev `governance/记忆层存量归位规范.md` **v2.17 §8.3** 已在代码实施前写入方案和验收合同，之后回填真实 CI；Roadmap/dev **v1.83**、当前项目状态/dev **version212** 已更新回读，旧快照保留。
+- **dev 代码与用户收益**：沿用 `src/modules/memory/layer_mapper.js` 的 `mapMemoryMetadata`，仅新增纯函数 `explainMemoryLayerRow(mapped)`：中文 `validity/type/provenance/agreement/core/view/trust` 标签和已知疑点翻译，只用原判定结果，不复制真实 id/key/source_ref/evidence/value；`scripts/memory_layer_preview.mjs` 固定合成 fixture 额外输出 `explanations`；旧 `memory_rows`、Reflection、原 schema/类型字段不改。现有 `tests/memory_layer_mapper_contract_test.mjs` 新增14项合同，`CHANGELOG.md` 增加 `Unreleased · L5 v0.3 dev-only`，未擅自编造生产 semver。
+- **真实回归证据**：代码提交 `bc6395ae5808566c4bdee0a14ac6fe6c73214b68` 对应 [dev learning-regression #42216768460](https://github.com/wovowx/mcp-memory/actions/runs/42216768460) **SUCCESS**；L5 合成合同 **36 passed, 0 failed**，完整工作流 E1 静态/导入与其它 E2 步骤 SUCCESS。增加 Changelog 后 dev HEAD `00cb043fa65cad3e420fd2f8a7283f2efc1da7ee` 的 [dev learning-regression #42216977081](https://github.com/wovowx/mcp-memory/actions/runs/42216977081) 亦 **SUCCESS**。**L5 v0.3 DEV E1/E2 CLOSED，真实私人记忆解释 E3 NOT RUN**，没有新增真实查询或离线真实 fixture。
+- **生产/恢复边界**：当前 main 仍 v6.50.0 `ce845bd35181848eaf94119810d05c6c83cd72e1` / Cloudflare Worker #544 已 VERIFIED；持久日志默认关闭。云端唯一工作检查点此前已获柳柳单独授权更新到 **version206**（v0.2 完成状态），本次仅 dev 文档/合成代码，**不擅自再写检查点**；跨宿主真实冷启动、M1 私人 Core E3 仍 NOT VERIFIED。
+- **next_action**：先把 v0.3 的真实用户收益、准确 dev 与 main 差异、CI、生产影响、回滚、费用整理为独立发布单交柳柳决定（不直接 PR/main）；已确认的源码/测试不要重复审计。若未来讨论来源写入或更多真实样本，先确立需求与原型，再另取授权。
+
+
 
 
 
