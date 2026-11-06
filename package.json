@@ -1,6 +1,6 @@
 {
   "name": "mcp-memory",
-  "version": "6.43.0",
+  "version": "6.44.0",
   "type": "module",
   "scripts": {
     "deploy": "npx wrangler deploy",
@@ -11,6 +11,8 @@
     "test:search-history": "node tests/search_history_contract_test.mjs",
     "test:contracts": "node tests/router_registry_contract_test.mjs",
     "test:bootstrap": "node tests/session_bootstrap_contract_test.mjs",
+    "test:reflection": "node tests/reflection_contract_test.mjs",
+    "reflection:preview": "node scripts/reflection_preview.mjs",
     "dev": "npx wrangler dev"
   }
 }
