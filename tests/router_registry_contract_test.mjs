@@ -219,8 +219,11 @@ console.log('\n[Cloudflare read-only Observability log query contracts]');
   check('Cloudflare runtime outcome is distinct from HTTP status code',
     inspected.event?.event_kind === 'http' && inspected.event?.status_code === 404 &&
     inspected.event?.outcome === 'ok');
-  check('Cloudflare log event fixture back-compat includes a bounded event_kind enum',
-    data?.events?.every(e => ['http','scheduled','runtime_log','other','unknown'].includes(e.event_kind)) !== false);
+  const legacyEvent = await inspectEvent(sampleEvents[0]);
+  check('Cloudflare previously supported top-level request fixtures remain compatible',
+    legacyEvent.event?.event_kind === 'http' && legacyEvent.event?.method === 'POST' &&
+    legacyEvent.event?.path === '/mcp' && legacyEvent.event?.status_code === 200 &&
+    legacyEvent.event?.outcome === 'ok');
 
 }
 
