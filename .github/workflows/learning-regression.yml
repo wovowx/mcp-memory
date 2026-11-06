@@ -47,6 +47,9 @@ jobs:
       - name: Learning artifact regression
         run: python3 tests/learning/run_learning_tests.py
 
+      - name: E2 - L3 Reflection candidate and no-write contracts
+        run: npm run test:reflection
+
       - name: E2 - Router, registry and Patch Engine contracts (frozen Router regression gate)
         run: npm run test:contracts
 
