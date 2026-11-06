@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import {
     validateCandidate, decideCandidate, previewPromotion, evaluateReflectionCandidates
 } from '../src/modules/reflection.js';
@@ -113,6 +114,9 @@ try {
         previouslyProposedIds: [validated.reflection.candidate_id]
     }).reason === 'duplicate_candidate_id');
 
+    check('null preview options do not accidentally grant or throw',
+        previewPromotion(validated, null).status === 'ready_for_review');
+
     const batch = evaluateReflectionCandidates([validated, structuredClone(validated), fixture]);
     check('batch emits at most one proposal per candidate ID', batch.length === 3
         && batch[0].proposal.status === 'ready_for_review'
@@ -146,7 +150,7 @@ try {
 
     const cli = spawnSync(process.execPath, ['scripts/reflection_preview.mjs',
         'tests/learning/learning_reflection_candidate_001.json'], {
-        cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8'
+        cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8'
     });
     const result = cli.status === 0 ? JSON.parse(cli.stdout) : null;
     check('CLI can read a candidate and return an inert preview', cli.status === 0
