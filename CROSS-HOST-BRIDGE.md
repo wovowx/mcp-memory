@@ -3553,6 +3553,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **真实只读证据**：通过现有 `supabase_db(action=query,table=memories)` 共8次有界 SELECT，**每次明确 select 仅 `id,key,category,type,status,valid_to,updated_at,version,source_ref`，未读 `value`，未访问其他表**；五个精确启动 key 各1行，工作和相处各2行，较早更新时间3行，总共返回12行、交叠1行，去重11条。8次查询成功；交叠是采样重复，不是 DB 重复键。没有重试扩量、读正文或写入。
 - **匿名体检结果**：5个 Core key 均存在、11条独立样本均 `active+valid_to=null`，其中 `type` 未标注6/11、`source_ref` 空11/11，agreement 3/11 的确认依据仍 UNKNOWN。工作组除 Core 交叠外新增独立1条，相处组新增2条；较旧3条也 current，真正历史失效/Archive 样本0，不能宣称全库没有历史。按已发布 L5 映射规则，五个 Core 因未读正文 `body_readable` 不明，`core_inclusion=UNCERTAIN`，**没有证明实际 Core 装载成功**。本次仅据规则静态对照，不谎称已对真实输入运行离线 CLI。
 - **结论与权限**：**L5 v0.2 有界 metadata-only E3 COMPLETE / 历史与来源完整性 COVERAGE_PARTIAL**；`writes_executed=false`，只保存匿名指标及缺口，没有把真实 key、ID、source_ref 或记录正文提交到 GitHub。main/Worker 仍 v6.50.0/#544；仅 dev 治理文档及本 Bridge 写入，不合 main，不部署。云端唯一 `⚙️/当前工作检查点` 仍 version205，本次未获得对该记忆新的更新许可，所以没有调用 memory update。
+- **空来源元数据的代码证据（无改动）**：main `src/tools/memory_unified.js` 常规 remember 仅传 value/时间/可选 type，未向 lifecycle 传 `source_ref`；`src/modules/memory/lifecycle.js` 仅在新建 data 已带该字段时保存，常规 update 无该字段 PATCH。因此 11/11 空字段与写入链一致，**不证明原记忆没有来源**。详细只读证据已补 ZivenLab/dev §8.2；是否改公开契约、字段/来源展示或回填，必须另行讨论确认。
 - **下一步**：回到「一本书」可靠性主线，提出「来源证明和 type 缺口如何只读显示」的可验收原型，并评估是否有必要单独抽历史样本；**读更多私人记录、任何正文、补写元数据、Schema/迁移、日志或主分支发布都需另行讨论与授权**。M1 宿主安全拦截及跨宿主自动恢复 E3 仍 UNKNOWN/NOT VERIFIED。
 
 
