@@ -615,8 +615,14 @@ try {
     !discoveredMemorySchema.required.includes('type'));
   check('tools/list adds history to existing memory action enum without removing registered actions',
     discoveredMemorySchema?.properties?.action?.enum?.includes('history') &&
-    discoveredMemorySchema.properties.action.enum.length === 17 &&
+    discoveredMemorySchema.properties.action.enum.includes('health_check') &&
+    discoveredMemorySchema.properties.action.enum.length === 18 &&
     ["remember","recall","update","rename","forget","search","list","random","by_date","stats","suggest","import","export","move","list_categories","by_category"].every(action => discoveredMemorySchema.properties.action.enum.includes(action)));
+  check('memory health scene advertises demo/sample and explicit confirmation without making them required',
+    discoveredMemorySchema?.properties?.mode?.enum?.join(',') === 'demo,sample' &&
+    discoveredMemorySchema?.properties?.metadata_read_confirmed?.type === 'boolean' &&
+    !discoveredMemorySchema.required.includes('mode') &&
+    !discoveredMemorySchema.required.includes('metadata_read_confirmed'));
   const registeredMemorySchema = fixture.find(skill => skill.name === 'memory')?.input_schema;
   check('history schema override never mutates Supabase skills registry fixture',
     !registeredMemorySchema.properties.action.enum.includes('history') &&
@@ -627,9 +633,21 @@ try {
     t.includes('[history_status=EMPTY]') && !t.includes('DISPATCH_GUARD_REJECT'));
   check('history empty path makes only GET requests and never increments usage',
     memoryWriteBodies.length === 0 && memoriesRestCount === 1 && usagePatchCount === 0);
+  memoriesRestCount = 0; memoryWriteBodies = []; usagePatchCount = 0;
+  t = await callTool('memory', { action: 'health_check' });
+  check('memory health demo works through existing facade without accessing real memory or usage',
+    t.includes('[health_status=OK]') && t.includes('固定合成数据演示')
+    && memoriesRestCount === 0 && memoryWriteBodies.length === 0 && usagePatchCount === 0);
+  t = await callTool('memory', { action: 'health_check', mode: 'sample' });
+  check('memory health sample without explicit consent fails before any memory read',
+    t.includes('[health_status=CONSENT_REQUIRED]') && memoriesRestCount === 0 && usagePatchCount === 0);
+  t = await callTool('memory', { action: 'health_check', mode: 'unsafe' });
+  check('memory health rejects unsupported mode at shared schema guard',
+    t.includes('[INVALID_ARGS_SCHEMA]') && memoriesRestCount === 0 && usagePatchCount === 0);
+  const memoryReadsBeforeUnknownAction = memoriesRestCount;
   t = await callTool('memory', { action: 'auto_restore', key: 'core/retired-rule' });
   check('dispatchGuard rejects unsupported action before repository access',
-    t.includes('[INVALID_ARGS_SCHEMA]') && memoriesRestCount === 1);
+    t.includes('[INVALID_ARGS_SCHEMA]') && memoriesRestCount === memoryReadsBeforeUnknownAction);
   memoryWriteBodies = []; usagePatchCount = 0;
   t = await callTool('memory', { action: 'remember', key: 'core/invalid-type', value: 'not stored', type: 'opinion' });
   check('dispatchGuard rejects invalid memory type before any business write or usage count',
