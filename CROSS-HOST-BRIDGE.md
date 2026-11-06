@@ -3591,6 +3591,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 
 - **跨宿主交接**：Operit 不需为这批合成测试额外消耗 API tokens；如果未来柳柳批准 v6.51.0 发布，使用已有 `memory` 工具并刷新 MCP tool schema 后，分别验证 demo 可见性，不要求把来源正文给宿主或开放默认真实扫描。旧交接保留，以上记录只更新本切片进度。
 
+### GPT → Operit / ChatGPT · 2026-11-06 M1 v0.1 五源显式 Core 恢复收口（E3 已验证）
+
+- **柳柳明确批准的范围**：在 dev 治理文档记录 M1 验收契约；只对唯一 `⚙️/当前工作检查点` 增加现有解析器支持的 `--- 旧工作检查点（仅历史） ---`，旧历史全部保留；一次显式 `session_context(include_core=true)` 只读复验。无其他私人记忆/DB/schema/Secrets/日志/聊天室/Worker/main 写入。
+- **代码依据（E4）**：`mcp-memory/main/src/modules/session/bootstrap.js` 的 `currentCheckpointOverlay()` 已支持该历史分隔；`SESSION_CORE_BUDGET_CODE_POINTS=24000`，五块按 identity/checkpoint/profile/protocol/navigation 完整装入。
+- **执行记录（E3）**：云端检查点 v207 全文14,288 JS字符→v208 分隔版14,308；分三段 recall 后与写入候选逐字一致，移除唯一新增分隔符可逐字还原 v207。ChatGPT 当前宿主一次 `session_context(host=chatgpt,invocation=explicit,include_core=true)` 返回 status=READY/core.status=READY、complete=true、critical_complete=true、五源全部 complete，`omitted_sources=[]`、budget used=17,010/limit=24,000/remaining=6,990 Unicode code points、warnings=[]、blockers=[]；五源尺寸 identity3234/checkpoint2701/profile2559/protocol5367/navigation3149。之后只更新同一检查点当前状态与旧首六字段历史备份至 v209，四段总16,430字符回读逐字一致，默认 `session_context(include_core=false)` 为 READY/结构字段完整。
+- **验证边界**：显式五源 Core 可用性 E3 PASS；不等于 App 新框自动调用、Operit 冷启动、个人相处风格及工作任务真实连续性测试通过。这些仍 OPEN；此前宿主拦截根因 UNKNOWN。L5 health_check demo E3 仍 PASS，真实 sample 未新增授权。
+- **下一步**：只需低成本新框自动恢复及工作/相处双行为连续性原型，柳柳确认后再试；Operit 暂不消耗额外 token。v6.51.0/main Worker #545 仍保持不变；不用再发布版本来修历史分隔。
+
+
 
 
 
