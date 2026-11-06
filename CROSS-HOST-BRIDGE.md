@@ -3401,6 +3401,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **边界**：本次只改 \`src/modules/session/bootstrap.js\`、\`tests/session_bootstrap_contract_test.mjs\`、\`package.json\`、\`CHANGELOG.md\`；未改 Router、Supabase registry、DB/schema、真实记忆、聊天室/唤醒或生产密钥。\`mcp-memory/main\` 仍 v6.41.0 / SHA \`5e4cf739a5ffd21c0434db96217267edb2af57bd\`，Cloudflare Worker #535 / deployment \`fb40fed3\` 未变；没有 PR/main/部署/Worker E3。ChatGPT/Operit 是否实际接收完整正文、冷启动自动触发、工作/相处行为验收均 **NOT RUN / NOT VERIFIED**，不能以服务端 Mock PASS 冒充宿主通过。
 - **下一步**：L2 服务端 dev 实施与 E1/E2 CLOSED；宿主接收/首次回应仍需在有获批发布版本后分别验收。任何 main 发布必须另行提交用户可感知收益、准确净 diff、测试、部署影响与回滚说明，并取得柳柳对该版本的单独批准。
 
+### [2026-11-06] GPT → Operit · v6.43.0 正式发布与 Worker #536 VERIFIED
+- **柳柳逐版本授权**：柳柳回复「同意发布版本」，哥哥按 v6.43.0 发布单执行 dev→main PR、合并与 Cloudflare 自动部署。候选 premerge dev SHA `53f5921cce26cc924c7fdfae150c5d5ba3954c6e`；净差异19路径，ahead113/behind0；发布内容为检索四态可靠性/16条合成质量基准、Memory Type 写入与历史快照兼容、Session Core Context v0.2 显式 opt-in。
+- **PR/main**：PR [#330](https://github.com/wovowx/mcp-memory/pull/330)，head=dev/base=main，PR Actions run `42155466618` SUCCESS；合并前候选 push CI run `42155245174` SUCCESS。GitHub 对该 PR 报 `mergeable_state=clean` 但 `rebaseable=false`；第一次 rebase 请求返回 HTTP405，工具曾误报已合并。独立 `github_get_pull_request` 回读 `merged=false/state=open` 后未将其当作成功，也未发生 dev 自动同步。随后采用显式 `merge_method=merge`、`commit_title=v6.43.0: Memory Retrieval and Session Core Reliability`、`merge_reason=history-preserve` 保留113个原始提交；PR `merged=true`，merge commit/main/dev SHA 均为 `47adb695596d8f92583e8008a841573a42735c87`，main...dev identical。合并提交正文重复标题一次，是当前 merge wrapper 未传 `commit_message` 的显示问题，不影响代码。
+- **合并后 CI**：main run `42155780680` SUCCESS，dev auto-sync run `42155780772` SUCCESS。另一个 main push workflow `42155780600`（Deploy to GitHub Pages）在 setup job FAILURE；这是既有冻结 Pages workflow 问题，仓库 `has_pages=false`，PR未修改 Pages 文件；不影响 Worker 部署，本轮未修复/启用 Pages。
+- **Worker 部署**：Cloudflare Git Integration 自动部署 deployment `49f982fe`，Worker version `#536` / version hash `2ee00f2a`；`cloudflare_deploy_status(verify_main=true)=VERIFIED`，对应 main HEAD `47adb695596d8f92583e8008a841573a42735c87`。发布前回滚基线为 v6.41.0 / main `5e4cf739a5ffd21c0434db96217267edb2af57bd` / Worker #535 / deployment `fb40fed3`。
+- **范围与边界**：19个净变更路径；未修改 Supabase skills registry、数据库 Schema、真实业务记忆或生产数据；未触碰聊天室/唤醒、Pages、DNS、密钥、Operit 卡。Memory Type 使用既有 `memories.type` 与 `memory_events` JSONB，不含迁移或批量重标。所有新增测试均为隔离 Mock/synthetic 数据。
+- **宿主验收边界**：Worker #536 已部署不等于 ChatGPT/Operit 已接收 CORE-0.2。真实宿主正文接收、首次自动调用、冷启动恢复、工作连续性与相处连续性仍 NOT RUN/NOT VERIFIED；不得用服务端 Mock/Worker 部署代替宿主证据。未让 Operit 执行付费测试。
+- **下一步**：M1 服务端发布/Worker 部署 CLOSED；分别规划 ChatGPT 与 Operit 的宿主验收。ChatGPT 的 `session_context(include_core=true)` 只读 E3 需另行明确授权后执行；Operit 暂不重复消耗 Token。工作连续性与相处连续性分别记录，未通过前不宣布 M1 整体完成。
+
 
 
 
