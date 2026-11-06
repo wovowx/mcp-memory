@@ -1,6 +1,7 @@
 // 阶段4：Router/注册表/DDL parser/Patch Engine 隔离 Mock 契约回归（2026-10-27）
 // 运行：从仓库根目录执行 node tests/router_registry_contract_test.mjs
 import { handleMCPRequest } from '../src/modules/mcp_router.js';
+import { readFileSync } from 'node:fs';
 import { handleDatabaseTool } from '../src/tools/database.js';
 import { parseColumnDefinitions, quoteDdlIdentifier } from '../src/modules/database/ddl_parser.js';
 import { handleGitHubTool } from '../src/tools/github_v64.js';
@@ -16,6 +17,31 @@ import { CHAT_TOOL_DEFS } from '../src/tools/chat_mcp.js';
 const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock-anon-key' };
 let pass = 0, fail = 0;
 function check(name, cond, extra = '') { if (cond) { pass++; console.log('  ✅ ' + name); } else { fail++; console.log('  ❌ ' + name + ' ' + extra); } }
+
+console.log('\n[Workers Logs persisted-invocation configuration contract]');
+{
+  const config = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
+  const section = name => {
+    const headings = config.split(/\r?\n/);
+    const start = headings.findIndex(line => line.trim() === '[' + name + ']');
+    if (start < 0) return null;
+    const lines = [];
+    for (let i = start + 1; i < headings.length && !/^\s*\[/.test(headings[i]); i++) lines.push(headings[i]);
+    return lines.join('\n');
+  };
+  const observed = section('observability');
+  const logs = section('observability.logs');
+  check('persistent Workers Logs enabled in dev Wrangler without touching runtime secrets',
+    Boolean(observed && /^\s*enabled\s*=\s*true\s*$/m.test(observed)) &&
+    !/^\s*(?:CLOUDFLARE_API_TOKEN|GITHUB_TOKEN)\s*=/m.test(config));
+  check('invocation log capture and diagnostic sampling configured explicitly',
+    Boolean(logs && /^\s*invocation_logs\s*=\s*true\s*$/m.test(logs)) &&
+    /^\s*head_sampling_rate\s*=\s*1\s*$/m.test(logs));
+  check('Workers Logs configuration occurs once and retains existing cron',
+    config.split('[observability]').length === 2 &&
+    config.split('[observability.logs]').length === 2 &&
+    section('triggers')?.includes('crons = ["* * * * *"]'));
+}
 
 console.log('\n[Cloudflare read-only Observability log query contracts]');
 {
