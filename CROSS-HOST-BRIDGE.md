@@ -3392,6 +3392,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - 当前只同步文档/检查点，无L2代码、业务记忆或schema变更，无PR/main/部署。本文追加会使dev文档HEAD前移，不改变上述L1代码测试基线；自动CI若触发，其结果须另外查询，不在此宣称通过。
 - 这是状态交接，不派发Operit任务、不要求付费测试。下一步由柳柳验收L2原型；未经明确批准不进入L2编码。每次main发布另报实际收益、版本、范围、测试与回滚。
 
+### [2026-11-06] GPT → Operit · Session Core Context v0.2 · dev 实施与 E1/E2 PASS
+
+- **授权范围**：柳柳验收 L2 Core v0.2 技术原型并回复「好」，授权仅在 \`mcp-memory/dev\` 实施及隔离 E1/E2；不包括 PR、main 合并、Worker 部署/E3、Supabase registry/DB Schema、真实业务记忆或聊天室/唤醒。
+- **实现范围**：\`src/modules/session/bootstrap.js\` 扩展现有 \`session_context\` optional \`include_core:boolean\`，默认 false；显式 true 返回 \`core_contract_version=CORE-0.2\` 与五个权威来源完整块。\`session_bootstrap\` 名称、Schema、摘要响应保持不变；旧 \`session_context\` 不传参数仍不返回私人全文。复用同一只读五源快照，每个精确来源只 GET 一次，Bootstrap/Context/Core 共用投影；移除 Context 对检查点的重复读取。检查点完整提取当前覆盖段、排除历史段，取消旧 6500 字符截断。
+- **预算与降级**：24,000 Unicode code points；完整块按身份→当前检查点→主档→协议→导航排序，topic 结果最后并计入剩余预算；不硬切来源正文。每块返回 source_key/version/updated_at/complete/omitted_reason；identity/checkpoint 缺失或无效为 BLOCKED，预算不足/可选来源缺失为 DEGRADED，关键块不完整时 \`permitted_next_step=read_only_recovery\`。显式 opt-in 仍不授予写权限。
+- **回归覆盖**：\`tests/session_bootstrap_contract_test.mjs\` 新增 tools/list Schema、dispatch boolean guard、旧调用隐私兼容、五源单次 GET、Unicode code point、长检查点末尾限制、历史排除、完整块预算、topic 后置预算、缺失/无效/降级与零写入合同。最终代码/测试精确 SHA \`6411d4f17ecdee338b4cb214636f7bf1220c2940\`，package candidate \`v6.43.0\`；GitHub Actions \`learning-regression\` run [42146323527](https://github.com/wovowx/mcp-memory/actions/runs/42146323527) SUCCESS，E1 \`npm run check\` PASS，Session Bootstrap + Session Context + Core **56/56**，全 workflow 17 项 steps SUCCESS。最终序列化响应大小独立测量，合成合同 fixture <256 KiB。
+- **边界**：本次只改 \`src/modules/session/bootstrap.js\`、\`tests/session_bootstrap_contract_test.mjs\`、\`package.json\`、\`CHANGELOG.md\`；未改 Router、Supabase registry、DB/schema、真实记忆、聊天室/唤醒或生产密钥。\`mcp-memory/main\` 仍 v6.41.0 / SHA \`5e4cf739a5ffd21c0434db96217267edb2af57bd\`，Cloudflare Worker #535 / deployment \`fb40fed3\` 未变；没有 PR/main/部署/Worker E3。ChatGPT/Operit 是否实际接收完整正文、冷启动自动触发、工作/相处行为验收均 **NOT RUN / NOT VERIFIED**，不能以服务端 Mock PASS 冒充宿主通过。
+- **下一步**：L2 服务端 dev 实施与 E1/E2 CLOSED；宿主接收/首次回应仍需在有获批发布版本后分别验收。任何 main 发布必须另行提交用户可感知收益、准确净 diff、测试、部署影响与回滚说明，并取得柳柳对该版本的单独批准。
+
+
 
 
 
