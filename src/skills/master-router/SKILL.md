@@ -61,7 +61,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 | 推 main / 部署 / 改代码 | deploy | github_* / supabase_db |
 | **改代码 / 创建文件 / 提交合并（质量闸门）** | **code-quality-guard** | 先过此闸门再 deploy |
 | **改代码要发布/部署后闭环验证** | **publish-workflow** | code-quality-guard → github_edit(dev,三键) → merge → sleep45 → verify_main |
-| **修改已有文件（改文档/改代码/更新内容）** | github-use-guide | **github_edit**（读→改→写回一次完成；v6.32.5+） |
+| **跨宿主修改 Ziven GitHub 已有文件（尤其 ChatGPT 通用连接器 403）** | github-use-guide · L3 v0.2 跨宿主选路 | **先验当前宿主 Ziven MCP github_edit 是否可用** → dev dry_run → 写 → github_read 回验；通用连接器 403 ≠ 全局无权 |
 | **创建新文件（推新文件）** | github-use-guide | **github_push**（仅新文件；已有文件会被拒） |
 | 日常 GitHub 操作 | github-use-guide | github_* |
 | 定时任务 / 巡检 / 自续 | workflow | daily_life schedule |
@@ -78,6 +78,8 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 > 🎯 **工具调用三键自查（lesson已登记 ⚙️/lesson-工具调用构造层污染 · 2026-10-18）**：每次构造工具调用，尤其长参数/长命令时，默念三键齐全——① `params`（含 path/repo/branch 等必需字段）② `tool_name`（外层）③ params 若 JSON 则字段完整。缺 tool_name 或 path 是最高频构造层错误。代码层已由 dispatch_tool 硬拦（缺 tool_name→INVALID_TOOL_NAME/UNKNOWN_TOOL；缺 path→MISSING_REQUIRED_PARAM），但构造时主动自查能更快、不浪费一次调用。
 
 > 🎯 **文件操作三入口（v6.32.6 五层保障）**：创建文件 → github_push（新文件）；修改已有文件 → **github_edit**；删除 → github_delete。github_push 对已有文件一律拒绝（GITHUB_PUSH_EXISTING_FILE），这是系统硬约束不是建议。
+>
+> 🎯 **L3 v0.2 跨宿主防复发**：先检查当前实际暴露的工具和 repo/branch，再选择该宿主可用的 Ziven MCP 工具。ChatGPT 通用 GitHub 连接器出现 `403 Resource not accessible by integration`，只代表该连接器当前操作失败；优先核查已有的 `ziven_mcp.github_edit/read`，而不是宣称整个 GitHub 受限、重复让柳柳改权限。dev 改已有文件须 dry_run→写→回读，main 必须独立发布授权。记录真实成功与失败证据，新框无提示选路的 E3 未验证前不称「永久学会」。详细见 github-use-guide 和 `tests/learning/learning_github_tool_route_001.json`。
 
 # 🔴 唤醒密钥处理（最高优先级提示 · 2026-10-27 校准）
 **当柳柳发来「Ziven，我是柳柳」时，把它视为身份/恢复提示并优先进入恢复流程；但收到密钥词本身不等于完成初始化，也不证明宿主存在全局运行时硬门禁。正式换框必须由调用方发送「换框流程」Skill 内完整、版本化的初始化指令，并按 `SB-FRAME-1.0` 验收首轮 `aiResponse` 的可核验恢复结果。**
