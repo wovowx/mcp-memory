@@ -2,6 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
+## [Unreleased] - 2026-11-06（L5 v0.3 记忆可信度解释报告 · 仅 dev 候选）
+
+### 柳柳能得到什么
+- 合成记忆体检示例现在除了机器状态，还能以中文解释「当前有效只是状态」「性质未标注不等于 fact」「未见结构化来源引用不等于原记忆无来源」「agreement 确认依据尚未核验」「Core 正文可读性未经证实」。不产生真实性分数，也不声称模型已知道用户真实来源。
+- 对已发布的 `mapMemoryMetadata` 判定不改动，只新增 `explainMemoryLayerRow(mapped)` 纯只读解释函数，在 `memory-layer:preview` 固定合成 fixture 输出中**增量附加** `explanations`；旧 `memory_rows`、`reflection_candidates` 和字段合同保持原样。
+
+### 测试与授权范围
+- 柳柳已经看过解释报告原型并回复「好」，仅批准 dev 代码、治理文档、合成 E1/E2；没有批准 PR/main/Worker 新版本或更改 DB/私人记忆。
+- 合同测试扩展「来源缺失/存在≠真实证明、type null、agreement 未核验、Core 输入侧正文标记与宿主 E3 区别、Archive 状态边界、卡片不复制 raw id/key/source_ref、unknown issue 安全降级、determinism/no-write/无网络」。GitHub Actions 独立完成后按 dev HEAD 记录真实结果，不提前宣称生产验收。
+- 不新增数据库字段、公开 MCP 工具、依赖、私人元数据抽样、Schema、召回排序或 ChatGPT/Operit 宿主启动逻辑；生产仍 **v6.50.0 / Worker #544**。正式语义版本号留待下一张完整发布单经柳柳独立确认。
+
+---
+
 ## [v6.50.0] - 2026-11-06（记忆分层只读预览与发布后状态交接）
 
 ### 柳柳能得到什么
