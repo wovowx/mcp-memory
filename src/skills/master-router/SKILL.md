@@ -61,6 +61,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 | 推 main / 部署 / 改代码 | deploy | github_* / supabase_db |
 | **改代码 / 创建文件 / 提交合并（质量闸门）** | **code-quality-guard** | 先过此闸门再 deploy |
 | **改代码要发布/部署后闭环验证** | **publish-workflow** | code-quality-guard → github_edit(dev,三键) → merge → sleep45 → verify_main |
+| **修改已有文件（改文档/改代码/更新内容）** | github-use-guide | **github_edit**（读→改→写回一次完成；v6.32.5+） |
 | **跨宿主修改 Ziven GitHub 已有文件（尤其 ChatGPT 通用连接器 403）** | github-use-guide · L3 v0.2 跨宿主选路 | **先验当前宿主 Ziven MCP github_edit 是否可用** → dev dry_run → 写 → github_read 回验；通用连接器 403 ≠ 全局无权 |
 | **创建新文件（推新文件）** | github-use-guide | **github_push**（仅新文件；已有文件会被拒） |
 | 日常 GitHub 操作 | github-use-guide | github_* |
