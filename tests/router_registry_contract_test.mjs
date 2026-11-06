@@ -114,6 +114,114 @@ console.log('\n[Cloudflare read-only Observability log query contracts]');
   check('Cloudflare no results shape fails closed instead of returning EMPTY',
     JSON.parse(await handleCloudflareLogsQuery({}, credentials, await response(200, {success:true,result:{}}))).reason === 'invalid_response_shape');
   check('Cloudflare synthetic test executed only bounded local mock calls', networkCalls === 2);
+
+  // Official Workers Observability schema scenarios; synthetic only, no network.
+  const inspectEvent = async event => {
+    const read = await handleCloudflareLogsQuery({ limit: 1 }, credentials, async () => ({
+      ok: true, status: 200,
+      json: async () => ({ success: true, result: { events: { count: 1, events: [event] } } })
+    }), 1800000000000);
+    return { text: read, event: JSON.parse(read).events?.[0] };
+  };
+  const workerMeta = extra => ({ service: 'mcp-memory', startTime: 1800000000000, ...extra });
+  let inspected = await inspectEvent({
+    $metadata: workerMeta({ type: 'cf-worker-event', trigger: 'POST /mcp',
+      url: 'https://worker.example/mcp?Authorization=PRIVATE_QUERY', statusCode: 201 }),
+    $workers: { eventType: 'fetch', outcome: 'ok',
+      event: { request: { method: 'POST', url: 'https://worker.example/mcp?secret=PRIVATE_QUERY' } } },
+    source: { headers: { authorization: 'PRIVATE_HEADER' }, body: 'PRIVATE_BODY' }
+  });
+  check('Cloudflare official fetch event classifies before extracting HTTP fields',
+    inspected.event?.event_kind === 'http' &&
+    inspected.event?.method === 'POST' && inspected.event?.path === '/mcp' &&
+    inspected.event?.status_code === 201 && inspected.event?.outcome === 'ok');
+  check('Cloudflare field mapping returns no raw nested events, secrets or URL queries',
+    !inspected.text.includes('PRIVATE_QUERY') && !inspected.text.includes('PRIVATE_HEADER') &&
+    !inspected.text.includes('PRIVATE_BODY') && !inspected.text.includes('worker.example'));
+  inspected = await inspectEvent({
+    $metadata: workerMeta({type:'cf-worker-event',trigger:'* * * * *',statusCode:200}),
+    $workers: { eventType:'scheduled', outcome:'ok', event: { cron:'* * * * *' } }
+  });
+  check('Cloudflare cron invocation is scheduled, never fabricated HTTP 200 or /mcp',
+    inspected.event?.event_kind === 'scheduled' && inspected.event?.method === null &&
+    inspected.event?.path === null && inspected.event?.status_code === null &&
+    inspected.event?.outcome === 'ok');
+  inspected = await inspectEvent({
+    $metadata: workerMeta({type:'cf-worker-log',trigger:'POST /mcp',statusCode:200,
+      message:'PRIVATE_MESSAGE'}),
+    $workers: {eventType:'fetch', event: { request: {method:'POST',url:'https://example.test/mcp?private=1'} }},
+    source: 'PRIVATE_SOURCE'
+  });
+  check('Cloudflare custom runtime logs do not pretend to be HTTP invocations',
+    inspected.event?.event_kind === 'runtime_log' && inspected.event?.method === null &&
+    inspected.event?.path === null && inspected.event?.status_code === null &&
+    inspected.event?.outcome === 'unknown' && !inspected.text.includes('PRIVATE_'));
+  inspected = await inspectEvent({
+    $metadata: workerMeta({ type:'cf-worker-event',statusCode:503 }),
+    source: 'POST /mcp 200 fake'
+  });
+  check('Cloudflare unknown event does not infer HTTP from raw source or status',
+    inspected.event?.event_kind === 'unknown' && inspected.event?.method === null &&
+    inspected.event?.path === null && inspected.event?.status_code === null);
+  inspected = await inspectEvent({
+    $metadata: workerMeta({type:'cf-worker-event'}),
+    $workers: {eventType:'queue',outcome:'exception'}
+  });
+  check('Cloudflare non-HTTP queue uses other classification and verified worker exception',
+    inspected.event?.event_kind === 'other' && inspected.event?.method === null &&
+    inspected.event?.status_code === null && inspected.event?.outcome === 'error');
+  inspected = await inspectEvent({
+    $metadata: workerMeta({type:'cf-worker-event',trigger:'GET /mcp?token=PRIVATE_QUERY'})
+  });
+  check('Cloudflare anchored HTTP trigger safely extracts whitelisted path without status fabrication',
+    inspected.event?.event_kind === 'http' && inspected.event?.method === 'GET' &&
+    inspected.event?.path === '/mcp' && inspected.event?.status_code === null &&
+    inspected.event?.outcome === 'unknown' && !inspected.text.includes('PRIVATE_QUERY'));
+  inspected = await inspectEvent({
+    $metadata: workerMeta({type:'cf-worker-event'}),
+    $workers: {eventType:'fetch',outcome:'ok',event: {
+      request:{method:'POST',url:'https://worker.test/mcp?token=PRIVATE_QUERY'}
+    }}
+  });
+  check('Cloudflare worker event.request nested fields work without top-level request',
+    inspected.event?.event_kind === 'http' && inspected.event?.method === 'POST' &&
+    inspected.event?.path === '/mcp' && inspected.event?.status_code === null &&
+    inspected.event?.outcome === 'ok' && !inspected.text.includes('PRIVATE_QUERY'));
+  inspected = await inspectEvent({
+    $metadata: workerMeta({ type:'cf-worker-event', method:'POST', url:'https://worker.test/mcp',
+      trigger:'POST /mcp',statusCode:502 }),
+    $workers: { eventType:'fetch', event:{request:{ method:'GET',
+      url:'https://worker.test/not-allowed?private=INVISIBLE'}} }
+  });
+  check('Cloudflare conflicting HTTP methods and URL paths fail closed',
+    inspected.event?.event_kind === 'http' && inspected.event?.method === null &&
+    inspected.event?.path === null && inspected.event?.status_code === 502 &&
+    inspected.event?.outcome === 'error' && !inspected.text.includes('INVISIBLE'));
+  inspected = await inspectEvent({
+    $metadata: workerMeta({type:'cf-worker-event',trigger:'POST /mcp extra',url:'/unsafe'}),
+    source:'POST /mcp PRIVATE_FAKE'
+  });
+  check('Cloudflare ambiguous or malformed triggers cannot manufacture /mcp',
+    inspected.event?.event_kind === 'unknown' && inspected.event?.method === null &&
+    inspected.event?.path === null && !inspected.text.includes('PRIVATE_FAKE'));
+  inspected = await inspectEvent({
+    $metadata: workerMeta({ type:'cf-worker-event', trigger:'POST /mcp',
+      statusCode:201, spanStatus:'error',traceId:'trace-safe_123' }),
+    $workers: {eventType:'scheduled'}
+  });
+  check('Cloudflare conflicting trigger and scheduled event type stays unknown',
+    inspected.event?.event_kind === 'unknown' && inspected.event?.method === null &&
+    inspected.event?.status_code === null && inspected.event?.trace_id === 'trace-safe_123');
+  inspected = await inspectEvent({
+    $metadata: workerMeta({type:'cf-worker-event',trigger:'POST /mcp',statusCode:404}),
+    $workers: {eventType:'fetch',outcome:'ok'}
+  });
+  check('Cloudflare runtime outcome is distinct from HTTP status code',
+    inspected.event?.event_kind === 'http' && inspected.event?.status_code === 404 &&
+    inspected.event?.outcome === 'ok');
+  check('Cloudflare log event fixture back-compat includes a bounded event_kind enum',
+    data?.events?.every(e => ['http','scheduled','runtime_log','other','unknown'].includes(e.event_kind)) !== false);
+
 }
 
 console.log('\n[Cloudflare provider contracts] deploy status, deploy detail, build logs and verify_main');
