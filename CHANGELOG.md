@@ -2,7 +2,7 @@
 
 所有重要变更将记录在此文件中。
 
-## [Unreleased · v6.51.0 候选] - 2026-11-06（L5 完整记忆体检入口 · 仅 dev）
+## [v6.51.0] - 2026-11-06（L5 记忆体检完整场景入口）
 
 ### 这版要真正交付给柳柳什么
 - 只需使用现有 `memory(action=health_check)`，不必自己串联数据库、映射器和解释函数，即可获得中文体检报告。默认 `mode=demo` 用固定合成数据，不读取任何真实记忆；报告包括 Core/Long-term/Reflection/Archive/待确认候选计数、待核验核心、匿名逐条解释和来源疑点，不宣称「有效状态=事实可信」。
@@ -11,7 +11,7 @@
 
 ### 验收与生产边界
 - 增加独立 `tests/memory_health_contract_test.mjs` 17 个场景合同、`test:memory-health` 脚本和 CI 步骤，覆盖 demo 零读、逐次确认门槛、限制预算、明确 select 和 GET-only、去重、错误/部分成功、匿名输出、异常响应字段剥离、无 usage 写入；扩展 Router tools/list/dispatch 合同。仍需以最终 dev HEAD CI 为准，不能把本地 Mock 等同线上 E3。
-- 本候选集合也包含下方 L5 v0.3 已验证的中文解释器；适合在一张完整发布单中整体验收。**当前仅 dev 候选，不代表已经推 main 或 Cloudflare 自动部署。** 真实 sample 本轮未执行，不重复使用 v0.2 的一次性读取授权；首次生产 E3 / ChatGPT 与 Operit 宿主工具刷新 / 正式 main 合并都要另获柳柳批准。聊天室/唤醒、Schema 数据库表、真实记忆、生产 Secret、持久日志费用配置均不改。
+- 本版也包含下方 L5 v0.3 已验证的中文解释器。**柳柳已在完整 v6.51.0 发布单后单独同意本版 dev→main/Cloudflare 发布；实际部署状态须以 PR merge、main SHA 和 Worker `verify_main` 独立核验为准。** 真实 sample 本轮未执行，不重复使用 v0.2 的一次性读取授权；首次生产 E3 / ChatGPT 与 Operit 宿主工具刷新另需独立验收。聊天室/唤醒、数据库 Schema/真实记忆、生产 Secret、持久日志费用配置均不改。
 
 ### L5 v0.3 · 原有中文可信度解释报告（随候选保留）
 
