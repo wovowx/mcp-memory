@@ -168,6 +168,121 @@ console.log('\n[Retired-key history contracts]');
         output.includes('previous value [type=quote]') && output.includes('corrected value [type=agreement]'));
 }
 
+console.log('\n[L4 Archive explicit-key evidence and no-write contracts]');
+{
+    const requests = [];
+    const key = 'archive/retired example';
+    const records = [
+        { id: 'history-a', key, value: 'retired legacy content', status: 'deleted',
+          valid_to: '2026-11-04T12:00:00Z', version: 2, type: null,
+          source_ref: 'synthetic:origin-a', created_at: '2026-11-01T00:00:00Z' },
+        { id: 'history-b', key, value: 'later version', status: 'active',
+          valid_to: null, version: 3, type: 'agreement',
+          source_ref: 'synthetic:origin-b', created_at: '2026-11-05T00:00:00Z' }
+    ];
+    let mode = 'complete';
+    const events = id => [{
+        id: 'evt-' + id, event_type: 'update', version: 2,
+        created_at: '2026-11-04T12:00:00Z', old_value: 'initial text',
+        new_value: { value: 'revised text', type: 'agreement' }, reason: 'correction'
+    }];
+    globalThis.fetch = async (url, opts = {}) => {
+        const requestUrl = String(url);
+        const method = (opts.method || 'GET').toUpperCase();
+        requests.push({ url: requestUrl, method });
+        if (method !== 'GET') throw new Error('Archive made a forbidden write');
+        if (requestUrl.includes('/rest/v1/memories?key=')) {
+            if (mode === 'records_network') throw new Error('synthetic disconnect');
+            if (mode === 'records_http') return { ok: false, status: 503 };
+            if (mode === 'records_json') return { ok: true, status: 200, json: async () => { throw new Error('synthetic malformed JSON'); } };
+            return { ok: true, status: 200, json: async () =>
+                mode === 'records_shape' ? { rows: [] } : mode === 'empty' ? [] : records };
+        }
+        if (requestUrl.includes('/rest/v1/memory_events?memory_id=')) {
+            const id = requestUrl.includes('history-a') ? 'history-a' : 'history-b';
+            if (mode === 'events_http' && id === 'history-a') return { ok: false, status: 503 };
+            if (mode === 'events_shape' && id === 'history-a') return { ok: true, status: 200, json: async () => ({ rows: [] }) };
+            if (mode === 'events_network' && id === 'history-a') throw new Error('synthetic offline');
+            if (mode === 'events_empty') return { ok: true, status: 200, json: async () => [] };
+            if (mode === 'missing_new') {
+                return { ok: true, status: 200, json: async () => [{ ...events(id)[0], new_value: null }] };
+            }
+            return { ok: true, status: 200, json: async () => events(id) };
+        }
+        throw new Error('unexpected L4 mock URL: ' + requestUrl);
+    };
+
+    let output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 complete archive reports OK with provenance, IDs and version',
+        output.includes('[history_status=OK]') && output.includes('synthetic:origin-a')
+        && output.includes('history-b') && output.includes('v3') && output.includes('事件记录时间='));
+    check('L4 old string and typed JSON history values preserve source meaning',
+        output.includes('initial text') && output.includes('revised text [type=agreement]'));
+    check('L4 never promotes retired history to the active/current state',
+        output.includes('已软删除') && output.includes('当前有效') && output.includes('retired legacy content'));
+    check('L4 labels recorded timestamps, not user event times',
+        output.includes('事件账本记录时间，不代表现实事件发生时间'));
+    check('L4 history reads by encoded exact key and never filters active-only',
+        requests.some(r => r.url.includes('key=eq.archive%2Fretired%20example')
+            && !r.url.includes('status=eq.active')) && requests.every(r => r.method === 'GET'));
+    check('L4 calls only existing memory/event REST endpoints',
+        requests.every(r => r.url.includes('/rest/v1/memories?key=') || r.url.includes('/rest/v1/memory_events?')));
+
+    mode = 'empty';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 empty is only produced by a successful empty records response',
+        output.includes('[history_status=EMPTY]'));
+    mode = 'records_http';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 failed records HTTP is ERROR, not fabricated EMPTY',
+        output.includes('[history_status=ERROR]') && !output.includes('status=EMPTY'));
+    mode = 'records_network';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 network read error is ERROR with stable code', output.includes('network_error') && output.includes('[history_status=ERROR]'));
+    mode = 'records_json';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 records JSON decoding error is not a false empty result', output.includes('invalid_json') && output.includes('[history_status=ERROR]'));
+    mode = 'records_shape';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 invalid records response shape is ERROR', output.includes('invalid_response_shape') && output.includes('[history_status=ERROR]'));
+
+    mode = 'events_http';
+    const partialRows = await getMemoryHistoryByKey(env, key, { tolerantEvents: true });
+    check('L4 tolerant event read preserves good records and distinguishes failed ledger',
+        partialRows.length === 2 && partialRows[0].events === null
+        && partialRows[0].event_error?.code === 'http_error'
+        && partialRows[1].events?.length === 1);
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 event HTTP failure reports PARTIAL with retained evidence',
+        output.includes('[history_status=PARTIAL]') && output.includes('history-b')
+        && output.includes('event_read_http_error') && !output.includes('status=EMPTY'));
+    mode = 'events_shape';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 malformed event list cannot be described as no events',
+        output.includes('[history_status=PARTIAL]') && output.includes('event_read_invalid_response_shape'));
+    mode = 'events_network';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 event network outage yields PARTIAL with stable diagnostic',
+        output.includes('event_read_network_error'));
+    mode = 'events_empty';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 empty event ledger is an acknowledged evidence gap, not proof of no updates',
+        output.includes('[history_status=PARTIAL]') && output.includes('不能据此断定从未修改'));
+    mode = 'missing_new';
+    output = await handleMemoryTool('memory', { action: 'history', key }, env);
+    check('L4 legacy missing new_value is explicitly UNKNOWN and PARTIAL',
+        output.includes('[history_status=PARTIAL]') && output.includes('new_value_unknown')
+        && output.includes('UNKNOWN（new_value 缺失）'));
+
+    mode = 'complete';
+    const callsBeforeMissingKey = requests.length;
+    output = await handleMemoryTool('memory', { action: 'history', key: '' }, env);
+    check('L4 absent exact key rejects without any read or write',
+        output.includes('需要 key') && requests.length === callsBeforeMissingKey);
+    check('L4 all synthetic paths remain GET-only with zero business writes',
+        requests.length > 10 && requests.every(r => r.method === 'GET'));
+}
+
 console.log('\n[Lifecycle contracts]');
 {
     const calls = [];
