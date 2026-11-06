@@ -51,7 +51,7 @@ function currentCheckpointOverlay(value) {
     if (typeof value !== 'string' || !value.trim()) return null;
     // A versioned current overlay precedes all preserved historical snapshots.
     // Keep the entire current segment: authorization boundaries may follow long evidence.
-    return value.split(/\n---\s*(?:旧工作检查点|以下为历史|以下为旧|历史检查点)/)[0];
+    return value.split(/(?:^|\n)---\s*(?:旧工作检查点|以下为历史|以下为旧|历史检查点)/)[0];
 }
 
 export function parseCheckpoint(value) {
