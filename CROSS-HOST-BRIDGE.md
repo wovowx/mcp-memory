@@ -3474,6 +3474,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **重要授权门禁**：生产仍 v6.46.0/main `2c94f0444ee5d56c39739beca73abd7496921610` / Worker #540 deployment `f710f2b7` VERIFIED。v6.47.0 **没有获得 PR/main/Worker 发布许可**。若发布将开启持久日志采样，涉及请求元数据留存及计费；必须另向柳柳报告设置、采样率、费用/保留、回滚基线并获单独批准。日志字段过滤不匹配也是 EMPTY 的可能原因，启用存储并不保证马上能查到数据。L5 暂缓；M1 full Core 宿主安全拦截独立 OPEN。
 - **当前治理**：ZivenLab/dev Roadmap v1.65 / 当前项目状态 version196；云端当前工作检查点待本条结果同步。Bridge 是 dev 交接工件，不应为记录状态额外创建 main/Worker 发布。
 
+### [2026-11-06] GPT → Operit · v6.47.0 正式发布 · Worker #541 VERIFIED / Cloudflare Logs E3 有数据
+- **柳柳逐版本许可**：看到 v6.47.0 的生产持久日志配置、100% 采样、Cloudflare Logs 用量/保留及潜在费用、dev CI 和回滚 v6.46.0 的完整信息后明确回复「好」。**这是 v6.47.0 PR/main/Worker 自动部署的单独授权，已执行完毕；不是其他权限/配置/版本的开放授权**。
+- **PR/main/CI 实证**：PR [#334](https://github.com/wovowx/mcp-memory/pull/334) head=dev `36057a0234f37281d20e2ca1ac10840964ef5848`、base=main `2c94f0444ee5d56c39739beca73abd7496921610`，main...dev ahead6/behind0、净5文件；PR CI [#42184550315](https://github.com/wovowx/mcp-memory/actions/runs/42184550315) `SUCCESS`，clean/rebaseable。Rebase merge 完毕，独立 GitHub API 确认 `merged=true/state=closed`；合并时 main=dev=`bedaa2b2dd0e71a3a52cc43af9b4b906ed253a82` (ahead0/behind0)，main CI [#42184635365](https://github.com/wovowx/mcp-memory/actions/runs/42184635365) SUCCESS，dev CI [#42184638419](https://github.com/wovowx/mcp-memory/actions/runs/42184638419) SUCCESS。GitHub Pages 旧单独工作流失败与 Worker 发布无关，仍暂停、不修。
+- **Cloudflare 生产实证**：Worker **#541** / deployment `42551af3` / version hash `94a1675f` (wrangler)，`cloudflare_deploy_status(verify_main=true)` 回 `VERIFIED`，指向 main `bedaa2b2...`。生产 Wrangler 已加入 `[observability] enabled=true`、`[observability.logs] invocation_logs=true,head_sampling_rate=1`（100%），Cloudflare 平台留存与用量需按账户计划监控。上版回滚参考 v6.46.0/main `2c94f044...` / Worker #540 deployment `f710f2b7`。
+- **真正的 E3 业务验证**：部署后执行一次虚构不存在 key `memory(action=recall,key='__ziven_worker_logs_e3_20261106_v647_synthetic_absent__')`，正常返回「没有找到」，不写记忆。随后真实执行 `cloudflare_logs_query({minutes:15,limit:20,status_filter:'all'})`，第一次回 `status=OK/fetched_count=1/reported_count=1`；第二次回 `status=OK/fetched_count=3/reported_count=3`。三条日志具有 UTC 时间戳及脱敏 trace_id，没有输出原始请求正文/秘密；**已证实存储日志查询链路确实返回事件、Token 查询权限可用**。
+- **精度缺口（不伪报完全闭环）**：E3 的 method、path、status_code 都为 null、outcome=unknown。事件并没有与上述 recall 精确关联；不能声称已定位此前 OpenAI 拦截根因。日志存储/查询 E3 PASS，**请求级事件字段映射/调用关联仍 OPEN**，如果要优化须先讨论真实 API 字段 Schema 的脱敏映射方案，另行开发/测试/逐版本发布。M1 full private Core 仍 BLOCKED_BY_HOST_SAFETY；L5 轻量存量体检保持暂缓。
+- **文档权威**：ZivenLab/dev/governance/roadmap.md v1.67、当前项目状态.md version198；云端 `⚙️/当前工作检查点` 随后更新。此 Bridge 仅加到 dev 做跨宿主交接，**不视为新生产代码变更、不自动再发 PR/main/Worker**。交接 commit 后应再次校验 dev SHA/CI 和 main...dev 净差异。
+
+
 
 
 
