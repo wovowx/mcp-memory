@@ -3572,6 +3572,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **验收范围**：本地 `npm run check`、L5原合同、`test:memory-health`、Router、Memory Core、Session、Reflection、检索、GitHub、Webhook、Learning 回归均已实测 exit0；`test:memory-health` **17/17**、Router **220/220**，最终 GitHub Actions 以推 dev 后精确 SHA 独立验收，暂不得称线上成功。实验仅用固定合成/Mock，不读真实用户正文、无生产数据写入、无生产 deploy。
 - **生产/发布状态**：本段是 `v6.51.0` dev 候选，仍须后续完整发布单（用户收益、范围、CI、影响、回滚），柳柳独立批准才能 PR/main→Worker；原生产 v6.50.0 / Worker #544 不变。真实 sample 的授权和 ChatGPT/Operit 宿主 E3 未取得、不运行；M1 的新框人格/工作双连续性 E3 继续 OPEN。
 - **dev 验收补正（2026-11-06）**：最终采用可复用 `layer_mapper.js` 纯基础层 + 独立 `health_check.js` 场景层，通过现有 `github_copy`→`github_edit` 直接写 GitHub/dev，未向生产 Worker `/upload` 或 Supabase Storage/files 表上传源代码。`mcp-memory/dev` 代码与测试校验 SHA `8d7b9102421b8be49dc6ba49366b161762b22c02`，与本地实现的净内容一致；GitHub Actions [learning-regression #42226987987](https://github.com/wovowx/mcp-memory/actions/runs/42226987987) 对此 SHA **SUCCESS**（含 L5 health 17/17、mapper 36/36、Router 220/220、release guard、学习/其他回归）。相对 main 净14文件/ahead29/behind0；`main`、Cloudflare 生产 v6.50.0/#544 未改变。后续仅需提交 v6.51.0 版本发布单给柳柳决定；不得自动合并 main、运行真实 `sample` 或宣称宿主 E3 通过。
+
+## 2026-11-06 · GPT→Operit：v6.51.0 正式发布核验与下一动作
+
+- **柳柳批准范围**：柳柳已在收到版本号、用户收益、14路径净差异、CI、风险、回滚和 main/Cloudflare 影响的完整发布单后回复「好」，批准 v6.51.0 dev→main；该许可**不含**额外私人记忆 sample 读取或唯一云端工作检查点写入。
+- **PR/分支证据**：PR [#338](https://github.com/wovowx/mcp-memory/pull/338) rebase；独立 GET 确认 `state=closed, merged=true, head=dev, base=main`。main=dev=`25ad6b983e53dfd7a948779837168d8bc43eb5f9`，相对分支差异 0/0；main 的 [learning-regression #42229364411](https://github.com/wovowx/mcp-memory/actions/runs/42229364411) SUCCESS。独立旧 Pages workflow 仍有已暂停 FAIL，不作为 Worker 结果。
+- **Worker 权威证据**：Cloudflare Worker **#545** / version `4638cfac` / deployment `ba408cdd`，`cloudflare_deploy_status(verify_main=true)` 返回 **VERIFIED**，匹配 main `25ad6b98`。持久日志默认关闭、未变 Secrets/DB Schema/真实记忆/聊天室/唤醒。
+- **分离验收**：`DEPLOY_VERIFIED`；现宿主 ChatGPT 的 MCP schema 仍缓存旧 `memory(action)` 枚举，尚不含 `health_check`，故 `HOST_SCHEMA_REFRESH_PENDING`、`health_check(demo)` 端到端 E3 **NOT VERIFIED**；不使用非法参数绕宿主校验，不执行真实 sample。唯一 `⚙️/当前工作检查点` 本轮无独立写入授权，`HANDOFF_UNVERIFIED`；不得把上述部署成功误报为跨会话人格/工作连续性已经验证。
+- **next_action**：先按宿主规则让柳柳刷新 ChatGPT 的 Ziven_MCP 连接并在新会话核验新 action，优先仅调用合成 `demo` 做 E3；随后由 Roadmap 指定下一「一本书」架构闭环。任何真实元数据读取、检查点写入、再次 main 发布均须单独明确确认。
+
 - **跨宿主交接**：Operit 不需为这批合成测试额外消耗 API tokens；如果未来柳柳批准 v6.51.0 发布，使用已有 `memory` 工具并刷新 MCP tool schema 后，分别验证 demo 可见性，不要求把来源正文给宿主或开放默认真实扫描。旧交接保留，以上记录只更新本切片进度。
 
 
