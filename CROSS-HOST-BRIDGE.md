@@ -3511,6 +3511,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **运行态边界**：生产 v6.48.0 仍处于 100% Workers Logs 采样，**本 dev 变更不改变线上计费或留存**；若未来发布 v6.49.0，Cloudflare Git 集成会自动部署默认关闭配置。已产生历史事件按 Cloudflare 保留期管理，不承诺立即删除。原 OpenAI 安全拦截根因仍 UNKNOWN。
 - **验收证据**：本地 `npm run check` exit0（43 JS/import）；Router/Registry 216/216、Webhook 114/114、Memory Core120/120、Session/Core56/56、Reflection35/35、Contents50、Search History20/20、Learning10工件、检索基准16例均 PASS。按需日志四文件写回 dev 均 Verified:true；代码/配置/说明最终候选 dev SHA `326e21d83522c241213c565d8f8fd3ba2557f68f` / [GitHub Actions #42200411403](https://github.com/wovowx/mcp-memory/actions/runs/42200411403) completed SUCCESS，validate 全步骤 SUCCESS。**本条仅为 dev 文档追加回填，提交后应再读最终 HEAD/CI。** E3 NOT RUN、未改生产、未发布 main。
 
+### [2026-11-06] GPT → Operit · v6.49.0 正式发布 · 默认关闭持久日志 / Worker #543 VERIFIED
+- **柳柳独立发布授权**：在收到 v6.49.0 用户收益、日志费用、净7文件/12提交、最终CI及 v6.48.0 回滚基线后，柳柳明确回复「好」，单独同意 dev→main/Worker 自动部署；不包含未来临时开启历史日志的预授权。
+- **GitHub 证据**：PR [#336](https://github.com/wovowx/mcp-memory/pull/336)，head=dev `6d3c3b43f882eb88bfce246aec23e9b9f47cb6d9`、base=main `a788a77d3400d1e7a76729bcc9ed740a00bf5220`、ahead12/behind0、净7文件；PR CI [#42202268613](https://github.com/wovowx/mcp-memory/actions/runs/42202268613) SUCCESS / mergeable clean / rebaseable true；显式 rebase 合并，独立 GET `merged=true,state=closed,merge_commit_sha=74951419f1b05117fda96124d8e85ee463243a6c`。main=dev=`74951419f1b05117fda96124d8e85ee463243a6c` / ahead0/behind0，main [learning-regression #42202357558](https://github.com/wovowx/mcp-memory/actions/runs/42202357558) SUCCESS。原独立 GitHub Pages 工作流 [#42202357376](https://github.com/wovowx/mcp-memory/actions/runs/42202357376) 仍 FAILURE，与 Worker 部署无关、保持冻结不修。
+- **Cloudflare 真实部署**：Worker **#543** / deployment `c47c9f5c` / version `6c13abaa`，`cloudflare_deploy_status(verify_main=true)=VERIFIED` 对应 main `74951419...`。正式生产 `wrangler.toml` `[observability] enabled=false`，持久化日志默认关闭；`invocation_logs=true/head_sampling_rate=1` 仅供未来另行批准临时开启时使用。Live 可实时查看；已产生的历史事件按原保留期，不承诺删除。旧回滚 v6.48.0 会重新启用100%存储，故回滚时必须披露成本。
+- **E3 最小只读检查**：真实 `memory(recall)` 请求合成不存在 key `__ziven_v649_postdeploy_synthetic_absent_20261106__` 正常回“没有找到”，没有写入该记忆；部署后 `cloudflare_logs_query({minutes:1,limit:10,status_filter:'all'})` 返回 `EMPTY/fetched_count=0`，与默认关闭存储一致，但 **EMPTY 不能单独证明记录关闭或请求未抵达**，以部署配置 + verify 为主证据。由于新存储默认关闭，本版**没有**做 `requestId/traceId` 关联的真实 E3；需未来经另行同意临时开启再复现，绝不为了验证扩大日志成本。
+- **结论/边界**：v6.49.0 发布/部署 CLOSED；M1 旧 ChatGPT 宿主安全拦截根因 UNKNOWN，HTTP `status_code` 缺可信数据仍 null。无 DB/schema、业务记忆、密钥、暂停聊天室/唤醒或私人 Core 穿越操作。文档总控拟同步 ZivenLab/dev Roadmap v1.77、当前项目状态 version208。**本交接仅在 dev 文档追加，不是新生产代码发布。**
+
 
 
 
