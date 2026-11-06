@@ -124,25 +124,80 @@ function logPath(value) {
         return p === '/mcp' || p === '/' ? p : null;
     } catch { return null; }
 }
+// Cloudflare's trigger is an invocation label, not a raw URL to forward.
+// Only a single, anchored HTTP method and path/HTTPS URL counts as evidence.
+function parseLogHttpTrigger(value) {
+    if (typeof value !== 'string') return null;
+    const match = /^(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD) (\/\S*|https:\/\/\S+)$/.exec(value);
+    return match ? { method: match[1], path: match[2] } : null;
+}
+function logObject(value) {
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+// Preserve ambiguity: disagreeing or disallowed paths never become fabricated /mcp.
+function verifiedLogValue(candidates, validator, strict = false) {
+    const nonempty = candidates.filter(x => typeof x === 'string' && x.length > 0);
+    const values = nonempty.map(validator);
+    if (strict && values.some(x => x === null)) return null;
+    const known = values.filter(x => x !== null);
+    return known.length && known.every(x => x === known[0]) ? known[0] : null;
+}
+function classifyLogKind(meta, workers, req, workerReq, trigger) {
+    const type = meta.type;
+    if (type === 'cf-worker-log') return 'runtime_log';
+    const eventType = workers.eventType;
+    const hasHttpData = Boolean(trigger) ||
+        (typeof meta.method === 'string' && typeof meta.url === 'string') ||
+        (typeof req.method === 'string' && typeof req.url === 'string') ||
+        (typeof workerReq.method === 'string' && typeof workerReq.url === 'string');
+    const nonFetch = ['scheduled', 'cron', 'alarm', 'queue', 'email', 'tail',
+        'rpc', 'jsrpc', 'websocket', 'workflow'].includes(eventType);
+    if (nonFetch) {
+        // Cloudflare may include contextual fields for non-fetch invocations;
+        // do not reinterpret a scheduled/queue event as an HTTP request.
+        return hasHttpData ? 'unknown' : (eventType === 'scheduled' || eventType === 'cron' ? 'scheduled' : 'other');
+    }
+    if (eventType === 'fetch') return 'http';
+    if (hasHttpData) return 'http';
+    if (type === 'cf-worker-event') return 'unknown';
+    return 'unknown';
+}
 function sanitizeLogEvent(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    const meta = raw.$metadata && typeof raw.$metadata === 'object' ? raw.$metadata : {};
-    // Server filter and local verification: never leak events for other Workers.
+    const meta = logObject(raw.$metadata);
+    // Server filter plus local verification, always fail closed across Workers.
     if (meta.service !== LOG_WORKER) return null;
-    const req = raw.request && typeof raw.request === 'object' ? raw.request : {};
-    const res = raw.response && typeof raw.response === 'object' ? raw.response : {};
-    const status = logStatus(meta.statusCode ?? meta.status ?? res.status);
+    const workers = logObject(raw.$workers);
+    const workerReq = logObject(logObject(workers.event).request);
+    const req = logObject(raw.request); // legacy synthetic and compatible adapters
+    const trigger = parseLogHttpTrigger(meta.trigger);
+    const kind = classifyLogKind(meta, workers, req, workerReq, trigger);
+    const http = kind === 'http';
+    const method = http ? verifiedLogValue([
+        meta.method, workerReq.method, req.method, trigger?.method
+    ], logMethod) : null;
+    const path = http ? verifiedLogValue([
+        meta.url, workerReq.url, req.url, trigger?.path
+    ], logPath, true) : null;
+    // Only documented HTTP statusCode; runtime 'ok' cannot fabricate HTTP 200.
+    const status = http ? logStatus(meta.statusCode) : null;
     const level = typeof meta.level === 'string' ? meta.level.toLowerCase() : null;
+    const workerOutcome = typeof workers.outcome === 'string' ? workers.outcome : null;
     const error = Boolean(meta.error) || meta.spanStatus === 'error' ||
-        level === 'error' || (status !== null && status >= 500);
+        level === 'error' || ['exception', 'exceededCpu', 'exceededMemory'].includes(workerOutcome) ||
+        (status !== null && status >= 500);
+    const ok = workerOutcome === 'ok' || meta.spanStatus === 'ok' ||
+        (status !== null && status >= 200 && status < 400);
     return {
         timestamp: logTime(meta.startTime ?? meta.timestamp ?? raw.timestamp),
         worker: LOG_WORKER,
-        method: logMethod(meta.method ?? req.method),
-        path: logPath(meta.url ?? req.url),
+        event_kind: kind,
+        method,
+        path,
         status_code: status,
-        outcome: error ? 'error' : (status === null ? 'unknown' : 'ok'),
-        trace_id: logId(meta.requestId ?? meta.traceId ?? meta.rayId)
+        outcome: error ? 'error' : (ok ? 'ok' : 'unknown'),
+        trace_id: logId(meta.requestId ?? meta.traceId ?? workers.requestId ?? workers.traceId ?? meta.rayId)
+        // Never return the raw $workers.event, source, messages or headers.
     };
 }
 
