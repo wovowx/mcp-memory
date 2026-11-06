@@ -2,15 +2,10 @@
 // Reuses Memory Core; no chatroom or Agent Runtime dependency.
 import { getCurrentMemoryByKey } from '../memory/repository.js';
 import { getMemoryStats, searchMemoriesWithStatus } from '../memory/retrieval.js';
+import { BOOTSTRAP_KEYS } from './keys.js';
+export { BOOTSTRAP_KEYS } from './keys.js';
 
 export const BOOTSTRAP_CONTRACT_VERSION = 'SB-RUNTIME-0.1';
-export const BOOTSTRAP_KEYS = Object.freeze({
-    identity: '🧬/我是谁',
-    profile: '💕/关于柳柳',
-    navigation: '记忆位置导航（换框/换设备自举·2026-10-18）',
-    checkpoint: '⚙️/当前工作检查点',
-    protocol: '⚙️/恢复协议·Session Bootstrap SB-1.0'
-});
 export const SESSION_BOOTSTRAP_TOOL = Object.freeze({
     name: 'session_bootstrap',
     description: 'P2 跨宿主只读恢复：从唯一云端身份根、工作检查点、协议、导航与实时记忆统计生成可验证的 READY/DEGRADED/BLOCKED 恢复证据；不授予代码/数据库/发布权限，也不保证第三方 App 自动调用。',
