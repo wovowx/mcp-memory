@@ -103,6 +103,97 @@ export function mapMemoryMetadata(input) {
     };
 }
 
+const MEMORY_LAYER_ISSUE_LABELS = Object.freeze({
+    invalid_record_shape: '记录结构无效',
+    record_id_missing: '缺少记录标识，无法独立追溯',
+    key_missing: '缺少精确记忆键名',
+    category_missing: '缺少主题分类',
+    type_missing: '记忆性质尚未标注',
+    type_invalid_or_unmarked: '性质未标注或不在已支持的类型中',
+    provenance_missing: '未见结构化来源引用；不代表记忆没有来源',
+    evidence_refs_invalid_or_empty: '证据引用列表无效或为空',
+    agreement_confirmation_source_unverified: '尚未核实柳柳明确确认这项约定的依据',
+    active_status_with_valid_to: '记录标为活跃，但仍带有失效时间，状态冲突',
+    unknown_status: '记录状态不在已支持范围内',
+    validity_unverified: '无法证明记录当前有效',
+    core_body_unreadable: '启动候选的正文不可读，不能纳入 Core',
+    core_body_readability_unverified: '启动候选正文是否可读尚未核验',
+    possible_duplicate_key: '不同记录可能共用相同键名，需要人工核对'
+});
+
+/**
+ * Readable, metadata-only explanation of an already-mapped memory.
+ * Never copies record IDs, keys, source references, evidence payloads or bodies.
+ * The mapper remains the single authority for classification decisions.
+ */
+export function explainMemoryLayerRow(mapped) {
+    if (!isObject(mapped) || !isObject(mapped.validity)
+        || !Array.isArray(mapped.uncertainties) || !Array.isArray(mapped.suggested_views)) {
+        throw new TypeError('mapped_memory_row_required');
+    }
+
+    const validityLabels = {
+        current: '当前有效（仅据状态字段，不代表内容已证实）',
+        historical: '历史状态（仅建议按需查看，不移动或删除）',
+        conflicting: '有效性状态冲突，不能自动当作当前事实',
+        unknown: '有效性尚未核验，暂不自动归类'
+    };
+    const validityLabel = Object.prototype.hasOwnProperty.call(validityLabels, mapped.validity.classification)
+        ? validityLabels[mapped.validity.classification] : validityLabels.unknown;
+    const type = MEMORY_TYPES.has(mapped.type) ? mapped.type : null;
+    const typeLabel = type
+        ? '已标注性质：' + type + '（性质标签不证明内容真实）'
+        : '性质未标注（不能默认当成 fact 或 agreement）';
+    const provenanceLabel = nonblank(mapped.provenance)
+        ? '已有结构化来源引用，但引用真实性尚未核验'
+        : '未见结构化来源引用（不等于记忆没有来源；正文未检查）';
+    const agreementLabel = type === 'agreement'
+        ? '已标注 agreement，但柳柳是否明确确认的依据仍待核验'
+        : '未标记为 agreement，不推断柳柳曾明确确认';
+
+    let coreLabel = '不在当前 Core 引用范围内';
+    if (mapped.core_inclusion === 'eligible_with_explicit_body_evidence') {
+        coreLabel = '已有输入侧的正文可读证据，但宿主实际装载仍须单独验收';
+    } else if (mapped.core_inclusion === 'UNCERTAIN') {
+        coreLabel = mapped.uncertainties.includes('core_body_unreadable')
+            ? '启动核心候选正文不可读，不能自动纳入 Core'
+            : '启动核心候选正文可读性未核验，不能自动纳入 Core';
+    } else if (mapped.core_inclusion === 'non_current_record') {
+        coreLabel = '已非当前有效记录，不纳入 Core';
+    }
+
+    const views = mapped.suggested_views;
+    const viewLabel = views.includes('UNCLASSIFIED')
+        ? '待人工确认，不能自动归类'
+        : views.includes('Archive')
+            ? 'Archive 历史视图候选（不迁移记忆）'
+            : views.includes('Core')
+                ? 'Core + Long-term 引用候选（宿主装载尚未验证）'
+                : views.includes('Long-term')
+                    ? 'Long-term 当前引用候选（不修改原记录）'
+                    : '无已证明的当前视图建议';
+
+    const issues = [...new Set(mapped.uncertainties.map(code =>
+        Object.prototype.hasOwnProperty.call(MEMORY_LAYER_ISSUE_LABELS, code)
+            ? MEMORY_LAYER_ISSUE_LABELS[code]
+            : '存在未解释的疑点，需要人工核对'
+    ))];
+
+    return {
+        contract_version: 'MEMORY-L5-EXPLANATION-0.1',
+        validity_label: validityLabel,
+        type_label: typeLabel,
+        provenance_label: provenanceLabel,
+        agreement_label: agreementLabel,
+        core_label: coreLabel,
+        view_label: viewLabel,
+        trust_label: '仅凭元数据不能核验记忆内容是否真实',
+        issues,
+        recommendation: 'review_only',
+        writes_executed: false
+    };
+}
+
 /** Learning candidates are independent of memories rows and never promoted here. */
 export function mapReflectionMetadata(input) {
     const row = isObject(input) ? input : {};
