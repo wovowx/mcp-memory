@@ -3568,7 +3568,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 ## 2026-11-06 · GPT→Operit：L5 v0.4 记忆体检完整场景（dev 合成施工）
 
 - **用户目标**：柳柳要求从小碎片汇报改为完整能力包。沿已展示的「哥哥，帮我体检一下记忆」场景，复用原有 `memory` facade + L5 映射/解释，做真正可调用的中文报告入口。ZivenLab/dev `governance/记忆层存量归位规范.md` §8.4 已先记录范围与验收。未经批准不额外读取私人真实数据或推 main。
-- **服务端实现候选**：`memory(action=health_check)`，默认 demo 固定合成、无 GET；`mode=sample` 必须 `metadata_read_confirmed=true` 且需柳柳本次额外真实读取许可才调用。repository 新增受限、只读、最多12行 `memories` 元数据 SELECT（5 Core 精确 key、工作2、相处2、较早3；8个固定查询），去重、ERROR/PARTIAL、不在任何响应里复制 key/id/source_ref/value。场景编排在现有 `layer_mapper.js` 独立导出，复用纯映射/解释器；memory facade 仅委托这一场景。新增内容全部合入既有仓库文件，不向生产上传测试/代码文件；共享 `withMemoryTypeSchema` 暴露可选参数、旧 action 不变；健康检查不计 `usage_count`，也不修改记忆。
+- **服务端实现候选**：`memory(action=health_check)`，默认 demo 固定合成、无 GET；`mode=sample` 必须 `metadata_read_confirmed=true` 且需柳柳本次额外真实读取许可才调用。repository 新增受限、只读、最多12行 `memories` 元数据 SELECT（5 Core 精确 key、工作2、相处2、较早3；8个固定查询），去重、ERROR/PARTIAL、不在任何响应里复制 key/id/source_ref/value。memory facade 委托独立 `health_check.js` 场景模块，复用纯映射/解释器；新增代码与测试通过 GitHub 站内复制再编辑创建，不向生产存储上传；共享 `withMemoryTypeSchema` 暴露可选参数、旧 action 不变；健康检查不计 `usage_count`，也不修改记忆。
 - **验收范围**：本地 `npm run check`、L5原合同、`test:memory-health`、Router、Memory Core、Session、Reflection、检索、GitHub、Webhook、Learning 回归均已实测 exit0；`test:memory-health` **17/17**、Router **220/220**，最终 GitHub Actions 以推 dev 后精确 SHA 独立验收，暂不得称线上成功。实验仅用固定合成/Mock，不读真实用户正文、无生产数据写入、无生产 deploy。
 - **生产/发布状态**：本段是 `v6.51.0` dev 候选，仍须后续完整发布单（用户收益、范围、CI、影响、回滚），柳柳独立批准才能 PR/main→Worker；原生产 v6.50.0 / Worker #544 不变。真实 sample 的授权和 ChatGPT/Operit 宿主 E3 未取得、不运行；M1 的新框人格/工作双连续性 E3 继续 OPEN。
 - **跨宿主交接**：Operit 不需为这批合成测试额外消耗 API tokens；如果未来柳柳批准 v6.51.0 发布，使用已有 `memory` 工具并刷新 MCP tool schema 后，分别验证 demo 可见性，不要求把来源正文给宿主或开放默认真实扫描。旧交接保留，以上记录只更新本切片进度。
