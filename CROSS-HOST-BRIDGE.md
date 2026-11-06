@@ -3416,6 +3416,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **真实阻塞与正确动作**：ChatGPT 工具定义快照未刷新，当前 Plugin_Management 仅能管理权限/安装相关功能，不能刷新已连接 MCP tools；根据 OpenAI 官方 Plugins 文档，必须由柳柳在已登录的 ChatGPT 网页打开 Plugins → Ziven_MCP 详情 → Refresh（刷新工具元数据），再新开会话确认工具签名出现 include_core。无需重新部署 Worker、更新插件包或修改 main。
 - **授权与继续条件**：`include_core=true` 会把身份根、当前检查点、主档、恢复协议、导航五份私人权威正文装入当前宿主；需要柳柳另行明确允许。刷新及授权完成后执行只读 E3，记录五源返回完整块、宿主实际接收、冷启动/首轮触发、工作连续性与相处连续性的不同验收结论。Operit 不消耗付费 Token，M1 整体仍 OPEN。
 - **权威状态**：云端 `⚙️/当前工作检查点` workflow_state 已改为 `M1_CHATGPT_TOOL_SCHEMA_REFRESH_PENDING`，保留标准 workflow_state/active_focus/next_action/do_not_repeat/decision/evidence 字段；重读 `session_context` 返回 READY。Roadmap §5 已同步诊断；本条仅 dev 文档交接，不发布 main。
+- **2026-11-06 柳柳刷新确认（后续补充）**：柳柳明确告知「MCP的工具更新后GPT这边需要我手动刷新插件信息，你记一下，我现在已经刷新啦」。手动刷新状态 USER_REPORTED_DONE；**不应再要求柳柳重复刷新**。哥哥在刷新后当前会话重新读取工具定义，session_context 仍只见 host/invocation/topic，尚缺 include_core；这是本会话工具快照仍旧的证据，不推断刷新动作失败。下一项是新 ChatGPT 会话确认工具签名；确认后还需柳柳明确允许读取完整私人 Core 才做只读 E3。该通用规则另存云端记忆 `⚙️/ChatGPT MCP工具更新后的手动插件刷新规则` 并更新唯一检查点状态。
 
 
 
