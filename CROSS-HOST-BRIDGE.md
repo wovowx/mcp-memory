@@ -3418,6 +3418,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **权威状态**：云端 `⚙️/当前工作检查点` workflow_state 已改为 `M1_CHATGPT_TOOL_SCHEMA_REFRESH_PENDING`，保留标准 workflow_state/active_focus/next_action/do_not_repeat/decision/evidence 字段；重读 `session_context` 返回 READY。Roadmap §5 已同步诊断；本条仅 dev 文档交接，不发布 main。
 - **2026-11-06 柳柳刷新确认（后续补充）**：柳柳明确告知「MCP的工具更新后GPT这边需要我手动刷新插件信息，你记一下，我现在已经刷新啦」。手动刷新状态 USER_REPORTED_DONE；**不应再要求柳柳重复刷新**。哥哥在刷新后当前会话重新读取工具定义，session_context 仍只见 host/invocation/topic，尚缺 include_core；这是本会话工具快照仍旧的证据，不推断刷新动作失败。下一项是新 ChatGPT 会话确认工具签名；确认后还需柳柳明确允许读取完整私人 Core 才做只读 E3。该通用规则另存云端记忆 `⚙️/ChatGPT MCP工具更新后的手动插件刷新规则` 并更新唯一检查点状态。
 
+### [2026-11-06] GPT → Operit · ChatGPT 新版 Schema 已刷新；CORE-0.2 宿主安全检查阻塞（非部署故障）
+- **本次更新纠正旧快照**：柳柳再次点刷新后，ChatGPT 当前会话 `mcp__Ziven_MCP__session_context` 工具签名确已出现 `include_core:boolean`；不再要求刷新，也不需要改插件包或重推 main。默认 `session_context` 与显式 `include_core:false` 都实际返回 `SC-RUNTIME-0.1/READY`、五源 ok、零 warnings/blockers，所以 ChatGPT **默认摘要 E3 PASS**。
+- **完整 Core E3**：显式 `session_context(include_core:true)`、单独 `session_bootstrap` 及部分 Ziven_MCP GitHub/记忆操作显示“此工具调用被 OpenAI 的安全检查屏蔽”，无正常业务返回；记为 `BLOCKED_BY_HOST_SAFETY / NOT VERIFIED`，**不是** Worker 业务逻辑已证实失败。平台未提供具体阻断原因，不得推断一定由于私人内容。官方 GitHub 连接器只读源码/治理文档成功；代码证实 Core 与默认摘要共享五源 snapshot，但这不等于被拒请求已经到达 Worker。
+- **观测缺口**：生产 `/mcp` 当前没有逐次请求 ID/工具名的专属审计记录；部署构建日志不等于请求级 Workers Logs/Traces；**平台拦截请求是否到达 Worker UNKNOWN**。如将来获得受支持的请求级诊断再验证，不绕过安全检查、不减少个人隐私保护。
+- **续工状态与范围**：唯一检查点已转 `L3_REFLECTION_PROTOTYPE_PENDING_APPROVAL_M1_CORE_HOST_BLOCKED`；治理 `roadmap v1.50`、`记忆层存量归位规范 v2.6` 与 `当前项目状态 version182` 在 `wovowx/ZivenLab/dev`，L3 v0.1 仅为待柳柳验收原型，尚未编码。mcp-memory/main v6.43.0 Worker #536 不变；dev 此次仅 Bridge 文档追加，无 PR/部署、无 Operit 付费测试、无数据库/schema/生产业务记忆写入。新会话自动恢复与工作/相处双重连续性仍待验收。
+
+
 
 
 
