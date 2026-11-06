@@ -25,12 +25,13 @@ GPT_MODEL = "gpt-5.6"
 # OPERIT_BASE_URL = "https://xxx.trycloudflare.com"
 # OPERIT_BEARER_TOKEN = ""
 
-# v6.47.0 DEV CANDIDATE ONLY: persistent Workers Logs.
-# Live Tail does not prove historical log storage is enabled.
-# 100% sampling is for request-level diagnostics; review usage/retention
-# and get explicit release approval before production deployment.
+# v6.49.0: on-demand diagnostics, persistent Workers Logs OFF by default.
+# Live Tail can be used for immediate troubleshooting without storing history.
+# To correlate requests through cloudflare_logs_query, temporarily set enabled
+# to true in an explicitly approved deployment, reproduce, then revert.
+# The capture settings below apply ONLY while persistence is enabled.
 [observability]
-enabled = true
+enabled = false
 
 [observability.logs]
 invocation_logs = true
