@@ -4,6 +4,7 @@ import {
     BOOTSTRAP_KEYS, BOOTSTRAP_CONTRACT_VERSION, SESSION_BOOTSTRAP_TOOL,
     parseCheckpoint, buildSessionBootstrap, handleSessionBootstrap,
     SESSION_CONTEXT_TOOL, SESSION_CONTEXT_CONTRACT_VERSION,
+    SESSION_CORE_CONTRACT_VERSION, SESSION_CORE_BUDGET_CODE_POINTS,
     buildSessionContext, handleSessionContext
 } from '../src/modules/session/bootstrap.js';
 import { handleMCPRequest } from '../src/modules/mcp_router.js';
@@ -36,15 +37,14 @@ function mockReads(options = {}) {
         const method = init.method || 'GET';
         calls.push({ url: String(url), method });
         if (method !== 'GET') throw new Error('unexpected write ' + method);
+        if (target.pathname.endsWith('/rest/v1/skills')) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
         if (target.pathname.endsWith('/rest/v1/memories')) {
             const requested = target.searchParams.get('key');
             if (requested !== null) {
                 const key = requested.startsWith('eq.') ? requested.slice(3) : requested;
                 if (options.errorKey === key) throw new Error('mock failure');
-                if (options.failCheckpointAfterFirst && key === BOOTSTRAP_KEYS.checkpoint &&
-                    calls.filter(call => call.url.includes(encodeURIComponent(key))).length > 1) {
-                    throw new Error('checkpoint changed midflight');
-                }
                 if (options.missingKey === key) return { ok: true, status: 200, json: async () => [] };
                 const row = allRecords[key];
                 const overridden = options.overrides?.[key] || row;
@@ -177,11 +177,42 @@ check('existing MCP schema guard rejects invalid host before any reads',
     invalidHost.data.result.content[0].text.includes('DISPATCH_GUARD_REJECT')
     && calls.length === 0);
 
+
+calls = mockReads();
+const discovered = await handleMCPRequest({ jsonrpc: '2.0', id: 11, method: 'tools/list' }, env);
+const discoveredContext = discovered.data.result.tools.find(tool => tool.name === 'session_context');
+check('tools/list exposes the optional Core flag from the same canonical tool schema',
+    discoveredContext?.inputSchema?.properties?.include_core?.type === 'boolean'
+    && !discoveredContext.inputSchema.required?.includes('include_core')
+    && calls.length === 1 && calls.every(call => call.method === 'GET'));
+
+calls = mockReads();
+const invalidCoreFlag = await handleMCPRequest({
+    jsonrpc: '2.0', id: 12, method: 'tools/call',
+    params: { name: 'session_context', arguments: { include_core: 'true' } }
+}, env);
+check('dispatch rejects a non-boolean Core opt-in before any memory read',
+    invalidCoreFlag.data.result.content[0].text.includes('DISPATCH_GUARD_REJECT')
+    && calls.length === 0);
+
+calls = mockReads();
+const routedCore = await handleMCPRequest({
+    jsonrpc: '2.0', id: 13, method: 'tools/call',
+    params: { name: 'session_context', arguments: { host: 'chatgpt', include_core: true } }
+}, env);
+const routedCoreData = JSON.parse(routedCore.data.result.content[0].text);
+check('MCP dispatch returns explicitly requested Core without usage or registry writes',
+    routedCoreData.core_contract_version === SESSION_CORE_CONTRACT_VERSION
+    && routedCoreData.core.complete === true && calls.length === 6
+    && calls.every(call => call.method === 'GET' && !call.url.includes('/rest/v1/skills')));
+
 console.log('\n[Session Context resume-work contracts]');
 check('new session context has a separate stable tool and compatible host schema',
     SESSION_CONTEXT_TOOL.name === 'session_context'
     && SESSION_CONTEXT_TOOL.input_schema.properties.host === SESSION_BOOTSTRAP_TOOL.input_schema.properties.host
-    && SESSION_CONTEXT_TOOL.input_schema.properties.topic.type === 'string');
+    && SESSION_CONTEXT_TOOL.input_schema.properties.topic.type === 'string'
+    && SESSION_CONTEXT_TOOL.input_schema.properties.include_core.type === 'boolean'
+    && !SESSION_CONTEXT_TOOL.input_schema.required?.includes('include_core'));
 
 calls = mockReads();
 const context = await buildSessionContext(env, { host: 'chatgpt' });
@@ -198,7 +229,7 @@ check('without topic no guesses, identity/profile full text or write-capable per
     && !JSON.stringify(context).includes('PRIVATE_IDENTITY_MUST_NOT_LEAK')
     && !JSON.stringify(context).includes('PRIVATE_PROFILE_MUST_NOT_LEAK'));
 check('context without topic is read-only and does not visit registry or tools/list',
-    calls.length === 7 && calls.every(call => call.method === 'GET'
+    calls.length === 6 && calls.every(call => call.method === 'GET'
         && call.url.includes('/rest/v1/memories') && !call.url.includes('/skills')));
 
 const relatedRows = Array.from({ length: 4 }, (_, i) => ({
@@ -222,7 +253,7 @@ check('topic invokes Memory Core and returns at most three currently effective r
     && relatedContext.related_memories.every(hit => hit.key.startsWith('项目笔记/')
         && hit.match_reason && hit.source_updated_at));
 check('topic path does not use write methods and records source metadata',
-    calls.length === 9 && calls.every(call => call.method === 'GET')
+    calls.length === 8 && calls.every(call => call.method === 'GET')
     && calls.some(call => call.url.includes('/rest/v1/memory_aliases')));
 
 calls = mockReads({ missingKey: BOOTSTRAP_KEYS.identity });
@@ -231,10 +262,11 @@ check('missing identity blocks context before optional retrieval',
     contextBlocked.status === 'BLOCKED' && contextBlocked.current_work === null
     && contextBlocked.related_memories.length === 0 && calls.length === 6);
 
-calls = mockReads({ failCheckpointAfterFirst: true });
-const checkpointRace = await buildSessionContext(env);
-check('checkpoint disappears between source checks and context read: fail closed',
-    checkpointRace.status === 'BLOCKED' && checkpointRace.blockers.includes('checkpoint_context_read_failed'));
+calls = mockReads();
+const singleSnapshot = await buildSessionContext(env);
+const checkpointReads = calls.filter(call => call.url.includes('key=eq.' + encodeURIComponent(BOOTSTRAP_KEYS.checkpoint)));
+check('context reuses the bootstrap checkpoint snapshot without a second read window',
+    singleSnapshot.status === 'READY' && checkpointReads.length === 1 && calls.length === 6);
 
 calls = mockReads({ overrides: { [BOOTSTRAP_KEYS.checkpoint]: {
     ...allRecords[BOOTSTRAP_KEYS.checkpoint], value: '只有普通文本没有任何结构化工作字段'
@@ -285,7 +317,7 @@ const routedContext = await handleMCPRequest({
 }, env);
 check('session_context facade is registered and routed without registry or usage writes',
     JSON.parse(routedContext.data.result.content[0].text).contract_version === SESSION_CONTEXT_CONTRACT_VERSION
-    && calls.length === 7 && calls.every(call => call.method === 'GET'));
+    && calls.length === 6 && calls.every(call => call.method === 'GET'));
 check('direct session context facade returns structured JSON',
     JSON.parse(await handleSessionContext('session_context', {}, env)).status === 'READY');
 
@@ -298,4 +330,141 @@ check('new facade rejects invalid host at existing schema guard',
     invalidContextHost.data.result.content[0].text.includes('DISPATCH_GUARD_REJECT')
     && calls.length === 0);
 
-console.log('\nP2 Session Bootstrap + Session Context contracts: ' + passed + ' passed, 0 failed.');
+
+console.log('\n[Session Core v0.2 contracts]');
+calls = mockReads();
+const coreContext = await buildSessionContext(env, { host: 'chatgpt', include_core: true });
+const coreBlocks = coreContext.core.blocks;
+check('explicit Core opt-in returns all five complete canonical source blocks',
+    coreContext.status === 'READY' && coreContext.core_contract_version === SESSION_CORE_CONTRACT_VERSION
+    && coreContext.core.contract_version === SESSION_CORE_CONTRACT_VERSION
+    && coreContext.core.status === 'READY' && coreContext.core.complete === true
+    && coreContext.core.critical_complete === true
+    && Object.values(coreBlocks).every(block => block.complete && typeof block.content === 'string'));
+check('Core blocks carry exact source key, version, update time and full-record scope',
+    coreBlocks.identity.source_key === BOOTSTRAP_KEYS.identity
+    && coreBlocks.identity.source_version === 4
+    && coreBlocks.identity.source_updated_at === allRecords[BOOTSTRAP_KEYS.identity].updated_at
+    && coreBlocks.profile.content === sourceValues.profile
+    && coreBlocks.navigation.content === sourceValues.navigation
+    && coreBlocks.protocol.content === sourceValues.protocol
+    && coreBlocks.identity.scope === 'full_record');
+check('Core checkpoint contains the complete current overlay but excludes preserved history',
+    coreBlocks.checkpoint.scope === 'current_overlay'
+    && coreBlocks.checkpoint.content === currentText.split(/\n---\s*(?:旧工作检查点|以下为历史|以下为旧|历史检查点)/)[0]
+    && !coreBlocks.checkpoint.content.includes('OLD_STATE'));
+check('Core uses one GET per exact source plus one stats read and performs no writes',
+    calls.length === 6 && calls.every(call => call.method === 'GET')
+    && Object.values(BOOTSTRAP_KEYS).every(key =>
+        calls.filter(call => call.url.includes('key=eq.' + encodeURIComponent(key))).length === 1));
+const expectedCorePoints = Object.values(coreBlocks).reduce((sum, block) =>
+    sum + (block.complete ? Array.from(block.content).length : 0), 0);
+check('Core budget counts Unicode code points and preserves complete source blocks',
+    coreContext.core.budget.unit === 'unicode_code_points'
+    && coreContext.core.budget.limit_code_points === SESSION_CORE_BUDGET_CODE_POINTS
+    && coreContext.core.budget.source_content_code_points === expectedCorePoints
+    && coreContext.core.budget.used_code_points === expectedCorePoints
+    && coreContext.core.budget.remaining_code_points === SESSION_CORE_BUDGET_CODE_POINTS - expectedCorePoints);
+const serializedCoreBytes = Buffer.byteLength(JSON.stringify(coreContext), 'utf8');
+check('final serialized Core response size is measured separately and stays bounded',
+    serializedCoreBytes > 0 && serializedCoreBytes < 256 * 1024);
+
+calls = mockReads();
+const defaultCoreOff = await buildSessionContext(env);
+check('legacy context calls do not return Core contract or private full source text',
+    !Object.hasOwn(defaultCoreOff, 'core') && !Object.hasOwn(defaultCoreOff, 'core_contract_version')
+    && !JSON.stringify(defaultCoreOff).includes('PRIVATE_IDENTITY_MUST_NOT_LEAK')
+    && !JSON.stringify(defaultCoreOff).includes('PRIVATE_PROFILE_MUST_NOT_LEAK'));
+
+const unicodeIdentity = '👩‍💻A中';
+calls = mockReads({ overrides: { [BOOTSTRAP_KEYS.identity]: {
+    ...allRecords[BOOTSTRAP_KEYS.identity], value: unicodeIdentity
+} } });
+const unicodeCore = await buildSessionContext(env, { include_core: true });
+check('Unicode code-point budget does not confuse surrogate-pair string length',
+    unicodeCore.core.blocks.identity.content_code_points === Array.from(unicodeIdentity).length
+    && unicodeCore.core.budget.source_content_code_points ===
+        Object.values(unicodeCore.core.blocks).reduce((sum, block) =>
+            sum + (block.complete ? Array.from(block.content).length : 0), 0));
+
+const longCurrentCheckpoint = [
+    '【long current checkpoint】',
+    'workflow_state: CORE_LONG_CHECKPOINT',
+    'active_focus: preserve the current work focus',
+    'next_action: verify the full current overlay',
+    'decision: keep the approved boundary',
+    'evidence: synthetic long checkpoint fixture',
+    '正文'.repeat(3600),
+    '- do_not_repeat: 不得推 main；不得写数据库；必须保留完整末尾限制',
+    '--- 旧工作检查点（仅历史） ---',
+    'workflow_state: HISTORICAL_MUST_NOT_LOAD'
+].join('\n');
+calls = mockReads({ overrides: { [BOOTSTRAP_KEYS.checkpoint]: {
+    ...allRecords[BOOTSTRAP_KEYS.checkpoint], value: longCurrentCheckpoint
+} } });
+const longCheckpointCore = await buildSessionContext(env, { include_core: true });
+check('long current checkpoint is not truncated before trailing do_not_repeat boundaries',
+    longCheckpointCore.core.blocks.checkpoint.complete
+    && longCheckpointCore.core.blocks.checkpoint.content.includes('不得推 main')
+    && !longCheckpointCore.core.blocks.checkpoint.content.includes('HISTORICAL_MUST_NOT_LOAD')
+    && parseCheckpoint(longCurrentCheckpoint).do_not_repeat.includes('不得推 main'));
+
+calls = mockReads({ overrides: {
+    [BOOTSTRAP_KEYS.identity]: { ...allRecords[BOOTSTRAP_KEYS.identity], value: 'I'.repeat(23900) }
+} });
+const budgetLimited = await buildSessionContext(env, { include_core: true });
+check('budget overflow omits whole lower-priority blocks and prevents dependent action',
+    budgetLimited.core.status === 'DEGRADED' && budgetLimited.core.complete === false
+    && budgetLimited.core.blocks.identity.complete === true
+    && budgetLimited.core.blocks.checkpoint.complete === false
+    && budgetLimited.core.blocks.checkpoint.omitted_reason === 'budget_exceeded'
+    && budgetLimited.core.blocks.profile.omitted_reason === 'higher_priority_block_did_not_fit'
+    && budgetLimited.permissions.permitted_next_step === 'read_only_recovery');
+
+calls = mockReads({ missingKey: BOOTSTRAP_KEYS.profile });
+const missingProfileCore = await buildSessionContext(env, { include_core: true });
+check('missing optional profile source is explicit DEGRADED, not fabricated',
+    missingProfileCore.status === 'DEGRADED' && missingProfileCore.core.status === 'DEGRADED'
+    && missingProfileCore.core.blocks.profile.complete === false
+    && missingProfileCore.core.blocks.profile.omitted_reason === 'source_missing'
+    && missingProfileCore.core.blocks.identity.complete && missingProfileCore.core.blocks.checkpoint.complete);
+
+calls = mockReads({ missingKey: BOOTSTRAP_KEYS.identity });
+const missingIdentityCore = await buildSessionContext(env, { include_core: true });
+check('missing critical identity source blocks Core and keeps recovery read-only',
+    missingIdentityCore.status === 'BLOCKED' && missingIdentityCore.core.status === 'BLOCKED'
+    && missingIdentityCore.core.blocks.identity.omitted_reason === 'source_missing'
+    && missingIdentityCore.permissions.permitted_next_step === 'read_only_recovery');
+
+calls = mockReads({ overrides: { [BOOTSTRAP_KEYS.checkpoint]: {
+    ...allRecords[BOOTSTRAP_KEYS.checkpoint], value: '--- 旧工作检查点（仅历史） ---\nworkflow_state: HISTORICAL_ONLY'
+} } });
+const emptyCurrentCheckpoint = await buildSessionContext(env, { include_core: true });
+check('empty current checkpoint overlay is BLOCKED rather than replaced by history',
+    emptyCurrentCheckpoint.status === 'BLOCKED'
+    && emptyCurrentCheckpoint.core.blocks.checkpoint.omitted_reason === 'empty_current_overlay');
+
+calls = mockReads({ relatedRows });
+const topicCore = await buildSessionContext(env, { topic: '项目笔记', include_core: true });
+check('optional topic results are appended after Core and charged to remaining code-point budget',
+    topicCore.related_status === 'matched_best_effort'
+    && topicCore.related_memories.length === 3
+    && topicCore.core.budget.topic_results_included === 3
+    && topicCore.core.budget.topic_results_code_points ===
+        topicCore.related_memories.reduce((sum, hit) => sum + Array.from(hit.excerpt.text || '').length, 0)
+    && topicCore.core.budget.used_code_points ===
+        topicCore.core.budget.source_content_code_points + topicCore.core.budget.topic_results_code_points);
+
+calls = mockReads({ relatedRows, overrides: {
+    [BOOTSTRAP_KEYS.identity]: { ...allRecords[BOOTSTRAP_KEYS.identity], value: 'I'.repeat(23900) }
+} });
+const topicBudgetOmitted = await buildSessionContext(env, { topic: '项目笔记', include_core: true });
+check('topic results are omitted rather than displacing higher-priority Core blocks',
+    topicBudgetOmitted.related_status === 'budget_omitted'
+    && topicBudgetOmitted.related_memories.length === 0
+    && topicBudgetOmitted.core.budget.topic_results_omitted === 3
+    && topicBudgetOmitted.core.blocks.identity.complete === true);
+
+
+console.log('\nP2 Session Bootstrap + Session Context + Core contracts: ' + passed + ' passed, 0 failed.');
+
