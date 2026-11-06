@@ -3437,6 +3437,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **效果边界**：L3 只提供纯函数和本地只读 CLI，不注册新的 MCP Tool，也没有运行时自动反思 Hook、自动 Skill/Memory 晋升；E1/E2 和发布 VERIFIED，真实 Agent 的长期行为改善 E3 NOT VERIFIED。生产数据库 Schema/业务记忆/聊天室/Agent 唤醒/密钥/Operit 卡均未变；ChatGPT Core `include_core=true` 依旧被宿主安全检查拦截，M1 未整体验收。
 - **下一项**：`wovowx/ZivenLab/dev/governance/roadmap.md` v1.53、`governance/记忆层存量归位规范.md` v2.8、`governance/当前项目状态.md` version185 已同步。L4 Archive v0.1 已做源码核对与原型：既有 `getMemoryHistoryByKey` 与 handler `action=history` 仍未向 `memory` 工具公共 enum 暴露；推荐在不加新表/新工具的条件下修通公开只读历史查询及证据缺口语义。原型仅为 **CANDIDATE**，须柳柳明确确认后才能开始 dev 编码。不要再重复 L3 审计、催插件刷新或擅自推 main。
 
+### [2026-11-06] GPT → Operit · L4 Archive v0.1 开发验收 / v6.45.0 DEV CANDIDATE（未发布）
+- **批准与范围**：柳柳看过 L4 原型后明确回复「好」，确认推荐 A：复用 `memory` Facade 原 history 分支与当前 `getMemoryHistoryByKey`，让宿主合法使用 `memory(action=history,key=完整key)`；要求历史显示 old/current 差别、证据不足标 UNKNOWN，不另建历史数据库。仅授权 dev 编码与合成 E1/E2，**没有批准 v6.45.0 PR/main/Worker 发布或真实私密历史读取**。
+- **实际实现**：`src/utils/helpers.js:withMemoryTypeSchema` 向公开 action enum 添加 `history`（保持旧 enum 兼容），`src/modules/mcp_router.js` 的 tools/list 明示该动作且与 dispatch 守门共用 Schema、不写 skills 注册表；`src/modules/memory/repository.js` 的历史记录/事件读取对网络/HTTP/坏 JSON/坏结构显式失败，单条事件失败可在保留记录前提下 `PARTIAL`；`src/tools/memory_unified.js` 的历史输出包含 `history_status=OK|EMPTY|PARTIAL|ERROR`、record ID/source_ref/状态/版本/事件记录时间和 evidence_gap，已删除历史不复活；`src/skills/guide/记忆管理/SKILL.md` 增加历史按需读取纪律。package v6.45.0 未发布候选。
+- **精确证据**：dev SHA `e4d61d4eef8e825b7a78c269e77c28a886b160bc` / [GitHub Actions #42169666827](https://github.com/wovowx/mcp-memory/actions/runs/42169666827) completed SUCCESS；E1 npm run check / E2 Memory Core **120 passed 0 failed**（含 L4 合成证据合同）、Router/Registry、L3 Reflection **35/35**、Session **56/56** 及其它既有回归全部通过。合成 Mock，不读真实用户历史，不改业务 memory/events。
+- **未完成与后续**：生产仍 v6.44.0 / main `5eb7b9d7...` / Worker #537 `47fac1be` VERIFIED。代码前期 dev HEAD `e4d61d4...` 相对 main ahead11/behind0，净10路径（包括前次 Bridge-only）；现在写入本条 Bridge-only 后将重新核对最终 HEAD CI。正式发布须柳柳收到 v6.45.0 版本作用、完整 diff、验证结果、插件刷新要求、回滚基线后单独批准。宿主 ChatGPT action schema 在正式发布后可能仍需柳柳手动刷新；当前不要求刷新、不绕过 OpenAI 宿主安全检查。治理 Roadmap v1.55、记忆层设计 v2.10、状态 version187 已更新。M1 Core 完整宿主 E3 仍受平台安全拦截，独立 OPEN。
+
+
 
 
 
