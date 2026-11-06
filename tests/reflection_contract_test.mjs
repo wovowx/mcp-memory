@@ -1,6 +1,6 @@
 // L3 Reflection v0.1 synthetic-only contracts — no business DB, network or MCP calls.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import {
     validateCandidate, decideCandidate, previewPromotion, evaluateReflectionCandidates
@@ -126,6 +126,23 @@ try {
     assert.throws(() => evaluateReflectionCandidates({}), /artifacts_must_be_array/);
     passed++;
     console.log('  ✅ batch input must be an array');
+
+    // Every future Reflection artifact participates in CI, not only this frozen sample.
+    const learningDir = new URL('./learning/', import.meta.url);
+    const candidateIds = new Set();
+    let checkedArtifacts = 0;
+    for (const filename of (await readdir(learningDir)).filter(name => name.endsWith('.json'))) {
+        const artifact = JSON.parse(await readFile(new URL(filename, learningDir), 'utf8'));
+        if (!Object.hasOwn(artifact, 'reflection')) continue; // legacy lessons retain their contract
+        const validation = validateCandidate(artifact);
+        assert.ok(validation.ok, filename + ': ' + validation.errors.join(', '));
+        assert.ok(!candidateIds.has(artifact.reflection.candidate_id),
+            filename + ': duplicate Reflection candidate_id');
+        candidateIds.add(artifact.reflection.candidate_id);
+        checkedArtifacts++;
+    }
+    check('all Reflection files under tests/learning are structurally valid and uniquely identified',
+        checkedArtifacts >= 1 && candidateIds.size === checkedArtifacts);
 
     const cli = spawnSync(process.execPath, ['scripts/reflection_preview.mjs',
         'tests/learning/learning_reflection_candidate_001.json'], {
