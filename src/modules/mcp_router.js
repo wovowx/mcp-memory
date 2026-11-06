@@ -438,7 +438,14 @@ export async function handleMCPRequest(body, env) {
         // Discovery must be side-effect-free: never register paused chat tools
         // (or write any registry rows) merely because a host refreshes its list.
         const skills = await getCachedSkills(env);
-        const tools = skills.map(s => ({ name: s.name, description: s.description, inputSchema: getExposedInputSchema(s) }));
+        const tools = skills.map(s => ({
+            name: s.name,
+            description: s.name === 'memory'
+                ? [s.description, 'history：提供按完整 key 的显式只读历史查询；旧版本和事件账本不会被恢复为当前有效记忆。']
+                    .filter(Boolean).join('\n')
+                : s.description,
+            inputSchema: getExposedInputSchema(s)
+        }));
         // Recovery workflows remain discoverable without registry writes.
         if (!tools.some(tool => tool.name === SESSION_BOOTSTRAP_TOOL.name)) {
             tools.push({ name: SESSION_BOOTSTRAP_TOOL.name, description: SESSION_BOOTSTRAP_TOOL.description, inputSchema: SESSION_BOOTSTRAP_TOOL.input_schema });
