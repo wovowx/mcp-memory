@@ -109,11 +109,25 @@ export function withMemoryTypeSchema(schema) {
     const properties = base.properties && typeof base.properties === 'object' && !Array.isArray(base.properties)
         ? base.properties
         : {};
+    // A single schema helper serves tools/list and dispatchGuard. The existing
+    // memory/history handler must be advertised as a legal action, without
+    // narrowing old action choices or modifying the Supabase skills registry.
+    const oldAction = properties.action && typeof properties.action === 'object' && !Array.isArray(properties.action)
+        ? properties.action : { type: 'string' };
+    const action = {
+        ...oldAction,
+        description: [oldAction.description, 'history=按完整 key 只读查询历史记录与事件账本；不会恢复旧记忆']
+            .filter(Boolean).join('；')
+    };
+    if (Array.isArray(oldAction.enum)) {
+        action.enum = [...new Set([...oldAction.enum, 'history'])];
+    }
     return {
         ...base,
         type: base.type || 'object',
         properties: {
             ...properties,
+            action,
             type: {
                 type: 'string',
                 enum: [...MEMORY_TYPES],
