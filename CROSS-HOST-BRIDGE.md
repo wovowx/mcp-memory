@@ -3466,6 +3466,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **宿主 E3 未完成**：当前 ChatGPT 连接的 Ziven MCP 工具元数据仍未暴露 `cloudflare_logs_query`，**下一步由柳柳在准备体验时手动刷新插件工具列表后**，才能合法调用 `cloudflare_logs_query` 做真实只读 E3；不需要再次询问或接收 Token 明文。即使插件刷新，Cloudflare Worker Token 的 Observability 权限是否匹配、Workers Logs 是否已启用持久化、官方 REST 响应形状是否适配仍未核验。若返回 `UNAVAILABLE/ERROR`，不得伪报成功、不得越权更新 Token/日志配置，也不得用任意 API 代理规避限制。M1 完整私人 Core 宿主安全拦截独立 OPEN。
 - **权威交接**：ZivenLab/dev `governance/roadmap.md` **v1.63**、`governance/当前项目状态.md` **version194** 已记录完整证据，云端 `⚙️/当前工作检查点` 随后同步。L5 存量体检暂缓；聊天室/唤醒不动。此条只写入 mcp-memory **dev** Bridge 以跨端交接，绝不视为再一次 v6.46.0 生产代码发布；写入之后需复核 main/dev 差异与 Bridge-only CI。
 
+### [2026-11-06] GPT → Operit · v6.47.0 Workers Logs 存储配置 DEV 候选（不发布）
+- **起因**：柳柳刷新 Ziven MCP 后 `cloudflare_logs_query` 已合法可调用；真实查询 `{minutes:15,limit:20,status_filter:'all'}` 两次均返回 `EMPTY/fetched_count=0`，中间正常执行 `memory(recall,不存在的合成key)`，故工具发现/API 返回已通过，但真实日志内容 E3 尚未通过。不能把 EMPTY 当作请求未到达 Worker。
+- **官方与现有证据**：Cloudflare Query Builder 只查询已持久保存的 Workers Logs，而 Live Tail 不等于存储开启；仓库 main 的 `wrangler.toml` 未显式声明 `[observability]`，Dashboard 有效开关 UNKNOWN。官方文档：https://developers.cloudflare.com/workers/observability/query-builder/ 。柳柳回复「嗯嗯应该是没开吧」，哥哥仅在 dev 准备最小配置，不对生产日志设置做隐式变更。
+- **dev 实施**：`wrangler.toml` 新增 `[observability] enabled=true`、`[observability.logs] invocation_logs=true,head_sampling_rate=1`（为短期诊断显式使用100%采样）；`tests/router_registry_contract_test.mjs` 增加三项无网络合同，检测唯一配置块、原 cron 保留、不写 Secrets；`package.json` 变为 v6.47.0 DEV CANDIDATE，`CHANGELOG.md` 追加收益/费用/发布边界。没有改 JS 业务逻辑、MCP/CF 凭据或用户真实记忆。
+- **验收**：配置+测试 HEAD `2cf764793e1ced948a878105b9fce549299f8f37` / CI `42183329820` SUCCESS；版本与 Changelog HEAD `8e43b688aa3e70531329e17efd89ee2110cfeb03` / CI `42183524024` SUCCESS，原 CI 114/114 Core-contract group、Router/Registry **194/194**（较 v6.46.0 新增3条）、Memory Core **120/120**、Session/Core **56/56**、Reflection **35/35**，JS check 43 文件 PASS。最终 Bridge 提交后请再次绑定 HEAD/CI。
+- **重要授权门禁**：生产仍 v6.46.0/main `2c94f0444ee5d56c39739beca73abd7496921610` / Worker #540 deployment `f710f2b7` VERIFIED。v6.47.0 **没有获得 PR/main/Worker 发布许可**。若发布将开启持久日志采样，涉及请求元数据留存及计费；必须另向柳柳报告设置、采样率、费用/保留、回滚基线并获单独批准。日志字段过滤不匹配也是 EMPTY 的可能原因，启用存储并不保证马上能查到数据。L5 暂缓；M1 full Core 宿主安全拦截独立 OPEN。
+- **当前治理**：ZivenLab/dev Roadmap v1.65 / 当前项目状态 version196；云端当前工作检查点待本条结果同步。Bridge 是 dev 交接工件，不应为记录状态额外创建 main/Worker 发布。
+
+
 
 
 
