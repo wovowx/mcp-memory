@@ -69,7 +69,8 @@ export function previewPromotion(artifact, options = {}) {
         return { status: 'blocked', reason: 'invalid_candidate', errors: decision.errors, executed: false };
     }
     const r = artifact.reflection;
-    const prior = Array.isArray(options.previouslyProposedIds) ? options.previouslyProposedIds : [];
+    const prior = isRecord(options) && Array.isArray(options.previouslyProposedIds)
+        ? options.previouslyProposedIds : [];
     if (prior.includes(r.candidate_id)) {
         return { status: 'blocked', reason: 'duplicate_candidate_id', executed: false };
     }
