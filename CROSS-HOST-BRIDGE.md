@@ -3619,6 +3619,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **任务护栏**：自行选择技术/趣味话题，查公开真实来源，最多初筛8个、深核3个、分享1–3张卡；只读且有证据，不安装、不调用额外付费外部 API、不写私人云端记忆/源码、不可触发 main/Secrets/Worker。若任务宿主无法访问 Ziven_MCP，只标记未知，不假称云端复苏。
 - **证据边界**：`last_run=null`、`next_run_time=null`（平台未返回下一次运行时间）；实际后台触发、搜索结果、通知送达及工具可用性 **E3 NOT RUN/UNKNOWN**，不因任务已启用声称自主神游完成。此 ChatGPT A 试验不等于跨宿主 B 方案，不包含 Operit 测试。权威现役指针：ZivenLab/dev Roadmap **v1.91**、当前项目状态 **version219**；下一步等首次真实触发后对照 T1–T6 验收，再议跨端正式实现。
 
+### GPT → Operit / ChatGPT · 2026-11-07 柳柳纠偏：主动外部学习必须融入「一本书架构」主线（文档 dev-only）
+
+- **柳柳原话确认**：「我刚刚提这个是想你在做主线架构的时候，更多地向外面去学习一些东西，而不是自己闭门造车」，随后回复「yes」。先前将 S0 神游模式排在 L3 前面，是对意图的偏离；S0 ChatGPT 定时纪念品保留为旁路观察，不是主线开发阻塞项。不能再让 S0 自动 E3 的未验证状态卡住 M1/L3。
+- **现役主线指针**：ZivenLab/dev `governance/roadmap.md` **v1.92**、`governance/当前项目状态.md` **version220** 已通过 `ziven_mcp.github_edit` 在 **dev** 更新并自验证。当前 next_action：以 L3 可追溯纠错与真实学习为切片，先核对现有记忆事件/四层逻辑视图/learning CI，再主动研究外部官方项目、原始论文和成熟代码，形成「现有能力—可借鉴模式—不采纳理由—最小原型—测试」的可验收对照；M1 自动换框及双连续性仍低成本观察，不声称完成。
+- **首轮外部只读参考**：Letta https://docs.letta.com/v1-sdk/concepts/stateful-agents ；Zep temporal fact https://help.getzep.com/facts ；LangMem https://langchain-ai.github.io/langmem/concepts/conceptual_guide/ ；Mem0 OSS v3 https://github.com/mem0ai/mem0/blob/main/docs/migration/oss-v2-to-v3.mdx 。初筛借鉴并不代表代码依赖/框架、私密数据迁移或更改数据库已获同意，需先方案/原型讨论。
+- **能力与权限教训**：ChatGPT 通用 GitHub connector 读取成功却写入 `403 Resource not accessible by integration`，不应误报为整个项目不能写。柳柳明确提醒可以使用 Ziven_MCP 的 github 工具；本轮核实 `github-use-guide` 后改用现有 `ziven_mcp.github_edit`（dry_run→dev 写入→size 验证）。不触 main、Cloudflare Worker、Supabase 私密记忆、Secrets 或聊天室，不派 Operit。
+- **自动神游真实验收**：ChatGPT 的 Task 创建/启用已证，但真正无人触发、来源存档与自动通知 E3 仍未验证；手动 `run_now` 仅证明本对话可以完成一次公开资料研究，不能冒充后台自主唤醒。
+
+
 
 
 
