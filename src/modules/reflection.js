@@ -145,3 +145,132 @@ export function evaluateReflectionCandidates(artifacts) {
         };
     });
 }
+
+// L3 v0.3 — evidence, preflight and transfer primitives. These never load
+// private memories, execute a tool, publish a lesson or claim host E3 proof.
+const normalized = value => String(value || '').trim().toLocaleLowerCase();
+
+/** A source pointer is a provenance claim, not proof that its contents are true. */
+export function evaluateCorrectionTrail(artifact) {
+    const candidate = validateCandidate(artifact);
+    if (!candidate.ok) return { status: 'INVALID', errors: candidate.errors, source_verified: false };
+    const trail = artifact.correction_trail;
+    const problems = [];
+    for (const stage of ['failure', 'feedback']) {
+        const entry = trail?.[stage];
+        if (!isRecord(entry) || !hasText(entry.action) || !hasText(entry.outcome) ||
+            !hasText(entry.source_ref)) problems.push(stage + '_evidence_required');
+    }
+    if (trail?.feedback && !hasText(trail.feedback.actor)) problems.push('feedback_actor_required');
+    if (trail?.recovery !== undefined) {
+        const entry = trail.recovery;
+        if (!isRecord(entry) || !hasText(entry.action) || !hasText(entry.outcome) ||
+            !hasText(entry.source_ref)) problems.push('recovery_evidence_invalid');
+    }
+    if (problems.length) return { status: 'INCOMPLETE', errors: problems, source_verified: false };
+    const refs = [trail.failure.source_ref, trail.feedback.source_ref,
+        ...(trail.recovery ? [trail.recovery.source_ref] : [])];
+    if (refs.some(ref => !artifact.reflection.source_refs.includes(ref))) {
+        return { status: 'INCOMPLETE', errors: ['unlinked_source_refs'],
+            source_verified: false };
+    }
+    return {
+        status: trail.recovery ? 'RECORDED' : 'RECORDED_PARTIAL',
+        source_refs: refs, source_verified: false, promotion_executed: false
+    };
+}
+
+function matchesApplication(task, application) {
+    if (!isRecord(application) || !textArray(application.intent_any) ||
+        application.intent_any.length === 0) return false;
+    const intentMatched = application.intent_any.some(intent => normalized(intent) === normalized(task.intent));
+    const entityMatched = !Array.isArray(application.entity_any) ||
+        application.entity_any.length === 0 ||
+        (textArray(application.entity_any) && application.entity_any.some(entity =>
+            task.entities.some(value => normalized(value) === normalized(entity))));
+    return intentMatched && entityMatched;
+}
+
+/**
+ * A task-time read-only recommendation, not a tool dispatcher. Only already
+ * active, explicitly approved lessons may recommend a tool. Synthetic copies
+ * can exercise the contract without activating a real candidate.
+ */
+export function planLearningPreflight(task, artifacts) {
+    const inert = { advisory_only: true, executed: false, host_verified: false };
+    if (!isRecord(task) || !hasText(task.intent) || !textArray(task.entities) ||
+        !textArray(task.available_tools) || !hasText(task.branch) || !hasText(task.repo) ||
+        !Array.isArray(artifacts)) {
+        return { status: 'INVALID', reason: 'task_contract_required', ...inert };
+    }
+    const matching = artifacts.filter(a => isRecord(a) && a.status !== 'revoked' &&
+        a.status !== 'superseded' && matchesApplication(task, a.application));
+    if (!matching.length) return { status: 'NO_MATCH', ...inert };
+    if (task.branch === 'main') return { status: 'BLOCKED', reason: 'main_out_of_scope', ...inert };
+    const ready = matching.filter(a => a.status === 'active' &&
+        hasText(a.application.approval_ref) &&
+        (!isRecord(a.reflection) || a.reflection.validation_state === 'validated'));
+    if (!ready.length) return { status: 'PENDING_REVIEW',
+        candidate_ids: matching.map(a => a.reflection?.candidate_id || a.test_id), ...inert };
+    if (ready.length !== 1) return { status: 'CONFLICT', reason: 'multiple_active_lessons', ...inert };
+    const lesson = ready[0];
+    const app = lesson.application;
+    if (!hasText(app.preferred_tool) || !textArray(app.steps) || !app.steps.length ||
+        !textArray(app.allowed_branches) || !app.allowed_branches.length ||
+        !textArray(app.allowed_repos) || !app.allowed_repos.length ||
+        (app.tool_aliases !== undefined && !textArray(app.tool_aliases))) {
+        return { status: 'INVALID_LESSON', ...inert };
+    }
+    if (!app.allowed_branches.includes(task.branch)) return {
+        status: 'BLOCKED', reason: 'branch_not_allowed', ...inert
+    };
+    if (!app.allowed_repos.includes(task.repo)) return {
+        status: 'BLOCKED', reason: 'repo_not_allowed', ...inert
+    };
+    const exposedTool = [app.preferred_tool, ...(app.tool_aliases || [])]
+        .find(tool => task.available_tools.includes(tool));
+    if (!exposedTool) return {
+        status: 'UNAVAILABLE', reason: 'preferred_tool_not_exposed',
+        required_tool: app.preferred_tool, ...inert
+    };
+    return {
+        status: 'READY', recommended_tool: exposedTool, canonical_tool: app.preferred_tool,
+        steps: [...app.steps], lesson_key: lesson.lesson_key,
+        approval_ref: app.approval_ref,
+        source_refs: Array.isArray(lesson.reflection?.source_refs)
+            ? [...lesson.reflection.source_refs] : [],
+        evidence_scope: 'caller_supplied_approval_and_capabilities', ...inert
+    };
+}
+
+/** Paired outcomes must share task and capabilities; reports cannot certify E3. */
+export function compareLearningTrials(pair) {
+    const inert = { host_verified: false, evidence_scope: 'caller_supplied_not_independently_verified' };
+    if (!isRecord(pair) || !hasText(pair.scenario_id) || !isRecord(pair.baseline) ||
+        !isRecord(pair.after)) return { status: 'INVALID', ...inert };
+    const before = pair.baseline;
+    const after = pair.after;
+    for (const result of [before, after]) {
+        if (!hasText(result.task_fingerprint) || !hasText(result.capability_fingerprint) ||
+            typeof result.success !== 'boolean' || typeof result.error_recurred !== 'boolean') {
+            return { status: 'INVALID', reason: 'outcome_contract_required', ...inert };
+        }
+    }
+    if (before.task_fingerprint !== after.task_fingerprint ||
+        before.capability_fingerprint !== after.capability_fingerprint) {
+        return { status: 'INVALID', reason: 'unpaired_conditions', ...inert };
+    }
+    if (!textArray(before.evidence_refs) || !before.evidence_refs.length ||
+        !textArray(after.evidence_refs) || !after.evidence_refs.length) {
+        return { status: 'NOT_VERIFIED', reason: 'evidence_missing', ...inert };
+    }
+    const improved = (!before.success && after.success) ||
+        (before.error_recurred && !after.error_recurred && after.success);
+    const regressed = (before.success && !after.success) ||
+        (!before.error_recurred && after.error_recurred);
+    return {
+        status: regressed ? 'REGRESSED' : improved ? 'IMPROVED' : 'UNCHANGED',
+        scenario_id: pair.scenario_id,
+        evidence_refs: [...before.evidence_refs, ...after.evidence_refs], ...inert
+    };
+}
