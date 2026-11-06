@@ -53,6 +53,9 @@ jobs:
       - name: E2 - L5 synthetic memory layer mapping and no-write contracts
         run: npm run test:memory-layer-mapper
 
+      - name: E2 - L5 memory health scene, bounded sampling and no-write contracts
+        run: npm run test:memory-health
+
       - name: E2 - Router, registry and Patch Engine contracts (frozen Router regression gate)
         run: npm run test:contracts
 
