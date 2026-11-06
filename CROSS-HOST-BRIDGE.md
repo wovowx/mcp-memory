@@ -3491,6 +3491,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **E3与下一步**：v6.48.0 **未部署**，**新字段真实E3 NOT RUN**；即使未来 event_kind=http 也必须获得准确请求 correlation 证据才可关联具体 MCP action。下一步报柳柳 v6.48.0 版本价值、净diff/CI、Worker自动部署范围/回滚 v6.47.0，然后等待单独发布批准；未经批准不PR/main/Worker。M1完整私人Core宿主阻断仍 OPEN，L5暂缓。
 - **权威位置**：ZivenLab/dev Roadmap **v1.70**、当前项目状态 **version201**，云端 `⚙️/当前工作检查点` 下一步同步；本段写 dev Bridge 仅供跨宿主对齐，不代表新生产发布。
 
+### [2026-11-06] GPT → Operit · v6.48.0 正式发布 / Worker #542 VERIFIED / Cloudflare Logs 类型 E3 PASS
+- **柳柳发布授权**：柳柳此前验收「先 event_kind 分类后安全映射」技术原型，已完成 dev E1/E2；后收到独立 v6.48.0 发布说明（用户收益、净5文件/8提交、CI成功、Worker自动部署及 v6.47.0 回滚基线），再次回复「好」单独批准 v6.48.0 的 PR/main/Worker。此授权已执行，不代表授权以后版本或其它生产配置。
+- **GitHub**：PR [#335](https://github.com/wovowx/mcp-memory/pull/335) dev→main，输入 dev `06717307414f1e8c6d6ece9928bf2d9ca34aeb2d`、main `bedaa2b2dd0e71a3a52cc43af9b4b906ed253a82`；ahead8/behind0，净5文件（CHANGELOG/Bridge/package/cf_proxy/router test）。PR CI [#42188800147](https://github.com/wovowx/mcp-memory/actions/runs/42188800147) SUCCESS、clean/rebaseable；rebase merged，GitHub 独立回读 merged=true/closed，合并时 main=dev=`a788a77d3400d1e7a76729bcc9ed740a00bf5220` / compare identical。main CI [#42188890172](https://github.com/wovowx/mcp-memory/actions/runs/42188890172) SUCCESS、dev CI [#42188893460](https://github.com/wovowx/mcp-memory/actions/runs/42188893460) SUCCESS。独立 GitHub Pages 旧工作流失败不构成 Workers 发布失败，仍暂停不修。
+- **Cloudflare 实证**：Worker **#542** / deployment `891473d4` / version `3851a427` (wrangler)，`cloudflare_deploy_status(verify_main=true)=VERIFIED`，与 main `a788a77d...` 同步；上版回滚参考 v6.47.0/main `bedaa2b2...` / Worker #541 deployment `42551af3`。没有改变 Worker 现有的100% Workers Logs采样、Token、数据库/真实记忆、skills registry、聊天室或唤醒。
+- **真实 E3**：部署之后执行合法只读 `memory(recall)` 一次，key=`__ziven_v648_cloudflare_event_kind_e3_absent_20261106__`（返回不存在，无写入）；随即 `cloudflare_logs_query({minutes:15,limit:20,status_filter:'all'})` 返回 `OK/fetched_count=20/reported_count=20`。返回20条有限样本里 **3条 event_kind=http、method=POST、path=/mcp、outcome=ok**；其余 **17条 event_kind=scheduled**，method/path/status仍为null。证明官方结构化字段已能将真实 HTTP 与每分钟 cron 可靠区分，脱敏查询仍可用。返回窗口有 limit=20，不代表15分钟全部事件，也无法用时间推断3条分别属于哪次 MCP action。
+- **未关闭事项**：当前真实HTTP事件的 `status_code=null`，因为可信HTTP statusCode不存在；不得把运行结果 `ok` 改写为HTTP200。旧 OpenAI 对完整私人 Core 的宿主 safety block 根因仍 UNKNOWN，且缺精确工具请求/Cloudflare event correlation，M1 完整 Core E3 仍 OPEN。下一步若需要单独的 correlation 方案，必须先讨论原型、再经柳柳验收及独立版本发布批准；不擅自加原始source、headers/body、Token/URL查询输出。L5轻量体检暂缓。
+- **权威交接**：ZivenLab/dev Roadmap v1.72、当前项目状态 version203；云端 ⚙️/当前工作检查点接着同步。此条仅提交至 mcp-memory/dev Bridge 用作跨宿主交接，不触发新生产发布。提交后按精确 Git SHA 和 GitHub Actions 复核。
+
+
 
 
 
