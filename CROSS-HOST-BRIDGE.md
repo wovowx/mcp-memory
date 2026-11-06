@@ -3581,6 +3581,14 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **分离验收**：`DEPLOY_VERIFIED`；现宿主 ChatGPT 的 MCP schema 仍缓存旧 `memory(action)` 枚举，尚不含 `health_check`，故 `HOST_SCHEMA_REFRESH_PENDING`、`health_check(demo)` 端到端 E3 **NOT VERIFIED**；不使用非法参数绕宿主校验，不执行真实 sample。唯一 `⚙️/当前工作检查点` 本轮无独立写入授权，`HANDOFF_UNVERIFIED`；不得把上述部署成功误报为跨会话人格/工作连续性已经验证。
 - **next_action**：先按宿主规则让柳柳刷新 ChatGPT 的 Ziven_MCP 连接并在新会话核验新 action，优先仅调用合成 `demo` 做 E3；随后由 Roadmap 指定下一「一本书」架构闭环。任何真实元数据读取、检查点写入、再次 main 发布均须单独明确确认。
 
+## 2026-11-06 · ChatGPT 宿主记忆体检合成 E3 验收
+
+- **用户动作**：柳柳明确回复「已刷新」，记为 `HOST_METADATA_REFRESH=USER_REPORTED_DONE`，本次不再反复要求刷新。
+- **宿主真实观测**：刷新后当前 ChatGPT 的 Ziven_MCP `memory` schema 已出现 `action=health_check`、`mode=demo|sample`、`metadata_read_confirmed`。生产工具实际执行两次：`memory(action=health_check,mode=demo)` 与不传 `mode` 的 `memory(action=health_check)`，均返回 `health_status=OK`、固定合成样本 4行/去重4条、Core/Long-term/Archive/Reflection/待确认数目和匿名逐条解释；默认明确显示未读取柳柳真实记忆。
+- **验收等级**：`HOST_SCHEMA_REFRESH_DONE`、`CHATGPT_HEALTH_DEMO_E3=PASS`（当前宿主、合成模式、实际生产 MCP）；不等于私人 `sample`、Operit 调用、新框自动 bootstrap、私人 Core 可读性或跨宿主同一身份/工作连续性通过。以上仍 `NOT_RUN/UNKNOWN`。
+- **后续**：下一步先依授权处理唯一 `⚙️/当前工作检查点` 的生产状态同步（未授权之前不写），再讨论可验收的 M1 跨宿主恢复整包原型；继续冻结聊天室/唤醒方向，避免 Operit 不必要的付费验证。
+
+
 - **跨宿主交接**：Operit 不需为这批合成测试额外消耗 API tokens；如果未来柳柳批准 v6.51.0 发布，使用已有 `memory` 工具并刷新 MCP tool schema 后，分别验证 demo 可见性，不要求把来源正文给宿主或开放默认真实扫描。旧交接保留，以上记录只更新本切片进度。
 
 
