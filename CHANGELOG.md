@@ -1,6 +1,18 @@
 # Changelog
 
 所有重要变更将记录在此文件中。
+
+## [v6.44.0] - 2026-11-06（L3 Reflection v0.1 · dev 候选，尚未发布）
+
+### 新能力与用户收益
+- 从「记录教训」进化到「候选反思有证据、有状态、可审核」：复用现有 `tests/learning/*.json`，区分学习工件的 `status=candidate` 与反思成熟度 `pending/validated/rejected/deferred`。未验证或有未处理反例的内容不生成晋升提案。
+- `src/modules/reflection.js` 提供无副作用 `validateCandidate`、`decideCandidate`、`previewPromotion`、`evaluateReflectionCandidates`。validated 且具备可追溯来源/验证引用时仅输出 `ready_for_review` 预览，`approval_required=true`、`executed=false`；不写 Memory/Skill/Workflow，不新增 MCP 工具。
+- 新增合成候选 `tests/learning/learning_reflection_candidate_001.json`；`npm run reflection:preview -- <artifact.json>` 可读取候选并查看惰性建议。不把合成数据或来源字符串当作真实证明。
+
+### E1/E2 与范围边界
+- 新增 `tests/reflection_contract_test.mjs` 与 `npm run test:reflection`，检查缺来源、无效状态/目标、缺支持证据、缺验证引用、反证未处理、pending/rejected/deferred 禁止晋升、重复 ID 不重复预览、未修改输入和零网络/数据库写入；同时扫描全部带 reflection 的 learning 工件，确保后续新候选进入 CI。该步骤已纳入 `.github/workflows/learning-regression.yml`；精确最终 SHA 的 CI 结果另行回读。
+- 只改 `mcp-memory/dev`：不新增数据库表/字段/依赖、自动反思调度或 MCP Facade；未写生产记忆、Skill 注册表、聊天室；未创建 PR/合 main/部署 Worker。合成 E1/E2 只证明状态合同，**不等于真实 Agent 已学会或宿主 E3 通过**。下一次正式发布须柳柳根据本版本收益、净 diff/CI、回滚与部署影响单独批准。
+
 ## [v6.43.0] - 2026-11-06（Memory Retrieval Reliability + Memory Type + Session Core v0.2 · dev 候选）
 
 ### Added
