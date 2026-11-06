@@ -454,7 +454,7 @@ export async function buildSessionContext(env, args = {}) {
         }
         const parsed = snapshot.checkpoint;
         if (!parsed?.structured_fields_verified) {
-            result.status = 'DEGRADED';
+            if (result.status !== 'BLOCKED') result.status = 'DEGRADED';
             result.warnings.push('context_checkpoint_fields_incomplete');
         }
         result.current_work = parsed ? {
