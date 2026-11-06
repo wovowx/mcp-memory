@@ -90,30 +90,69 @@ export async function handleMemoryTool(name, safeArgs, env) {
         if (!safeArgs.key) text = '❌ 缺少参数：需要 key';
         else {
             try {
-                const histories = await getMemoryHistoryByKey(env, safeArgs.key);
+                // The requested key is explicit: no broad scanning, no restore.
+                // Partial event failures preserve records but never invent an
+                // empty event ledger or quietly downgrade to EMPTY.
+                const histories = await getMemoryHistoryByKey(env, safeArgs.key, { tolerantEvents: true });
                 if (histories.length === 0) {
-                    text = '❌ 没有找到 "' + safeArgs.key + '"';
+                    text = '❌ [history_status=EMPTY] 没有找到 "' + safeArgs.key + '" 的历史记录';
                 } else {
-                    const sections = histories.map(({ record, events }) => {
+                    const gaps = new Set();
+                    const sections = histories.map(({ record, events, event_error }) => {
                         const current = record.status === 'active' && record.valid_to == null;
                         const state = current ? '当前有效' : (record.status === 'deleted' ? '已软删除' : '非当前有效');
-                        const version = record.version || 1;
-                        const history = events.length === 0
-                            ? '暂无事件记录'
-                            : events.map(event => {
-                                const oldValue = formatHistorySnapshot(event.old_value);
-                                const newValue = event.new_value === undefined || event.new_value === null
-                                    ? '' : ' → ' + formatHistorySnapshot(event.new_value);
-                                return '- [v' + event.version + '] ' + formatTime(event.created_at) + ' ' +
-                                    (event.reason || event.event_type || 'update') + '：' + oldValue + newValue;
+                        const version = record.version ?? 'UNKNOWN';
+                        const recordId = record.id || 'UNKNOWN';
+                        const source = record.source_ref ? String(record.source_ref) : 'UNKNOWN';
+                        if (!record.id) gaps.add('missing_record_id');
+                        if (!record.source_ref) gaps.add('source_ref_unknown');
+                        if (!record.value && record.value !== '') gaps.add('record_value_unknown');
+
+                        let history;
+                        if (event_error || !Array.isArray(events)) {
+                            const failure = event_error?.code || 'unknown_error';
+                            gaps.add('event_read_' + failure);
+                            history = '⚠️ 事件账本读取失败（' + failure + '）；该记录的事件数 UNKNOWN';
+                        } else if (events.length === 0) {
+                            gaps.add('event_ledger_empty');
+                            history = '⚠️ 暂无事件记录（不能据此断定从未修改）';
+                        } else {
+                            history = events.map(rawEvent => {
+                                const event = rawEvent && typeof rawEvent === 'object' ? rawEvent : {};
+                                const isUpdate = event.event_type === 'update'
+                                    || event.reason === 'update' || event.reason === 'correction';
+                                const when = event.created_at ? formatTime(event.created_at) : 'UNKNOWN';
+                                if (!event.created_at) gaps.add('event_time_unknown');
+                                const oldValue = event.old_value == null ? 'UNKNOWN' : formatHistorySnapshot(event.old_value);
+                                if (isUpdate && event.old_value == null) gaps.add('old_value_unknown');
+                                const newValue = event.new_value == null
+                                    ? (isUpdate ? ' → UNKNOWN（new_value 缺失）' : '')
+                                    : ' → ' + formatHistorySnapshot(event.new_value);
+                                if (isUpdate && event.new_value == null) gaps.add('new_value_unknown');
+                                return '- [v' + (event.version ?? 'UNKNOWN') + '] 事件记录时间='
+                                    + when + ' ' + (event.reason || event.event_type || 'UNKNOWN')
+                                    + '：' + oldValue + newValue;
                             }).join('\n');
-                        return '📌 ' + state + '（v' + version + '，事件 ' + events.length + ' 条）\n' +
-                            '📎 当前性质：' + formatMemoryType(record.type) + '\n' + history + '\n💡 记录值：' + String(record.value || '').substring(0, 120);
+                        }
+                        return '📌 ' + state + '（v' + version + '，事件 '
+                            + (Array.isArray(events) ? events.length : 'UNKNOWN') + ' 条）\n'
+                            + '📎 来源 key：' + record.key + '\n'
+                            + '📎 记录 ID：' + recordId + '\n'
+                            + '📎 来源引用：' + source + '\n'
+                            + '📎 当前性质：' + formatMemoryType(record.type) + '\n'
+                            + history + '\n'
+                            + '💡 记录值（片段）：' + String(record.value ?? 'UNKNOWN').substring(0, 120);
                     });
-                    text = '📜 ' + safeArgs.key + ' 历史记录（' + histories.length + ' 条记录）：\n' + sections.join('\n\n');
+                    const status = gaps.size ? 'PARTIAL' : 'OK';
+                    text = '📜 [history_status=' + status + '] ' + safeArgs.key
+                        + ' 历史记录（' + histories.length + ' 条记录）'
+                        + '\n⚠️ 时间说明：以下日期是事件账本记录时间，不代表现实事件发生时间。'
+                        + (gaps.size ? '\n[evidence_gap=' + [...gaps].join(',') + ']' : '')
+                        + '\n' + sections.join('\n\n');
                 }
-            } catch (e) {
-                text = '❌ 查历史失败：' + e.message;
+            } catch (error) {
+                text = '❌ [history_status=ERROR] 历史读取失败（'
+                    + (error?.code || 'read_failed') + '）；未确认是否存在记录，不可当作 EMPTY';
             }
         }
     }
@@ -271,7 +310,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
             ? '💡 记忆导出（共 ' + items.length + ' 条）：\n' + items.map(i => '【' + getCategory(i.key) + '】' + getTitle(i.key) + '\n内容：' + i.value + '\n---').join('\n')
             : '💡 记忆导出：\n' + fence + 'json\n' + JSON.stringify(items, null, 2) + '\n' + fence;
     }
-    else text = '❌ 未知操作：' + action + '（支持 remember/recall/update/rename/forget/search/list/random/by_date/stats/suggest/import/export/move/list_categories/by_category）';
+    else text = '❌ 未知操作：' + action + '（支持 remember/recall/history/update/rename/forget/search/list/random/by_date/stats/suggest/import/export/move/list_categories/by_category）';
 
     return text;
 }
