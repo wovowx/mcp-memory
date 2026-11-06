@@ -1,5 +1,6 @@
 // P2 · Session Bootstrap v0.1. Stateless, evidence-first, no business writes.
 // Reuses Memory Core; no chatroom or Agent Runtime dependency.
+import { getCurrentMemoryByKey } from '../memory/repository.js';
 import { getMemoryStats, searchMemoriesWithStatus } from '../memory/retrieval.js';
 
 export const BOOTSTRAP_CONTRACT_VERSION = 'SB-RUNTIME-0.1';
