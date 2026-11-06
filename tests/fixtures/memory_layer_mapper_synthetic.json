@@ -1,1 +1,42 @@
-x
+{
+  "fixture_id": "l5-synthetic-only-001",
+  "records": [
+    {
+      "id": "synthetic-core-001", "key": "🧬/我是谁", "category": "🧬", "type": "fact",
+      "status": "active", "valid_to": null, "body_readable": true,
+      "source_ref": "synthetic:root", "evidence_refs": ["synthetic:input-row-1"]
+    },
+    {
+      "id": "synthetic-rule-002", "key": "⚙️/示例规则", "category": "⚙️", "type": "agreement",
+      "status": "active", "valid_to": null, "source_ref": "synthetic:rule-a"
+    },
+    {
+      "id": "synthetic-box-003", "key": "📦/仍有效的示例", "category": "📦", "type": "quote",
+      "status": "active", "valid_to": null, "source_ref": "synthetic:box"
+    },
+    {
+      "id": "synthetic-old-004", "key": "💕/已过期的示例", "category": "💕", "type": "fact",
+      "status": "expired", "valid_to": "2026-01-01", "source_ref": "synthetic:history"
+    },
+    {
+      "id": "synthetic-unknown-005", "key": "⚙️/来源不明", "category": "⚙️",
+      "status": "active", "valid_to": null
+    },
+    {
+      "id": "synthetic-core-unverified-006", "key": "⚙️/当前工作检查点", "category": "⚙️",
+      "type": "fact", "status": "active", "valid_to": null, "source_ref": "synthetic:checkpoint"
+    },
+    {
+      "id": "synthetic-rule-dupe-007", "key": "⚙️/示例规则", "category": "⚙️", "type": "fact",
+      "status": "active", "valid_to": null, "source_ref": "synthetic:rule-b"
+    },
+    {
+      "id": "synthetic-conflict-008", "key": "⚙️/状态冲突", "category": "⚙️", "type": "fact",
+      "status": "active", "valid_to": "2026-02-01", "source_ref": "synthetic:conflict"
+    }
+  ],
+  "reflection_candidates": [
+    { "candidate_id": "synthetic-learning-001", "validation_state": "pending", "source_refs": ["synthetic:learning-event"] },
+    { "candidate_id": "synthetic-learning-unknown", "validation_state": "auto_approved", "source_refs": [] }
+  ]
+}
