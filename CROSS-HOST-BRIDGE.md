@@ -3482,6 +3482,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **精度缺口（不伪报完全闭环）**：E3 的 method、path、status_code 都为 null、outcome=unknown。事件并没有与上述 recall 精确关联；不能声称已定位此前 OpenAI 拦截根因。日志存储/查询 E3 PASS，**请求级事件字段映射/调用关联仍 OPEN**，如果要优化须先讨论真实 API 字段 Schema 的脱敏映射方案，另行开发/测试/逐版本发布。M1 full private Core 仍 BLOCKED_BY_HOST_SAFETY；L5 轻量存量体检保持暂缓。
 - **文档权威**：ZivenLab/dev/governance/roadmap.md v1.67、当前项目状态.md version198；云端 `⚙️/当前工作检查点` 随后更新。此 Bridge 仅加到 dev 做跨宿主交接，**不视为新生产代码变更、不自动再发 PR/main/Worker**。交接 commit 后应再次校验 dev SHA/CI 和 main...dev 净差异。
 
+### [2026-11-06] GPT → Operit · v6.48.0 Cloudflare 日志分类/安全映射 DEV E1/E2 CLOSED（未发布）
+- **柳柳授权**：柳柳在日志持久化 E3 已实查到事件、但HTTP字段为 null 的问题上认可技术原型「先分类 http/cron/runtime_log，再只对白名单HTTP映射字段」，明确回复「好」；本次只授权 `dev` 实现与合成 E1/E2。**未授权 v6.48.0 的 PR/main/Cloudflare Worker 自动部署**。
+- **生产基线**：mcp-memory/main `bedaa2b2dd0e71a3a52cc43af9b4b906ed253a82` (v6.47.0)，Cloudflare Worker #541 / deployment `42551af3` / version `94a1675f` VERIFIED；生产持续100% Workers Logs采样。现有 `cloudflare_logs_query` 真实 API 已返回 OK/1→3 stored events，证明链路；但旧事件 method/path/status_code 全为 null、outcome unknown，不代表3次HTTP/MCP请求，也未定位平台安全拦截。
+- **实现**：在 `src/tools/cf_proxy.js` 更新 `sanitizeLogEvent` 和纯助手 `parseLogHttpTrigger` / `classifyLogKind` / `verifiedLogValue`；新增 `event_kind=http|scheduled|runtime_log|other|unknown`。从官方 `$metadata.type/trigger/url/statusCode` 与 `$workers.eventType/event.request/outcome` 及原兼容字段只读提取；非HTTP无method/path/status，HTTP状态缺失就null，不用runtime ok伪造200；冲突或非白名单路径返回null。**不输出** `source`、原始 `$workers.event`、headers/body、token、URL查询串或跨Worker数据。
+- **保持兼容**：已有 `cloudflare_logs_query` 名称/输入Schema、固定Cloudflare telemetry/query端点、限时限量/只读权限和`CLOUDFLARE_API_TOKEN` env机制不变；无新工具/依赖/数据表/密钥/生产权限/`wrangler.toml` 变动；本次不触碰冻结聊天室/唤醒或真实私人记忆。
+- **隔离测试**：`tests/router_registry_contract_test.mjs` 新增官方合成 fetch/cron/runtime_log/queue/unknown/冲突/非法trigger/数据脱敏/旧fixture兼容等检查，功能代码+测试 HEAD `23d204a03367b118f948d871ec6ce91048c9a182` / [CI #42187250709](https://github.com/wovowx/mcp-memory/actions/runs/42187250709) SUCCESS；`npm run check` 43 JS PASS、Router/Registry **207/207**、Memory Core **120/120**、Session/Core **56/56**、Reflection **35/35**、检索16例 PASS。`package.json` 已升至 v6.48.0、`CHANGELOG.md` 已记录价值/边界，包含版本文件 SHA `676652ff45dc8faabdbbb9f0c4042c6b0a0b0158` / [CI #42187539353](https://github.com/wovowx/mcp-memory/actions/runs/42187539353) SUCCESS。本次 Bridge 提交后需再核对最终 dev HEAD/CI。
+- **E3与下一步**：v6.48.0 **未部署**，**新字段真实E3 NOT RUN**；即使未来 event_kind=http 也必须获得准确请求 correlation 证据才可关联具体 MCP action。下一步报柳柳 v6.48.0 版本价值、净diff/CI、Worker自动部署范围/回滚 v6.47.0，然后等待单独发布批准；未经批准不PR/main/Worker。M1完整私人Core宿主阻断仍 OPEN，L5暂缓。
+- **权威位置**：ZivenLab/dev Roadmap **v1.70**、当前项目状态 **version201**，云端 `⚙️/当前工作检查点` 下一步同步；本段写 dev Bridge 仅供跨宿主对齐，不代表新生产发布。
+
+
 
 
 
