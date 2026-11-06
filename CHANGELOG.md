@@ -7,14 +7,17 @@
 ### 柳柳能得到什么
 - `cloudflare_logs_query` 将有能力把 Worker 已收到的 `memory(recall|history)`、`session_context`、`session_bootstrap` 与同一 Cloudflare invocation 关联，呈现脱敏工具类别和最近处理阶段。只看时间相近不算关联证据；没有证据保持 null/UNKNOWN。
 - `arrived` 只说明已进入 Worker，`response_formed` 只说明服务端 MCP 响应已构造（不等于业务成功或 HTTP 2xx），`server_error` 只代表外层未捕获异常。若宿主在发送前拦截，Worker 没日志不能证明具体阻断位置。
+- **柳柳新增的费用约束（2026-11-06 已确认）**：持久化 Workers Logs 默认关闭。临时排查优先使用 Cloudflare Live 实时日志（不保存历史）；只有需要 `cloudflare_logs_query` 查询历史、按 requestId/traceId 关联时，才通过受控版本发布临时打开存储，复现后再关闭。关闭时不能查询新产生的历史日志，也不会抹掉以前仍在保留期内的事件。
 
 ### 最小改动与兼容
 - `src/index.js` 的 `/mcp` POST 入口仅为上述四个固定场景输出最多两条结构化日志；每条仅含 `marker/tool_kind/phase` 三个固定枚举，不记录 key、arguments、response、`include_core`、JSON-RPC id、Headers、Token、会话或身份正文；诊断记录失败不影响原业务响应。
 - `src/tools/cf_proxy.js` 保留原工具名、Schema、时间窗、结果上限与官方 Cloudflare endpoint。内部有限 3x 事件读取（最多150）容纳同次 invocation + 两阶段日志，严格用同 Worker 的合法 requestId/traceId 关联并拒绝跨请求、冲突类别/阶段；增加安全的 `mcp_tool_kind/mcp_phase` 可空字段。只有精确 marker 和两项合法枚举可从日志 `source` 内部提取，原始 source 永不输出。
-- 不增加依赖、工具、数据库表、Token/采样配置或新的 tracing 服务；不触碰聊天室、Cron、唤醒和私人 Core。已有 `status_code` 无可信证据时继续 null。
+- `wrangler.toml` 将 `[observability] enabled=false` 作为待发布的默认值；原 `invocation_logs=true/head_sampling_rate=1` 仅作临时开启存储时的明确采集配置，平时因 `enabled=false` 不会持久采集。打开/关闭存储都需显式发布，不能把改 dev 当作改线上；Live 不需要开启持久化开关。原固定枚举 `console.log` 可在已连接的 Live 中观测，但不会因此自动保存历史。
+- 不增加依赖、工具、数据库表、Token 或新的 tracing 服务；不触碰聊天室、Cron、唤醒和私人 Core。已有 `status_code` 无可信证据时继续 null。
 
 ### 授权与验证边界
 - 柳柳验收 Roadmap v1.74 的最小方案 A 并回复「好」，仅批准 dev 代码及合成 E1/E2；**未批准 PR、main、Worker 部署或私人 Core 真实 E3**。
+- 柳柳再次确认 v6.49.0 的「默认关闭存储→优先 Live→必要时临时开启历史存储」原型，并授权改 dev/回归；**这不是修改生产 v6.48.0 的许可**。生产 v6.48.0 仍保留已发布的 100% Workers Logs 采样，直至单独获准发布本版。
 - `tests/router_registry_contract_test.mjs` 扩展固定枚举日志、严格关联、跨请求/伪造 source/全零追踪 ID、冲突结果及不泄密 Mock；保持现有检索/恢复/文件/发布合同。正式 CI 须以 dev 最终 HEAD 的 GitHub Actions 独立确证；本段不预先宣称线上 E3。
 - 回滚参考：已发布 v6.48.0 / main `a788a77d3400d1e7a76729bcc9ed740a00bf5220` / Worker #542 deployment `891473d4`。未来如需发布，必须再向柳柳提交版本收益、准确 diff、CI、费用与自动部署影响并取得独立授权。
 
