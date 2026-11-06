@@ -16,7 +16,7 @@ import handleKnowledgeSkill from '../tools/knowledge.js';
 import { handleIncrementUsage } from '../tools/increment_usage.js';
 import { handleDeleteBranch } from '../tools/delete_branch.js';
 import { handleChatTool, CHAT_TOOL_DEFS } from '../tools/chat_mcp.js';
-import { handleCfProxyTool } from '../tools/cf_proxy.js';
+import { handleCfProxyTool, handleCloudflareLogsQuery, CLOUDFLARE_LOGS_QUERY_TOOL } from '../tools/cf_proxy.js';
 import { validateRelease } from './release_guard.js';
 import { SESSION_BOOTSTRAP_TOOL, handleSessionBootstrap, SESSION_CONTEXT_TOOL, handleSessionContext } from './session/bootstrap.js';
 
@@ -106,6 +106,7 @@ function isKnownToolName(name) {
     if (name === 'create_patch_proposal') return true;            // 专门 handler
     if (name === SESSION_BOOTSTRAP_TOOL.name) return true;       // P2 static read-only scenario
     if (name === SESSION_CONTEXT_TOOL.name) return true;         // resume-work read-only scenario
+    if (name === CLOUDFLARE_LOGS_QUERY_TOOL.name) return true;   // fixed, read-only CF query
     // 动态注册的前缀族（其余走 skills 表懒注册）
     if (name.startsWith('github_')) return true;                  // handleGitHubTool
     if (name.startsWith('supabase_')) return null;                // handleDatabaseTool
@@ -149,13 +150,14 @@ const CREATE_PATCH_PROPOSAL_SCHEMA = {
 function getToolSchemaOverride(name) {
     if (name === SESSION_BOOTSTRAP_TOOL.name) return SESSION_BOOTSTRAP_TOOL.input_schema;
     if (name === SESSION_CONTEXT_TOOL.name) return SESSION_CONTEXT_TOOL.input_schema;
+    if (name === CLOUDFLARE_LOGS_QUERY_TOOL.name) return CLOUDFLARE_LOGS_QUERY_TOOL.input_schema;
     return name === 'create_patch_proposal' ? CREATE_PATCH_PROPOSAL_SCHEMA : null;
 }
 
 async function getToolSchema(env, name) {
     // P2 static bootstrap uses its own fixed schema; avoid registry probing in recovery.
     const schemaOverride = getToolSchemaOverride(name);
-    if (name === SESSION_BOOTSTRAP_TOOL.name || name === SESSION_CONTEXT_TOOL.name) return schemaOverride;
+    if (name === SESSION_BOOTSTRAP_TOOL.name || name === SESSION_CONTEXT_TOOL.name || name === CLOUDFLARE_LOGS_QUERY_TOOL.name) return schemaOverride;
     // 其他工具保留旧注册表及 schema 行为。
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
@@ -420,7 +422,7 @@ async function syncChatTools(env) {
 
 async function autoIncrementUsage(env, name) {
     // v6.38.0 自动使用打点：工具执行成功后分发层自动+1（②自动技能沉淀数据源修复，不再靠 AI 自觉调 increment_usage）
-    if (!name || name === 'increment_usage' || name === SESSION_BOOTSTRAP_TOOL.name || name === SESSION_CONTEXT_TOOL.name || ['skill_list', 'skill_add', 'skill_update', 'skill_delete'].includes(name)) return;
+    if (!name || name === 'increment_usage' || name === SESSION_BOOTSTRAP_TOOL.name || name === SESSION_CONTEXT_TOOL.name || name === CLOUDFLARE_LOGS_QUERY_TOOL.name || ['skill_list', 'skill_add', 'skill_update', 'skill_delete'].includes(name)) return;
     try { await handleIncrementUsage(name, { name }, env); } catch (e) { /* 静默，不污染回复 */ }
 }
 
@@ -453,6 +455,12 @@ export async function handleMCPRequest(body, env) {
         if (!tools.some(tool => tool.name === SESSION_CONTEXT_TOOL.name)) {
             tools.push({ name: SESSION_CONTEXT_TOOL.name, description: SESSION_CONTEXT_TOOL.description, inputSchema: SESSION_CONTEXT_TOOL.input_schema });
         }
+        // Explicit read-only scene, NOT the existing unrestricted cf_proxy.
+        // tools/list remains discovery-only; never writes to skills registry.
+        if (!tools.some(tool => tool.name === CLOUDFLARE_LOGS_QUERY_TOOL.name)) {
+            tools.push({ name: CLOUDFLARE_LOGS_QUERY_TOOL.name, description: CLOUDFLARE_LOGS_QUERY_TOOL.description,
+                inputSchema: CLOUDFLARE_LOGS_QUERY_TOOL.input_schema, annotations: CLOUDFLARE_LOGS_QUERY_TOOL.annotations });
+        }
         return { ok: true, data: { jsonrpc: '2.0', id, result: { tools } } };
     }
     if (method === 'tools/call') {
@@ -479,6 +487,8 @@ export async function handleMCPRequest(body, env) {
                 text = await handleSessionBootstrap(name, safeArgs, env);
             } else if (name === SESSION_CONTEXT_TOOL.name) {
                 text = await handleSessionContext(name, safeArgs, env);
+            } else if (name === CLOUDFLARE_LOGS_QUERY_TOOL.name) {
+                text = await handleCloudflareLogsQuery(safeArgs, env);
             } else if (name?.startsWith('supabase_')) {
                 text = await handleDatabaseTool(name, safeArgs, env);
                 await invalidateCache();
