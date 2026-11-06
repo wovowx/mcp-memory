@@ -3535,6 +3535,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **E1/E2**：本地 `npm run check` 45 JS PASS；L5 合成-only 22/22、Memory Core 120/120、Session 56/56、Reflection 35/35、Router/Registry 216/216、GitHub Contents 50/50，退出码均0。[dev learning-regression run #42209514435](https://github.com/wovowx/mcp-memory/actions/runs/42209514435) `SUCCESS`，对应代码候选 `cc5e918...`。Bridge 后如 HEAD 继续移动，应以新 Actions run 独立确证。
 - **版本状态**：main 仍 `74951419f1b05117fda96124d8e85ee463243a6c` (v6.49.0)，Worker #543 / 持久化日志默认关闭无变化。L5 真实私人记忆 E3 NOT RUN，未 PR、未合 main、未部署。ZivenLab/dev 已把记忆分层规范更新至 v2.14、Roadmap 更新至 v1.80。
 - **next_action**：L5 dev 切片 E1/E2 已交付，可由柳柳按部署纪律决定是否审阅 v6.50.0 发布单；发布单须说明用户收益、净 diff、CI、生产影响、回滚和费用，未经逐版本明确同意不得推 main。继续「一本书」架构主线，安全拦截根因保持 UNKNOWN，不额外进行 Operit 收费测试。
+- **release preflight（仅记录，未授权发布）**：截至本次只读核查，`main...dev` 为 ahead18/behind0、净11文件；除 L5 代码/测试/Bridge 外，还包含先前在 dev 已通过文档验收但尚未进入 main 的 `src/skills/deploy/SKILL.md` v6.6.9（发布后检查点同步门禁）。发布单必须明确列入这项差异，并单独说明本次是否授权更新唯一云端工作检查点。这里的记录不是 PR/main/Worker/私人记忆写入许可。
 
 
 
