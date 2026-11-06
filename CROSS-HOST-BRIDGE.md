@@ -3509,7 +3509,7 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **柳柳补充约束并验收原型**：担心日志费用，明确希望「需要时再开」；确认默认关闭 Workers Logs 持久化、现场优先 Cloudflare Live、需要历史精确关联时受控开启存储再复现，随后关闭。此确认只授权 dev 修改与测试，不等于 PR/main/自动部署或现有生产配置修改。
 - **最小实现**：`wrangler.toml` `[observability] enabled=false`；保留 `invocation_logs=true/head_sampling_rate=1` 作为临时开启存储的预设，开启时只需受控修改 `enabled` 并部署。MCP 入口固定枚举诊断 `console.log` 无私密参数，仍可在 Live 当场观察；`cloudflare_logs_query` 仍只查询已存历史，关闭期间的新请求不会事后补录。无新表/依赖/工具/密钥/聊天室/唤醒改动。
 - **运行态边界**：生产 v6.48.0 仍处于 100% Workers Logs 采样，**本 dev 变更不改变线上计费或留存**；若未来发布 v6.49.0，Cloudflare Git 集成会自动部署默认关闭配置。已产生历史事件按 Cloudflare 保留期管理，不承诺立即删除。原 OpenAI 安全拦截根因仍 UNKNOWN。
-- **验收证据**：待本次 dev HEAD / CI / E1/E2 回填；没有真实 Worker E3、没有生产设置修改、没有 main 发布授权。
+- **验收证据**：本地 `npm run check` exit0（43 JS/import）；Router/Registry 216/216、Webhook 114/114、Memory Core120/120、Session/Core56/56、Reflection35/35、Contents50、Search History20/20、Learning10工件、检索基准16例均 PASS。按需日志四文件写回 dev 均 Verified:true；代码/配置/说明最终候选 dev SHA `326e21d83522c241213c565d8f8fd3ba2557f68f` / [GitHub Actions #42200411403](https://github.com/wovowx/mcp-memory/actions/runs/42200411403) completed SUCCESS，validate 全步骤 SUCCESS。**本条仅为 dev 文档追加回填，提交后应再读最终 HEAD/CI。** E3 NOT RUN、未改生产、未发布 main。
 
 
 
