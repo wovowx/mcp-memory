@@ -5,12 +5,12 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.6.8 · 增补 ChatGPT MCP 工具元数据刷新验收）
+# 部署技能（v6.6.9 · 发布后权威检查点同步与恢复验收）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
 
-**闭环责任（Ownership Protocol · 柳柳指出 + GPT #789 定稿）**：说「我盯着部署」= 承诺一口气跑到终态（VERIFIED 或明确失败原因），**中途不把控制权交回柳柳/用户**。等待是状态不是结束——sleep + 轮询 + 自动分支跑完，不做「等用户催」的半吊子。
+**闭环责任（Ownership Protocol · 柳柳指出 + GPT #789 定稿）**：说「我盯着部署」= 承诺一口气跑到部署终态（VERIFIED 或明确失败原因），并完成第 7 步的独立交接验收或明确记录阻塞，**中途不把控制权交回柳柳/用户**。等待是状态不是结束——sleep + 轮询 + 自动分支跑完，不做「等用户催」的半吊子。
 
 ## 触发方式（Event 触发说明 · GPT #791 / Ziven #792 收敛）
 本 skill 是 workflow 形态（第 6 步自动闭环），按「规范生效机制（policy-index）」触发链路：
@@ -68,7 +68,7 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 merge 成功
   ↓ sleep 45s（等待 Cloudflare propagation，不是等人）
   ↓ cloudflare_deploy_status(verify_main=true)
-  ├─ VERIFIED ✅ → 收尾
+  ├─ VERIFIED ✅ → 第 7 步检查点交接验收（独立结论）
   └─ DEPLOY_UNVERIFIED ⚠️ → 自动进入失败处理（不停！）
        ↓ 【工具自愈 · v6.32.9】cloudflare_deploy_status(verify_main=true) 自动查官方 Builds
        │    ├─ 构建 success → 等传播，重 verify
@@ -99,6 +99,16 @@ merge 成功
 
 **ChatGPT 宿主工具元数据刷新（2026-11-06 柳柳确认）**：MCP 工具列表或参数 Schema 变更并部署后，ChatGPT 已连接的 Ziven_MCP 插件信息可能仍缓存旧工具定义，**柳柳需要手动刷新插件信息**；哥哥不能把 Worker `VERIFIED` 当作 ChatGPT 已拿到新 Schema，也不能代称刷新完成。若柳柳明确报告已刷新，就将本轮标记 `USER_REPORTED_DONE`，不反复提醒或要求重刷；随后在**新 ChatGPT 会话**核对工具签名并尝试经授权的最小只读调用，单独记录宿主 E3。未变更工具名称/Schema 的普通 Worker 代码发布不必机械要求刷新。2026-11-06 柳柳已确认本轮 Ziven_MCP 插件已手动刷新；原会话仍暴露 `session_context` 旧入参，留待新会话取证；`include_core=true` 会加载私人 Core 正文，必须单独明确授权。
 
+### 第 7 步：权威检查点同步与跨会话恢复验收（2026-11-06 柳柳确认）
+
+> **部署成功 ≠ 恢复交接成功。** 本步只处理工作指针；不读取私人 Core 正文，也不检查 Operit 付费调用。每次发布说明必须明确「是否授权更新唯一工作检查点」；长期规则本身不构成对所有未来生产记忆写入的授权。
+
+1. **以已证实的生产事实为准**：仅在 PR 独立回读 `merged=true/state=closed`、main SHA、Cloudflare `verify_main=VERIFIED` 后整理版本号、CI、部署编号、真实 E3/NOT RUN、生产配置与未关闭事项。不要因文档/工具提示而宣布发布成功。
+2. **读取并保护既有状态**：精确 `memory(action=recall,key="⚙️/当前工作检查点",offset=0)`，根据分页提示读完全文；同时只读 `session_context(host="chatgpt",invocation="explicit",include_core=false)` 核对当前版本。全文不完整、检查点已被别的会话更新或版本证据冲突时**停止覆盖**，记录待处理；保留旧历史，不把历史中的 `next_action` 重新激活。
+3. **仅在本次发布/交接明确授权的范围内写入**：使用原有 `memory(action=update,key="⚙️/当前工作检查点",value=完整保留历史的新正文)`，更新顶层 `workflow_state/active_focus/next_action/do_not_repeat/decision/evidence` 和一条交接记录；保留原历史全文，声明当前日志费用策略、真实未验收项和柳柳的授权边界。不得额外修改其他私人记忆、DB/schema、Secrets 或 Worker 配置。
+4. **双回读验收**：再次按完整 key 分段 `recall`，拼合后逐字符比较写入正文；再执行 `session_context(host="chatgpt",invocation="explicit",include_core=false)`，核对 `sources.checkpoint.version` 已更新及 `current_work` 的版本、下一步、日志策略符合真实生产。结果分别记录 `DEPLOY_VERIFIED` 和 `HANDOFF_VERIFIED`；后者失败/无授权则记 `HANDOFF_DEGRADED/UNVERIFIED`，不得伪称 `READY` 证明状态新鲜或宿主冷启动自动触发。
+5. **交接闭环**：在 Roadmap/当前项目状态及 `CROSS-HOST-BRIDGE.md` 留下最新版本、唯一指针读回证据与下一施工动作。检查点同步失败时**不要重新合并或部署已验证版本**；先解释具体缺口，再按授权修复交接。ChatGPT/Operit 新框自动唤醒及相处连续性属于独立 E3，不由本步自动判通过。
+
 **部署失败错误分类表**：
 
 > ⚠️ 构建阶段失败（SyntaxError/10021/import 错）**不产生 deployment 记录**，`deploy_logs` 查不到——必须本地 `node --check` 复现（铁律 #10）。
@@ -126,6 +136,15 @@ merge 成功
 □ 是否有回滚方案？（基线版本可回退）
 □ 改过 skill 的话：按写作规范骨架了吗？
 □ 本次改动涉及已有文档/事实 → 已做知识洁癖自检（neat-freak）：改前全仓 grep 看现役、改后 grep 确认无新旧并存；同一事实只留一个权威版本，其他放短指针。
+```
+
+## 发布后交接 Checklist（与部署 VERIFIED 分开记录）
+
+```
+□ 本次发布单是否包含唯一工作检查点同步的明确授权？无授权则标 HANDOFF_UNVERIFIED，不擅自写入。
+□ 是否完整保留旧检查点历史、核对当前版本无并发覆盖、写入可追溯的最新工作/下一步/边界？
+□ memory(recall) 全文逐字符回读一致，并且 session_context(include_core=false) 指向新版本与正确 next_action？
+□ 是否在 Roadmap/项目状态/Bridge 分别记录 DEPLOY 与 HANDOFF 的独立结论？自动宿主调用不冒充已验证。
 ```
 
 ## 版本命名规则（双仓模型 · v6.4.0）
@@ -209,6 +228,7 @@ merge 成功
 - **大文件手写重推**：45KB 必漏段，用 read → 改 → 校验 → 整推。
 
 ## 变更记录
+- 2026-11-06：v6.6.9 按柳柳确认补齐部署后第 7 步：授权范围内同步唯一云端检查点、全文保留与比对、`session_context` 只读验收；把 Worker VERIFIED 与 HANDOFF_VERIFIED 分开，缺权限/失败不得重部署或假称新框自动恢复。
 - 2026-11-04：v6.6.5 scoped PR refs 防护——记录 merge helpers 对非 dev PR 也可能自动 force-sync dev 的真实缺陷；固化 merge 前 refs 快照、merge 后独立回读、dev-only expected-SHA 恢复与非原子窗口限制。v6.6.6 补充状态分层：dev helper 条件修复绑定 commit `0c5cadde...` / run `41856598888` 已 E1/E2 PASS；main v6.36.1 当前部署仍含旧 helper，生产修复尚未发布，不能把 dev 代码测试写成线上关闭。
 - 2026-09-09：v6.6.4 官方日志权威化（柳柳拍板）——记录自动部署机制（Cloudflare Git 集成 push→main 自动构建部署，deploy_command=wrangler deploy --no-bundle）；部署失败第一动作从「本地 node --check」改为「官方 Builds 日志」（v6.32.5-7 教训：本地 script 模式漏 ESM 错误三天排查失败，官方日志一行命中文件:行号）；cloudflare_deploy_status verify_main 增强：DEPLOY_UNVERIFIED 自动查 Builds + 失败返回日志尾部；token 统一支持 env.cloudflare_key（cfut_ user token）；建「部署失败官方日志」章节。
 - 2026-09-08：v6.6.3 release_guard rebase 硬校验（v6.32.3 代码同步）——版本号必须写在 dev commit 标题，rebase 后 main 自然保留（柳柳点出 6.32.0 后版本号消失，哥哥查证是 rebase 标题失守 + guard 校验对象错误）
