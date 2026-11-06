@@ -5,7 +5,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
     validateCandidate, decideCandidate, previewPromotion, evaluateReflectionCandidates,
-    evaluateBehaviorObservation
+    evaluateBehaviorObservation, evaluateCorrectionTrail, planLearningPreflight,
+    compareLearningTrials
 } from '../src/modules/reflection.js';
 
 const fixture = JSON.parse(await readFile(
@@ -204,6 +205,107 @@ try {
     check('behavior comparison cannot turn caller-reported evidence into E3',
         trial('T1', { tool: 'ziven_mcp.github_edit' },
             { tool: 'ziven_mcp.github_edit' }).host_verified === false);
+
+    console.log('\n[L3 v0.3 correction provenance → approved lesson preflight → paired outcome]');
+    const trail = evaluateCorrectionTrail(toolRouteFixture);
+    check('correction trail links failure, feedback and recovery to original episode',
+        trail.status === 'RECORDED' && trail.source_refs.length === 3 &&
+        trail.source_verified === false && trail.promotion_executed === false);
+    const partial = structuredClone(toolRouteFixture);
+    delete partial.correction_trail.recovery;
+    check('missing recovery stays partial instead of invented success',
+        evaluateCorrectionTrail(partial).status === 'RECORDED_PARTIAL');
+    const unlinked = structuredClone(toolRouteFixture);
+    unlinked.correction_trail.feedback.source_ref = 'synthetic:unlinked';
+    check('correction source not in original candidate is rejected',
+        evaluateCorrectionTrail(unlinked).status === 'INCOMPLETE');
+    const missingFeedback = structuredClone(toolRouteFixture);
+    delete missingFeedback.correction_trail.feedback;
+    check('correction cannot be declared complete without feedback',
+        evaluateCorrectionTrail(missingFeedback).status === 'INCOMPLETE');
+    const anonymousFeedback = structuredClone(toolRouteFixture);
+    delete anonymousFeedback.correction_trail.feedback.actor;
+    check('feedback attribution must name its actor',
+        evaluateCorrectionTrail(anonymousFeedback).status === 'INCOMPLETE');
+
+    const task = { intent: '修改 GitHub 已有文件', entities: ['github_edit'],
+        branch: 'dev', repo: 'wovowx/ZivenLab',
+        available_tools: ['ziven_mcp.github_edit'] };
+    const candidatePreflight = planLearningPreflight(task, [toolRouteFixture]);
+    check('candidate can match context but never self-activate',
+        candidatePreflight.status === 'PENDING_REVIEW' &&
+        candidatePreflight.executed === false && candidatePreflight.host_verified === false);
+    const active = structuredClone(toolRouteFixture); // E2 synthetic; never persisted or promoted.
+    active.status = 'active';
+    active.reflection.validation_state = 'validated';
+    active.application.approval_ref = 'synthetic:reviewed-fixture-not-real-approval';
+    const ready = planLearningPreflight(task, [active]);
+    check('synthetic approved lesson selects actual exposed tool and ordered actions',
+        ready.status === 'READY' && ready.recommended_tool === 'ziven_mcp.github_edit' &&
+        ready.steps[0] === 'dry_run' && ready.steps.at(-1) === 'github_read_back');
+    check('preflight is advice only and does not claim host/tool execution',
+        ready.advisory_only && !ready.executed && !ready.host_verified &&
+        ready.evidence_scope === 'caller_supplied_approval_and_capabilities');
+    check('no approval ref prevents a lesson from becoming active advice',
+        planLearningPreflight(task, [{ ...active,
+            application: { ...active.application, approval_ref: null } }]).status === 'PENDING_REVIEW');
+    check('pending reflection cannot masquerade as approved advice',
+        planLearningPreflight(task, [{ ...active,
+            reflection: { ...active.reflection, validation_state: 'pending' } }]).status === 'PENDING_REVIEW');
+    check('unexposed tool explicitly returns UNAVAILABLE, never success',
+        planLearningPreflight({ ...task, available_tools: ['generic.github_edit'] }, [active])
+            .status === 'UNAVAILABLE');
+    const aliased = planLearningPreflight({ ...task,
+        available_tools: ['mcp__codex_apps__ziven_mcp_github_edit'] }, [active]);
+    check('ChatGPT tool alias resolves to the actual exposed name, not a fake tool',
+        aliased.status === 'READY' &&
+        aliased.recommended_tool === 'mcp__codex_apps__ziven_mcp_github_edit' &&
+        aliased.canonical_tool === 'ziven_mcp.github_edit');
+    check('main is outside v0.3 advice scope regardless of lesson claim',
+        planLearningPreflight({ ...task, branch: 'main' }, [active]).status === 'BLOCKED');
+    check('other repositories cannot inherit Ziven-only tool guidance',
+        planLearningPreflight({ ...task, repo: 'another-owner/repo' }, [active]).reason
+            === 'repo_not_allowed');
+    check('irrelevant intent does not trigger the GitHub lesson',
+        planLearningPreflight({ ...task, intent: '查看天气' }, [active]).status === 'NO_MATCH');
+    check('irrelevant entity does not trigger the GitHub lesson',
+        planLearningPreflight({ ...task, entities: ['Cloudflare'] }, [active]).status === 'NO_MATCH');
+    check('revoked rule is not revived by a stale trigger',
+        planLearningPreflight(task, [{ ...active, status: 'revoked' }]).status === 'NO_MATCH');
+    check('conflicting matching active rules block ambiguous advice',
+        planLearningPreflight(task, [active, structuredClone(active)]).status === 'CONFLICT');
+    check('invalid caller contract cannot trigger a tool',
+        planLearningPreflight({ intent: 'GitHub 403' }, [active]).status === 'INVALID');
+
+    const baseline = { task_fingerprint: 'synthetic:edit-dev-file',
+        capability_fingerprint: 'synthetic:both-connectors-exposed',
+        success: false, error_recurred: true, evidence_refs: ['synthetic:before'] };
+    const after = { ...baseline, success: true, error_recurred: false,
+        evidence_refs: ['synthetic:after'] };
+    const pair = { scenario_id: 'synthetic-GitHub-route', baseline, after };
+    check('paired improvement explicitly remains caller-supplied, not E3',
+        compareLearningTrials(pair).status === 'IMPROVED' &&
+        compareLearningTrials(pair).host_verified === false);
+    check('negative control detects regressions',
+        compareLearningTrials({ ...pair, baseline: after, after: baseline }).status === 'REGRESSED');
+    check('same outcome cannot be marketed as improvement',
+        compareLearningTrials({ ...pair, baseline: after, after: { ...after } }).status === 'UNCHANGED');
+    check('different tool capabilities invalidate before/after comparison',
+        compareLearningTrials({ ...pair, after: { ...after,
+            capability_fingerprint: 'synthetic:other-tools' } }).status === 'INVALID');
+    check('missing actual outcome refs is unverified, not a pass',
+        compareLearningTrials({ ...pair, after: { ...after, evidence_refs: [] } })
+            .status === 'NOT_VERIFIED');
+
+    const preflightCli = spawnSync(process.execPath, [
+        'scripts/reflection_preview.mjs', '--preflight', JSON.stringify(task),
+        'tests/learning/learning_github_tool_route_001.json'
+    ], { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' });
+    const preflightOutput = preflightCli.status === 0 ? JSON.parse(preflightCli.stdout) : null;
+    check('read-only CLI exposes the preflight gate for actual candidate',
+        preflightCli.status === 0 && preflightOutput.read_only === true &&
+        preflightOutput.writes_executed === false &&
+        preflightOutput.preflight.status === 'PENDING_REVIEW');
 
     const cli = spawnSync(process.execPath, ['scripts/reflection_preview.mjs',
         'tests/learning/learning_reflection_candidate_001.json'], {
