@@ -94,6 +94,35 @@ export function previewPromotion(artifact, options = {}) {
     };
 }
 
+/**
+ * L3 v0.2: compare an expected behavior contract with a caller-supplied observation.
+ * This is a pure E2/evidence-gathering primitive. Passing a synthetic or reported
+ * observation NEVER proves a real agent/host cold start (E3). No I/O or promotion.
+ */
+export function evaluateBehaviorObservation(trial) {
+    if (!isRecord(trial) || !hasText(trial.scenario_id) ||
+        !isRecord(trial.expected) || Object.keys(trial.expected).length === 0) {
+        return { status: 'INVALID', reason: 'behavior_contract_required', host_verified: false };
+    }
+    if (!isRecord(trial.observed) || !textArray(trial.evidence_refs) ||
+        trial.evidence_refs.length === 0) {
+        return { status: 'NOT_VERIFIED', reason: 'missing_observation_or_evidence',
+            host_verified: false };
+    }
+    const mismatches = Object.entries(trial.expected)
+        .filter(([key, value]) => !Object.hasOwn(trial.observed, key) ||
+            trial.observed[key] !== value)
+        .map(([key]) => key);
+    return {
+        status: mismatches.length ? 'FAIL' : 'PASS',
+        scenario_id: trial.scenario_id,
+        mismatches,
+        evidence_refs: [...trial.evidence_refs],
+        evidence_scope: 'caller_supplied_not_independently_verified',
+        host_verified: false
+    };
+}
+
 /** Batch workflow: duplicate IDs cannot yield multiple proposals. No side effects. */
 export function evaluateReflectionCandidates(artifacts) {
     if (!Array.isArray(artifacts)) throw new TypeError('artifacts_must_be_array');
