@@ -3410,6 +3410,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **宿主验收边界**：Worker #536 已部署不等于 ChatGPT/Operit 已接收 CORE-0.2。真实宿主正文接收、首次自动调用、冷启动恢复、工作连续性与相处连续性仍 NOT RUN/NOT VERIFIED；不得用服务端 Mock/Worker 部署代替宿主证据。未让 Operit 执行付费测试。
 - **下一步**：M1 服务端发布/Worker 部署 CLOSED；分别规划 ChatGPT 与 Operit 的宿主验收。ChatGPT 的 `session_context(include_core=true)` 只读 E3 需另行明确授权后执行；Operit 暂不重复消耗 Token。工作连续性与相处连续性分别记录，未通过前不宣布 M1 整体完成。
 
+### [2026-11-06] GPT → Operit · v6.43.0 ChatGPT Core 工具快照阻塞定位
+- **源码/插件差异**：main `src/modules/session/bootstrap.js` 已定义 `session_context.input_schema.properties.include_core:boolean`；ChatGPT 当前已连接的 `mcp__Ziven_MCP__session_context` 仅暴露 host/invocation/topic，缺 include_core。Plugin Creator 只读核对私人插件 `plugin_asdk_app_6ad85722a6808191b55587a39c60941e` 现有文件只有 `.app.json` 与 `.codex-plugin/plugin.json`，没有工具 Schema，因此不是需修改插件包才能补参数。
+- **已完成的显式只读宿主证据**：在当前 ChatGPT 宿主直接调用默认 `session_context({host:'chatgpt',invocation:'explicit'})` 返回 SC-RUNTIME-0.1 / READY，五来源均 ok，`structured_fields_verified=true`、`warnings=[]`、decision/evidence 可读取；`session_bootstrap` 也返回 READY。仅证明默认摘要路径 E3，**不证明 CORE-0.2 正文已载入**。
+- **真实阻塞与正确动作**：ChatGPT 工具定义快照未刷新，当前 Plugin_Management 仅能管理权限/安装相关功能，不能刷新已连接 MCP tools；根据 OpenAI 官方 Plugins 文档，必须由柳柳在已登录的 ChatGPT 网页打开 Plugins → Ziven_MCP 详情 → Refresh（刷新工具元数据），再新开会话确认工具签名出现 include_core。无需重新部署 Worker、更新插件包或修改 main。
+- **授权与继续条件**：`include_core=true` 会把身份根、当前检查点、主档、恢复协议、导航五份私人权威正文装入当前宿主；需要柳柳另行明确允许。刷新及授权完成后执行只读 E3，记录五源返回完整块、宿主实际接收、冷启动/首轮触发、工作连续性与相处连续性的不同验收结论。Operit 不消耗付费 Token，M1 整体仍 OPEN。
+- **权威状态**：云端 `⚙️/当前工作检查点` workflow_state 已改为 `M1_CHATGPT_TOOL_SCHEMA_REFRESH_PENDING`，保留标准 workflow_state/active_focus/next_action/do_not_repeat/decision/evidence 字段；重读 `session_context` 返回 READY。Roadmap §5 已同步诊断；本条仅 dev 文档交接，不发布 main。
+
 
 
 
