@@ -3458,6 +3458,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **生产与真实 E3**：生产仍 `mcp-memory/main` v6.45.0 SHA `4a9aef4a7d164a1a62aab340fe7a1efde1b96505`；柳柳更新 Cloudflare Token 后 Dashboard 触发 Worker **#539** / deployment `26929653`，本次 `cloudflare_deploy_status(verify_main=true)` 回 `VERIFIED`，**并不是 v6.46.0 部署**。现有 Worker Cloudflare Deploy 查询通道可用，但**Observability 历史查询的具体权限、存储开关、日志字段形状及新工具宿主 E3 仍 NOT VERIFIED**；Live Tail 能看事件不等于持久化查询可用。不要求柳柳再次提供密钥，不提前调用新工具或修改令牌。
 - **主线接续**：`wovowx/ZivenLab/dev/governance/roadmap.md` v1.61 已记录可验收原型与实现事实。v6.46.0 的下一步只需补齐最终 CI 和治理检查点、向柳柳提出正式发布单（用户实际收益、净 diff、风险、回滚 v6.45.0、E3 尚缺证据），**获明确批准后**才能 PR/main/自动 Worker 部署、刷新 ChatGPT 插件并做安全合规的真实 E3。L5 存量体检保持暂缓。M1 完整私人 Core 的宿主安全拦截仍独立 OPEN。
 
+### [2026-11-06] GPT → Operit · v6.46.0 已发布 · PR #333 / Worker #540 VERIFIED
+- **版本批准与用户价值**：柳柳收到完整 v6.46.0 发布单（功能价值=哥哥可自行查 Cloudflare Worker 近期存储日志摘要，不再依赖柳柳手工截图；净6文件/8次提交、合成 E1/E2 CI、Worker 自动部署、回滚 v6.45.0 和 E3 未验证边界）后回复「好」。**这是 v6.46.0 的明确 PR/main/Cloudflare 自动部署许可，已经完成，不重复询问。**
+- **GitHub 证据**：PR [#333](https://github.com/wovowx/mcp-memory/pull/333) head=`dev` SHA `df2d79f3903ffc395b66d1d9a145e5211080f5f1`、base=`main` SHA `4a9aef4a7d164a1a62aab340fe7a1efde1b96505`，净6路径、ahead8/behind0、clean/rebaseable；PR CI [#42181046878](https://github.com/wovowx/mcp-memory/actions/runs/42181046878) SUCCESS；按 rebase 合并，GitHub GET 独立回读 `merged=true/state=closed`。合并时 main=dev=`2c94f0444ee5d56c39739beca73abd7496921610`（ahead0/behind0、package 6.46.0）；main CI [#42181130721](https://github.com/wovowx/mcp-memory/actions/runs/42181130721) SUCCESS、dev CI [#42181133660](https://github.com/wovowx/mcp-memory/actions/runs/42181133660) SUCCESS。
+- **Cloudflare 证据**：Worker **#540** / deployment `f710f2b7` / version hash `2f8e7e13`，`cloudflare_deploy_status(verify_main=true)` 对齐 GitHub main `2c94f044...`，返回 **VERIFIED**。上一生产版回滚参考 v6.45.0 / main `4a9aef4a...` / Dashboard Worker #539 deployment `26929653`，更早 Worker #538 deployment `86cfeb29`。**#539 是柳柳更新 Token 后 Dashboard 部署，不是 v6.46.0**。
+- **可用范围**：已正式部署 `cloudflare_logs_query` 场景工具代码；只向已存储 Workers Observability API 发送固定的临时查询，参数受限、结果脱敏，不公开 `cf_proxy` 写能力；通过独立合成 CI 的 Router/Registry 191/191、Memory Core 120/120、Session/Core 56/56、Reflection 35/35。新功能上线不等于真实日志已经成功读取。
+- **宿主 E3 未完成**：当前 ChatGPT 连接的 Ziven MCP 工具元数据仍未暴露 `cloudflare_logs_query`，**下一步由柳柳在准备体验时手动刷新插件工具列表后**，才能合法调用 `cloudflare_logs_query` 做真实只读 E3；不需要再次询问或接收 Token 明文。即使插件刷新，Cloudflare Worker Token 的 Observability 权限是否匹配、Workers Logs 是否已启用持久化、官方 REST 响应形状是否适配仍未核验。若返回 `UNAVAILABLE/ERROR`，不得伪报成功、不得越权更新 Token/日志配置，也不得用任意 API 代理规避限制。M1 完整私人 Core 宿主安全拦截独立 OPEN。
+- **权威交接**：ZivenLab/dev `governance/roadmap.md` **v1.63**、`governance/当前项目状态.md` **version194** 已记录完整证据，云端 `⚙️/当前工作检查点` 随后同步。L5 存量体检暂缓；聊天室/唤醒不动。此条只写入 mcp-memory **dev** Bridge 以跨端交接，绝不视为再一次 v6.46.0 生产代码发布；写入之后需复核 main/dev 差异与 Bridge-only CI。
+
+
 
 
 
