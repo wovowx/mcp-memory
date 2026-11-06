@@ -309,7 +309,11 @@ try {
   check('tools/list advertises one copy each of the existing Bootstrap and Context static tools',
     ['session_bootstrap', 'session_context'].every(name => recovered.filter(t => t.name === name).length === 1) &&
     recovered.find(t => t.name === 'session_context')?.inputSchema?.properties?.topic?.type === 'string');
-  const discoveredMemorySchema = recovered.find(tool => tool.name === 'memory')?.inputSchema;
+  const discoveredMemoryTool = recovered.find(tool => tool.name === 'memory');
+  const discoveredMemorySchema = discoveredMemoryTool?.inputSchema;
+  check('tools/list explicitly documents the existing read-only history action',
+    discoveredMemoryTool?.description?.includes('history：提供按完整 key'));
+
   check('tools/list exposes optional memory type enum without changing required action',
     discoveredMemorySchema?.properties?.type?.enum?.join(',') === 'fact,quote,inference,agreement' &&
     discoveredMemorySchema?.required?.join(',') === 'action' &&
