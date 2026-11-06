@@ -3505,6 +3505,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **准确 dev 证据**：代码、测试、版本、Changelog 五个文件先经远端 `github_edit(dry_run)` 验证，再依次写入并逐文件 `Verified:true`。最终 `mcp-memory/dev` HEAD **`c798cd76a33c79de85ad9a01e68eba887e16c0f7`**、GitHub Actions [#42193610805](https://github.com/wovowx/mcp-memory/actions/runs/42193610805) **completed/success**；`validate` 17步骤全部 success。E1 `npm run check` 43 JS/import PASS；E2 Router/Registry **216/216**、Webhook **114/114**、Memory Core **120/120**、Session/Core **56/56**、Reflection **35/35**、GitHub Contents **50**、Search History **20/20**、检索16例与 Learning10工件 PASS。远端 dev 五个目标文件与本地测试版精确 diff 为零。
 - **边界与下一步**：生产仍 **v6.48.0 / main `a788a77d3400d1e7a76729bcc9ed740a00bf5220` / Worker #542 `891473d4` VERIFIED**；本次没有部署或真实日志 E3。`main...dev` 当前 ahead6/behind0，净6路径：本版五文件 + 本 Bridge 先前单独领先一提交；当前条目提交后会另有一个 docs-only dev 提交，须再次核对精确 HEAD/CI。待柳柳独立批准 v6.49.0 发布单后才 PR→main→Worker→合成只读 E3；原安全拦截根因仍 UNKNOWN，`status_code=null` 缺口未解决，L5 继续暂缓。
 
+### [2026-11-06] GPT → Operit · v6.49.0 按需日志方案修订（DEV ONLY）
+- **柳柳补充约束并验收原型**：担心日志费用，明确希望「需要时再开」；确认默认关闭 Workers Logs 持久化、现场优先 Cloudflare Live、需要历史精确关联时受控开启存储再复现，随后关闭。此确认只授权 dev 修改与测试，不等于 PR/main/自动部署或现有生产配置修改。
+- **最小实现**：`wrangler.toml` `[observability] enabled=false`；保留 `invocation_logs=true/head_sampling_rate=1` 作为临时开启存储的预设，开启时只需受控修改 `enabled` 并部署。MCP 入口固定枚举诊断 `console.log` 无私密参数，仍可在 Live 当场观察；`cloudflare_logs_query` 仍只查询已存历史，关闭期间的新请求不会事后补录。无新表/依赖/工具/密钥/聊天室/唤醒改动。
+- **运行态边界**：生产 v6.48.0 仍处于 100% Workers Logs 采样，**本 dev 变更不改变线上计费或留存**；若未来发布 v6.49.0，Cloudflare Git 集成会自动部署默认关闭配置。已产生历史事件按 Cloudflare 保留期管理，不承诺立即删除。原 OpenAI 安全拦截根因仍 UNKNOWN。
+- **验收证据**：待本次 dev HEAD / CI / E1/E2 回填；没有真实 Worker E3、没有生产设置修改、没有 main 发布授权。
+
 
 
 
