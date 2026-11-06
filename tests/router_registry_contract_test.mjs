@@ -232,7 +232,7 @@ check('buildErrorResponse keeps the default 400 status', defaultErrorResponse.st
 check('buildErrorResponse keeps the { error } body', JSON.stringify(await defaultErrorResponse.json()) === JSON.stringify({ error: 'default status' }));
 
 const fixture = [
-  { name: 'memory', enabled: true, description: 'memory tool', handler_type: 'js', handler_config: { handler: 'memory' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string' }, key: { type: 'string' }, value: { type: 'string' } } } },
+  { name: 'memory', enabled: true, description: 'memory tool', handler_type: 'js', handler_config: { handler: 'memory' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['remember', 'recall', 'update', 'rename', 'forget', 'search', 'list', 'random', 'by_date', 'stats', 'suggest', 'import', 'export', 'move', 'list_categories', 'by_category'] }, key: { type: 'string' }, value: { type: 'string' } } } },
   { name: 'supabase_db', enabled: true, description: 'database', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['query', 'insert', 'update', 'delete', 'tables', 'exec'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' } } } },
   { name: 'supabase_schema', enabled: true, description: 'schema', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['create_table', 'drop_table', 'tables', 'exec', 'schema_dump'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' }, format: { type: 'string', enum: ['md', 'json'] }, rls: { type: 'boolean' } } } },
   { name: 'image_upload', enabled: true, description: 'media', handler_type: 'ai', handler_config: { handler: 'ai' } },
@@ -314,6 +314,23 @@ try {
     discoveredMemorySchema?.properties?.type?.enum?.join(',') === 'fact,quote,inference,agreement' &&
     discoveredMemorySchema?.required?.join(',') === 'action' &&
     !discoveredMemorySchema.required.includes('type'));
+  check('tools/list adds history to existing memory action enum without removing registered actions',
+    discoveredMemorySchema?.properties?.action?.enum?.includes('history') &&
+    discoveredMemorySchema.properties.action.enum.length === 17 &&
+    ["remember","recall","update","rename","forget","search","list","random","by_date","stats","suggest","import","export","move","list_categories","by_category"].every(action => discoveredMemorySchema.properties.action.enum.includes(action)));
+  const registeredMemorySchema = fixture.find(skill => skill.name === 'memory')?.input_schema;
+  check('history schema override never mutates Supabase skills registry fixture',
+    !registeredMemorySchema.properties.action.enum.includes('history') &&
+    registeredMemorySchema.properties.action.enum.length === 16);
+  memoryWriteBodies = []; memoriesRestCount = 0; usagePatchCount = 0;
+  t = await callTool('memory', { action: 'history', key: 'core/retired-rule' });
+  check('dispatchGuard accepts the exposed history action via existing memory handler',
+    t.includes('[history_status=EMPTY]') && !t.includes('DISPATCH_GUARD_REJECT'));
+  check('history empty path makes only GET requests and never increments usage',
+    memoryWriteBodies.length === 0 && memoriesRestCount === 1 && usagePatchCount === 0);
+  t = await callTool('memory', { action: 'auto_restore', key: 'core/retired-rule' });
+  check('dispatchGuard rejects unsupported action before repository access',
+    t.includes('[INVALID_ARGS_SCHEMA]') && memoriesRestCount === 1);
   memoryWriteBodies = []; usagePatchCount = 0;
   t = await callTool('memory', { action: 'remember', key: 'core/invalid-type', value: 'not stored', type: 'opinion' });
   check('dispatchGuard rejects invalid memory type before any business write or usage count',
