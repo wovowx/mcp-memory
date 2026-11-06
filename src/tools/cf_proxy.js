@@ -71,6 +71,9 @@ export const CF_PROXY_TOOL_DEF = {
 // endpoints, token names, raw log lines, headers, bodies or account mutations.
 const LOG_WORKER = 'mcp-memory';
 const LOG_ARGS = new Set(['minutes', 'limit', 'status_filter']);
+const DIAG_MARKER = 'ziven_mcp_diag_v1';
+const DIAG_KINDS = new Set(['memory_recall', 'memory_history', 'session_context', 'session_bootstrap']);
+const DIAG_PHASES = new Set(['arrived', 'response_formed', 'server_error']);
 
 export const CLOUDFLARE_LOGS_QUERY_TOOL = Object.freeze({
     name: 'cloudflare_logs_query',
@@ -134,6 +137,52 @@ function parseLogHttpTrigger(value) {
 function logObject(value) {
     return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
+// A console object is trustworthy only as a fixed diagnostic envelope, never
+// as arbitrary source data. Unknown keys make the whole envelope ineligible.
+function safeMcpDiagnostic(raw) {
+    if (logObject(raw?.$metadata).type !== 'cf-worker-log') return null;
+    let source = raw?.source;
+    if (typeof source === 'string' && source.length <= 256) {
+        try { source = JSON.parse(source); } catch { return null; }
+    }
+    if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+    const keys = Object.keys(source).sort();
+    if (keys.join(',') !== 'marker,phase,tool_kind' || source.marker !== DIAG_MARKER ||
+        !DIAG_KINDS.has(source.tool_kind) || !DIAG_PHASES.has(source.phase)) return null;
+    return { tool_kind: source.tool_kind, phase: source.phase };
+}
+function strictCorrelationId(value) {
+    return typeof value === 'string' && /^[0-9a-f]{32}$/.test(value) && !/^0+$/.test(value)
+        ? value : null;
+}
+function invocationKeys(raw) {
+    const meta = logObject(raw?.$metadata), workers = logObject(raw?.$workers);
+    return {
+        requestId: strictCorrelationId(meta.requestId ?? workers.requestId),
+        traceId: strictCorrelationId(meta.traceId ?? workers.traceId)
+    };
+}
+function isSameInvocation(a, b, traceHttpCounts) {
+    // Different known request IDs disqualify a match, even with the same trace.
+    if (a.requestId && b.requestId) return a.requestId === b.requestId;
+    // A distributed trace can span several invocations; fallback is permitted
+    // only when this bounded result has exactly one HTTP invocation per trace.
+    return Boolean(a.traceId && b.traceId && a.traceId === b.traceId &&
+        traceHttpCounts.get(a.traceId) === 1);
+}
+function correlatedMcpDiagnostic(event, diagnostics, traceHttpCounts) {
+    const keys = invocationKeys(event);
+    if (!keys.requestId && !keys.traceId) return null;
+    const matches = diagnostics.filter(x => isSameInvocation(keys, x.keys, traceHttpCounts));
+    const kinds = new Set(matches.map(x => x.data.tool_kind));
+    if (kinds.size !== 1) return null;
+    const phases = new Set(matches.map(x => x.data.phase));
+    // Conflicting terminal phases are not evidence of an unambiguous result.
+    if (phases.has('response_formed') && phases.has('server_error')) return null;
+    const phase = phases.has('server_error') ? 'server_error'
+        : phases.has('response_formed') ? 'response_formed' : 'arrived';
+    return { tool_kind: [...kinds][0], phase };
+}
 // Preserve ambiguity: disagreeing or disallowed paths never become fabricated /mcp.
 function verifiedLogValue(candidates, validator, strict = false) {
     const nonempty = candidates.filter(x => typeof x === 'string' && x.length > 0);
@@ -196,7 +245,9 @@ function sanitizeLogEvent(raw) {
         path,
         status_code: status,
         outcome: error ? 'error' : (ok ? 'ok' : 'unknown'),
-        trace_id: logId(meta.requestId ?? meta.traceId ?? workers.requestId ?? workers.traceId ?? meta.rayId)
+        trace_id: logId(meta.requestId ?? meta.traceId ?? workers.requestId ?? workers.traceId ?? meta.rayId),
+        mcp_tool_kind: null,
+        mcp_phase: null
         // Never return the raw $workers.event, source, messages or headers.
     };
 }
@@ -221,9 +272,11 @@ export async function handleCloudflareLogsQuery(args = {}, env = {}, fetchImpl =
     }
     if (!Number.isFinite(nowMs) || nowMs <= 0) return logResponse('ERROR', 'invalid_time');
     const end = Math.floor(nowMs);
+    // A bounded 3x read permits two diagnostic events plus one invocation to
+    // coexist in the result; the public result is still limited to `limit`.
     const body = {
         queryId: 'ziven-logs-temporary', timeframe: { from: end - minutes * 60000, to: end },
-        view: 'events', limit, dry: true,
+        view: 'events', limit: Math.min(150, limit * 3), dry: true,
         parameters: {
             datasets: [], filterCombination: 'and',
             filters: [{ key: '$metadata.service', operation: 'eq', type: 'string', value: LOG_WORKER }]
@@ -251,6 +304,27 @@ export async function handleCloudflareLogsQuery(args = {}, env = {}, fetchImpl =
     if (!Array.isArray(group?.events)) return logResponse('ERROR', 'invalid_response_shape');
     const parsed = group.events.map(sanitizeLogEvent);
     if (parsed.some(e => e === null)) return logResponse('ERROR', 'unverifiable_worker_scope');
+    const diagnostics = group.events.flatMap(raw => {
+        const data = safeMcpDiagnostic(raw);
+        return data ? [{ keys: invocationKeys(raw), data }] : [];
+    });
+    const traceHttpCounts = new Map();
+    for (let i = 0; i < parsed.length; i++) {
+        if (parsed[i].event_kind !== 'http') continue;
+        const traceId = invocationKeys(group.events[i]).traceId;
+        if (traceId) traceHttpCounts.set(traceId, (traceHttpCounts.get(traceId) || 0) + 1);
+    }
+    for (let i = 0; i < parsed.length; i++) {
+        const event = parsed[i];
+        const local = safeMcpDiagnostic(group.events[i]);
+        const matched = event.event_kind === 'http'
+            ? correlatedMcpDiagnostic(group.events[i], diagnostics, traceHttpCounts)
+            : (event.event_kind === 'runtime_log' ? local : null);
+        if (matched) {
+            event.mcp_tool_kind = matched.tool_kind;
+            event.mcp_phase = matched.phase;
+        }
+    }
     const selection = filter === 'error' ? parsed.filter(e => e.outcome === 'error') : parsed;
     selection.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
     const events = selection.slice(0, limit);
