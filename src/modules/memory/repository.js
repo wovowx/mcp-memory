@@ -113,32 +113,60 @@ export async function getMemoryAliasIds(env, keyword) {
     return rows.map(row => row?.memory_id).filter(Boolean);
 }
 
+// Do not invent an empty history on network, HTTP, JSON or shape failures.
+// The same read primitive still serves the existing legacy history path.
+function historyReadError(source, code, httpStatus = null) {
+    const error = new Error(source + ' history read failed: ' + code);
+    error.name = 'MemoryHistoryReadError';
+    error.source = source;
+    error.code = code;
+    error.http_status = httpStatus;
+    return error;
+}
+
+async function readHistoryRows(env, url, source) {
+    let response;
+    try { response = await fetch(url, { headers: authHeaders(env) }); }
+    catch { throw historyReadError(source, 'network_error'); }
+    if (!response?.ok) throw historyReadError(source, 'http_error', response?.status ?? null);
+    let rows;
+    try { rows = await response.json(); }
+    catch { throw historyReadError(source, 'invalid_json'); }
+    if (!Array.isArray(rows)) throw historyReadError(source, 'invalid_response_shape');
+    return rows;
+}
+
 export async function getMemoryEvents(env, memoryId) {
-    const resp = await fetch(
+    return readHistoryRows(env,
         `${env.SUPABASE_URL}/rest/v1/memory_events?memory_id=eq.${encodeURIComponent(memoryId)}&select=*&order=created_at.asc`,
-        { headers: authHeaders(env) }
-    );
-    if (!resp.ok) throw new Error('memory events HTTP ' + resp.status);
-    const rows = await resp.json();
-    return Array.isArray(rows) ? rows : [];
+        'memory_events');
 }
 
 /**
- * History intentionally includes soft-deleted/expired memory rows. A lifecycle
- * operation may move or retire a key, but its event ledger must remain readable.
+ * History includes retired/expired keys. In tolerantEvents mode an event
+ * failure preserves successfully read records but never pretends events=[].
+ * Default shape and failure semantics remain compatible with old callers.
  */
-export async function getMemoryHistoryByKey(env, key) {
-    const resp = await fetch(
+export async function getMemoryHistoryByKey(env, key, options = {}) {
+    const rows = await readHistoryRows(env,
         `${env.SUPABASE_URL}/rest/v1/memories?key=eq.${encodeURIComponent(key)}&select=*&order=created_at.desc`,
-        { headers: authHeaders(env) }
-    );
-    if (!resp.ok) throw new Error('memory history lookup HTTP ' + resp.status);
-    const rows = await resp.json();
-    const matches = Array.isArray(rows) ? rows.filter(row => row?.key === key) : [];
-    return Promise.all(matches.map(async record => ({
-        record,
-        events: await getMemoryEvents(env, record.id)
-    })));
+        'memories');
+    const matches = rows.filter(row => row?.key === key);
+    return Promise.all(matches.map(async record => {
+        if (options?.tolerantEvents === true) {
+            if (!record.id) {
+                return { record, events: null, event_error: { code: 'missing_record_id' } };
+            }
+            try { return { record, events: await getMemoryEvents(env, record.id), event_error: null }; }
+            catch (error) {
+                return { record, events: null, event_error: {
+                    code: error?.code || 'unknown_error',
+                    http_status: error?.http_status ?? null
+                } };
+            }
+        }
+        return { record, events: await getMemoryEvents(env, record.id) };
+    }));
 }
 
 export async function insertMemoryRecord(env, record) {
