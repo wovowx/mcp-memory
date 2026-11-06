@@ -1,1 +1,46 @@
-x
+{
+  "test_id": "learning_reflection_candidate_001",
+  "name": "L3 Reflection：来源可追溯的候选反思（合成样例，未验证）",
+  "description": "合成候选，仅用于证明 pending 不会成为事实或晋升；不得当作真实柳柳反馈/执行证据。",
+  "lesson_key": "PROPOSED:reflection_candidate_001",
+  "status": "candidate",
+  "trigger": {
+    "intents": [
+      "纠正",
+      "反思",
+      "学习候选"
+    ],
+    "entities": [
+      "Reflection",
+      "lesson",
+      "证据"
+    ]
+  },
+  "checks": [
+    "候选缺来源时不放行验证",
+    "pending 不能晋升为 Memory/Skill/Workflow",
+    "validated 需要支持证据和验证引用，且仅可生成待批准的晋升预览",
+    "同一 candidate_id 不重复生成晋升预览"
+  ],
+  "blocked_actions": [
+    "把合成样例误报成真实经历",
+    "把 pending 当作已验证事实写入记忆",
+    "未经柳柳明确同意自动修改正式 Skill/Workflow"
+  ],
+  "verification": [
+    "运行 npm run test:reflection 验证判定和无副作用合同",
+    "真实 Agent 行为改善仍须未来单独的 E3 验证"
+  ],
+  "reflection": {
+    "candidate_id": "synthetic-reflection-001",
+    "hypothesis": "声明记住规则之前应有可复核的实际记忆写入证据",
+    "source_refs": [
+      "synthetic:example-feedback-not-real-user-data"
+    ],
+    "evidence_for": [],
+    "evidence_against": [],
+    "validation_state": "pending",
+    "target": "skill",
+    "decision_reason": "仅供验证工作流的数据样例，尚无真实证据，不允许晋升"
+  }
+}
