@@ -32,6 +32,25 @@ import { handleMCPRequest } from './modules/mcp_router.js';
 import { discoverMCPTools } from './modules/agent_runtime/mcp_client.js';
 import { initExecutionSession, rotateExecutionSession, getActiveExecutionBinding, dispatchExecutionTask } from './modules/execution/execution_session_manager.js'; // B4 execution session + task dispatch
 
+// Only fixed, non-personal enums may enter Workers Logs. Cloudflare attaches
+// invocation metadata to each structured console event automatically.
+const MCP_DIAG_MARKER = 'ziven_mcp_diag_v1';
+function mcpDiagnosticKind(body) {
+    if (body?.method !== 'tools/call') return null;
+    const name = body?.params?.name;
+    if (name === 'memory') {
+        const action = body?.params?.arguments?.action;
+        return action === 'recall' || action === 'history' ? 'memory_' + action : null;
+    }
+    return name === 'session_context' || name === 'session_bootstrap' ? name : null;
+}
+function emitMcpDiagnostic(kind, phase) {
+    if (!kind) return;
+    try {
+        console.log({ marker: MCP_DIAG_MARKER, tool_kind: kind, phase });
+    } catch { /* Diagnostic logging must never alter the MCP response. */ }
+}
+
 export default {
     // v6.11.19：补回 scheduled() —— cron 每分钟触发（wrangler.toml crons=["* * * * *"]）
     // 先 watchdogSweep 释放超时卡死事件（15min 超时），再 processPendingEvents 处理待办/重投
@@ -377,12 +396,25 @@ export default {
                 return jsonResponse({ service: 'ZivenAgent', status: 'ok', mcp: '/mcp' });
             }
             if (request.method === 'POST') {
+                let diagnosticKind = null;
                 try {
-                    const body = await request.json(); const result = await handleMCPRequest(body, env);
-                    if (result.notification) return new Response(null, { status: 202, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id' } });
+                    const body = await request.json();
+                    diagnosticKind = mcpDiagnosticKind(body);
+                    emitMcpDiagnostic(diagnosticKind, 'arrived');
+                    const result = await handleMCPRequest(body, env);
+                    if (result.notification) {
+                        const response = new Response(null, { status: 202, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id' } });
+                        emitMcpDiagnostic(diagnosticKind, 'response_formed');
+                        return response;
+                    }
                     const status = result.ok === false ? 400 : 200;
-                    return new Response(JSON.stringify(result.data), { status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id' } });
-                } catch (e) { return jsonResponse({ ok: false, error: e.message }, 500); }
+                    const response = new Response(JSON.stringify(result.data), { status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Session-Id' } });
+                    emitMcpDiagnostic(diagnosticKind, 'response_formed');
+                    return response;
+                } catch (e) {
+                    emitMcpDiagnostic(diagnosticKind, 'server_error');
+                    return jsonResponse({ ok: false, error: e.message }, 500);
+                }
             }
         }
         if (url.pathname === '/') {
