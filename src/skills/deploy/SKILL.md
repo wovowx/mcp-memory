@@ -5,7 +5,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.6.6 · dev 修复验证与 main 生产风险区分）
+# 部署技能（v6.6.7 · v6.43.0 发布复盘与 merge 回读强化）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
@@ -22,8 +22,8 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 1. **main 只经 PR 合入**——绝不直接推 main，分支保护兜底。
 2. **柳柳拍板发布**——发布是决策，不是哥哥自动完成的事（第 3 步最高优先级）。
 3. **一个版本一次发布**——dev 攒批，一个 change batch，一次 PR，一次部署。
-4. **合并默认 `merge_method=rebase`（代码 v6.17.0 硬性）**——不传就是 rebase，标题不会重复（PR #131 教训）。若显式传 `merge`：必须带 `commit_title` + `merge_reason`（hotfix/emergency/history-preserve），否则代码拒绝（MERGE_REQUIRES_COMMIT_TITLE / MERGE_REQUIRES_REASON）。rebase 保留真实历史、命名从版本号开始。
-5. **合并后的 dev 同步必须识别 PR 来源分支**——只有已合并且 `head.ref=dev`、`base.ref=main` 时，才允许同步 dev；scoped release/hotfix/其他 head/base 必须跳过。2026-11-04 已在 `mcp-memory/dev` 修复并通过 E1/E2：CI-tested commit `0c5cadde09452359c81198f35a26585b39aec303`、run `41856598888`，新增 11 项合同测试。但**当前已部署 Worker 仍运行 main v6.36.1**，其 `github_v64.js` blob SHA `371de7e7d87f994e2314a931fd0572926bc3b655` 仍是旧的无条件 helper；dev 修复尚未发布 main。故在修复进入 main 并独立确认部署前，生产 Worker 的 merge helpers 仍按旧风险处理：不要用它们合并 scoped release/hotfix/非 dev PR；任何必要合并前后都要保存并独立核对 main/dev 与 PR head/base SHA。dev 的 Mock PASS 不代表生产端已修复。
+4. **合并默认 `merge_method=rebase`**——必须显式传 rebase，并先读取 PR 的 `rebaseable`。若 `rebaseable=false`，不得反复尝试 rebase 或把 HTTP405 当作成功；确认 `mergeable_state` 后再选择可用方法。需要保留整批提交历史时可显式 `merge`，必须带 `commit_title` + `merge_reason=history-preserve`；只有明确接受压缩历史时才选 `squash`。当前 MCP merge wrapper 未暴露 `commit_message`，history-preserve merge 可能出现标题在正文重复；下次代码修复应补充该参数。
+5. **合并后的 dev 同步必须识别 PR 来源分支**——只有独立回读确认 `merged=true` 且 `head.ref=dev`、`base.ref=main` 时才允许同步 dev；scoped release/hotfix/其他 head/base 必须跳过。该 guard 已在 `src/modules/github/branch_pr.js` 进入 main，`src/tools/github_v64.js` 作为 facade 委托；E1/E2 证据见历史 run `41856598888`。注意：dev-sync guard 与 merge 结果提示是两条独立链路；guard fail-closed 不代表 `github_merge_to_main` 的用户提示正确。dev 的 Mock PASS 不代表生产端已修复。
 6. **JSON 文件用 content_base64 推**——普通 content 推 JSON 会被序列化坏。
 7. **skill 是菜谱不是账本**——写/改 skill 按《技能写作规范》，主体优先，教训只留一行。
 8. **本地文件读取有逃生通道**——android 读本地失败（Shizuku 挂）时，优先用 `environment=linux` + `/sdcard/...` 直接读；大文件绝不手写整份重推（必漏段）。
@@ -52,10 +52,10 @@ description: 当需要修改代码、推送GitHub、创建PR、合并main、发�
 
 ### 第 5 步：建 PR 并合并（注意 merge_method！）
 - `github_create_pull_request(head=dev, base=main, title=版本号+名称, body=说明)`。
-- 合并用 **`merge_method=rebase`** + `commit_title=版本号+名称`——**必须显式传 rebase**，否则默认 merge 会把 commit_title 写两遍。
-- **生产 Worker 当前仍是旧 helper**：已部署 main v6.36.1 的 `src/tools/github_v64.js`（blob SHA `371de7e7d87f994e2314a931fd0572926bc3b655`）仍在任意成功合并路径调用无 PR head/base 守门的 `tryAutoSyncDev()`；scoped PR 仍可能移动 dev。mcp-memory/dev 已有修复及 E1/E2 run `41856598888`，但未发布 main。生产修复发布前，不用当前 Worker 的 `github_merge_pull_request` / `github_merge_to_main` 合并 scoped release、hotfix 或其他非 dev PR。
+- 合并优先用 **`merge_method=rebase`** + `commit_title=版本号+名称`，但先核对 PR `rebaseable`。若 `rebaseable=false` 且 PR `mergeable_state=clean`，如需保留提交历史，改用 `merge_method=merge` + `commit_title` + `merge_reason=history-preserve`；当前 wrapper 不支持 `commit_message`，会有标题重复风险，必须在发布单中披露。
+- **当前生产 helper 边界（v6.43.0 / Worker #536）**：main 已包含 `src/modules/github/branch_pr.js` 的 PR 来源守门；只有确认 `merged=true && head.ref=dev && base.ref=main` 才自动同步 dev。2026-11-06 发布中发现 `github_merge_to_main` 对 HTTP405 的结果处理仍可能误报“已合并”：rebase 请求返回405时 PR 实际仍 open/merged=false。故工具返回“合并成功”后，**必须独立 GET PR 并确认 `merged=true`、`state=closed`、`merge_commit_sha` 存在，再检查 main/dev SHA**；HTTP405 永远不是合并成功证据。若 PR 仍 open，禁止部署、禁止声称发布成功。
 - **合并前**记录 `main` 与 `dev` 的完整 SHA，并记录 PR 的 `head.ref/head.sha`、`base.ref/base.sha`；确认候选文件清单与批准范围一致。
-- **合并后**重新读取 PR `merged`、`main` SHA、`dev` SHA，再查 Cloudflare `verify_main=true`。工具提示不能替代这些回读。
+- **合并后**重新读取 PR `merged/state/merge_commit_sha/head/base`、`main` SHA、`dev` SHA，再查 Cloudflare `verify_main=true`。只有 `merged=true` 才进入部署验证；工具提示、HTTP200/405 或 `mergeable=true` 都不能替代该回读。
 - 若本次 PR 的 head 不是 `dev`，预期 dev 应保持原 SHA。若 dev 被自动移动，先确认原 commit 对象仍存在且当前 dev 仍等于刚才记录的 post-merge SHA，再使用 `github_sync_branch(name="dev", from="sha:<合并前dev完整SHA>", base="<当前dev完整SHA>")` 精确恢复；恢复后再次读取 main/dev 验证。
 - 精确恢复模式仅允许 `dev`，会先核对目标 commit、expected current HEAD，再更新并回读；但 expected HEAD 检查与 PATCH 不是 GitHub 原子 CAS，执行时必须保证没有并发 dev 写入。若 SHA 不匹配、目标提交不可读或回读不一致，立即停止，不得改用无条件 force。
 - **绝不以 `dev → main` 合并来修复 dev 指针**；这会把未发布提交带入生产。也不要删除/重建 dev 来“整理分支”。
@@ -118,7 +118,7 @@ merge 成功
 □ CHANGELOG 是否已更新？（双仓规则见下）
 □ 柳柳是否已批准？
 □ 分支是否对齐 / 无冲突？（compare 确认）
-□ merge 是否用 rebase？（v6.17.0 默认 rebase；显式 merge 必须 commit_title + merge_reason）
+□ PR `rebaseable` 是否为 true？若 false，是否选择了经说明的 history-preserve merge 或已获批的 squash？HTTP405 是否被明确视为失败而非成功？合并后 PR 是否独立回读 `merged=true`？
 □ 部署环境是否确认？（Cloudflare Git 集成）
 □ 部署后是否 verify_main？（merge 后 sleep 45s → cloudflare_deploy_status(verify_main=true)）
 □ 是否有回滚方案？（基线版本可回退）
