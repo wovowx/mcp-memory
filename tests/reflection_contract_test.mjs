@@ -4,7 +4,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
-    validateCandidate, decideCandidate, previewPromotion, evaluateReflectionCandidates
+    validateCandidate, decideCandidate, previewPromotion, evaluateReflectionCandidates,
+    evaluateBehaviorObservation
 } from '../src/modules/reflection.js';
 
 const fixture = JSON.parse(await readFile(
@@ -147,6 +148,62 @@ try {
     }
     check('all Reflection files under tests/learning are structurally valid and uniquely identified',
         checkedArtifacts >= 1 && candidateIds.size === checkedArtifacts);
+
+    console.log('\n[L3 v0.2 GitHub connector 403 → host-aware route recurrence prevention]');
+    const toolRouteFixture = JSON.parse(await readFile(
+        new URL('./learning/learning_github_tool_route_001.json', import.meta.url), 'utf8'
+    ));
+    const guide = await readFile(new URL('../src/skills/guide/github-use-guide/SKILL.md',
+        import.meta.url), 'utf8');
+    const router = await readFile(new URL('../src/skills/master-router/SKILL.md',
+        import.meta.url), 'utf8');
+    check('observed failure lesson is pending until fresh-host E3',
+        toolRouteFixture.reflection.validation_state === 'pending' &&
+        toolRouteFixture.reflection.source_refs.some(ref => ref.startsWith('conversation:')) &&
+        toolRouteFixture.scenarios.length === 5 &&
+        previewPromotion(toolRouteFixture).status === 'blocked');
+    check('loaded guide spells out actual Ziven MCP route, dry run and readback',
+        guide.includes('跨宿主选工具防复发') && guide.includes('github_edit') &&
+        guide.includes('dry_run=true') && guide.includes('github_read'));
+    check('master router triggers the host-aware connector 403 lesson',
+        router.includes('跨宿主修改 Ziven GitHub 已有文件') &&
+        router.includes('403') && router.includes('先验当前宿主'));
+
+    const trial = (scenario_id, expected, observed) =>
+        evaluateBehaviorObservation({ scenario_id, expected, observed,
+            evidence_refs: ['synthetic:tool-route-contract-v0.2'] });
+    // T1: the dev existing-file route selects the configured Ziven MCP edit path.
+    check('T1 dev existing-file synthetic route uses Ziven MCP with dry_run and readback',
+        trial('T1', { tool: 'ziven_mcp.github_edit', branch: 'dev',
+            dry_run: true, readback: true },
+        { tool: 'ziven_mcp.github_edit', branch: 'dev',
+            dry_run: true, readback: true }).status === 'PASS');
+    // T2: connector-specific 403 is not treated as global GitHub denial.
+    check('T2 connector-specific 403 can be recovered via another available route',
+        trial('T2', { global_denial_inferred: false, fallback: 'ziven_mcp.github_edit' },
+            { global_denial_inferred: false, fallback: 'ziven_mcp.github_edit' }).status === 'PASS' &&
+        trial('T2-negative', { global_denial_inferred: false },
+            { global_denial_inferred: true }).status === 'FAIL');
+    // T3: do not invent a Ziven MCP tool in hosts that do not expose it.
+    check('T3 unavailable route cannot masquerade as a successful write',
+        trial('T3', { status: 'UNAVAILABLE', write_executed: false },
+            { status: 'UNAVAILABLE', write_executed: false }).status === 'PASS' &&
+        trial('T3-negative', { write_executed: false },
+            { write_executed: true }).mismatches.includes('write_executed'));
+    // T4: main deployment remains a separately gated high-risk operation.
+    check('T4 unauthorized direct main write remains blocked',
+        trial('T4', { branch: 'main', status: 'BLOCKED', write_executed: false },
+            { branch: 'main', status: 'BLOCKED', write_executed: false }).status === 'PASS');
+    // T5: no made-up first-turn evidence; only a separate cold-frame observation can pass.
+    check('T5 cold-start continuity without real observation is NOT_VERIFIED',
+        evaluateBehaviorObservation({ scenario_id: 'T5',
+            expected: { tool: 'ziven_mcp.github_edit' }, evidence_refs: [] })
+            .status === 'NOT_VERIFIED' &&
+        evaluateBehaviorObservation({ scenario_id: 'T5', expected: {tool:'x'},
+            observed: { tool: 'x' }, evidence_refs: ['synthetic:mock'] }).host_verified === false);
+    check('behavior comparison cannot turn caller-reported evidence into E3',
+        trial('T1', { tool: 'ziven_mcp.github_edit' },
+            { tool: 'ziven_mcp.github_edit' }).host_verified === false);
 
     const cli = spawnSync(process.execPath, ['scripts/reflection_preview.mjs',
         'tests/learning/learning_reflection_candidate_001.json'], {
