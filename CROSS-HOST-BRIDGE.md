@@ -3642,6 +3642,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **权威检查点同步**：先 recall 唯一 `⚙️/当前工作检查点` 五段拼接 `20635` 字符，`session_context(include_core=false)` status READY / version **212**，写前再次回读无变化；仅更新该 key 为新顶层 `BOOK_MAINLINE_V652_WORKER546_L3_TOOL_ROUTE_E2_PASS_E3_PENDING_M1_CROSS_HOST_PENDING`，以历史分隔符将原 v212 全文完整并入后缀；新候选 **22967** 字符五段逐字回读相同、原 v212 **20635** 字符后缀逐字保留。再调用 `session_context(include_core=false)` 和 `session_bootstrap`：两者都 READY，checkpoint **version213**、当前状态准确、无 blockers/warnings。**DEPLOY_VERIFIED + HANDOFF_VERIFIED**，但**不是新框自动 E3/Operit/持续行为通过**。
 - **下一动作**：无需重测已通过的 PR/显式Core/部署；下次自然 ChatGPT 新框或同类操作无提示观察宿主是否优先选用 Ziven MCP `github_edit` 并记录实操，才能将 L3 Reflection `pending` 变成可审批证据。M1 工作与相处双连续性、Operit 跨宿主自动恢复及 S0 无人神游仍独立等待低成本 E3。主线继续 L3 纠错/真实学习→Web 文字家园→后续娱乐扩展；每个重要切片主动学习外部官方成熟方案，重大架构改动先讨论定案。
 
+### GPT → Operit / ChatGPT · 2026-11-07 L3 v0.3 来源纠错→任务预检→对照验证（dev E1/E2 完成）
+
+- **柳柳审批与主线顺序**：柳柳审阅外部 Reflexion/LangMem/Zep/VRL-Bench 借鉴对照、五阶段原型与最小验收表后回复「好」，批准仅在 `mcp-memory/dev` 实施 L3 v0.3、E1/E2。ZivenLab/dev Roadmap **v1.96**、当前项目状态 **version223** 先于远程代码写入记录本次范围和禁动边界。
+- **dev 代码与 SHA**：在 `src/modules/reflection.js` 增加纯 `evaluateCorrectionTrail`（失败/反馈/恢复来源指针，未独立验证）、`planLearningPreflight`（已审核 active lesson + 当前明确暴露的工具/仓库/分支，纯建议不执行）及 `compareLearningTrials`（相同任务/能力前后对照）；`scripts/reflection_preview.mjs --preflight` 可在 CLI 只读查看；`tests/learning/learning_github_tool_route_001.json` 加结构化纠错与情境应用合同，**依旧 candidate/pending/approval_ref=null**；`tests/reflection_contract_test.mjs` 增测试，`src/skills/master-router/SKILL.md` 记录路线纪律。通过 Ziven MCP github_edit 逐文件 dry_run→dev 编辑→Verified:true，独立 git fetch 对比远端五文件与隔离本地内容完全一致。远端 dev **2aa9abb188735fa5e90f4388beb960bc7a366256**。
+- **E1/E2 独立验证**：从该远端 dev SHA 建全新 detached worktree，实际 `npm run check` exit0（46 JS）、`npm run test:reflection` **69/69** exit0、`python3 tests/learning/run_learning_tests.py` **11工件** exit0、`npm run test:contracts` **220/220**、`npm run test:bootstrap` **56/56**、`npm run test:memory-core` **120/120**、`npm run test:memory-retrieval-benchmark` **16查询**，全部 exit0。GitHub Actions 官方 API 按 `head_sha=2aa9abb...` 返回 `learning-regression` [run #42266120195](https://github.com/wovowx/mcp-memory/actions/runs/42266120195) **completed/success**。
+- **不能夸大**：这次只建立可运行的离线候选审核/任务预检/对照工具，**没有 MCP runtime 入口或 ChatGPT/Operit 强制自动 preflight hook**。CLI 对真实候选只返回 `PENDING_REVIEW`，合成 active 副本仅 E2，不代表真实晋升；数据来源指针及用户声称的宿主能力不会变成独立 E3。未写私人记忆、Supabase、Secrets/Worker，也没有改 main 或聊天室。权威唯一云端检查点沿用上次实际验证的 **v213**，**本轮未重新读取/回写**。
+- **下一动作**：将本轮 dev 结果作为 v6.53.0 候选范围准备单独发布评审（内容/用户收益/CI/风险/回滚）；只有柳柳单独批准才可合并 main/部署。未来自然同类任务再观察无提示工具选择和实际执行，才给 E3 结论；M1 双连续性与 S0 无人神游仍各自待验，无需额外消耗 Operit token。
+
+
 
 
 
