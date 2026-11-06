@@ -2,7 +2,20 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.46.0] - 2026-11-06（Cloudflare Observability · DEV CANDIDATE，未发布）
+## [v6.47.0] - 2026-11-06（Workers Logs 持久化配置 · DEV CANDIDATE，未发布）
+
+### 用户收益与原因
+- 让已上线的 `cloudflare_logs_query` 能读取 **Workers Logs 历史存储事件**，而不仅能成功调用查询 API 却收到 `EMPTY`。在新工具 v6.46.0 的宿主 E3 中，ChatGPT 工具发现和实际查询成功，但两次最近15分钟查询均为 `EMPTY`（0 条），期间发起了一次虚构 key 的正常 `memory(recall)` 控制请求；尚不能断定是存储未开、采样或查询字段不匹配。
+- `wrangler.toml` 原先没有显式的 Workers Logs 存储/Invocation 设置。Cloudflare 官方 Query Builder 文档给出 `[observability] enabled=true` 和 `[observability.logs] invocation_logs=true`；本候选另将 `head_sampling_rate=1` 显式定为 100% 采样，便于短时间请求关联。只有未来经柳柳单独批准并部署后，该设置才可能影响生产日志。
+
+### 变更与验收边界
+- **只改 dev** 的 `wrangler.toml`（增加可回退的显式日志采集设置）和 `tests/router_registry_contract_test.mjs`（不联网、读取配置文件，验证唯一日志块/100% 采样、原 cron 保留、无 Secrets 写入），以及本版本号/CHANGELOG/Bridge。没有更改真实 Worker 的 Dashboard 设置或 Token。
+- GitHub Actions 精确最终 HEAD CI 在后续桥接记录中回读；本轮先前纯配置+合同测试 SHA `2cf764793e1ced948a878105b9fce549299f8f37` / [CI #42183329820](https://github.com/wovowx/mcp-memory/actions/runs/42183329820) `SUCCESS`。不能把合成 E1/E2 叫作真实 logs E3；也不保证 EMPTY 的唯一原因就是存储开关。
+- **生产影响与风险**：一旦被未来独立版本许可合入 `main`，Cloudflare Git 集成会重新部署 Worker，开始持久保存调用日志；这与此前仅看 Live Tail 不同，会产生存储用量及可能的费用，也涉及运行元数据留存。Cloudflare Workers Logs 计费/保留按账户计划及未来政策而异；生产是否启用与采样率应让柳柳明确验收。
+- 回滚基线为正式发布的 `v6.46.0` / main `2c94f0444ee5d56c39739beca73abd7496921610` / Worker #540 deployment `f710f2b7`。不直接 push/main、不创建自动部署、不开生产日志、不读取真实正文或私密日志、不改 DB/skills registry/聊天室/密钥。
+
+---
+## [v6.46.0] - 2026-11-06（Cloudflare Observability · 已发布 PR #333 / Worker #540 VERIFIED；以下 dev 文字为发布前快照）
 
 ### 柳柳能得到什么
 - 哥哥以后可以直接通过 Ziven MCP 的 `cloudflare_logs_query` 查看 `mcp-memory` 最近 1–60 分钟**已经存储的** Worker 日志元数据，省去反复要求柳柳人工打开 Cloudflare Live 截图。默认 15 分钟、最多返回 20 条；查询上限 50 条，支持已取回事件中的 `all|error` 过滤。
