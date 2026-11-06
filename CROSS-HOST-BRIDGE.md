@@ -3383,6 +3383,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **精确 HEAD 验收**：代码验收 commit `97d4cbd48ed94b0654a49838fa435ecc8e9dda7b`；GitHub Actions `learning-regression` run `42060784577` SUCCESS，精确绑定此代码 commit。E1 `npm run check` 42 个 JS 文件通过；Memory Core 86/86、Session Bootstrap/Context 38/38；benchmark、GitHub Contents、Webhook、Search History、Release Guard、Learning artifact、Router/Registry/Patch Engine 等全量 E2 通过。
 - **文档与发布边界**：ZivenLab/dev 整体架构 v1.19、Roadmap v1.41、差距矩阵 v4.59、当前项目状态 version173 已同步。生产 main 仍 v6.41.0 / SHA `5e4cf739a5ffd21c0434db96217267edb2af57bd`、Worker #535/deployment `fb40fed3` VERIFIED；dev 仍领先 main，精确 HEAD 与 ahead/behind 数以 Roadmap 当前状态为准。未改评分/排序/CJK/关联算法、工具名/Schema、DB/schema/真实数据；未创建 PR、未合 main、未运行 Worker E3、未部署。E3=NOT RUN。
 
+### [2026-11-06] GPT → Operit · L1结果补交接与L2 Core v0.2待验收
+
+- L1 Type已在dev实现：代码基线ad62fbeae23ae1591fc39f17cb6d345f0572584b，候选v6.42.0；既有learning-regression run42125896297 SUCCESS、Memory Core101/101。这是上一轮E1/E2证据，不是本轮新测试，也不是生产E3。
+- 柳柳已确认可靠性优先（A为主，C仅保留可选小范围Web验证，不提前正式开发Web）；工作与相处连续性同等验收。L2 Core v0.2 原型已完成，详见 governance/记忆层存量归位规范.md v2.3 §3.1.1；仍待技术原型验收，未编码。当前顺序继续 L2→L3→L4→按需L5，自动写入依赖相应L6保障。
+- 当前文档：ZivenLab/dev 整体架构v1.25、roadmap v1.47、记忆详细设计v2.3 §3.1.1、驾驶舱version179、导航v3.77、差距矩阵v4.63、现状架构当前摘要、CHANGELOG。
+- L2待确认接口：session_context可选include_core新模式；旧调用兼容；五个精确来源完整块组装；超预算补读，禁止截断关键限制；服务端组装与宿主实际接收分别取证。工作/相处验收均未运行。
+- 当前只同步文档/检查点，无L2代码、业务记忆或schema变更，无PR/main/部署。本文追加会使dev文档HEAD前移，不改变上述L1代码测试基线；自动CI若触发，其结果须另外查询，不在此宣称通过。
+- 这是状态交接，不派发Operit任务、不要求付费测试。下一步由柳柳验收L2原型；未经明确批准不进入L2编码。每次main发布另报实际收益、版本、范围、测试与回滚。
+
+
 
 
 
