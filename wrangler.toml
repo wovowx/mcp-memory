@@ -25,5 +25,16 @@ GPT_MODEL = "gpt-5.6"
 # OPERIT_BASE_URL = "https://xxx.trycloudflare.com"
 # OPERIT_BEARER_TOKEN = ""
 
+# v6.47.0 DEV CANDIDATE ONLY: persistent Workers Logs.
+# Live Tail does not prove historical log storage is enabled.
+# 100% sampling is for request-level diagnostics; review usage/retention
+# and get explicit release approval before production deployment.
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
+
 [triggers]
 crons = ["* * * * *"]
