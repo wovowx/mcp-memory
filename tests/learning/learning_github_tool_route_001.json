@@ -4,6 +4,38 @@
   "description": "2026-11-07 真实案例：通用 GitHub connector 对 ZivenLab/dev 已有文档更新报 403；同一宿主 Ziven MCP github_edit 可用并完成 dry_run、写入、回读。不得将其中某个连接器 403 当全局权限失败。E3 新框无提醒仍未验证，状态保持 candidate。",
   "lesson_key": "PROPOSED:host_github_tool_route",
   "status": "candidate",
+  "correction_trail": {
+    "failure": {
+      "action": "generic GitHub connector attempted a ZivenLab/dev edit",
+      "outcome": "403 Resource not accessible by integration",
+      "source_ref": "conversation:2026-11-07:connector403→ziven_mcp.github_edit"
+    },
+    "feedback": {
+      "actor": "柳柳（用户）",
+      "action": "柳柳指出应使用已有 Ziven MCP GitHub 工具",
+      "outcome": "route correction requested",
+      "source_ref": "conversation:2026-11-07:connector403→ziven_mcp.github_edit"
+    },
+    "recovery": {
+      "action": "ziven_mcp.github_edit dry_run → write → github_read",
+      "outcome": "reported success; independent new-frame E3 not verified",
+      "source_ref": "conversation:2026-11-07:connector403→ziven_mcp.github_edit"
+    }
+  },
+  "application": {
+    "intent_any": [
+      "修改 GitHub 已有文件",
+      "跨宿主修改 Ziven GitHub 已有文件",
+      "GitHub 403"
+    ],
+    "entity_any": ["github_edit", "Ziven_MCP"],
+    "preferred_tool": "ziven_mcp.github_edit",
+    "tool_aliases": ["mcp__codex_apps__ziven_mcp_github_edit", "ziven_mcp:github_edit"],
+    "steps": ["dry_run", "write_to_dev_after_required_approval", "github_read_back"],
+    "allowed_branches": ["dev"],
+    "allowed_repos": ["wovowx/mcp-memory", "wovowx/ZivenLab"],
+    "approval_ref": null
+  },
   "trigger": {
     "intents": [
       "修改 GitHub 已有文件",
