@@ -9,6 +9,12 @@
 // ============================================================
 const CF_API_BASE = 'https://api.cloudflare.com/client/v4/';
 
+// Reusable header primitive: credentials remain inside the Worker.
+// Never expose the generated header or token in tool output.
+export function cloudflareBearerHeaders(token) {
+    return { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+
 export async function handleCfProxyTool(args, env) {
     const varName = (args.token_var || '').trim();
     // 柳柳 2026-10-17 设计：不传 token_var → 返回全部变量名列表（只列名字，不含值）
@@ -32,7 +38,7 @@ export async function handleCfProxyTool(args, env) {
         try { body = typeof args.body === 'string' ? JSON.parse(args.body) : args.body; }
         catch (e) { return '❌ body 不是合法 JSON: ' + e.message; }
     }
-    const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+    const headers = cloudflareBearerHeaders(token);
     try {
         const resp = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
         const text = await resp.text();
