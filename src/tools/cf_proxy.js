@@ -74,7 +74,7 @@ const LOG_ARGS = new Set(['minutes', 'limit', 'status_filter']);
 
 export const CLOUDFLARE_LOGS_QUERY_TOOL = Object.freeze({
     name: 'cloudflare_logs_query',
-    description: '查询 mcp-memory 最近 1-60 分钟已存储的 Cloudflare Workers 请求日志，只显示脱敏元数据。与 Live Tail 不同；查询为空不能证明请求未到达。',
+    description: '只读查询 mcp-memory 最近 1-60 分钟已存储的 Cloudflare Workers 日志。先区分 http、scheduled、runtime_log 等事件类型，HTTP 方法/路径/状态码缺证据时为 null；只返回脱敏元数据。EMPTY 不证明请求未到达。',
     input_schema: {
         type: 'object',
         properties: {
