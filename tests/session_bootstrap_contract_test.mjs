@@ -233,7 +233,7 @@ check('context without topic is read-only and does not visit registry or tools/l
         && call.url.includes('/rest/v1/memories') && !call.url.includes('/skills')));
 
 const relatedRows = Array.from({ length: 4 }, (_, i) => ({
-    id: 'related-' + i, key: '项目笔记/' + i, value: '项目笔记已确认 ' + i,
+    id: 'related-' + i, key: '项目笔记/' + i, value: '项目笔记已确认 ' + 'X'.repeat(260) + i,
     category: '项目笔记', status: 'active', valid_to: null,
     updated_at: '2026-11-05T05:20:00Z', created_at: '2026-11-05T05:20:00Z'
 }));
@@ -459,7 +459,6 @@ calls = mockReads({ relatedRows, overrides: {
     [BOOTSTRAP_KEYS.identity]: { ...allRecords[BOOTSTRAP_KEYS.identity], value: 'I'.repeat(23900) }
 } });
 const topicBudgetOmitted = await buildSessionContext(env, { topic: '项目笔记', include_core: true });
-console.log('  DEBUG topic budget:', JSON.stringify({ status: topicBudgetOmitted.status, related_status: topicBudgetOmitted.related_status, related_count: topicBudgetOmitted.related_memories.length, budget: topicBudgetOmitted.core.budget, identity_complete: topicBudgetOmitted.core.blocks.identity.complete, checkpoint_reason: topicBudgetOmitted.core.blocks.checkpoint.omitted_reason, sources: topicBudgetOmitted.related_sources }));
 check('topic results are omitted rather than displacing higher-priority Core blocks',
     topicBudgetOmitted.related_status === 'budget_omitted'
     && topicBudgetOmitted.related_memories.length === 0
