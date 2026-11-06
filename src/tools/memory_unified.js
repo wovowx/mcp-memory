@@ -18,6 +18,7 @@ import {
     listMemoriesByDate, getMemoryStats, getRandomMemory
 } from '../modules/memory/retrieval.js';
 import { importMemories, getExportableMemories } from '../modules/memory/transfer.js';
+import { handleMemoryHealthCheck } from '../modules/memory/layer_mapper.js';
 
 export { getMemoryByKey, getCurrentMemoryByKey, getAllMemories, findAuthoritativeKey, putMemory };
 
@@ -47,7 +48,10 @@ export async function handleMemoryTool(name, safeArgs, env) {
         return '❌ 无效的记忆性质 type：仅支持 ' + ['fact', 'quote', 'inference', 'agreement'].join(' / ');
     }
 
-    if (action === 'remember') {
+    if (action === 'health_check') {
+        text = await handleMemoryHealthCheck(safeArgs, env);
+    }
+    else if (action === 'remember') {
         if (!safeArgs.key || !safeArgs.value) text = '❌ 缺少参数：需要 key 和 value';
         else {
             const existing = await getCurrentMemoryByKey(env, safeArgs.key);
@@ -310,7 +314,7 @@ export async function handleMemoryTool(name, safeArgs, env) {
             ? '💡 记忆导出（共 ' + items.length + ' 条）：\n' + items.map(i => '【' + getCategory(i.key) + '】' + getTitle(i.key) + '\n内容：' + i.value + '\n---').join('\n')
             : '💡 记忆导出：\n' + fence + 'json\n' + JSON.stringify(items, null, 2) + '\n' + fence;
     }
-    else text = '❌ 未知操作：' + action + '（支持 remember/recall/history/update/rename/forget/search/list/random/by_date/stats/suggest/import/export/move/list_categories/by_category）';
+    else text = '❌ 未知操作：' + action + '（支持 health_check/remember/recall/history/update/rename/forget/search/list/random/by_date/stats/suggest/import/export/move/list_categories/by_category）';
 
     return text;
 }
