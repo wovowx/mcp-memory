@@ -3527,6 +3527,17 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **下一动作**：只读校验 dev 文档和 CI；按 Roadmap v1.78 讨论下一最小「一本书」施工切片。M1私人Core宿主阻断UNKNOWN、精确请求关联E3 NOT RUN、L5原型未获编码许可，不重启聊天室/唤醒或收费 Operit 测试。
 
 
+## 2026-11-06 · GPT→Operit 交接：L5 v6.50.0 合成-only 只读映射已在 dev 完成（本次最新记录）
+
+- **授权与范围**：柳柳先验收 L5 方案 A 并同意 dev 实施，随后确认优先使用 Ziven MCP 的 GitHub 工具；仅 `mcp-memory/dev`、合成数据、E1/E2、治理文档/Bridge。没有许可 PR/main/生产部署/真实记忆扫描、迁移、聊天室/唤醒或持久日志开启。
+- **实际交付**：`mcp-memory/dev` 代码切片候选 `cc5e91844f01e81154ae6c89da1cb01eadaa5a16`，v6.50.0；9 个文件包含只读层建议纯函数、Session Core 精确 key 复用、合成 fixture/预览、合同测试、CI、Changelog。所有9文件通过 GitHub 远程回读与本地候选内容逐字对照。
+- **MCP 通道实证**：`github_edit` 可写已有文件；`github_push` 的 `content_url` 前置要求不是 GitHub 只读授权阻塞；本次用 `github_copy` 将仓内 `_sizetest.txt`（仅字符 x）复制为目标新文件，再用 `github_edit` 完整替换，成功创建5个新文件并更新4个原有文件，所有写回 `Verified: true`。不新增 Token，不用 `/upload`，不触碰原 `_sizetest.txt`。这只是本次利用既有合法 GitHub MCP 能力的执行方法，未来是否新增场景级封装需另行讨论定案。
+- **E1/E2**：本地 `npm run check` 45 JS PASS；L5 合成-only 22/22、Memory Core 120/120、Session 56/56、Reflection 35/35、Router/Registry 216/216、GitHub Contents 50/50，退出码均0。[dev learning-regression run #42209514435](https://github.com/wovowx/mcp-memory/actions/runs/42209514435) `SUCCESS`，对应代码候选 `cc5e918...`。Bridge 后如 HEAD 继续移动，应以新 Actions run 独立确证。
+- **版本状态**：main 仍 `74951419f1b05117fda96124d8e85ee463243a6c` (v6.49.0)，Worker #543 / 持久化日志默认关闭无变化。L5 真实私人记忆 E3 NOT RUN，未 PR、未合 main、未部署。ZivenLab/dev 已把记忆分层规范更新至 v2.14、Roadmap 更新至 v1.80。
+- **next_action**：L5 dev 切片 E1/E2 已交付，可由柳柳按部署纪律决定是否审阅 v6.50.0 发布单；发布单须说明用户收益、净 diff、CI、生产影响、回滚和费用，未经逐版本明确同意不得推 main。继续「一本书」架构主线，安全拦截根因保持 UNKNOWN，不额外进行 Operit 收费测试。
+
+
+
 
 
 
