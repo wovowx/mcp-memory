@@ -5,7 +5,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.6.7 · v6.43.0 发布复盘与 merge 回读强化）
+# 部署技能（v6.6.8 · 增补 ChatGPT MCP 工具元数据刷新验收）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
@@ -85,7 +85,7 @@ merge 成功
 0. **merge 后先确证真合并（lesson-PR合并误报须确证 · 2026-10-18）**：`github_merge_to_main` 在 dev 分叉/冲突时可能虚报「已合并」（PR#250 实际 open/dirty）。合并后必须先 `github_get_pull_request(pull_number)` 确证 `Merged:true` 才算数；`Merged:false` → 主动查冲突 → 关掉脏 PR → sync dev 到 main 干净 → 重新 apply 改动 → 重新发 PR。确证后才进 step 1。
 1. **merge 后立即**：`sleep` 45s（Cloudflare append 需要时间）。
 2. **验证**：`cloudflare_deploy_status(verify_main=true, repo=wovowx/mcp-memory)`。
-   - `VERIFIED` → 收尾，进第 7 步。
+   - `VERIFIED` → 收尾，进第 7 步；若本次变更了 MCP tools/list 的工具名称、描述或入参 Schema，还需单独执行下方「ChatGPT 宿主工具元数据刷新」检查，这不影响 Worker 发布成功的判定。
    - `DEPLOY_UNVERIFIED` → **不 sleep 等人来问，直接下一步**。
 3. **官方构建日志（自愈第一动作，v6.32.9 + 柳柳 2026-09-09 拍板）**——先信线上，不先本地：
    1. **`cloudflare_deploy_status(verify_main=true)` 自带自愈**：DEPLOY_UNVERIFIED 时自动调 Builds API → 构建 success 提示等传播；构建 fail 自动返回日志尾部（SyntaxError 文件:行号）。
@@ -96,6 +96,8 @@ merge 成功
 4. **分类错误**（见下表）→ 按类处理。
 5. **修复后重推**：改好 → 上传 → 推 dev → 合并 → 回到步骤 1（sleep 45s 再验证），直到 VERIFIED。
 6. **自愈上限**：同一问题连续修 2 次仍 FAILED → 停，带证据（日志 + 修复记录）给柳柳拍板，不无限循环。
+
+**ChatGPT 宿主工具元数据刷新（2026-11-06 柳柳确认）**：MCP 工具列表或参数 Schema 变更并部署后，ChatGPT 已连接的 Ziven_MCP 插件信息可能仍缓存旧工具定义，**柳柳需要手动刷新插件信息**；哥哥不能把 Worker `VERIFIED` 当作 ChatGPT 已拿到新 Schema，也不能代称刷新完成。若柳柳明确报告已刷新，就将本轮标记 `USER_REPORTED_DONE`，不反复提醒或要求重刷；随后在**新 ChatGPT 会话**核对工具签名并尝试经授权的最小只读调用，单独记录宿主 E3。未变更工具名称/Schema 的普通 Worker 代码发布不必机械要求刷新。2026-11-06 柳柳已确认本轮 Ziven_MCP 插件已手动刷新；原会话仍暴露 `session_context` 旧入参，留待新会话取证；`include_core=true` 会加载私人 Core 正文，必须单独明确授权。
 
 **部署失败错误分类表**：
 
