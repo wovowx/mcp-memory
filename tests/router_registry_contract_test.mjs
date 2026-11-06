@@ -19,7 +19,7 @@ const env = { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'mock
 let pass = 0, fail = 0;
 function check(name, cond, extra = '') { if (cond) { pass++; console.log('  ✅ ' + name); } else { fail++; console.log('  ❌ ' + name + ' ' + extra); } }
 
-console.log('\n[Workers Logs persisted-invocation configuration contract]');
+console.log('\n[Workers Logs on-demand persistence configuration contract]');
 {
   const config = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
   const section = name => {
@@ -32,10 +32,10 @@ console.log('\n[Workers Logs persisted-invocation configuration contract]');
   };
   const observed = section('observability');
   const logs = section('observability.logs');
-  check('persistent Workers Logs enabled in dev Wrangler without touching runtime secrets',
-    Boolean(observed && /^\s*enabled\s*=\s*true\s*$/m.test(observed)) &&
+  check('persistent Workers Logs disabled by default without touching runtime secrets',
+    Boolean(observed && /^\s*enabled\s*=\s*false\s*$/m.test(observed)) &&
     !/^\s*(?:CLOUDFLARE_API_TOKEN|GITHUB_TOKEN)\s*=/m.test(config));
-  check('invocation log capture and diagnostic sampling configured explicitly',
+  check('on-demand persisted diagnostics need only enable the existing switch',
     Boolean(logs && /^\s*invocation_logs\s*=\s*true\s*$/m.test(logs)) &&
     /^\s*head_sampling_rate\s*=\s*1\s*$/m.test(logs));
   check('Workers Logs configuration occurs once and retains existing cron',
