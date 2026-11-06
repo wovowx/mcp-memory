@@ -2,6 +2,21 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.52.0] - 2026-11-07（dev 候选 · L3 工具选择纠错与行为证据）
+
+### 柳柳实际会得到什么
+- 将「在 ChatGPT 误选通用 GitHub connector 编辑 ZivenLab/dev 遇 403，误判全局 GitHub 无权限；之后经 Ziven MCP github_edit 成功」这个真实教训沉淀到现有 `master-router` + `github-use-guide`。下一次对 Ziven 仓库作 dev 已有文件编辑时，先核验宿主实际暴露的 Ziven MCP 工具，优先 `github_edit` 的 dry_run→写入→`github_read` 回验；一个连接器的 403 不直接解释成 GitHub 全局无权，也不立即要求柳柳修改 token。未暴露合法工具或未经 main 许可时照实止步。
+- L3 `reflection.js` 增添可复用的纯 `evaluateBehaviorObservation`：比较预期与提供的观察结果，分 `PASS/FAIL/NOT_VERIFIED/INVALID`，但永远标明宿主未获独立验证，不把自报/合成记录当 E3。
+- 增加 `tests/learning/learning_github_tool_route_001.json` 来源与反证候选（状态 `pending`，不自动晋升），以及 T1 正常选路、T2 连接器 403、T3 真无工具、T4 禁止 main 直写、T5 无提示新框的五场景与负例回归。恢复「通用修改已有文件」的原有路由行，保证专用规则不吞旧路径。
+
+### 验收、风险与回滚
+- 独立临时 clone 的 E1/E2：`npm run check` exit0（46 个 JS 语法/本地 import）、`npm run test:reflection` 44/44 exit0、`python3 tests/learning/run_learning_tests.py` 11 工件 exit0、`npm run test:contracts` 220/220 exit0；最后一次 router 微调后 reflection 44/44 exit0。需要最终 dev HEAD 的远端 CI 结论，未核实时不得写 SUCCESS。
+- **现处 dev 候选，不代表已发布到 ChatGPT/Operit 宿主或 Worker。** 由于宿主实际工具选择不受 Worker JS 强制拦截，本次 E1/E2 只能证明文本/合成合同；真正 E3 要发布后在新框、无柳柳工具提醒条件下观察实际调用行为。没有 E3 就保留 `pending`，不承诺从此永不犯错。
+- 此版本不增加公开 MCP tools、依赖、持久日志、DB/schema 或私人记忆写入；不更改聊天室/Agent Runtime，不碰 Secrets。**需要柳柳在看到本版收益、净 diff、测试与回滚单后另行同意 dev→main，才能触发 Cloudflare Worker 自动部署。**
+- 如 E3 失败，按真实轨迹调整对应宿主的启动/路由入口；如需回退，恢复 v6.51.0 的相关 Skill、Reflection、测试和版本记录，保留候选错误证据供追溯。
+
+---
+
 ## [v6.51.0] - 2026-11-06（L5 记忆体检完整场景入口）
 
 ### 这版要真正交付给柳柳什么
