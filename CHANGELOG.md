@@ -1,6 +1,17 @@
 # Changelog
 
 所有重要变更将记录在此文件中。
+## [v6.43.0] - 2026-11-06（Session Core Context v0.2 · dev 候选；main/Worker 未获批准）
+
+### Added
+- 扩展现有 \`session_context\` 的可选 \`include_core:boolean\`，默认 false；仅显式 opt-in 返回 CORE-0.2 五个权威来源块，旧 \`session_bootstrap\` 与旧 \`session_context\` 摘要调用不泄露私人全文。
+- 复用同一份五源只读快照，避免 Bootstrap 与 Context 重复读取检查点；完整提取当前检查点覆盖段，历史覆盖层不进入 Core。
+- Core 采用 24,000 Unicode code points 完整块预算：身份/当前工作优先，其次主档、协议、导航，topic 摘要最后；预算不足整块省略并给出来源/原因/补读边界，不硬切内容。
+
+### Regression and authorization boundary
+- E1/E2 合同覆盖旧调用兼容、tools/list Schema 与 dispatch 校验、五源单次 GET、完整块与历史排除、Unicode code points、末尾限制、预算降级、topic 预算、缺失/错误与零写入；最终 SHA 的 CI 结果以 Bridge 记录为准。
+- 仅 \`mcp-memory/dev\` 候选；不改 Supabase registry、数据库 Schema、真实业务记忆、聊天室/唤醒、main 或 Worker 部署。ChatGPT/Operit 实际接收与冷启动仍需后续分别验收。
+
 ## [v6.42.0] - 2026-11-06（Memory Type Write Contract · dev 候选；main/部署未获批准）
 
 ### Added
