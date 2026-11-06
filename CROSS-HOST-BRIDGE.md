@@ -3537,6 +3537,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **next_action**：L5 dev 切片 E1/E2 已交付，可由柳柳按部署纪律决定是否审阅 v6.50.0 发布单；发布单须说明用户收益、净 diff、CI、生产影响、回滚和费用，未经逐版本明确同意不得推 main。继续「一本书」架构主线，安全拦截根因保持 UNKNOWN，不额外进行 Operit 收费测试。
 - **release preflight（仅记录，未授权发布）**：截至本次只读核查，`main...dev` 为 ahead18/behind0、净11文件；除 L5 代码/测试/Bridge 外，还包含先前在 dev 已通过文档验收但尚未进入 main 的 `src/skills/deploy/SKILL.md` v6.6.9（发布后检查点同步门禁）。发布单必须明确列入这项差异，并单独说明本次是否授权更新唯一云端工作检查点。这里的记录不是 PR/main/Worker/私人记忆写入许可。
 
+## 2026-11-06 · GPT→Operit 最新交接：v6.50.0 Worker #544 + HANDOFF_VERIFIED
+
+- **本次授权与发布**：柳柳先明确同意 v6.50.0 的净11文件 PR/main/Cloudflare 发布，另单独明确同意本版本上线后仅同步唯一云端 `⚙️/当前工作检查点`。本版名称 **《记忆分层预览与恢复交接》**，主要让 L5 合成-only、只读分层建议与发布后的恢复检查点保持一致；**绝不等于对私人记忆执行分层或迁移**。
+- **PR/主分支**：PR [#337](https://github.com/wovowx/mcp-memory/pull/337) rebase，`merged=true/state=closed` 独立核实；main=dev=`ce845bd35181848eaf94119810d05c6c83cd72e1`，main HEAD commit 标题为 `v6.50.0: 记忆分层预览与恢复交接`。PR CI [#42212079501](https://github.com/wovowx/mcp-memory/actions/runs/42212079501) SUCCESS；main learning-regression [#42212162894](https://github.com/wovowx/mcp-memory/actions/runs/42212162894) SUCCESS；dev [#42212165566](https://github.com/wovowx/mcp-memory/actions/runs/42212165566) SUCCESS。单独 GitHub Pages `42212162913` FAILURE 属于原先已暂停的问题，不能冒充 Worker 部署失败。
+- **生产部署**：Cloudflare Worker **#544**、deployment `faeaf80e`、Cloudflare version `fa3adb4f`，`cloudflare_deploy_status(verify_main=true)=VERIFIED`；**DEPLOY_VERIFIED**。Cloudflare 自生成的 #544、内部 version UUID 与仓库语义版本 `v6.50.0` 不相同。当前 Git 触发部署命令仍未添加 `wrangler deploy --message`，本次不擅自变更生产部署配置。
+- **恢复检查点**：唯一 `⚙️/当前工作检查点` version **204→205**；更新前完整读取10,372字符，保留既有历史，更新首部状态、next_action 与 v6.50.0 证据；更新后全文 **10,999字符** 分段 recall 回读与提交逐字相同。随后 `session_context(host=chatgpt,invocation=explicit,include_core=false)` 返回 **READY** / version205 / v6.50.0 正确 next_action。故 **HANDOFF_VERIFIED**，仅证实当前显式恢复；Operit 换宿主/新框冷启动 E3 仍 NOT VERIFIED。
+- **命名问题与修复**：此前 v6.49.0 的多个 GitHub rebase 子提交使用重复泛化标题，CHANGELOG v6.48/v6.49 发布后仍误标 DEV CANDIDATE；v6.50.0 已在发布前校正旧状态、补实际 CHANGELOG，并以明确的最终主分支 commit 标题合并。Cloudflare 部署描述策略若调整，须另按部署变更讨论并授权。
+- **运行边界与下一动作**：持久日志继续默认关闭，不动私人 Core、数据库 schema/数据、密钥、聊天室与唤醒；M1 Core 宿主拦截 UNKNOWN。下一工作是依 Roadmap 的「一本书」主线先讨论 **L5 v0.2 真实记忆只读抽样的需求和可验收原型**，柳柳明确同意前不能实际读取私人记忆、分层或迁移。不要把本次发布或 checkpoint READY 误写为 L5 E3、自动跨宿主恢复已通过。
+
+
 
 
 
