@@ -2,11 +2,15 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.50.0] - 2026-11-06（L5 只读存量映射 v0.1 · DEV CANDIDATE，未发布）
+## [v6.50.0] - 2026-11-06（记忆分层只读预览与发布后状态交接）
 
 ### 柳柳能得到什么
 - 一份可解释的记忆视图建议：输入**合成元数据**，按证据把记录建议为 Core、Long-term、Archive 或待确认；单独对 Reflection 候选给出只读建议。每条保留理由、来源与疑点，重复 key 只提示不合并。
 - 这版只为将来整理真实记忆和记忆星球准备可靠规则，**现在不会盘点真实记忆、不会自动分层、不会改变实际召回**；示例报告可离线运行 `npm run memory-layer:preview` 查看。
+
+### 本次同时发布的恢复交接纪律
+- `src/skills/deploy/SKILL.md` 从 v6.6.8 升至 v6.6.9：Worker 部署 `VERIFIED` 与「唯一工作检查点已同步并回读」分开判定。仅在本次已获柳柳明确同意后，更新 `⚙️/当前工作检查点`，完整保留历史，使用只读 `session_context(include_core=false)` 验证 next_action；不修改其他私人记忆，不要求 Operit 付费测试。
+- `CROSS-HOST-BRIDGE.md` 追加本轮 E1/E2、CI、授权边界和跨宿主交接。Cloudflare 部署命名仍保持现有构建配置；Worker #编号不等于本仓 semver，后续若调整显示名称先另行讨论。
 
 ### 实施、兼容与严格边界
 - 新增 `src/modules/memory/layer_mapper.js` 纯函数、合成 fixture、离线预览及 E2 合同回归；复用从 Session Bootstrap 提取的 `src/modules/session/keys.js` 精确五源常量（旧 `bootstrap.js` 仍按原路径 re-export，避免两份漂移）。仅按现有六维元数据独立判断，不把 Category=📦 误作 Archive，不把 `agreement` 推断为 Core，不把反思候选混入普通记忆，也不把 active/current 当成事实真实性证明。
@@ -14,12 +18,14 @@
 - 不添加 MCP 公开工具或变更现有 Facade/Schema、Cloudflare 日志、数据库、Supabase 真实数据、skills registry、依赖、聊天室/唤醒。`tests/memory_layer_mapper_contract_test.mjs` 使用合成数据，校验只读、无网络、状态矛盾、来源缺口、重复 key、不修改输入；纳入既有 learning-regression CI。历史 recall/history/Session Core 不受本切片逻辑调用。
 
 ### 授权与验收状态
-- 柳柳在明确看到方案 A 的合成只读原型后回复「好」，仅批准 `mcp-memory/dev` 编码及 E1/E2；**未批准 PR/main/Worker 发布、真实私人数据盘点或写入**。正式发布前再次提交 v6.50.0 的用户收益、准确 diff、CI、风险、费用与回滚参考，等柳柳逐版本同意。
-- 回滚参考为生产 v6.49.0 / main `74951419f1b05117fda96124d8e85ee463243a6c` / Cloudflare Worker #543 deployment `c47c9f5c`。本候选不更改持久日志默认关闭策略。
+- 柳柳先验收方案 A 并批准 `mcp-memory/dev` 合成只读编码及 E1/E2；随后哥哥按实际 main...dev 净11文件、版本收益、CI、风险、费用与回滚单独提出 v6.50.0 正式发布及发布后唯一工作检查点同步申请，柳柳明确回复「同意」。授权仅包括这11文件的 dev→main PR/rebase/Cloudflare 自动部署，以及部署确认后仅更新 `⚙️/当前工作检查点` 并回读；**不授权真实私人记忆分层盘点、其他私人记忆/数据库写入、聊天室/唤醒改造或持久日志启用**。发布结果仍需实际 PR/main/Worker/交接证据，不因批准提前标记为已发布。
+- 回滚参考为生产 v6.49.0 / main `74951419f1b05117fda96124d8e85ee463243a6c` / Cloudflare Worker #543 deployment `c47c9f5c`。本版不更改持久日志默认关闭策略。
 
 ---
 
-## [v6.49.0] - 2026-11-06（M1 请求级关联诊断 · DEV CANDIDATE，未发布）
+## [v6.49.0] - 2026-11-06（M1 请求级关联诊断 · 已发布 Worker #543）
+
+> 状态补正：经柳柳逐版本授权，PR #336 已合并，main `74951419f1b05117fda96124d8e85ee463243a6c`、Cloudflare Worker #543 / deployment `c47c9f5c` 已 VERIFIED。下方「当时尚未批准」是开发候选阶段的历史原文，不代表该版本仍未发布。
 
 ### 柳柳能得到什么
 - `cloudflare_logs_query` 将有能力把 Worker 已收到的 `memory(recall|history)`、`session_context`、`session_bootstrap` 与同一 Cloudflare invocation 关联，呈现脱敏工具类别和最近处理阶段。只看时间相近不算关联证据；没有证据保持 null/UNKNOWN。
@@ -40,7 +46,9 @@
 
 ---
 
-## [v6.48.0] - 2026-11-06（Cloudflare 日志事件分类与安全字段映射 · DEV CANDIDATE，未发布）
+## [v6.48.0] - 2026-11-06（Cloudflare 日志事件分类与安全字段映射 · 已发布 Worker #542）
+
+> 状态补正：经柳柳逐版本授权，PR #335 已合并，main 当时 `a788a77d3400d1e7a76729bcc9ed740a00bf5220`、Cloudflare Worker #542 / deployment `891473d4` 已 VERIFIED。下方候选期授权说明保留历史语境，不是当前发布状态。
 
 ### 用户实际收益
 - 已上线的 `cloudflare_logs_query` 能查询到 Workers Logs，但 E3 返回的三条事件中 `method/path/status_code=null`。新增事件类型 `event_kind=http|scheduled|runtime_log|other|unknown`，优先区分 HTTP、每分钟 Cron、普通运行日志，避免把 cron 当成 MCP 请求。
