@@ -3518,6 +3518,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **E3 最小只读检查**：真实 `memory(recall)` 请求合成不存在 key `__ziven_v649_postdeploy_synthetic_absent_20261106__` 正常回“没有找到”，没有写入该记忆；部署后 `cloudflare_logs_query({minutes:1,limit:10,status_filter:'all'})` 返回 `EMPTY/fetched_count=0`，与默认关闭存储一致，但 **EMPTY 不能单独证明记录关闭或请求未抵达**，以部署配置 + verify 为主证据。由于新存储默认关闭，本版**没有**做 `requestId/traceId` 关联的真实 E3；需未来经另行同意临时开启再复现，绝不为了验证扩大日志成本。
 - **结论/边界**：v6.49.0 发布/部署 CLOSED；M1 旧 ChatGPT 宿主安全拦截根因 UNKNOWN，HTTP `status_code` 缺可信数据仍 null。无 DB/schema、业务记忆、密钥、暂停聊天室/唤醒或私人 Core 穿越操作。文档总控拟同步 ZivenLab/dev Roadmap v1.77、当前项目状态 version208。**本交接仅在 dev 文档追加，不是新生产代码发布。**
 
+### 2026-11-06 · 发布后权威工作检查点错位修复与部署 Skill 第 7 步（dev 文档）
+
+- **问题证据**：v6.49.0 PR #336/main `74951419...`/Worker #543 已 VERIFIED，持久日志默认关闭；云端唯一 `⚙️/当前工作检查点` 仍为版本202/v6.48.0，并要求保持100%持久日志。只读 `session_context(host=chatgpt,include_core=false)` 报 `READY` 却输出旧 `next_action`，故 READY 仅证实读到来源，不证明状态新鲜。
+- **柳柳授权与修复**：柳柳看到精确修复范围后回复「好」，仅批准更新唯一检查点。哥哥完整分段读取旧正文10208字符，原历史7851字符未删改，更新首六字段和新的阶段注记；写入后回读9915字符与提交逐字符完全一致。检查点版本 **202→203**，`session_context` 返回 `READY`、v6.49.0/Worker #543/默认关闭存储/正确「一本书」下一行动；仅证明当前显式恢复有效，自动宿主触发仍 NOT VERIFIED。
+- **防复发决策**：柳柳再次回复「好」，同意将「PR/main/Worker 核实→明确授权范围内同步检查点（保护历史与并发）→完整 recall 比对→`session_context(include_core=false)` 校验→Bridge/Roadmap 交接」纳入现有发布 SOP。Worker `DEPLOY_VERIFIED` 与 `HANDOFF_VERIFIED` 分开；失败标 `HANDOFF_DEGRADED/UNVERIFIED`，**不重部署、不越权写私人 Core**。
+- **文档实施**：ZivenLab/dev `governance/roadmap.md` **v1.78**、`governance/当前项目状态.md` **version209** 已更新；mcp-memory/dev `src/skills/deploy/SKILL.md` **v6.6.9** 新增 SOP 第 7 步和发布后 Checklist。本记录仅跨宿主交接。以上均为 dev 文档，**main 仍 v6.49.0，Worker #543 与日志配置不变；dev 上的 Skill 尚非生产主干读取版本**，未来若需正式生效必须单独版本发布单/柳柳批准。
+- **下一动作**：只读校验 dev 文档和 CI；按 Roadmap v1.78 讨论下一最小「一本书」施工切片。M1私人Core宿主阻断UNKNOWN、精确请求关联E3 NOT RUN、L5原型未获编码许可，不重启聊天室/唤醒或收费 Operit 测试。
+
+
 
 
 
