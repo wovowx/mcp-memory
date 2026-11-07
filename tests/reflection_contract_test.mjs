@@ -154,6 +154,9 @@ try {
     const toolRouteFixture = JSON.parse(await readFile(
         new URL('./learning/learning_github_tool_route_001.json', import.meta.url), 'utf8'
     ));
+    const createFileFixture = JSON.parse(await readFile(
+        new URL('./learning/learning_github_create_file_001.json', import.meta.url), 'utf8'
+    ));
     const guide = await readFile(new URL('../src/skills/guide/github-use-guide/SKILL.md',
         import.meta.url), 'utf8');
     const router = await readFile(new URL('../src/skills/master-router/SKILL.md',
@@ -165,8 +168,15 @@ try {
             ref.includes('/blob/9891589051467494336c7d06b7ad78442f6bbea8/CROSS-HOST-BRIDGE.md')) &&
         toolRouteFixture.verification.some(row => row.startsWith('E3: 2026-11-07 ChatGPT 新框')) &&
         toolRouteFixture.application.approval_ref === null &&
-        toolRouteFixture.scenarios.length === 8 &&
+        toolRouteFixture.scenarios.length === 5 &&
         previewPromotion(toolRouteFixture).status === 'blocked');
+    check('separate new-file candidate has genuine provenance but cannot self-activate',
+        validateCandidate(createFileFixture).ok &&
+        evaluateCorrectionTrail(createFileFixture).status === 'RECORDED' &&
+        createFileFixture.reflection.validation_state === 'pending' &&
+        createFileFixture.application.approval_ref === null &&
+        createFileFixture.scenarios.length === 6 &&
+        previewPromotion(createFileFixture).status === 'blocked');
     check('loaded guide spells out actual Ziven MCP route, dry run and readback',
         guide.includes('跨宿主选工具防复发') && guide.includes('github_edit') &&
         guide.includes('dry_run=true') && guide.includes('github_read'));
@@ -176,7 +186,7 @@ try {
     check('new-file scene discovers github_copy before requiring manual upload',
         router.includes('github_copy') && guide.includes('github_copy') &&
         guide.includes('source_path') && guide.includes('overwrite=false') &&
-        toolRouteFixture.scenarios.some(s => s.scenario_id === 'T6'));
+        createFileFixture.checks.some(line => line.includes('github_copy(overwrite=false)')));
     check('old existing-file preflight never incorrectly recommends github_edit for brand-new files',
         planLearningPreflight({ intent: '创建 GitHub 新文件', entities: ['github_copy'],
             available_tools: ['ziven_mcp.github_copy', 'ziven_mcp.github_edit'],
@@ -260,6 +270,18 @@ try {
     check('candidate can match context but never self-activate',
         candidatePreflight.status === 'PENDING_REVIEW' &&
         candidatePreflight.executed === false && candidatePreflight.host_verified === false);
+    const createTask = { intent: 'create-github-file', entities: ['GitHub'],
+        branch: 'dev', repo: 'wovowx/mcp-memory',
+        available_tools: ['mcp__codex_apps__ziven_mcp_github_create_file'] };
+    const isolatedEdit = planLearningPreflight(task, [toolRouteFixture, createFileFixture]);
+    const isolatedCreate = planLearningPreflight(createTask, [toolRouteFixture, createFileFixture]);
+    check('edit and new-file candidate matches remain mutually exclusive',
+        isolatedEdit.status === 'PENDING_REVIEW' &&
+        isolatedEdit.candidate_ids.length === 1 &&
+        isolatedEdit.candidate_ids[0] === toolRouteFixture.reflection.candidate_id &&
+        isolatedCreate.status === 'PENDING_REVIEW' &&
+        isolatedCreate.candidate_ids.length === 1 &&
+        isolatedCreate.candidate_ids[0] === createFileFixture.reflection.candidate_id);
     const active = structuredClone(toolRouteFixture); // E2 synthetic; never persisted or promoted.
     active.status = 'active';
     active.reflection.validation_state = 'validated';
@@ -286,6 +308,39 @@ try {
         aliased.status === 'READY' &&
         aliased.recommended_tool === 'mcp__codex_apps__ziven_mcp_github_edit' &&
         aliased.canonical_tool === 'ziven_mcp.github_edit');
+    const activeCreate = structuredClone(createFileFixture); // E2-only; not saved to registry.
+    activeCreate.status = 'active';
+    activeCreate.reflection.validation_state = 'validated';
+    activeCreate.application.approval_ref = 'synthetic:reviewed-create-file-not-real-approval';
+    const activeCreateAdvice = planLearningPreflight(createTask, [active, activeCreate]);
+    check('synthetic approved new-file lesson recommends only the actual create tool',
+        activeCreateAdvice.status === 'READY' &&
+        activeCreateAdvice.recommended_tool === 'mcp__codex_apps__ziven_mcp_github_create_file' &&
+        activeCreateAdvice.canonical_tool === 'ziven_mcp.github_create_file' &&
+        activeCreateAdvice.steps.includes('dry_run_must_report_absent') &&
+        activeCreateAdvice.advisory_only && !activeCreateAdvice.executed &&
+        !activeCreateAdvice.host_verified);
+    check('two distinct active lessons do not conflict on unrelated task scenes',
+        planLearningPreflight(task, [active, activeCreate]).status === 'READY' &&
+        planLearningPreflight(createTask, [active, activeCreate]).status === 'READY');
+    check('new-file lesson cannot recommend creation for existing-file edits',
+        planLearningPreflight(task, [activeCreate]).status === 'NO_MATCH' &&
+        planLearningPreflight(createTask, [active]).status === 'NO_MATCH');
+    check('generic GitHub failure cannot be mistaken for an existing-file edit',
+        planLearningPreflight({ ...task, intent: 'GitHub 403', entities: ['GitHub'] },
+        [active]).status === 'NO_MATCH' &&
+        planLearningPreflight({ ...task, entities: ['GitHub'] },
+        [active]).status === 'READY');
+    check('missing direct-create tool means only that preferred route is unavailable',
+        planLearningPreflight({ ...createTask,
+            available_tools: ['mcp__codex_apps__ziven_mcp_github_copy'] },
+        [activeCreate]).status === 'UNAVAILABLE');
+    check('new-file lesson never authorizes main or other repositories',
+        planLearningPreflight({ ...createTask, branch: 'main' }, [activeCreate]).status === 'BLOCKED' &&
+        planLearningPreflight({ ...createTask, repo: 'other/repo' }, [activeCreate]).reason === 'repo_not_allowed');
+    check('new-file candidate without specific approval cannot be activated by a status flag',
+        planLearningPreflight(createTask, [{ ...activeCreate,
+            application: { ...activeCreate.application, approval_ref: null } }]).status === 'PENDING_REVIEW');
     check('main is outside v0.3 advice scope regardless of lesson claim',
         planLearningPreflight({ ...task, branch: 'main' }, [active]).status === 'BLOCKED');
     check('other repositories cannot inherit Ziven-only tool guidance',
