@@ -13,7 +13,7 @@ import { handlePatchWorkflow } from '../modules/patch_workflow.js';
 import { validateRepoRelativePath } from '../utils/helpers.js';
 import { handleCloudflareTool } from '../modules/cloudflare/worker_status.js';
 import { BRANCH_PR_TOOL_NAMES, handleBranchPrTool } from '../modules/github/branch_pr.js';
-import { getContent, listContents, pushFileFromStorage, editFileByAnchors, deleteFile, copyFile, movePath, formatContentsResult } from '../modules/github/contents.js';
+import { assertAllowedRepo, getContent, listContents, pushFileFromStorage, editFileByAnchors, deleteFile, copyFile, movePath, formatContentsResult } from '../modules/github/contents.js';
 import { createGithubTextFile } from '../modules/scenes/github_file.js';
 // Guarded recovery primitive for restoring the development ref to an exact commit.
 // It never permits main or another branch, and requires an expected current HEAD.
@@ -174,15 +174,12 @@ export async function handleGitHubTool(name, safeArgs, env) {
     let repo = env.GITHUB_REPO;
     if (name !== 'github_create_repo' && safeArgs.repo) {
         const target = String(safeArgs.repo).trim();
-        const allowedRaw = env.GITHUB_ALLOWED_REPOS || '';
-        const allowed = allowedRaw.split(',').map(s => s.trim()).filter(Boolean);
-        if (target === env.GITHUB_REPO) {
-            repo = target;
-        } else if (allowed.length > 0 && allowed.includes(target)) {
-            repo = target;
-        } else {
-            return `ERROR: Repository not allowed: ${target}. Allowed repos: ${[env.GITHUB_REPO, ...allowed].join(', ')}`;
+        const allowedRepo = assertAllowedRepo({ env }, target);
+        if (!allowedRepo.ok) {
+            const allowed = String(env.GITHUB_ALLOWED_REPOS || '').split(',').map(s => s.trim()).filter(Boolean);
+            return `ERROR: ${allowedRepo.message}. Allowed repos: ${[env.GITHUB_REPO, ...allowed].join(', ')}`;
         }
+        repo = target;
     }
 
     const baseUrl = `https://api.github.com/repos/${repo}`;
