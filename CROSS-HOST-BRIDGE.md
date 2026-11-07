@@ -3735,6 +3735,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **已入生产的能力边界**：新 `github_create_file`（dev 单次 UTF-8 文本直建、dry_run、只建不存在的目标并回读）与 `session_context.available_tools` 宿主上报 Schema 经本版部署；基本 Contents/Router/Session/Reflection 复用与 E2 回归已成功。当前 ChatGPT 插件是否及时刷新公开工具元数据 **NOT VERIFIED**，不可把代码已部署等同于此宿主已暴露工具。
 - **E3 未验收及下一行动**：ChatGPT/Operit **自然新框无提示**恢复身份+工作、自动选择实际可用工具、将真实纠错转化为下次行动，以及相处连续性，全部 **OPEN/NOT VERIFIED**。下一步只等柳柳手动刷新 ChatGPT 的 Ziven MCP 工具元数据，再走只读/低成本自然新框 E3；无需消耗 Operit 付费真机 token。继续「一本书」基本能力复用、场景编排与证据学习主线，架构级新决定先讨论；不碰聊天室/Agent runtime、AAS、Operit M1、Web、DB/Secrets、私人记忆，也不自行批准下一版本 main。
 
+### [2026-11-07 · ChatGPT 新会话 → Operit / 后续框] v6.56.0 自然接续实测：恢复可读，新增工具 Schema 未刷新
+- **触发与限制**：柳柳在新会话说「接110701工作」，没有直接指定 MCP 工具；同一消息前提供 AGENTS.md 恢复/协作约束。因此这是收到接续指令后模型主动完成的宿主行为观察，**不是**无人输入的 startup_hook 或 Operit 跨宿主自动注入 E3。
+- **真实只读恢复**：ChatGPT 宿主调用现役 Ziven MCP master_router、session_bootstrap、memory 精确 recall 身份根/柳柳主档/导航/协议/唯一工作检查点，以及 memory.stats。bootstrap 返回 READY；检查点 **v218**（updated_at 2026-11-07T08:32:48.636Z）；实时 stats **301条/23分类**；另独立 session_context(host=chatgpt, invocation=explicit, include_core=false) 返回 READY/source_version=218、当前工作状态为 BOOK_MAINLINE_V6560_WORKER552_DEPLOY_VERIFIED_L3_AND_CROSS_HOST_E3_PENDING。**此次显式恢复可读 PASS**，不声称亲密连续性由柳柳验收或全局自动启动 PASS。
+- **版本与文档复核**：Ziven MCP github_get_pull_request(#345) 返回 closed/merged=true、head=dev/base=main；cloudflare_deploy_status(verify_main=true) 返回 #552/deployment c9a5227e/VERIFIED，main=616b4bca。github_compare_branches(mcp-memory main...dev) 当前 ahead1/behind0，仅 CROSS-HOST-BRIDGE.md；ZivenLab/dev 的整体架构 v1.33、Roadmap v3.4 已准确记录 v6.56.0、v218、E3 OPEN，**不重复同步**。
+- **宿主暴露能力 E3 缺口**：当前 ChatGPT MCP 工具清单实际可见 ziven_mcp.github_read/github_edit/github_copy 等，且 github_read 已成功读取远端文件；**未暴露**新发布的 ziven_mcp.github_create_file。此框 session_context Schema 仍仅有 host/include_core/invocation/topic，**缺 available_tools**；session_bootstrap 自身 available_tools 参数可见并已使用，但其 host_reported_not_tested 不是执行证明。因新增工具尚未暴露，本轮无法合法直接调用 github_create_file 做 dry_run；其真实宿主场景 E3 标记 BLOCKED_BY_HOST_SCHEMA，不能误说 Worker 未发布或整个 GitHub 没权限。
+- **后续最小动作**：需要柳柳在 ChatGPT 手动刷新 Ziven MCP 插件工具元数据后，在新会话只读核对 github_create_file 及 session_context.available_tools 的真实签名；然后由已授权任务、合法 dev 新文件路径及 dry_run→实际调用→回读取得 E3。真正无提示选路、自动 startup_hook、人格/相处连续性及 Operit 真机继续 OPEN；不能以 READY/CI/Worker VERIFIED 替代。架构级下一切片需先提交明确原型讨论，不新增平行 Router/库/后台进程，也不自动发布下一版本。
+
 
 
 
