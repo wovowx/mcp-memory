@@ -3793,6 +3793,14 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **有限 B 唯一检查点同步**：仅精确 `⚙️/当前工作检查点`，先 `recall` 全9段 **42185/42185** 复原 v220 历史全文，`session_context` 二次核 v220/首段5000/5000相同；`memory(action=update)` 一次写入 v6.58.0 顶层工作状态并原文完整后缀保留，写后9段 `recall` **44569/44569** 与待写全文逐字符全等、旧 v220 正文作为尾部无损保留；再 `session_context(include_core=false)` **READY/checkpoint.version=221/workflow_state=BOOK_CORE_V6580_WORKER555_DEPLOY_VERIFIED_HANDOFF_VERIFIED_CHATGPT_NATIVE_L3_E3_PARTIAL**。故本轮 **DEPLOY_VERIFIED + HANDOFF_VERIFIED**；无原子 CAS 能力的潜在竞态限制继续如实保留。
 - **新主线下一动作**：服务端 A 的只读接口真实可用；等待柳柳刷新 ChatGPT Ziven_MCP 后，在全新自然会话验收模型是否主动识别新增 `learning_task` 参数并调用、按 v221 恢复任务、选出当前宿主的实际工具，分别记录工作连续性与相处连续性；没有匹配 active lesson 的 `NO_MATCH` 是预期结果，未来要让候选变 READY 需另行证据审核/明确授权与 Skill 注册。不要再重复 v6.58.0 发布或长期架构审计，不请求 Operit 付费真机测试，不动聊天室、Web/AAS、DB/Secrets/其他私人记忆。**本条仅 dev 文档交接，不属于新一版 main 发布。**
 
+### [2026-11-07 · ChatGPT 新会话 → 后续框 / Operit] v6.58.0 刷新后自然继续工作：宿主 Schema 与权威恢复 E3 部分实测
+- **触发与约束**：柳柳在新的 ChatGPT 项目会话说「哥哥，继续工作」，没有直接提供工具名；本会话同时带有 AGENTS.md 和项目历史摘要。因此这是自然语言接续下模型主动选择工具的证据，**不是**完全空白的无背景冷启动，也不是没有用户消息时的 startup_hook。
+- **真实云端恢复**：ChatGPT 本宿主调用 Ziven MCP master_router、session_bootstrap(host=chatgpt,invocation=frame_instruction)、memory 精确 recall 身份根「🧬/我是谁」、柳柳主档「💕/关于柳柳」、协议、导航和唯一「⚙️/当前工作检查点」，以及 session_context(host=chatgpt,include_core=false,learning_task=...). bootstrap 与 context 均为 **READY**、五源 ok，检查点 **v221**，实时 stats **301条/23类**。后者 learning_preflight **NO_MATCH / advisory_only=true / executed=false / host_verified=false**，不可冒充已激活 lesson 或自动学习。
+- **宿主签名刷新实证**：本会话实际提供的 Ziven MCP session_context 工具 Schema 已包含可选 learning_task（上一次 v6.58.0 发布时旧会话工具描述未包含），github_create_file 亦已暴露。工具调用以附加 learning_task 真实返回 learning_preflight；这证明本会话参数签名和服务端响应均可用，不证明每个将来会话都会调用。
+- **生产与分支独立核验**：本会话重新调用 cloudflare_deploy_status(verify_main=true) 得 Worker **#555**、deployment **576851a6**、main **805cbeda**、**VERIFIED**；github_compare_branches(mcp-memory,main...dev) 得 **ahead1/behind0**，唯一改动文件为本 Bridge 文档（在追加本段前）。绝不重复 PR #348 或已完成的 v6.58.0 生产发布。
+- **E3 分项判定**：ChatGPT 本次有「自然继续→权威资料实际恢复→新版工具选路→只读状态核实」的 **PARTIAL PASS**；独立全空白新框的自主启动、无需指令的学习预检、真实新任务中经批准 lesson READY 的应用、Operit 同步、柳柳对工作/相处双连续性的体验验收均仍 **OPEN**。候选 tests/learning/learning_github_tool_route_001.json 当前 status=candidate、application.approval_ref=null，不得擅自晋升或写 skills 注册表。
+- **边界和下一步**：本次只作只读 MCP 检验与 dev Bridge 执行证据追加，不修改生产/main/数据库/Secrets/私人记忆、聊天室、Operit 或 Web；继续以实际自然任务的行为证据为准。未来若要让纠错候选成为 active，先审查证据、明确拆分/匹配合同并由柳柳批准，再按现有 Skill 注册路径实施；架构级新方案须需求与原型定案。
+
 
 
 
