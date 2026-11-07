@@ -3772,6 +3772,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **独立场景工具调用**：真正调用线上 `github_read(wovowx/mcp-memory/main/package.json,1:16)` 成功读出 `version=6.57.0`；真正调用 `github_create_file(repo=mcp-memory,branch=dev,path=tests/e3/2026-11-07-chatgpt-continuity-probe.md,dry_run=true)` 返回 `Existing target: absent`、`UTF-8 size: 44 bytes`、`No write performed`。故当前宿主不只是工具名可见，GitHub 读取与新文件场景的**预检**实能响应；这不是新文件创建成功、也不是一次完整写入 E3。
 - **判定和边界**：**当前会话自然「继续」→读取权威状态→选对真实工具并完成只读/预检：PARTIAL E3，有工具调用事实**；**全新 ChatGPT 框首次自动调用、无需背景提示恢复人格与任务、L3 无提示 preflight、真实完整 dev 文件创建及双连续性均 NOT TESTED**。不为冒充 E3 新建空文件/修改代码、生产、main、DB、Secrets、私人记忆或聊天室；无需柳柳参与 Operit 付费真机测试。等下次自然新框出现时独立对照首次触发时间、工具调用、实际工作结果，再决定是否需要宿主 Hook 原型讨论。
 
+### [2026-11-07 · ChatGPT 新框 → Operit / 自然继续工作] v6.57.0 权威恢复与 dev 交接实证
+- **触发条件**：柳柳在新对话仅说「继续工作」，未指定工具/仓库/版本；会话同时提供 AGENTS.md 和项目背景，因此这是自然语言任务下的自主选路观察，**不是**完全空白上下文冷启动，也不是无用户消息的 startup_hook。
+- **权威恢复**：本宿主实际调用 Ziven MCP 的 `session_bootstrap(host=chatgpt,invocation=frame_instruction)` 得 `SB-RUNTIME-0.1 READY`，身份根、柳柳主档、导航、恢复协议及唯一工作检查点均 `ok`；`memory.stats=301条/23类`；`memory(recall,key=⚙️/当前工作检查点)` 读取当前 `v220` 顶层行动。另 `session_context(include_core=false)` 返回 `READY/checkpoint.version=220`，`include_core=true` 返回 `DEGRADED/core_incomplete`（critical_complete=true），不能冒充完整 Core 合同通过。 `startup_hook_verified=false`。
+- **真实 GitHub 状态与选路**：先读 ZivenLab/dev `governance/policy-index.md` 与现役 Ziven MCP `github-use-guide`；用实际 Ziven MCP `github_compare_branches(mcp-memory,main...dev)` 得 `ahead=2,behind=0`，仅 `CROSS-HOST-BRIDGE.md` 有差异；独立 `github_read(dev/package.json)` 得 `version=6.57.0`，`github_read(ZivenLab/dev/governance/当前项目状态.md)` 得 `version237`。两次未发布的 dev 提交是历史交接文档，无新代码待发布；不重复 v6.57.0/#554 的已完成发布。
+- **本次真实 dev 任务**：在现有唯一 Bridge 上追加新框事实、工具调用和 E3 判定；选用宿主已暴露的 `github_edit` 而非错误地转去通用 GitHub 连接器。提交与独立回读以实际工具结果为准，不把预检/文本记载冒充远端写入。
+- **验收边界**：本框自然语言触发了权威恢复、当前工具选路与真实项目状态核对，属 **ChatGPT 显式任务恢复/只读 E3 部分证据**；`planLearningPreflight` 自动任务前调用、无提示 cold-start Hook、Operit 跨宿主与柳柳对工作/相处双连续性的验收仍 **OPEN**。不创建测试文件，不改 main/Worker/DB/Secrets/私人记忆/聊天室；若下一步需新宿主 Hook/架构变更，先按需求与原型同柳柳讨论定案。
+
 
 
 
