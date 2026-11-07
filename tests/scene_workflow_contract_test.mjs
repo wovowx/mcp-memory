@@ -1,5 +1,6 @@
 // E2 end-to-end scene contracts: no real GitHub, Supabase, or private memory.
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createGithubTextFile, MAX_DIRECT_FILE_BYTES } from '../src/modules/scenes/github_file.js';
 import { formatContentsResult } from '../src/modules/github/contents.js';
 import { validateRepoRelativePath } from '../src/utils/helpers.js';
@@ -116,5 +117,38 @@ console.log('\n[One-book: real tool metadata, recovery and preflight boundaries]
         });
         check('public handler missing token fails without calls or false success', noToken.startsWith('ERROR: GitHub Token not configured'));
     } finally { globalThis.fetch = prior; }
+}
+{
+    // The public facade and the scene must share one repository allowlist rule.
+    const env = { GITHUB_REPO: 'wovowx/mcp-memory', GITHUB_ALLOWED_REPOS: 'wovowx/ZivenLab',
+        GITHUB_TOKEN: 'synthetic-only' };
+    const before = globalThis.fetch;
+    let visited = '';
+    globalThis.fetch = async url => {
+        visited = String(url);
+        return respond({ message: 'not found' }, 404);
+    };
+    try {
+        const denied = await handleGitHubTool('github_create_file',
+            { repo: 'another/unapproved', path: 'docs/new.md', content: 'x', dry_run: true }, env);
+        check('facade rejects a disallowed repo before networking using the shared policy',
+            denied.startsWith('ERROR: Repository not allowed: another/unapproved') && visited === '');
+        const permitted = await handleGitHubTool('github_create_file',
+            { repo: 'wovowx/ZivenLab', path: 'docs/new.md', content: 'x', dry_run: true }, env);
+        check('facade permits the configured secondary repo and reaches the same scene',
+            permitted.startsWith('DRY_RUN: github_create_file') &&
+            visited.includes('/repos/wovowx/ZivenLab/contents/docs/new.md'));
+    } finally { globalThis.fetch = before; }
+}
+
+console.log('\n[One-book: dependency direction stays reusable]');
+for (const domain of ['github', 'memory', 'session', 'scenes']) {
+    const directory = new URL(`../src/modules/${domain}/`, import.meta.url);
+    for (const filename of readdirSync(directory).filter(name => name.endsWith('.js'))) {
+        const source = readFileSync(new URL(filename, directory), 'utf8');
+        const imports = [...source.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map(match => match[1]);
+        check(`${domain}/${filename} does not depend back on a public tool facade`,
+            !imports.some(specifier => /(?:^|\/)tools\//.test(specifier)));
+    }
 }
 console.log(`\n[One-book scenes] ${passed}/${passed} passed`);
