@@ -14,6 +14,7 @@ import { validateRepoRelativePath } from '../utils/helpers.js';
 import { handleCloudflareTool } from '../modules/cloudflare/worker_status.js';
 import { BRANCH_PR_TOOL_NAMES, handleBranchPrTool } from '../modules/github/branch_pr.js';
 import { getContent, listContents, pushFileFromStorage, editFileByAnchors, deleteFile, copyFile, movePath, formatContentsResult } from '../modules/github/contents.js';
+import { createGithubTextFile } from '../modules/scenes/github_file.js';
 // Guarded recovery primitive for restoring the development ref to an exact commit.
 // It never permits main or another branch, and requires an expected current HEAD.
 export { restoreBranchReference } from '../modules/github/branch_pr.js';
@@ -61,6 +62,7 @@ function findSimilarCandidates(contentSrc, anchor, topN, minSim) {
 }
 
 export const GITHUB_TOOL_DEFS = [
+    { name: 'github_create_file', description: '在已授权仓库的 dev 分支直接创建全新 UTF-8 文本文件（无须模板或上传链接）：先检查目标不存在，再写入并回读逐字节验证。dry_run=true 只预检不写。禁止覆写、main、其它分支；大于64 KiB请用现有上传+github_push。', input_schema: { type: 'object', properties: { repo: { type: 'string', description: '可选，允许的仓库，默认 GITHUB_REPO' }, branch: { type: 'string', enum: ['dev'], description: '仅 dev（默认 dev）' }, path: { type: 'string', description: '新文件路径，不能已存在' }, content: { type: 'string', description: 'UTF-8 文本，允许空文件' }, message: { type: 'string', description: '可选提交信息' }, dry_run: { type: 'boolean', description: 'true 只检查目标，不产生写入' } }, required: ['path', 'content'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '创建文件', '场景'] },
     { name: 'github_push', description: '【创建入口】推送 NEW 文件到 GitHub 仓库（目标文件不存在时）。内容通过 content_url（我们自己的 Supabase 存储 url，先经 /upload）传入。如果文件已存在会被拒绝（GITHUB_PUSH_EXISTING_FILE）——修改已有文件请用 github_edit（读→改→写回一次完成，服务端精确替换，不用上传）。省略 branch 时默认 dev；写入后以 blob SHA 与字节数验证，允许空文件。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, content_url: { type: 'string', description: '必填，文件内容来源：仅限我们自己的 Supabase 存储 url（*.supabase.co/storage/v1/object/public/files/...），先经 /upload 上传本地文件拿到 url 再传这里' }, branch: { type: 'string', description: '分支名（默认dev）' }, message: { type: 'string', description: '提交信息' }, repo: { type: 'string', description: '可选，目标仓库（如 wovowx/ZivenLab），默认 GITHUB_REPO' } }, required: ['path', 'content_url'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '推送'] },
     { name: 'github_create_repo', description: '在 GitHub 创建新仓库。', input_schema: { type: 'object', properties: { repo: { type: 'string', description: '仓库名称' }, private: { type: 'boolean', description: '是否私有（默认false）' }, description: { type: 'string', description: '仓库描述' } }, required: ['repo'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '仓库'] },
     { name: 'github_read', description: '读取 GitHub 仓库文件内容（UTF-8 安全，支持中文）。支持 start_line/end_line 范围读取；默认最多返回前200行；返回 total_lines/returned_lines/truncated/has_more，明确是否截断。', input_schema: { type: 'object', properties: { path: { type: 'string', description: '文件路径' }, branch: { type: 'string', description: '分支名（默认main）' }, repo: { type: 'string', description: '可选，目标仓库' }, start_line: { type: 'number', description: '起始行（1-based，可选）' }, end_line: { type: 'number', description: '结束行（包含，可选）' } }, required: ['path'] }, handler: 'github', category: 'GitHub', tags: ['GitHub', '读取'] },
@@ -201,6 +203,11 @@ export async function handleGitHubTool(name, safeArgs, env) {
         // GitHub Contents scenario workflow (details are isolated in the domain module).
         if (name === 'github_push') {
             return formatContentsResult(name, await pushFileFromStorage(contentsCtx, safeArgs || {}));
+        }
+
+        // One-book scenario: direct text creation reuses Contents read/write/verify.
+        else if (name === 'github_create_file') {
+            return formatContentsResult(name, await createGithubTextFile(contentsCtx, safeArgs || {}));
         }
 
         // github_create_repo
