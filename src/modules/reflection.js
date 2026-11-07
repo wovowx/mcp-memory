@@ -149,6 +149,57 @@ export function evaluateReflectionCandidates(artifacts) {
 // L3 v0.3 — evidence, preflight and transfer primitives. These never load
 // private memories, execute a tool, publish a lesson or claim host E3 proof.
 const normalized = value => String(value || '').trim().toLocaleLowerCase();
+const canonicalIntent = value => {
+    const intent = normalized(value);
+    if (['github.file.create', 'create-github-file', '创建 github 新文件', 'github 新文件创建'].includes(intent)) {
+        return 'github.file.create';
+    }
+    if (['github.file.edit', '修改 github 已有文件'].includes(intent)) {
+        return 'github.file.edit';
+    }
+    return intent;
+};
+export const sameLearningIntent = (left, right) => canonicalIntent(left) === canonicalIntent(right);
+
+/**
+ * Conservative, host-independent scene recognition for a task description.
+ * This is NOT semantic inference, authorization, or evidence of an automatic
+ * host hook. Ambiguous language stays unmatched instead of guessing a write.
+ */
+export function normalizeLearningTaskDescription(description, scope = {}) {
+    const inert = { source: 'host_supplied_description', host_verified: false };
+    if (!hasText(description) || description.length > 1600 || !isRecord(scope)) {
+        return { status: 'INVALID', reason: 'task_description_required_or_too_long', ...inert };
+    }
+    const text = description.normalize('NFKC').trim().toLocaleLowerCase();
+    if (/(?:怎么|如何|为什么|是什么|方案|教程|解释|研究|讨论|建议|可否|能否|how to|explain|tutorial)/i.test(text)) {
+        return { status: 'NO_MATCH', reason: 'informational_not_execution', ...inert };
+    }
+    if (/(?:本地|电脑上|手机里|local (?:file|folder))/i.test(text)) {
+        return { status: 'NO_MATCH', reason: 'local_file_not_repository', ...inert };
+    }
+    const repositoryContext = /github|git hub|仓库|repository|\brepo\b|\bdev\b/i.test(text) ||
+        hasText(scope.repo);
+    const fileContext = /文件|文档|配置|脚本|readme|gitignore|\.[a-z0-9_-]{1,10}\b|\bfiles?\b/i.test(text);
+    if (!repositoryContext || !fileContext) {
+        return { status: 'NO_MATCH', reason: 'unsupported_scene', ...inert };
+    }
+    const creating = /新建|创建|新增|建个|建一个|建一份|加个|加一个|加一份|生成(?:一个|一份|新的)|\bcreate\b|\bnew file\b|\badd (?:a |an |new )?file\b/i.test(text);
+    const editing = /修改|编辑|更新|改一下|改改|改动|调整|替换|完善|补充|追加|\bedit\b|\bupdate\b|\bmodify\b|\bpatch\b/i.test(text);
+    const negated = /(?:不要|别|禁止|不许|不用|无需|不需要).{0,8}(?:新建|创建|新增|修改|编辑|更新|改动|\bcreate\b|\bedit\b)/i.test(text);
+    if ((creating && editing) || negated) {
+        return { status: 'AMBIGUOUS', reason: 'conflicting_or_negated_action', ...inert };
+    }
+    if (!creating && !editing) return { status: 'NO_MATCH', reason: 'no_explicit_file_action', ...inert };
+    return {
+        status: 'MATCHED',
+        canonical_intent: creating ? 'github.file.create' : 'github.file.edit',
+        intent: creating ? 'github.file.create' : 'github.file.edit',
+        entities: ['GitHub'],
+        evidence_scope: 'conservative_rules_not_semantic_or_host_proof',
+        ...inert
+    };
+}
 
 /** A source pointer is a provenance claim, not proof that its contents are true. */
 export function evaluateCorrectionTrail(artifact) {
@@ -183,7 +234,7 @@ export function evaluateCorrectionTrail(artifact) {
 function matchesApplication(task, application) {
     if (!isRecord(application) || !textArray(application.intent_any) ||
         application.intent_any.length === 0) return false;
-    const intentMatched = application.intent_any.some(intent => normalized(intent) === normalized(task.intent));
+    const intentMatched = application.intent_any.some(intent => canonicalIntent(intent) === canonicalIntent(task.intent));
     const entityMatched = !Array.isArray(application.entity_any) ||
         application.entity_any.length === 0 ||
         (textArray(application.entity_any) && application.entity_any.some(entity =>
