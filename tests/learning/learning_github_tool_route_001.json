@@ -1,7 +1,7 @@
 {
   "test_id": "learning_github_tool_route_001",
-  "name": "L3 · GitHub 403 与新文件工具漏发现的可追溯候选",
-  "description": "2026-11-07 真实案例：通用 GitHub connector 对 ZivenLab/dev 已有文档更新报 403；同一宿主 Ziven MCP github_edit 可用并完成 dry_run、写入、回读。后来创建新文件任务又只想到 github_push，遗漏已有 github_copy 可复制合法源文件免上传。不能把单通道失败或缺少上传路径说成所有 MCP 都做不到。后续 ChatGPT 新框自然任务已自主选择 Ziven MCP github_edit 更新 dev 交接并独立回读，为已有文件选路提供一次真实 E3；跨宿主、无提示任务前学习预检仍未验证，保持 candidate。",
+  "name": "L3 · 已有 GitHub 文件遇 403 时的宿主选路纠错候选",
+  "description": "2026-11-07 真实案例：通用 GitHub connector 对 ZivenLab/dev 已有文档更新报 403；同一宿主 Ziven MCP github_edit 可用并完成 dry_run、写入、回读。不能把单通道失败误判为全部 GitHub 路径不可用。后续 ChatGPT 新框自然任务已自主选择 Ziven MCP github_edit 更新 dev 交接并独立回读，为已有文件选路提供一次真实 E3；跨宿主、无提示任务前学习预检仍未验证，保持 candidate。新文件创建的独立候选见 learning_github_create_file_001。",
   "lesson_key": "PROPOSED:host_github_tool_route",
   "status": "candidate",
   "correction_trail": {
@@ -26,9 +26,9 @@
     "intent_any": [
       "修改 GitHub 已有文件",
       "跨宿主修改 Ziven GitHub 已有文件",
-      "GitHub 403"
+      "GitHub 已有文件 403"
     ],
-    "entity_any": ["github_edit", "Ziven_MCP"],
+    "entity_any": ["GitHub", "github_edit", "Ziven_MCP"],
     "preferred_tool": "ziven_mcp.github_edit",
     "tool_aliases": ["mcp__codex_apps__ziven_mcp_github_edit", "ziven_mcp:github_edit"],
     "steps": ["dry_run", "write_to_dev_after_required_approval", "github_read_back"],
@@ -44,13 +44,10 @@
       "GitHub 权限被拒",
       "换宿主选工具",
       "工具路由纠错",
-      "GitHub 新文件创建",
-      "没有上传工具"
+      "已有文件修改失败"
     ],
     "entities": [
       "github_edit",
-      "github_copy",
-      "github_push",
       "github_read",
       "Ziven_MCP",
       "GitHub connector",
@@ -61,7 +58,6 @@
   "checks": [
     "识别当前任务是读、dev 更新已有文件、创建新文件还是 main 发布",
     "查看当前宿主的真实工具清单与 Schema，不猜默认连接器有权",
-    "创建新文件时先核实 github_copy 可否复制合法源文件至 dev 新路径，接着 github_edit 和 github_read；无源文件才检查 /upload→github_push(content_url)",
     "Ziven MCP github_edit 可用时，dev 已有文件须先 dry_run 再写入并 github_read 回验",
     "任何连接器 403 仅说明该通道失败，继续核验允许的其他已配置通道",
     "无法使用任何获授权的路径时停止并解释，不假报成功",
@@ -70,8 +66,7 @@
   "blocked_actions": [
     "将通用 GitHub connector 的 403 直接判为 Ziven MCP/GitHub 整体无权限",
     "未经核验就让柳柳重复改 GitHub token/插件权限",
-    "未检查 github_copy 及上传通道就断言新文件不能创建或必须柳柳手动下载",
-    "未经授权用 github_copy(overwrite=true) 覆盖已有路径，或擅自写 main",
+    "未经授权覆盖已有路径或擅自写 main",
     "仅因文本规则、合成 E2 或单次真实 E3 成功就宣布任何宿主和任务中都不会再犯错",
     "未获独立发布授权直接写 main 或部署",
     "未经单独许可修改云端私人记忆/数据库"
@@ -129,21 +124,6 @@
       "scenario_id": "T5",
       "condition": "fresh conversation without user tool hint",
       "expected": "NOT_VERIFIED until real E3 tool trace"
-    },
-    {
-      "scenario_id": "T6",
-      "condition": "new file on dev; existing legal source template; host exposes github_copy and github_edit",
-      "expected": "READY:github_copy→github_edit→github_read; upload_required=false; overwrite=false"
-    },
-    {
-      "scenario_id": "T7",
-      "condition": "new file on dev; no legal existing source; no accessible upload channel",
-      "expected": "UNAVAILABLE:report missing source/upload precisely; no global GitHub denial inference"
-    },
-    {
-      "scenario_id": "T8",
-      "condition": "new file via github_copy targeting unapproved main branch",
-      "expected": "BLOCKED:release_approval_required; do not call copy"
     }
   ]
 }
