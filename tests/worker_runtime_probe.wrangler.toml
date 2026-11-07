@@ -1,0 +1,8 @@
+name = "ziven-workerd-probe"
+main = "worker_runtime_probe.js"
+compatibility_date = "2025-07-24"
+
+[vars]
+GITHUB_REPO = "wovowx/mcp-memory"
+GITHUB_ALLOWED_REPOS = "wovowx/mcp-memory"
+SUPABASE_URL = "https://workerd-fixture.example"
