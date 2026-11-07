@@ -2,6 +2,20 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.54.0] - 2026-11-07（Worker 原生运行合同与可重复 CI 验证）
+
+### 柳柳实际会得到什么
+- 为「一本书架构」增加真实 Cloudflare Workers 运行时的自动验收基线：`test:worker-runtime` 在本地 Wrangler/Workerd 跑合成 HTTP 请求，检验模块加载、响应/错误边界和运行环境兼容性。此前纯 Node 合同无法覆盖 Worker 原生执行差异；以后改造模块时可复用此基线快速发现兼容回归。
+- 将测试依赖 `wrangler@4.158.0` 固定在 `package.json` / `package-lock.json`，CI 通过 `npm ci` 可重复安装；`.github/workflows/learning-regression.yml` 增加 Worker-runtime 步骤。此批 dev 的原生运行合同 6/6 PASS，既有 check/核心合同/learning 回归继续通过。
+
+### 本批真实净差异与边界
+- 从 v6.53.1 main 发布时起，本批共涉及：测试工作流、package 与锁文件、Worker-runtime 测试/探针配置、Operit 自动启动 M1 三个实验文件与合同测试、跨宿主 Bridge，以及本次 CHANGELOG。M1 是**休眠实验工件**，未完成真实 Operit `before_send_to_model` E3 注入验收，本版不声称自动恢复可用，也不会主动安装或启用。
+- **没有修改 `src/` 业务模块或公开 MCP 工具 Schema**；不写真实数据库/记忆，不删历史，不改生产密钥，不碰聊天室、Web，也不要求 Operit 付费测试。Worker-runtime 只跑本地合成数据，不对真实存储做写入。
+- 由柳柳 2026-11-07 在阅读 v6.54.0 发布范围、效果、休眠 M1 风险和自动部署影响后回复「好」授权本次 dev→PR→rebase→main 发布；发布前测试成功不代表实际 Worker 部署完成，仍须独立核对 PR `merged=true`、main SHA、官方 CI 与 Cloudflare `verify_main=VERIFIED`。
+- 回滚基线为 v6.53.1、main `75f6617d5a043344691a1c91d3ff2832404d76e6`、Worker #548；若新版本运行异常，按另行获准的发布流程恢复旧已验证状态，保留数据、证据和历史。私人 `⚙️/当前工作检查点` 本次没有单独写入授权，交接状态标记为 `HANDOFF_UNVERIFIED`，不伪称新框自动唤醒已验收。
+
+---
+
 ## [v6.53.1] - 2026-11-07（GitHub 新文件上传 · Cloudflare Redirect 兼容修复候选，仅 dev）
 
 ### 柳柳实际会得到什么
