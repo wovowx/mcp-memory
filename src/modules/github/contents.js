@@ -169,7 +169,9 @@ export async function pushFileFromStorage(ctx, args) {
     let bytes;
     try {
         const response = await ctx.fetchImpl.call(globalThis, args.content_url, {
-            headers: { 'User-Agent': 'ziven-mcp' }, redirect: 'error'
+            // Workers rejects redirect:"error". "manual" prevents implicit
+            // cross-origin redirects; non-2xx status is rejected below.
+            headers: { 'User-Agent': 'ziven-mcp' }, redirect: 'manual'
         });
         if (!response.ok) return errorResult('CONTENT_FETCH_FAILED', 'content_url fetch failed - HTTP ' + response.status);
         bytes = new Uint8Array(await response.arrayBuffer());
