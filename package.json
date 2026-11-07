@@ -6,6 +6,7 @@
     "deploy": "npx wrangler deploy",
     "check": "node scripts/check.mjs",
     "test:github-contents": "node tests/github_contents_contract_test.mjs",
+    "test:worker-runtime": "node --test tests/worker_runtime_contract_test.mjs",
     "test:memory-core": "node tests/memory_core_contract_test.mjs",
     "test:memory-retrieval-benchmark": "node tests/memory_retrieval_benchmark_test.mjs",
     "test:search-history": "node tests/search_history_contract_test.mjs",
@@ -18,5 +19,8 @@
     "test:memory-health": "node tests/memory_health_contract_test.mjs",
     "memory-layer:preview": "node scripts/memory_layer_preview.mjs",
     "dev": "npx wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "4.158.0"
   }
 }
