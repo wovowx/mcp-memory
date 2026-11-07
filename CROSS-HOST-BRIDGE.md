@@ -3700,6 +3700,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **唯一检查点 E3**：旧 v215 全文 **28069字符**完整召回、保留为新历史后缀；临写前确认当前仍 v215，`memory(action=update,key=⚙️/当前工作检查点)` 写入新 v6.54.1/Worker550 工作指针；七段独立 recall 拼合 **31069/31069字符逐字一致**，旧历史全文保留；`session_context(host=chatgpt,include_core=false)` 返回 `READY/checkpoint.version=216/workflow_state=BOOK_MAINLINE_V6541_WORKER550_B_LIMITED_AUTO_HANDOFF_RECORDED_L3_AND_CROSS_HOST_E3_PENDING`。这是 **DEPLOY_VERIFIED 与 HANDOFF_VERIFIED**，不意味着冷启动 Hook、Operit 自动注入、人格/工作双连续性 E3 成功；host.startup_hook_verified=false。
 - **next_action**：更新 ZivenLab Roadmap v2.7、项目状态 v231、差距矩阵 v4.72（保留旧历史），然后回到「一本书架构」最小能力切片：基础方法复用+场景编排、L3真实无提示学习/选工具自然 E3、M1低成本自然观察；新架构级方案先需求/原型与柳柳达成共识。Web 后置，Operit 220 MB 对话导出及 M1 真机重复测试暂停。下次 main 发布仍须另发具体版本单再获许可。
 
+### [2026-11-07 CST] GPT → ChatGPT / Operit · v6.55.0 一本书四包的首个 dev 交付候选
+- **授权与设计**：柳柳回复「好」批准四包连续施工（共用基础→场景编排/发现→L3选路学习/连续性→全链路验收），不代表 main/Worker 发布。先更新 ZivenLab/dev `governance/整体架构.md` v1.29、`roadmap.md` v2.9、`架构差距矩阵.md` v4.73，均 `github_edit Verified:true`。本轮从真实失败可复现的问题修复，非另起全仓重构。
+- **第一包（基础结果语义）**：已有 `src/modules/mcp_router.js` 漏认 `ERROR:`、`ERROR/UNKNOWN:` 失败前缀，`github_read` 无 token 返回 `ERROR:` 仍增 usage；现以共享 `isSuccessfulToolResult` 分类明确失败且不计数，保留正常单次计数、工具结果/Schema 不变。回归先 RED（220通过/1失败），后 GREEN（221通过/0失败）。
+- **第二/三包（场景/L3）**：旧 master-router 建新文件只指 `github_push`，忽略现成 `github_copy`。现在按实际宿主工具能力：有合法源文件先 copy→edit→read；无源文件再 `/upload`→push；无完整路径精准 UNAVAILABLE。只改现有 `master-router`、`github-use-guide`、`learning_github_tool_route_001` 与 Reflection 合成合同 T6–T8；旧 lesson 的 `preferred_tool=github_edit` 仍只对「修改已有文件」预检，不能误推荐给新文件。Reflection E2 已达 74/74，但**宿主真正无需提示选对工具 E3 尚未验证**，不得宣称永久学会。
+- **本地 E1/E2 证据（独立 clone）**：`npm run check` exit0；Router 221/221、GitHub Contents 53/53、Memory Core 120/120、Session 56/56、Reflection 74/74、Search History 20/20、Memory Layer Mapper 36/36、Memory Health 17/17、Operit M1 Synthetic 16/16、检索 Benchmark 16场景、Workerd 6/6，exit0。`npm ci --offline` 正常；Workerd 初始化曾有获取 Request.cf 代理超时警告，不影响该套测试退出码0。最终 dev GitHub SHA/CI 留待远端提交后独立核验。
+- **边界**：仅 dev 候选，main 仍 `7703e7d...` / Worker #550，检查点 v216 为最后已验证状态；不改 DB/Secret/真实私人记忆/聊天室/Worker 配置/Operit 设备，不自动部署、不自动把候选写入检查点。后续 main 发布需单独版本单与柳柳许可；四包后半段的真实宿主 E3 需自然观察而非冒充本地测试。
+
 
 
 
