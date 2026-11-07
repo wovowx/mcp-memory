@@ -63,7 +63,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 | **改代码要发布/部署后闭环验证** | **publish-workflow** | code-quality-guard → github_edit(dev,三键) → merge → sleep45 → verify_main |
 | **修改已有文件（改文档/改代码/更新内容）** | github-use-guide | **github_edit**（读→改→写回一次完成；v6.32.5+） |
 | **跨宿主修改 Ziven GitHub 已有文件（尤其 ChatGPT 通用连接器 403）** | github-use-guide · L3 v0.2 跨宿主选路 | **先验当前宿主 Ziven MCP github_edit 是否可用** → dev dry_run → 写 → github_read 回验；通用连接器 403 ≠ 全局无权 |
-| **创建 GitHub 新文件（先核验全部工具）** | github-use-guide · L3 新文件选路 | **有合法源文件：github_copy → 按需 github_edit → github_read；无源文件：/upload → github_push(content_url) → github_read**。先查本宿主可用工具，不把某条路径不可用误报全局做不到 |
+| **创建 GitHub 新文件（先核验全部工具）** | github-use-guide · L3 新文件选路 | **若本宿主已暴露 github_create_file：直接提供 path/content，在 dev 上 dry_run → 创建并自动回读验证**；未暴露时，有合法源文件用 github_copy → 按需 github_edit → github_read；否则 /upload → github_push(content_url) → github_read。不能凭 dev 文档假称线上已更新 |
 | 日常 GitHub 操作 | github-use-guide | github_* |
 | 定时任务 / 巡检 / 自续 | workflow | daily_life schedule |
 | 发语音 / 语音问题 | voice_bubble | <v>气泡 |
@@ -79,6 +79,8 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 > 🎯 **工具调用三键自查（lesson已登记 ⚙️/lesson-工具调用构造层污染 · 2026-10-18）**：每次构造工具调用，尤其长参数/长命令时，默念三键齐全——① `params`（含 path/repo/branch 等必需字段）② `tool_name`（外层）③ params 若 JSON 则字段完整。缺 tool_name 或 path 是最高频构造层错误。代码层已由 dispatch_tool 硬拦（缺 tool_name→INVALID_TOOL_NAME/UNKNOWN_TOOL；缺 path→MISSING_REQUIRED_PARAM），但构造时主动自查能更快、不浪费一次调用。
 
 > 🎯 **文件操作场景选路（2026-11-07）**：创建 GitHub 新文件先查实际工具与文件来源；**github_copy** 可以把已存在且允许读取的源文件复制到 dev 新路径（`overwrite=false`），**github_edit** 再按需编辑，最后 **github_read** 验证，无须先下载上传；没有合适源文件才走已有 `/upload → github_push(content_url)`。修改已有文件仍用 **github_edit**；删除用 github_delete。**不能直接生成任意新内容**时须说明所缺的源文件或上传通道，不可因为没想到 github_copy 就说整个 MCP 无法创建；不得为凑路径虚构模板、覆写现有文件或擅自写 main。
+>
+> 🎯 **v6.56.0 dev 候选 · 文本直接创建场景**：若当前宿主实际 tools/list 已有 `github_create_file`，优先 `github_create_file(path, content, branch=dev, dry_run=true)` 预检，再调用同工具写入；成功结果须 `verified=true`，验证不成功标记 PARTIAL 后回读排查。此场景仅支持允许仓库、dev、新路径、UTF-8 文本 ≤64 KiB。生产尚未发布时继续使用上文 github_copy 或上传路径，不把 dev 文档当作主分支运行能力。
 >
 > 🎯 **L3 v0.2 跨宿主防复发**：先检查当前实际暴露的工具和 repo/branch，再选择该宿主可用的 Ziven MCP 工具。ChatGPT 通用 GitHub 连接器出现 `403 Resource not accessible by integration`，只代表该连接器当前操作失败；优先核查已有的 `ziven_mcp.github_edit/read`，而不是宣称整个 GitHub 受限、重复让柳柳改权限。dev 改已有文件须 dry_run→写→回读，main 必须独立发布授权。记录真实成功与失败证据，新框无提示选路的 E3 未验证前不称「永久学会」。详细见 github-use-guide 和 `tests/learning/learning_github_tool_route_001.json`。
 
