@@ -516,6 +516,7 @@ const fixture = [
   { name: 'supabase_db', enabled: true, description: 'database', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['query', 'insert', 'update', 'delete', 'tables', 'exec'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' } } } },
   { name: 'supabase_schema', enabled: true, description: 'schema', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['create_table', 'drop_table', 'tables', 'exec', 'schema_dump'] }, sql: { type: 'string' }, table: { type: 'string' }, columns: { type: 'string' }, format: { type: 'string', enum: ['md', 'json'] }, rls: { type: 'boolean' } } } },
   { name: 'image_upload', enabled: true, description: 'media', handler_type: 'ai', handler_config: { handler: 'ai' } },
+  { name: 'github_read', enabled: true, description: 'GitHub read', handler_type: 'js', handler_config: { handler: 'github' }, input_schema: { type: 'object', required: ['path'], properties: { path: { type: 'string' } } } },
   { name: 'master-router', enabled: true, description: 'router', handler_type: 'text' }, // 无 handler_config.handler
   { name: 'memory_remember', enabled: true, description: 'remember', handler_type: 'js', handler_config: { handler: 'memory' } },
   { name: 'create_patch_proposal', enabled: true, description: 'create proposal', handler_type: 'js', handler_config: { handler: 'database' }, input_schema: null }
@@ -681,6 +682,12 @@ try {
   delete textSkillFixture.file_path;
   usagePatchCount = 0; t = await callTool('memory_move', {}); check('memory_move 失败缺参不计数', usagePatchCount === 0);
   t = await callTool('memory_remember', {}); check('已注册 handler 返回参数失败不计数', t.startsWith('❌') && usagePatchCount === 0);
+  // GitHub facades return "ERROR:" rather than "❌" on a real failure.
+  // A failed route must not be counted as a successful skill use.
+  usagePatchCount = 0;
+  t = await callTool('github_read', { path: 'README.md' });
+  check('GitHub error result does not inflate skill usage',
+    t.startsWith('ERROR: GitHub Token not configured') && usagePatchCount === 0);
   memoryWriteBodies = []; usagePatchCount = 0;
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
   check('legacy untyped memory_remember remains valid and stores no inferred type',
