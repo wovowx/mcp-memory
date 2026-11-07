@@ -1,0 +1,4 @@
+# Local dependencies and Cloudflare development state
+node_modules/
+.wrangler/
+.dev.vars
