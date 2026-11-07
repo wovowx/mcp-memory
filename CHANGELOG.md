@@ -2,6 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.58.0] - 2026-11-07（仅 dev · ChatGPT 原生 L3 可选任务前建议候选）
+
+### 柳柳能得到的实际变化
+- **恢复当前工作时可顺带检查旧经验**：现有 `session_context` 新增可选 `learning_task`（任务意图、实体、仓库、分支），复用已有 Session 恢复、Reflection `planLearningPreflight` 与已启用 Skills 的 `handler_config.learning` 结构化记录。返回单独 `learning_preflight`，只有已激活且带批准引用的匹配经验才可能建议现有工具；无需柳柳手工构造反思脚本参数。旧调用结果及是否返回五份私人核心全文的开关不变。
+- **已批准经验也不能越权**：建议始终只读、未实际调用工具、未在当前宿主得到 E3 证实；候选 pending、未批准、匹配冲突、工具未暴露、分支 main、恢复身份失败均阻断。Skills 读失败只让建议 `UNAVAILABLE`，不冒充身份恢复失败，也不因经验学习而新增数据库写入。
+- **现实限制**：此版只建立可复用的接入通道；实际 Skills 注册表尚未为本次 GitHub 候选配发经批准的 `handler_config.learning`，因此当前真正的任务尚不会自动获得该候选的 READY 建议。ChatGPT App 由模型选择 MCP 工具，不能强制每轮冷启动或自然任务都执行；发布并刷新公开 Schema 后仍须 E3 观测，不能拿合成测试代替。
+
+### 测试、发布边界
+- 新增 `session_context` 可选公开 Schema、注册表只读集成及已有 Session 合同的成功/拒绝/降级/路由覆盖；沿用现有 Reflection、Router 与场景功能，`master-router` 只增加软调用指南。无新 MCP 工具、DB 表/写入、宿主钩子、Cloudflare 配置或依赖；不涉及私人记忆写入、聊天室、Operit M1、Web/AAS。
+- 当前仅在 dev 施工，生产基线仍是 **v6.57.0 / Worker #554 / 检查点 v220**。本版真实 dev SHA、CI 和 E1/E2 结果以最终验收为准。**修改公开 Schema 意味着待单独批准后合并 main、部署并在 ChatGPT 端刷新，才有真实可用性**；本 changelog 不是发布许可。
+
+---
+
 ## [v6.57.0] - 2026-11-07（仅 dev · 一本书架构服务端收口候选）
 
 ### 实际能交付的结果
