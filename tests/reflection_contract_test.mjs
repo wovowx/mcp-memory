@@ -158,9 +158,13 @@ try {
         import.meta.url), 'utf8');
     const router = await readFile(new URL('../src/skills/master-router/SKILL.md',
         import.meta.url), 'utf8');
-    check('observed failure lesson is pending until fresh-host E3',
+    check('real new-frame GitHub edit evidence is recorded but cannot self-activate a lesson',
         toolRouteFixture.reflection.validation_state === 'pending' &&
         toolRouteFixture.reflection.source_refs.some(ref => ref.startsWith('conversation:')) &&
+        toolRouteFixture.reflection.source_refs.some(ref =>
+            ref.includes('/blob/9891589051467494336c7d06b7ad78442f6bbea8/CROSS-HOST-BRIDGE.md')) &&
+        toolRouteFixture.verification.some(row => row.startsWith('E3: 2026-11-07 ChatGPT 新框')) &&
+        toolRouteFixture.application.approval_ref === null &&
         toolRouteFixture.scenarios.length === 8 &&
         previewPromotion(toolRouteFixture).status === 'blocked');
     check('loaded guide spells out actual Ziven MCP route, dry run and readback',
