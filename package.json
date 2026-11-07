@@ -1,11 +1,12 @@
 {
   "name": "mcp-memory",
-  "version": "6.55.0",
+  "version": "6.56.0",
   "type": "module",
   "scripts": {
     "deploy": "npx wrangler deploy",
     "check": "node scripts/check.mjs",
     "test:github-contents": "node tests/github_contents_contract_test.mjs",
+    "test:scenes": "node tests/scene_workflow_contract_test.mjs",
     "test:worker-runtime": "node --test tests/worker_runtime_contract_test.mjs",
     "test:memory-core": "node tests/memory_core_contract_test.mjs",
     "test:memory-retrieval-benchmark": "node tests/memory_retrieval_benchmark_test.mjs",
