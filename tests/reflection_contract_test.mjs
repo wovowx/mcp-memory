@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
     validateCandidate, decideCandidate, previewPromotion, evaluateReflectionCandidates,
     evaluateBehaviorObservation, evaluateCorrectionTrail, planLearningPreflight,
+    normalizeLearningTaskDescription,
     compareLearningTrials
 } from '../src/modules/reflection.js';
 
@@ -323,6 +324,33 @@ try {
     check('two distinct active lessons do not conflict on unrelated task scenes',
         planLearningPreflight(task, [active, activeCreate]).status === 'READY' &&
         planLearningPreflight(createTask, [active, activeCreate]).status === 'READY');
+    console.log('\n[L3 v0.4 natural task description → canonical intent, without guessing host actions]');
+    const naturalCreate = normalizeLearningTaskDescription('哥哥，帮我在 dev 仓库新建一个配置文件');
+    const naturalEdit = normalizeLearningTaskDescription('在 GitHub 更新现有的文档');
+    check('Chinese natural creation and editing map to distinct canonical scenes',
+        naturalCreate.status === 'MATCHED' && naturalCreate.intent === 'github.file.create' &&
+        naturalEdit.status === 'MATCHED' && naturalEdit.intent === 'github.file.edit' &&
+        naturalCreate.host_verified === false && naturalEdit.host_verified === false);
+    check('canonical create scene matches old reviewed lessons without changing stored artifacts',
+        planLearningPreflight({ ...createTask, intent: naturalCreate.intent, entities: naturalCreate.entities },
+            [active, activeCreate]).status === 'READY' &&
+        planLearningPreflight({ ...task, intent: naturalEdit.intent, entities: naturalEdit.entities },
+            [active, activeCreate]).status === 'READY');
+    check('English synonyms are understood only in explicit repository file scenes',
+        normalizeLearningTaskDescription('Create a new file in the GitHub repository').canonical_intent === 'github.file.create' &&
+        normalizeLearningTaskDescription('Please edit the README file in GitHub').canonical_intent === 'github.file.edit');
+    check('two actions or a negated action remain ambiguous instead of guessing',
+        normalizeLearningTaskDescription('在 GitHub 仓库新建并修改一个文件').status === 'AMBIGUOUS' &&
+        normalizeLearningTaskDescription('不要新建文件，只修改 GitHub 的旧文件').status === 'AMBIGUOUS');
+    check('informational, local, unrelated and action-free requests are not execution scenes',
+        normalizeLearningTaskDescription('怎么在 GitHub 新建文件？').status === 'NO_MATCH' &&
+        normalizeLearningTaskDescription('在本地电脑上创建一个配置文件', { repo: 'wovowx/mcp-memory' }).status === 'NO_MATCH' &&
+        normalizeLearningTaskDescription('检查 GitHub CI 状态').status === 'NO_MATCH' &&
+        normalizeLearningTaskDescription('GitHub 403').status === 'NO_MATCH' &&
+        normalizeLearningTaskDescription('在 GitHub 新建一个目录').status === 'NO_MATCH');
+    check('empty or excessive task text cannot drive an experience decision',
+        normalizeLearningTaskDescription(' ').status === 'INVALID' &&
+        normalizeLearningTaskDescription('x'.repeat(1601)).status === 'INVALID');
     check('new-file lesson cannot recommend creation for existing-file edits',
         planLearningPreflight(task, [activeCreate]).status === 'NO_MATCH' &&
         planLearningPreflight(createTask, [active]).status === 'NO_MATCH');
