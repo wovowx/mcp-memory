@@ -234,7 +234,8 @@ check('context without topic is read-only and does not visit registry or tools/l
         && call.url.includes('/rest/v1/memories') && !call.url.includes('/skills')));
 check('legacy session_context output does not gain unrequested L3 data',
     !Object.hasOwn(context, 'learning_preflight')
-    && SESSION_CONTEXT_TOOL.input_schema.properties.learning_task?.required?.join(',') === 'intent,entities,repo,branch'
+    && SESSION_CONTEXT_TOOL.input_schema.properties.learning_task?.properties?.description?.type === 'string'
+    && !SESSION_CONTEXT_TOOL.input_schema.properties.learning_task?.required?.includes('description')
     && !SESSION_CONTEXT_TOOL.input_schema.required?.includes('learning_task'));
 
 console.log('\n[Session Context optional L3 preflight contracts]');
@@ -323,6 +324,69 @@ const routedLearning = await handleMCPRequest({ jsonrpc: '2.0', id: 91,
     method: 'tools/call', params: { name: 'session_context', arguments: taskArgs } }, env);
 check('published MCP schema accepts nested learning_task through existing dispatch gate',
     JSON.parse(routedLearning.data.result.content[0].text).learning_preflight?.status === 'READY'
+    && calls.every(call => call.method === 'GET'));
+
+console.log('\n[L3 v0.4 natural task text through existing session_context entry]');
+const naturalArgs = { ...taskArgs, learning_task: {
+    description: '哥哥，帮我在 dev 仓库新建一个配置文件',
+    repo: 'wovowx/mcp-memory', branch: 'dev'
+} };
+calls = mockReads({ skillRows: [{ handler_config: { learning: approvedLesson } }] });
+const naturalAdvice = await buildSessionContext(env, naturalArgs);
+check('natural-language creation reaches the same reviewed lesson without manual entities',
+    naturalAdvice.learning_preflight.status === 'READY'
+    && naturalAdvice.learning_preflight.canonical_intent === 'github.file.create'
+    && naturalAdvice.learning_preflight.recommended_tool === 'github_create_file'
+    && naturalAdvice.learning_preflight.advisory_only
+    && !naturalAdvice.learning_preflight.executed && !naturalAdvice.learning_preflight.host_verified
+    && calls.length === 7 && calls.every(call => call.method === 'GET'));
+calls = mockReads({ skillRows: [{ handler_config: { learning: approvedLesson } }] });
+check('natural task and legacy canonical-equivalent intent can coexist',
+    (await buildSessionContext(env, { ...naturalArgs, learning_task: {
+        ...naturalArgs.learning_task, intent: 'create-github-file'
+    } })).learning_preflight.status === 'READY');
+calls = mockReads();
+check('contradictory structured intent is rejected before registry access',
+    (await buildSessionContext(env, { ...naturalArgs, learning_task: {
+        ...naturalArgs.learning_task, intent: 'github.file.edit'
+    } })).learning_preflight.status === 'AMBIGUOUS' && calls.length === 6);
+calls = mockReads({ skillRows: [{ handler_config: { learning: { ...approvedLesson, status: 'candidate' } } }] });
+check('natural text cannot activate a pending lesson',
+    (await buildSessionContext(env, naturalArgs)).learning_preflight.status === 'PENDING_REVIEW');
+calls = mockReads();
+const ambiguousText = await buildSessionContext(env, { ...naturalArgs, learning_task: {
+    ...naturalArgs.learning_task, description: '在 GitHub 新建并修改一个文件'
+} });
+check('ambiguous task never reads skills or returns an executable tool',
+    ambiguousText.learning_preflight.status === 'AMBIGUOUS' && calls.length === 6
+    && !ambiguousText.learning_preflight.recommended_tool);
+calls = mockReads();
+const informationalText = await buildSessionContext(env, { ...naturalArgs, learning_task: {
+    ...naturalArgs.learning_task, description: '如何在 Github 创建文件？'
+} });
+check('asking a question does not falsely trigger a file write recommendation',
+    informationalText.learning_preflight.status === 'NO_MATCH' && calls.length === 6);
+calls = mockReads();
+const missingScope = await buildSessionContext(env, { ...naturalArgs, learning_task: {
+    description: '在 GitHub 新建一个文件'
+} });
+check('natural task without repo/branch explicitly needs scope and never guesses permission',
+    missingScope.learning_preflight.status === 'NEEDS_SCOPE' && calls.length === 6);
+calls = mockReads({ missingKey: BOOTSTRAP_KEYS.identity });
+check('authoritative recovery BLOCKED outranks natural language classification',
+    (await buildSessionContext(env, { ...naturalArgs, learning_task: {
+        description: '怎么在 GitHub 新建文件？'
+    } })).learning_preflight.reason === 'authority_restoration_blocked' && calls.length === 6);
+calls = mockReads({ skillRows: [{ handler_config: { learning: approvedLesson } }] });
+check('main branch remains blocked for a natural-language task',
+    (await buildSessionContext(env, { ...naturalArgs, learning_task: {
+        ...naturalArgs.learning_task, branch: 'main'
+    } })).learning_preflight.reason === 'main_out_of_scope');
+calls = mockReads({ skillRows: [{ handler_config: { learning: approvedLesson } }] });
+const routedNatural = await handleMCPRequest({ jsonrpc: '2.0', id: 92,
+    method: 'tools/call', params: { name: 'session_context', arguments: naturalArgs } }, env);
+check('MCP dispatch accepts the natural description without a new tool or write',
+    JSON.parse(routedNatural.data.result.content[0].text).learning_preflight?.status === 'READY'
     && calls.every(call => call.method === 'GET'));
 
 const relatedRows = Array.from({ length: 4 }, (_, i) => ({
