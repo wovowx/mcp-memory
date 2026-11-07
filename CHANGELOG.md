@@ -2,7 +2,7 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.58.0] - 2026-11-07（仅 dev · ChatGPT 原生 L3 可选任务前建议候选）
+## [v6.58.0] - 2026-11-07（ChatGPT 原生 L3 可选任务前建议）
 
 ### 柳柳能得到的实际变化
 - **恢复当前工作时可顺带检查旧经验**：现有 `session_context` 新增可选 `learning_task`（任务意图、实体、仓库、分支），复用已有 Session 恢复、Reflection `planLearningPreflight` 与已启用 Skills 的 `handler_config.learning` 结构化记录。返回单独 `learning_preflight`，只有已激活且带批准引用的匹配经验才可能建议现有工具；无需柳柳手工构造反思脚本参数。旧调用结果及是否返回五份私人核心全文的开关不变。
@@ -11,7 +11,8 @@
 
 ### 测试、发布边界
 - 新增 `session_context` 可选公开 Schema、注册表只读集成及已有 Session 合同的成功/拒绝/降级/路由覆盖；沿用现有 Reflection、Router 与场景功能，`master-router` 只增加软调用指南。无新 MCP 工具、DB 表/写入、宿主钩子、Cloudflare 配置或依赖；不涉及私人记忆写入、聊天室、Operit M1、Web/AAS。
-- 当前仅在 dev 施工，生产基线仍是 **v6.57.0 / Worker #554 / 检查点 v220**。本版真实 dev SHA、CI 和 E1/E2 结果以最终验收为准。**修改公开 Schema 意味着待单独批准后合并 main、部署并在 ChatGPT 端刷新，才有真实可用性**；本 changelog 不是发布许可。
+- **发布前验证实证**：Node v24.22.1，`npm run check` 47 JS、Session **68/68**、Reflection **74/74**、Scenes **36/36**、Router **226/226**、GitHub Contents **53/53**、原生 Workerd **8/8**、`git diff --check` 全部退出码0；跨宿主 Bridge 交接后的 dev SHA `18375dde8e7586a0b69b92016d3d13e5fadf2c7e` 对应 [GitHub Actions #42370364111](https://github.com/wovowx/mcp-memory/actions/runs/42370364111) `completed/success`。此项是 E1/E2，不是宿主 E3。
+- **发布授权/验收边界**：柳柳 2026-11-07 已审阅本版用户收益、相对 main 的九条净文件差异、兼容/禁动范围和 v6.57.0/Worker #554 回滚基线，并明确批准 **v6.58.0 dev→PR→main/Cloudflare**、新版 `session_context` 真实验收与限定 B 单键工作检查点交接。是否实际发布成功，仍以合并后 PR `merged=true`、main/CI/Cloudflare `verify_main=VERIFIED` 的独立证据为准；部署后还需刷新 ChatGPT 工具 Schema 并验证自然任务 E3，不能自动宣称完成。
 
 ---
 
