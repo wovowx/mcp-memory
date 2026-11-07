@@ -2,7 +2,7 @@
 // Reuses Memory Core; no chatroom or Agent Runtime dependency.
 import { getCurrentMemoryByKey } from '../memory/repository.js';
 import { getMemoryStats, searchMemoriesWithStatus } from '../memory/retrieval.js';
-import { planLearningPreflight } from '../reflection.js';
+import { normalizeLearningTaskDescription, planLearningPreflight, sameLearningIntent } from '../reflection.js';
 import { getEnabledSkills } from '../../utils/skills.js';
 import { BOOTSTRAP_KEYS } from './keys.js';
 export { BOOTSTRAP_KEYS } from './keys.js';
@@ -25,7 +25,7 @@ export const SESSION_CORE_CONTRACT_VERSION = 'CORE-0.2';
 export const SESSION_CORE_BUDGET_CODE_POINTS = 24000;
 export const SESSION_CONTEXT_TOOL = Object.freeze({
     name: 'session_context',
-    description: '只读继续工作场景：默认返回工作摘要；可选 learning_task 基于已启用 Skill 中结构化审核经验返回任务前建议；include_core=true 才返回完整核心上下文。不授予执行权限，也不保证宿主自动调用。',
+    description: '只读继续工作场景：新会话/继续项目工作时可恢复检查点；要参考已学到的经验执行任务时，主动调用并提供 learning_task.description（自然任务文字）、repo、branch 和顶层 available_tools。旧 intent/entities 继续兼容。仅已批准经验可建议工具；不授予执行权限，不保证 ChatGPT 自动调用。include_core=true 才返回完整核心上下文。',
     input_schema: {
         type: 'object',
         properties: {
@@ -36,14 +36,14 @@ export const SESSION_CONTEXT_TOOL = Object.freeze({
             include_core: { type: 'boolean', description: '显式返回五个权威来源的完整核心上下文；默认 false，不向旧调用泄露私人全文' },
             learning_task: {
                 type: 'object',
-                description: '可选，任务前只读学习建议；available_tools 必须在顶层由当前宿主上报，不会验证工具真的可执行',
+                description: '可选，任务前只读学习预检；推荐 description+repo+branch（其余由服务端保守解析），或使用旧 intent+entities+repo+branch；available_tools 必须由当前宿主在顶层上报',
                 properties: {
+                    description: { type: 'string', description: '用户当前的自然语言任务（不含私人全文）；明确是新建、修改还是其他操作' },
                     intent: { type: 'string' },
                     entities: { type: 'array', items: { type: 'string' } },
                     repo: { type: 'string' },
                     branch: { type: 'string' }
-                },
-                required: ['intent', 'entities', 'repo', 'branch']
+                }
             }
         }
     }
@@ -398,33 +398,55 @@ function buildEmptySessionCore(reason) {
 async function attachLearningPreflight(result, input, env) {
     if (!Object.hasOwn(input, 'learning_task')) return result;
     const request = input.learning_task;
+    const evidence = { lesson_source: 'enabled_skills.handler_config.learning',
+        approval_evidence: 'registry_claim_not_independently_verified' };
+    if (result.status === 'BLOCKED') {
+        result.learning_preflight = { status: 'BLOCKED', reason: 'authority_restoration_blocked',
+            advisory_only: true, executed: false, host_verified: false, ...evidence };
+        return result;
+    }
+    const natural = typeof request?.description === 'string'
+        ? normalizeLearningTaskDescription(request.description, request) : null;
+    if (natural && natural.status !== 'MATCHED') {
+        result.learning_preflight = { status: natural.status, reason: natural.reason,
+            advisory_only: true, executed: false, host_verified: false, ...evidence };
+        return result;
+    }
+    if (natural && (typeof request.repo !== 'string' || !request.repo.trim() ||
+        typeof request.branch !== 'string' || !request.branch.trim())) {
+        result.learning_preflight = { status: 'NEEDS_SCOPE', reason: 'repo_and_branch_required',
+            canonical_intent: natural.canonical_intent,
+            advisory_only: true, executed: false, host_verified: false, ...evidence };
+        return result;
+    }
+    if (natural && typeof request.intent === 'string' && request.intent.trim() &&
+        !sameLearningIntent(request.intent, natural.intent)) {
+        result.learning_preflight = { status: 'AMBIGUOUS', reason: 'description_intent_disagree',
+            advisory_only: true, executed: false, host_verified: false, ...evidence };
+        return result;
+    }
     const task = {
-        intent: request?.intent,
-        entities: request?.entities,
+        intent: natural?.intent ?? request?.intent,
+        entities: natural?.entities ?? request?.entities,
         repo: request?.repo,
         branch: request?.branch,
         available_tools: result.host?.advertised_tools || []
     };
-    const evidence = { lesson_source: 'enabled_skills.handler_config.learning',
-        approval_evidence: 'registry_claim_not_independently_verified' };
+    const resolution = natural ? { canonical_intent: natural.canonical_intent,
+        task_resolution: 'conservative_rules_not_host_verified' } : {};
     const validation = planLearningPreflight(task, []);
     if (validation.status === 'INVALID') {
-        result.learning_preflight = { ...validation, ...evidence };
-        return result;
-    }
-    if (result.status === 'BLOCKED') {
-        result.learning_preflight = { status: 'BLOCKED', reason: 'authority_restoration_blocked',
-            advisory_only: true, executed: false, host_verified: false, ...evidence };
+        result.learning_preflight = { ...validation, ...resolution, ...evidence };
         return result;
     }
     try {
         const skills = await getEnabledSkills(env);
         const artifacts = skills.map(skill => skill?.handler_config?.learning)
             .filter(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact));
-        result.learning_preflight = { ...planLearningPreflight(task, artifacts), ...evidence };
+        result.learning_preflight = { ...planLearningPreflight(task, artifacts), ...resolution, ...evidence };
     } catch {
         result.learning_preflight = { status: 'UNAVAILABLE', reason: 'skill_registry_unavailable',
-            advisory_only: true, executed: false, host_verified: false, ...evidence };
+            advisory_only: true, executed: false, host_verified: false, ...resolution, ...evidence };
     }
     return result;
 }
