@@ -2,7 +2,20 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.56.1] - 2026-11-07（仅 dev · 部分成功不得冒充已完成）
+## [v6.57.0] - 2026-11-07（仅 dev · 一本书架构服务端收口候选）
+
+### 实际能交付的结果
+- **让新场景只复用既有基本方法**：GitHub Facade 删除一份与 Contents Core 重复的仓库白名单判定，统一复用 `assertAllowedRepo`。既有拒绝提示、允许仓库和工具入参不变。以后添加文件场景，不再有两个仓库授权规则需要维护。
+- **架构方向成为可运行回归**：现有一条完整的「创建文件→查不存在→写→读回逐字验证」场景仍由 `modules/scenes/github_file` 编排，复用 `modules/github/contents`；新增合成合同证明 Public Facade 与场景使用一致的仓库授权，以及 GitHub/Memory/Session/Scenes 四个核心目录均不反向依赖工具 Facade，防止未来项目扩展时长出平行底座。
+- **明确这一轮收口与未来能力的边界**：服务器层目前已有 Router/Session/Memory/Reflection、现役场景编排和模块化原子方法。这里收口的是服务端复用边界与可回归的基本架构，并不冒充 ChatGPT/Operit 无提示自动启动、自动学习或人格/工作连续性 E3 已通过；那些属于后续宿主实际功能验收。
+
+### 验收与限制
+- `npm run check` 47 个 JS 语法/import 正常，`test:scenes` 扩展为 **36/36**；现有 Router **226/226**、Reflection **74/74**、GitHub Contents **53/53**、Workerd **8/8**、Session **56/56**、Memory Core **120/120**、Learning **11** 等全部保留。本版的最终 dev SHA 与 GitHub Actions 需以远端实际结果核实。
+- 无新数据库、Secret、公开 MCP Schema、Worker 配置、宿主 Hook、聊天模块、依赖或平行 Router；只在 dev 施工，正式 main/Cloudflare 仍须柳柳再次批准。只重构已存在的职责重复，不为了目录好看重排文件。
+
+---
+
+## [v6.56.1] - 2026-11-07（已发布 · 部分成功不再污染技能使用计数 / Worker #553）
 
 ### 柳柳能感受到的改善
 - GitHub/Patch 任务如果已经发生部分写入，但最终核验或状态更新失败，Router 不再把 `PARTIAL SUCCESS`、`PARTIAL/UNKNOWN`、`PARTIAL:` 视作已完成的成功操作。这样这类异常不会虚增 `skills.usage_count`，减少后续 L3 学习对错误执行结果的误判。
@@ -10,7 +23,7 @@
 
 ### 可核验边界
 - `tests/router_registry_contract_test.mjs` 新增部分成功负例及正常成功正例，先有 RED 后修复 GREEN；实际本地 `npm run check`、Router 226/226、Reflection 74/74、场景 23/23 全部退出码0。代码提交 `2a7cbc8b0fe2caca93f1df03edc983319bc05d4d` 的官方 [learning-regression #42360527007](https://github.com/wovowx/mcp-memory/actions/runs/42360527007) 已完成且成功；这些只是 E1/E2，不证明 ChatGPT/Operit 自动执行学习预检。
-- 本版仅 dev 候选，不触碰 main/Cloudflare、数据库 Schema/真实数据/私人记忆、Secrets、聊天室、Operit M1 或 Web。发布仍须柳柳逐版批准。
+- 本版已获柳柳「发吧」逐版本批准并经 [PR #346](https://github.com/wovowx/mcp-memory/pull/346) 合入 main；main CI #42362509988 success，Cloudflare Worker #553 / deployment 898dd917 经 verify_main=VERIFIED，唯一权威检查点 v219 完整回读。未修改数据库 Schema/真实数据/其他私人记忆、Secrets、聊天室、Operit M1 或 Web。新的版本仍须另行逐版批准。
 
 ---
 
