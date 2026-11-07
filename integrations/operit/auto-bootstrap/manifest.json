@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "toolpkg_id": "win.wovowx.ziven_auto_bootstrap",
+  "version": "0.1.0",
+  "api_version": "1.0.0",
+  "requires": [],
+  "author": "Ziven & 柳柳",
+  "main": "main.js",
+  "display_name": {
+    "zh": "Ziven 跨会话自动恢复（实验版）",
+    "en": "Ziven Auto Bootstrap (Experimental)"
+  },
+  "description": {
+    "zh": "仅在核实的 Ziven 单人聊天中，模型回答前只读恢复身份根和工作状态；不修改云端数据。",
+    "en": "Read-only pre-model identity and work checkpoint recovery in verified Ziven chats only."
+  },
+  "subpackages": [],
+  "resources": []
+}
