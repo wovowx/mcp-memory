@@ -432,13 +432,16 @@ async function autoIncrementUsage(env, name) {
 // Facades do not yet share a structured Result type. Until they do, only
 // recognized successful text responses may contribute to skill usage. In
 // particular GitHub, Patch and Cloudflare use "ERROR:" instead of "❌".
+// Patch can also report an unknown post-write state as PARTIAL. Such a result
+// is recovery evidence, not proof of a completed skill use.
 // Keeping this check at the common dispatch exit prevents one failure from
 // being counted as evidence that the selected tool worked.
-function isSuccessfulToolResult(value) {
+export function isSuccessfulToolResult(value) {
     if (typeof value !== 'string') return false;
     const response = value.trimStart();
     const failures = [
         'err:', 'error:', 'error/unknown:', '❌',
+        'partial success:', 'partial/unknown:', 'partial:',
         'release_guard:', 'dispatch_guard_reject:', 'main_write_blocked:',
         'unknown tool:', 'handler type not implemented', 'text_skill_load_failed:'
     ];
