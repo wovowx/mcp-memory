@@ -2,7 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
-## [v6.56.0] - 2026-11-07（仅 dev · 一本书架构 E2 整包候选）
+## [v6.56.1] - 2026-11-07（仅 dev · 部分成功不得冒充已完成）
+
+### 柳柳能感受到的改善
+- GitHub/Patch 任务如果已经发生部分写入，但最终核验或状态更新失败，Router 不再把 `PARTIAL SUCCESS`、`PARTIAL/UNKNOWN`、`PARTIAL:` 视作已完成的成功操作。这样这类异常不会虚增 `skills.usage_count`，减少后续 L3 学习对错误执行结果的误判。
+- 复用现有 `isSuccessfulToolResult` 的统一出口判定，不改工具名、公开 Schema、GitHub/Memory 基础方法或真实返回正文；已确认的正常成功仍保留一次使用计数。
+
+### 可核验边界
+- `tests/router_registry_contract_test.mjs` 新增部分成功负例及正常成功正例，先有 RED 后修复 GREEN；实际本地 `npm run check`、Router 226/226、Reflection 74/74、场景 23/23 全部退出码0。最终远端 SHA 与 CI 仍需独立核验；这些只是 E1/E2，不证明 ChatGPT/Operit 自动执行学习预检。
+- 本版仅 dev 候选，不触碰 main/Cloudflare、数据库 Schema/真实数据/私人记忆、Secrets、聊天室、Operit M1 或 Web。发布仍须柳柳逐版批准。
+
+---
+
+## [v6.56.0] - 2026-11-07（已发布 · 一本书场景整包 / Worker #552）
 
 ### 柳柳能用它做什么
 - **新建小文本文件一口气完成**：新增 `github_create_file(path, content, branch=dev)` 场景入口，在工具内部重用现有 GitHub Contents 基础方法完成目标不存在检查、UTF-8 创建、写后回读校验。支持 `dry_run`；不需要先编造模板、复制别的文件或上传链接；现有 copy/upload 路径仍是有效备选。
