@@ -29,6 +29,7 @@ export const SESSION_CONTEXT_TOOL = Object.freeze({
         properties: {
             host: SESSION_BOOTSTRAP_TOOL.input_schema.properties.host,
             invocation: SESSION_BOOTSTRAP_TOOL.input_schema.properties.invocation,
+            available_tools: SESSION_BOOTSTRAP_TOOL.input_schema.properties.available_tools,
             topic: { type: 'string', description: '可选，需召回关联记忆的具体主题；留空只恢复当前工作' },
             include_core: { type: 'boolean', description: '显式返回五个权威来源的完整核心上下文；默认 false，不向旧调用泄露私人全文' }
         }
