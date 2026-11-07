@@ -12,6 +12,7 @@
     "test:contracts": "node tests/router_registry_contract_test.mjs",
     "test:bootstrap": "node tests/session_bootstrap_contract_test.mjs",
     "test:reflection": "node tests/reflection_contract_test.mjs",
+    "test:operit-autoboot": "node tests/operit_auto_bootstrap_contract_test.mjs",
     "reflection:preview": "node scripts/reflection_preview.mjs",
     "test:memory-layer-mapper": "node tests/memory_layer_mapper_contract_test.mjs",
     "test:memory-health": "node tests/memory_health_contract_test.mjs",
