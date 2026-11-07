@@ -426,6 +426,23 @@ async function autoIncrementUsage(env, name) {
     try { await handleIncrementUsage(name, { name }, env); } catch (e) { /* 静默，不污染回复 */ }
 }
 
+// Facades do not yet share a structured Result type. Until they do, only
+// recognized successful text responses may contribute to skill usage. In
+// particular GitHub, Patch and Cloudflare use "ERROR:" instead of "❌".
+// Keeping this check at the common dispatch exit prevents one failure from
+// being counted as evidence that the selected tool worked.
+function isSuccessfulToolResult(value) {
+    if (typeof value !== 'string') return false;
+    const response = value.trimStart();
+    const failures = [
+        'err:', 'error:', 'error/unknown:', '❌',
+        'release_guard:', 'dispatch_guard_reject:', 'main_write_blocked:',
+        'unknown tool:', 'handler type not implemented', 'text_skill_load_failed:'
+    ];
+    const lower = response.toLowerCase();
+    return response.length > 0 && !failures.some(prefix => lower.startsWith(prefix));
+}
+
 export async function handleMCPRequest(body, env) {
     const { method, params, id } = body || {};
     if (!method) return { ok: false, data: { jsonrpc: '2.0', id: id ?? null, error: { code: -32600, message: 'Invalid Request' } } };
@@ -538,7 +555,7 @@ export async function handleMCPRequest(body, env) {
                 }
             }
         } catch (e) { text = 'err: ' + e.message; }
-        const toolOk = !text.startsWith('err:') && !text.startsWith('❌') && !text.startsWith('RELEASE_GUARD:') && !text.startsWith('DISPATCH_GUARD_REJECT:') && !text.startsWith('MAIN_WRITE_BLOCKED:') && !text.startsWith('unknown tool:') && !text.startsWith('handler type not implemented') && !text.startsWith('TEXT_SKILL_LOAD_FAILED:');
+        const toolOk = isSuccessfulToolResult(text);
         // The metadata-only health report must be a genuinely read-only scene,
         // including usage accounting. Do not create a side-effect on success.
         if (toolOk && !readOnlyTextSkill && !(name === 'memory' && safeArgs.action === 'health_check')) {
