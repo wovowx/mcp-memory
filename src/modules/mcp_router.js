@@ -148,6 +148,7 @@ const CREATE_PATCH_PROPOSAL_SCHEMA = {
 };
 
 function getToolSchemaOverride(name) {
+    if (name === 'github_create_file') return GITHUB_TOOL_DEFS.find(def => def.name === name)?.input_schema || null;
     if (name === SESSION_BOOTSTRAP_TOOL.name) return SESSION_BOOTSTRAP_TOOL.input_schema;
     if (name === SESSION_CONTEXT_TOOL.name) return SESSION_CONTEXT_TOOL.input_schema;
     if (name === CLOUDFLARE_LOGS_QUERY_TOOL.name) return CLOUDFLARE_LOGS_QUERY_TOOL.input_schema;
@@ -157,7 +158,7 @@ function getToolSchemaOverride(name) {
 async function getToolSchema(env, name) {
     // P2 static bootstrap uses its own fixed schema; avoid registry probing in recovery.
     const schemaOverride = getToolSchemaOverride(name);
-    if (name === SESSION_BOOTSTRAP_TOOL.name || name === SESSION_CONTEXT_TOOL.name || name === CLOUDFLARE_LOGS_QUERY_TOOL.name) return schemaOverride;
+    if (name === SESSION_BOOTSTRAP_TOOL.name || name === SESSION_CONTEXT_TOOL.name || name === CLOUDFLARE_LOGS_QUERY_TOOL.name || name === 'github_create_file') return schemaOverride;
     // 其他工具保留旧注册表及 schema 行为。
     const skills = await getCachedSkills(env);
     const skill = Array.isArray(skills) ? skills.find(s => s && s.name === name) : null;
@@ -327,13 +328,13 @@ async function getBranchHeadCommitTitle(env, branch, repo = env.GITHUB_REPO) {
 }
 
 export async function githubReleaseGuard(name, safeArgs, env) {
-    if (name !== 'github_push' && name !== 'github_merge_to_main' && name !== 'github_merge_pull_request' && name !== 'github_edit') {
+    if (name !== 'github_push' && name !== 'github_create_file' && name !== 'github_merge_to_main' && name !== 'github_merge_pull_request' && name !== 'github_edit') {
         return { allowed: true };
     }
     // 多仓库调用按实际目标仓库选择发布策略；未指定目标仓库时兼容默认 GITHUB_REPO。
     const targetRepo = safeArgs.repo || env.GITHUB_REPO;
     // v6.32.5: github_edit 按 push 处理（写操作）——写 dev 放行，写 main 拦（版本化）
-    const isPush = name === 'github_push' || name === 'github_edit';
+    const isPush = name === 'github_push' || name === 'github_create_file' || name === 'github_edit';
     const branch = isPush ? (safeArgs.branch || 'dev') : 'main';
     const action = isPush ? 'push' : 'merge';
 
@@ -372,6 +373,8 @@ function githubMainWriteGuard(name, args = {}) {
     const isMain = value => String(value || '').toLowerCase() === 'main';
     let protectedBranches = [];
     if (name === 'github_delete') {
+        protectedBranches = [args.branch || 'dev'];
+    } else if (name === 'github_create_file') {
         protectedBranches = [args.branch || 'dev'];
     } else if (name === 'github_copy') {
         protectedBranches = [args.target_branch || 'dev'];
@@ -466,6 +469,12 @@ export async function handleMCPRequest(body, env) {
                 : s.description,
             inputSchema: getExposedInputSchema(s)
         }));
+        // New scene is discoverable without a skills-table write. Existing
+        // registered tool metadata is still authoritative when present.
+        const createFile = GITHUB_TOOL_DEFS.find(def => def.name === 'github_create_file');
+        if (createFile && !tools.some(tool => tool.name === createFile.name)) {
+            tools.push({ name: createFile.name, description: createFile.description, inputSchema: createFile.input_schema });
+        }
         // Recovery workflows remain discoverable without registry writes.
         if (!tools.some(tool => tool.name === SESSION_BOOTSTRAP_TOOL.name)) {
             tools.push({ name: SESSION_BOOTSTRAP_TOOL.name, description: SESSION_BOOTSTRAP_TOOL.description, inputSchema: SESSION_BOOTSTRAP_TOOL.input_schema });
@@ -517,7 +526,7 @@ export async function handleMCPRequest(body, env) {
                 if (!mainGuard.allowed) {
                     text = 'MAIN_WRITE_BLOCKED: ' + mainGuard.reason;
                 } else {
-                    const syncNote = await passiveSyncGithubTool(env, name);
+                    const syncNote = name === 'github_create_file' ? null : await passiveSyncGithubTool(env, name);
                     const guard = await githubReleaseGuard(name, safeArgs, env);
                     if (!guard.allowed) {
                         text = 'RELEASE_GUARD: ' + guard.reason + ' Expected: ' + guard.expected;
