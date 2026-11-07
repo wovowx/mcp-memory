@@ -605,6 +605,9 @@ try {
   check('tools/list advertises one copy each of the existing Bootstrap and Context static tools',
     ['session_bootstrap', 'session_context'].every(name => recovered.filter(t => t.name === name).length === 1) &&
     recovered.find(t => t.name === 'session_context')?.inputSchema?.properties?.topic?.type === 'string');
+  check('context discovery exposes natural-task description and truthful host limitation',
+    recovered.find(t => t.name === 'session_context')?.inputSchema?.properties?.learning_task?.properties?.description?.type === 'string' &&
+    recovered.find(t => t.name === 'session_context')?.description?.includes('不保证 ChatGPT 自动调用'));
   const createScene = recovered.find(tool => tool.name === 'github_create_file');
   check('one-book create scene is discoverable once without a skills registry write',
     recovered.filter(tool => tool.name === 'github_create_file').length === 1 &&
