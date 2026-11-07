@@ -30,6 +30,9 @@ jobs:
       - name: E2 - GitHub Contents primitives and workflows
         run: npm run test:github-contents
 
+      - name: E2 - Operit M1 auto-bootstrap synthetic contracts (not host E3)
+        run: npm run test:operit-autoboot
+
       - name: E2 - Existing webhook idempotency regression
         run: node tests/webhook_idempotency_test.mjs
 
