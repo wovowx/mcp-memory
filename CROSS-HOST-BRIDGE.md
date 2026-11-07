@@ -3779,6 +3779,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **本次真实 dev 任务**：在现有唯一 Bridge 上追加新框事实、工具调用和 E3 判定；选用宿主已暴露的 `github_edit` 而非错误地转去通用 GitHub 连接器。提交与独立回读以实际工具结果为准，不把预检/文本记载冒充远端写入。
 - **验收边界**：本框自然语言触发了权威恢复、当前工具选路与真实项目状态核对，属 **ChatGPT 显式任务恢复/只读 E3 部分证据**；`planLearningPreflight` 自动任务前调用、无提示 cold-start Hook、Operit 跨宿主与柳柳对工作/相处双连续性的验收仍 **OPEN**。不创建测试文件，不改 main/Worker/DB/Secrets/私人记忆/聊天室；若下一步需新宿主 Hook/架构变更，先按需求与原型同柳柳讨论定案。
 
+### [2026-11-07 · ChatGPT → 后续框 / Operit] v6.58.0 原生 L3 可选任务预检 · dev E1/E2 交付
+- **讨论/合同先行**：柳柳在比较 A（ChatGPT 原生软调用）与 B（可控制宿主硬 Hook）后回复「ok」，明确批准 A 的 dev 最小施工。ZivenLab/dev `governance/整体架构.md` v1.37 与 `governance/roadmap.md` v3.9 已先行写入、`github_edit` 返回 `Verified:true`，独立 fetch 可读；不反向恢复已暂停的 Operit/Web 或引入第二套 Router/记忆库。
+- **实际交付**：对既有 `session_context` 添加可选 `learning_task={intent,entities,repo,branch}` 与独立 `learning_preflight`；从顶层读取宿主 `available_tools`，只读 `getEnabledSkills` 中有结构化 `handler_config.learning` 的条目，复用现有 `Reflection.planLearningPreflight` 的批准/匹配/冲突/分支/工具门禁。旧调用 6 次恢复 GET 不变，不给旧调用增 Skills 查询或私人全文。候选 `learning_github_tool_route_001` 仍为 pending，不能凭此版自动激活。
+- **真实 E1/E2**：Node v24.22.1；`npm run check` 47 JS EXIT0；`npm run test:bootstrap` **68/68** EXIT0（原56项+12项 L3）；`npm run test:reflection` **74/74** EXIT0；`npm run test:scenes` **36/36** EXIT0；`npm run test:contracts` **226/226** EXIT0；`npm run test:github-contents` **53/53** EXIT0；`npm ci --offline` EXIT0；`npm run test:worker-runtime` 原生 Workerd **8/8** EXIT0；`git diff --check` EXIT0。合成测试只使用 Mock Skills/Memory，不碰线上私有 DB。
+- **远端提交/官方 CI**：六个现有文件（Session、Bootstrap 合同测试、master-router Skill、Changelog、package/lock）经 `github_edit(dry_run→write)` 全部 `Verified:true`；独立 `git fetch origin dev` 与 `git diff origin/dev` 验得六文件正文逐字相等。官方 [learning-regression #42370068019](https://github.com/wovowx/mcp-memory/actions/runs/42370068019) 针对 SHA **`b4f050c5cad084100243c159aca82d6e20d7b99b`** `completed/success`，工作流步骤均 `success`。该 SHA 是代码/测试候选，在写入本 Bridge 交接记录前；最终 Bridge 提交会令 dev SHA 前进，仍须以最终 SHA 核对 CI。
+- **边界与下一步**：GitHub compare API 当时 `main...dev ahead11/behind0`，生产 main **`6f97b133ca172898aeca91ec7e67909537583951` / v6.57.0 / Worker #554 / 检查点 v220** 未变。当前项目在 dev 有可选的服务端建议入口，**ChatGPT 端尚未看到新版 Schema、真实自然任务 E3 未执行、无硬 Hook 保证**。下一步仅整理 v6.58.0 的用户收益、净差异/风险/回滚/实际验证供柳柳决定是否合 main；未获本版单独批准前不建发布 PR、不部署、不改生产检查点。聊天室/Operit/Web/AAS/DB schema/Secrets/私人记忆写入继续暂停。
+
 
 
 
