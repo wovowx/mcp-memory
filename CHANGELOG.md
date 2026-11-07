@@ -2,6 +2,20 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.56.0] - 2026-11-07（仅 dev · 一本书架构 E2 整包候选）
+
+### 柳柳能用它做什么
+- **新建小文本文件一口气完成**：新增 `github_create_file(path, content, branch=dev)` 场景入口，在工具内部重用现有 GitHub Contents 基础方法完成目标不存在检查、UTF-8 创建、写后回读校验。支持 `dry_run`；不需要先编造模板、复制别的文件或上传链接；现有 copy/upload 路径仍是有效备选。
+- **先恢复，再接工作**：沿用已存在的 `session_bootstrap` 与 `session_context`，仅补全后者的 `available_tools` 宿主上报参数，保留“宿主上报 ≠ 实际验证”的证据标记。不新建恢复器、不自动读私人全文。
+- **错误能成为有出处的学习候选**：复用现有 Reflection 校正来源与经批准 lesson 的任务前建议；新场景与恢复、学习放到同一条离线场景契约里，不将 pending 候选误判为已激活，更不假称自动学习已经在手机新框运行。
+
+### 工程闭环、权限与验收
+- 直接文本入口只面向允许仓库的 `dev`、**全新**相对路径、≤64 KiB UTF-8 文本；原有 GitHub 读取/写入/验证原子方法未复制，任何 main、越权仓库、已有目标、错误的目标检查均拒绝写入。若写入成功但回读失败，返回明确的 PARTIAL 与目标，绝不冒充完成。
+- 新增 `tests/scene_workflow_contract_test.mjs` 与 `npm run test:scenes`；路由契约和原生 workerd 契约一并覆盖场景工具发现、schema、读写核验、失败与零写入、Host Core 边界，加入现有 GitHub Actions learning-regression 工作流。验收证明以最终提交 SHA 的本地测试/官方 CI 为准，E3 新宿主主动能力仍未验证。
+- **这是 dev 候选，不是已发布能力**；没有修改数据库 schema、生产数据/记忆、Secret、聊天室、Operit M1、浏览器与生产 Worker；main/Cloudflare 部署仍须柳柳收到下一份有用户价值与风险的独立发布单后明确同意。
+
+---
+
 ## [v6.55.0] - 2026-11-07（dev 候选 · 一本书基础结果语义与 GitHub 新文件选路）
 
 ### 柳柳实际会得到什么
