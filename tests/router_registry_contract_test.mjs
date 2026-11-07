@@ -1,6 +1,6 @@
 // 阶段4：Router/注册表/DDL parser/Patch Engine 隔离 Mock 契约回归（2026-10-27）
 // 运行：从仓库根目录执行 node tests/router_registry_contract_test.mjs
-import { handleMCPRequest } from '../src/modules/mcp_router.js';
+import { handleMCPRequest, isSuccessfulToolResult } from '../src/modules/mcp_router.js';
 import { readFileSync } from 'node:fs';
 import { handleDatabaseTool } from '../src/tools/database.js';
 import { parseColumnDefinitions, quoteDdlIdentifier } from '../src/modules/database/ddl_parser.js';
@@ -700,6 +700,14 @@ try {
   t = await callTool('github_read', { path: 'README.md' });
   check('GitHub error result does not inflate skill usage',
     t.startsWith('ERROR: GitHub Token not configured') && usagePatchCount === 0);
+  check('partial GitHub/Patch outcomes cannot be counted as completed skill use',
+    ['PARTIAL SUCCESS: GitHub PUT succeeded but status PATCH failed',
+      'PARTIAL/UNKNOWN: GitHub write identity cannot be verified',
+      'PARTIAL: verification still pending']
+      .every(result => !isSuccessfulToolResult(result)));
+  check('confirmed normal result remains eligible for one usage increment',
+    isSuccessfulToolResult('OK: github_edit Verified: true') &&
+    isSuccessfulToolResult('✅ GitHub commit completed'));
   memoryWriteBodies = []; usagePatchCount = 0;
   t = await callTool('memory_remember', { key: 'probe_key', value: 'v' }); check('成功恰好计一次', usagePatchCount === 1);
   check('legacy untyped memory_remember remains valid and stores no inferred type',
