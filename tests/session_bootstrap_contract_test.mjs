@@ -38,7 +38,8 @@ function mockReads(options = {}) {
         calls.push({ url: String(url), method });
         if (method !== 'GET') throw new Error('unexpected write ' + method);
         if (target.pathname.endsWith('/rest/v1/skills')) {
-            return { ok: true, status: 200, json: async () => [] };
+            if (options.failSkills) return { ok: false, status: 503, json: async () => [] };
+            return { ok: true, status: 200, json: async () => options.skillRows || [] };
         }
         if (target.pathname.endsWith('/rest/v1/memories')) {
             const requested = target.searchParams.get('key');
@@ -231,6 +232,98 @@ check('without topic no guesses, identity/profile full text or write-capable per
 check('context without topic is read-only and does not visit registry or tools/list',
     calls.length === 6 && calls.every(call => call.method === 'GET'
         && call.url.includes('/rest/v1/memories') && !call.url.includes('/skills')));
+check('legacy session_context output does not gain unrequested L3 data',
+    !Object.hasOwn(context, 'learning_preflight')
+    && SESSION_CONTEXT_TOOL.input_schema.properties.learning_task?.required?.join(',') === 'intent,entities,repo,branch'
+    && !SESSION_CONTEXT_TOOL.input_schema.required?.includes('learning_task'));
+
+console.log('\n[Session Context optional L3 preflight contracts]');
+const learningTask = { intent: 'create-github-file', entities: ['GitHub'],
+    repo: 'wovowx/mcp-memory', branch: 'dev' };
+const approvedLesson = {
+    status: 'active', test_id: 'synthetic-approved', lesson_key: 'lesson-synthetic',
+    reflection: { candidate_id: 'synthetic-approved', validation_state: 'validated',
+        source_refs: ['synthetic:test'] },
+    application: {
+        intent_any: ['create-github-file'], entity_any: ['GitHub'],
+        preferred_tool: 'github_create_file', steps: ['check', 'write', 'verify'],
+        approval_ref: 'synthetic:approval', allowed_repos: ['wovowx/mcp-memory'],
+        allowed_branches: ['dev']
+    }
+};
+const taskArgs = { host: 'chatgpt', available_tools: ['github_create_file'], learning_task: learningTask };
+calls = mockReads({ skillRows: [{ enabled: true, handler_config: { learning: approvedLesson } }] });
+const advised = await buildSessionContext(env, taskArgs);
+check('approved lesson is advised through real session_context without dispatch',
+    advised.status === 'READY' && advised.learning_preflight.status === 'READY'
+    && advised.learning_preflight.recommended_tool === 'github_create_file'
+    && advised.learning_preflight.approval_ref === 'synthetic:approval'
+    && advised.learning_preflight.advisory_only === true
+    && advised.learning_preflight.executed === false && advised.learning_preflight.host_verified === false
+    && advised.learning_preflight.approval_evidence === 'registry_claim_not_independently_verified'
+    && calls.length === 7 && calls.every(call => call.method === 'GET'));
+check('only existing enabled Skills GET is added and old work data remains intact',
+    calls.filter(call => call.url.includes('/rest/v1/skills')).length === 1
+    && advised.current_work.next_action === context.current_work.next_action
+    && !JSON.stringify(advised).includes('PRIVATE_IDENTITY_MUST_NOT_LEAK'));
+
+calls = mockReads({ skillRows: [{ enabled: true,
+    handler_config: { learning: { ...approvedLesson, status: 'candidate' } } }] });
+const pendingAdvice = await buildSessionContext(env, taskArgs);
+check('registered candidate stays PENDING_REVIEW even if Skill is enabled',
+    pendingAdvice.learning_preflight.status === 'PENDING_REVIEW'
+    && !pendingAdvice.learning_preflight.recommended_tool && calls.length === 7);
+
+calls = mockReads({ skillRows: [{ handler_config: { learning: {
+    ...approvedLesson, application: { ...approvedLesson.application, approval_ref: '' }
+} } }] });
+check('active label without explicit approval reference cannot guide tools',
+    (await buildSessionContext(env, taskArgs)).learning_preflight.status === 'PENDING_REVIEW');
+
+calls = mockReads({ skillRows: [
+    { handler_config: { learning: approvedLesson } },
+    { handler_config: { learning: { ...approvedLesson, test_id: 'second-active' } } }
+] });
+check('two active matching routes are CONFLICT, never arbitrarily ranked by usage',
+    (await buildSessionContext(env, taskArgs)).learning_preflight.status === 'CONFLICT');
+
+calls = mockReads({ skillRows: [{ handler_config: { learning: approvedLesson } }] });
+check('unexposed preferred tool stays UNAVAILABLE rather than assumed callable',
+    (await buildSessionContext(env, { ...taskArgs, available_tools: [] }))
+        .learning_preflight.status === 'UNAVAILABLE');
+check('main stays BLOCKED despite matching approved lesson and advertised capability',
+    (await buildSessionContext(env, { ...taskArgs,
+        learning_task: { ...learningTask, branch: 'main' } }))
+        .learning_preflight.reason === 'main_out_of_scope');
+
+calls = mockReads({ failSkills: true });
+const registryUnavailable = await buildSessionContext(env, taskArgs);
+check('Skill read failure isolates advisory UNAVAILABLE and preserves READY restoration',
+    registryUnavailable.status === 'READY'
+    && registryUnavailable.learning_preflight.reason === 'skill_registry_unavailable'
+    && registryUnavailable.current_work.next_action === '验证恢复接口'
+    && calls.every(call => call.method === 'GET'));
+
+calls = mockReads();
+const invalidLearning = await buildSessionContext(env, { ...taskArgs,
+    learning_task: { intent: 'create-github-file', repo: 'wovowx/mcp-memory', branch: 'dev' } });
+check('malformed learning task is INVALID and does not read Skills',
+    invalidLearning.learning_preflight.status === 'INVALID'
+    && calls.length === 6);
+
+calls = mockReads({ missingKey: BOOTSTRAP_KEYS.identity });
+const blockedLearning = await buildSessionContext(env, taskArgs);
+check('missing authoritative identity blocks L3 without even consulting Skills',
+    blockedLearning.status === 'BLOCKED'
+    && blockedLearning.learning_preflight.reason === 'authority_restoration_blocked'
+    && calls.length === 6);
+
+calls = mockReads({ skillRows: [{ handler_config: { learning: approvedLesson } }] });
+const routedLearning = await handleMCPRequest({ jsonrpc: '2.0', id: 91,
+    method: 'tools/call', params: { name: 'session_context', arguments: taskArgs } }, env);
+check('published MCP schema accepts nested learning_task through existing dispatch gate',
+    JSON.parse(routedLearning.data.result.content[0].text).learning_preflight?.status === 'READY'
+    && calls.every(call => call.method === 'GET'));
 
 const relatedRows = Array.from({ length: 4 }, (_, i) => ({
     id: 'related-' + i, key: '项目笔记/' + i, value: '项目笔记已确认 ' + 'X'.repeat(260) + i,
