@@ -10,7 +10,7 @@ async function responsePayload(response) {
 function pathPolicy(ctx, path, allowRoot = false) {
     return ctx.validateRepoRelativePath(path, { allowRoot });
 }
-function assertAllowedRepo(ctx, repo) {
+export function assertAllowedRepo(ctx, repo) {
     const normalized = String(repo || '').trim();
     const allowed = String(ctx.env.GITHUB_ALLOWED_REPOS || '').split(',').map(v => v.trim()).filter(Boolean);
     if (normalized !== ctx.env.GITHUB_REPO && !allowed.includes(normalized)) {
@@ -117,7 +117,7 @@ export async function verifyContent(ctx, { repo, path, branch = 'dev', expectedS
     return { ok: true, data, sha: data.sha || null, size: data.size ?? null };
 }
 
-async function verifyContentWithRetry(ctx, input, attempts = 3) {
+export async function verifyContentWithRetry(ctx, input, attempts = 3) {
     let lastResult = null;
     for (let attempt = 1; attempt <= attempts; attempt++) {
         lastResult = await verifyContent(ctx, input);
@@ -508,11 +508,20 @@ export async function movePath(ctx, args) {
 }
 
 export function formatContentsResult(name, result) {
+    if (name === 'github_create_file' && result?.dryRun && result.ok) {
+        return 'DRY_RUN: github_create_file (' + result.branch + '/' + result.path + ')\n' +
+            'Existing target: absent\nUTF-8 size: ' + result.size + ' bytes\nNo write performed';
+    }
     if (result?.dryRun) {
         return 'DRY_RUN (' + result.branch + '/' + result.path + '):\n' +
             result.details.join('\n') + '\n' + result.resultingCharacters + ' characters after edit';
     }
     if (result?.ok) {
+        if (name === 'github_create_file') {
+            return 'OK: github_create_file (' + result.branch + '/' + result.path + ')\n' +
+                'Repo: ' + result.repo + '\nVerified: true\n' +
+                'File size: ' + result.size + ' bytes\nCommit: ' + (result.commitSha || 'unavailable');
+        }
         if (name === 'github_push') {
             return 'OK: File pushed to GitHub\nPath: ' + result.path + '\nMsg: ' + result.message + '\nURL: ' + (result.url || 'pushed') + '\nVerified: true\nFile size: ' + result.size + ' bytes';
         }
