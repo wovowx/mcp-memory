@@ -3801,6 +3801,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **E3 分项判定**：ChatGPT 本次有「自然继续→权威资料实际恢复→新版工具选路→只读状态核实」的 **PARTIAL PASS**；独立全空白新框的自主启动、无需指令的学习预检、真实新任务中经批准 lesson READY 的应用、Operit 同步、柳柳对工作/相处双连续性的体验验收均仍 **OPEN**。候选 tests/learning/learning_github_tool_route_001.json 当前 status=candidate、application.approval_ref=null，不得擅自晋升或写 skills 注册表。
 - **边界和下一步**：本次只作只读 MCP 检验与 dev Bridge 执行证据追加，不修改生产/main/数据库/Secrets/私人记忆、聊天室、Operit 或 Web；继续以实际自然任务的行为证据为准。未来若要让纠错候选成为 active，先审查证据、明确拆分/匹配合同并由柳柳批准，再按现有 Skill 注册路径实施；架构级新方案须需求与原型定案。
 
+### [2026-11-07 · ChatGPT → 下一会话] L3 经验分场景候选及 E1/E2/CI · dev 完成，激活待审核
+- **决定边界**：柳柳对「完成 L3 学习闭环，分别整理 GitHub 已有文件编辑 / 新文件创建的纠错经验，审查后再正式激活」回复「好」，授权 dev 范围候选与回归施工；此回复尚非针对两个具体候选内容及生产 Skills 注册写入的逐项审核引用，不把它伪作 application.approval_ref。
+- **最小变更**：dev 修改 tests/learning/learning_github_tool_route_001.json，将匹配合同限于已有文件编辑/403 并保留原始失败→反馈→恢复证据；新增 tests/learning/learning_github_create_file_001.json，独立描述缺 content_url 时的工具发现与曾经真实 github_create_file→Verified:true 的 E3；扩展 tests/reflection_contract_test.mjs，验证候选不自动晋升、编辑/创建 intent 双向隔离、宿主工具 alias、分支/仓库阻断、无首选工具时只报该入口 UNAVAILABLE。无新 Router、模型后端、数据表或自动执行。
+- **本地 E1/E2 真实结果**：Node v24.22.1；npm run check EXIT0（47 JS），npm run test:reflection **83/83 EXIT0**，npm run test:bootstrap **68/68 EXIT0**，npm run test:scenes **36/36 EXIT0**，npm run test:contracts **226/226 EXIT0**，python3 tests/learning/run_learning_tests.py **12 工件 PASS**，npm run test:worker-runtime **8/8 EXIT0**，git diff --check EXIT0。首次 Workerd 因未安装 wrangler 报 MODULE_NOT_FOUND；npm ci 成功后复跑 8/8，依赖故障已排除，未假记通过。
+- **远端与 CI 真证据**：三个文件先 Ziven MCP dry_run，再各自 Verified:true 写入 dev；独立 git fetch origin/dev 后逐个 Git blob SHA 与本地测试内容相同。最终远端 **dev 070a7ee99803a1606f4c8501d0ccdf54d9b592d0**；官方 learning-regression [#42376141256](https://github.com/wovowx/mcp-memory/actions/runs/42376141256) **completed/success**。中间逐文件非原子提交的 CI 有一次预期失败（旧 JSON 已变、合同测试尚未同步），以最终精确 SHA 的成功 CI 为准。
+- **当前生产与待审批门禁**：main 仍 805cbeda、Worker **#555/deployment 576851a6/verify_main=VERIFIED**。两个学习对象仍 **status=candidate, reflection.validation_state=pending, approval_ref=null**；未写 Supabase Skills。只读查询确认 github_edit、github_copy、github_push 的已启用注册行存在且 handler_config.handler=github；github_create_file 为现役静态 Facade，**没有独立 skills 行**。若要激活，必须明确决定选用哪两条已启用 Skills 行承载各自的 handler_config.learning、全量保留原 handler 配置、绑定候选级审核 ref，并在实际写入后以真实 session_context learning_task 分别验 READY/分支拒绝/无匹配。未获具体批准前不写数据库或注册表、不发下版 main；全新独立自然框自动调用和双连续性 E3 仍 OPEN。
+
 
 
 
