@@ -5,7 +5,7 @@ category: guide
 tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 ---
 
-# GitHub 使用指南（v6.5.5 · 强制 content_url + merge 硬规则 + 版本号下沉 dev commit + github_edit 修改入口）
+# GitHub 使用指南（v6.5.6 · 新文件先发现 github_copy / github_push 两条合法路径）
 
 ## 一句话
 日常 GitHub 操作的工具对照表 + Git 纪律（怎么合并）+ 大文件推送规范；**发布纪律（能不能发布）见 deploy skill，两者分层不混**。
@@ -27,11 +27,22 @@ tags: ["GitHub", "推送", "PR", "合并", "分支", "deploy", "大文件"]
 
 **实际教训**：2026-11-07，在更新 `wovowx/ZivenLab/dev` 已有文档时，先调用通用 GitHub 连接器→403；随后使用真正可用的 Ziven MCP `github_use_guide` 和 `github_edit`，dry_run→写→回读成功。原因是工具选择，不是已证实的全局 GitHub 权限不足。见 L3 `learning_github_tool_route_001`；相似错误下次应由**主动识别能力→选对工具→验证**来规避。
 
+### 新文件完整场景（2026-11-07 · 柳柳纠错）
+
+不要看到 `github_push` 需要 `content_url` 就直接回答「必须让柳柳手动下载/上传」「MCP 没有创建新文件工具」。**先检查本宿主真实暴露的工具和允许的仓库、分支、源文件**；确认路径可用后再操作：
+
+1. **已有可复用源文件 → `github_copy` 首选**：指定真实存在的 `source_repo/source_branch/source_path` 和合法的 `target_repo/target_branch=dev/target_path`，`overwrite=false` 创建新文件；随后视新文件实际内容使用 `github_edit(dry_run=true → 写入)` 形成目标内容，`github_read` 回读验证。copy 只复制原样，**不能当作已生成目标内容**；找不到合适源文件时不能凭空编造。
+2. **没有可用源文件但有待上传内容 → `/upload` + `github_push`**：在当前宿主有合法上传通道时，上传到我们自己的 Supabase 存储，拿到 `content_url` 再用 `github_push(target_path, content_url, branch=dev)` 创建，之后 `github_read` 验证。不可私取令牌、使用任意第三方存储 URL 或绕过现有上传限制。
+3. **两条路径都不完整 → 精确 `UNAVAILABLE`**：说明到底缺哪个工具、合法源文件还是上传通道；先查看其他可用连接器及其权限（一个连接器 403 不是所有通道失败），不能假称成功。只允许在柳柳已批准的 dev 范围写入，不用 `overwrite=true` 意外覆盖已有文件；main 必须逐版本经 PR 授权。
+
+以上是场景级工具组合和诊断顺序，仍须在 ChatGPT/Operit 新框通过真实工具调用 E3，文字教学与合成测试不等于永不再犯。
+
 ## 工具对照表
 
 | 我想做什么 | 用什么 |
 |---|---|
-| 推文件到分支（新文件） | **github_push(path, content_url, branch, message)** —— content_url 必填；**已有文件一律拒绝**（GITHUB_PUSH_EXISTING_FILE） |
+| 从已有 GitHub 文件创建新文件（无需上传） | **github_copy(source_repo, source_branch, source_path, target_repo, target_branch=dev, target_path, overwrite=false)** → 按需 github_edit → github_read |
+| 从外部本地内容创建新文件 | **/upload → github_push(path, content_url, branch=dev, message)** → github_read；content_url 必填；**已有文件一律拒绝**（GITHUB_PUSH_EXISTING_FILE） |
 | **修改已有文件** | **github_edit(path, operations, message, branch=dev)** —— 读→改→写回一次完成，operations=[{old,new}] 精确替换；老文件修改主路径 |
 | 上传本地文件先拿 url | **POST /upload**（我们自己的 Worker）→ 返回你的 Supabase url |
 | 读文件 | github_read(path, branch) |
