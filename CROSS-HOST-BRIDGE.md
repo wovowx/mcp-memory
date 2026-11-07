@@ -3650,6 +3650,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **不能夸大**：这次只建立可运行的离线候选审核/任务预检/对照工具，**没有 MCP runtime 入口或 ChatGPT/Operit 强制自动 preflight hook**。CLI 对真实候选只返回 `PENDING_REVIEW`，合成 active 副本仅 E2，不代表真实晋升；数据来源指针及用户声称的宿主能力不会变成独立 E3。未写私人记忆、Supabase、Secrets/Worker，也没有改 main 或聊天室。权威唯一云端检查点沿用上次实际验证的 **v213**，**本轮未重新读取/回写**。
 - **下一动作**：将本轮 dev 结果作为 v6.53.0 候选范围准备单独发布评审（内容/用户收益/CI/风险/回滚）；只有柳柳单独批准才可合并 main/部署。未来自然同类任务再观察无提示工具选择和实际执行，才给 E3 结论；M1 双连续性与 S0 无人神游仍各自待验，无需额外消耗 Operit token。
 
+### GPT → Operit / ChatGPT · 2026-11-07 v6.53.1 Worker 已验 / M1 dev 自动恢复插件 E1/E2
+
+- **审批与发布**：柳柳在 v6.53.0 和随后 v6.53.1 发布单之后，分别明确回复「发布吧」「好」；PR [#340](https://github.com/wovowx/mcp-memory/pull/340) 与 [#341](https://github.com/wovowx/mcp-memory/pull/341) 均独立验证 `closed/merged=true`、显式 rebase；最新 main 及当时同步的 dev 为 `75f6617d5a043344691a1c91d3ff2832404d76e6`。Cloudflare **Worker #548** / deployment `8b477d96` / `verify_main=VERIFIED`。v6.53.0 上线后真实 `github_push` 暴露 Workers 不支持 `redirect:'error'`，v6.53.1 改为 `manual` 并仍拒绝 3xx；GitHub Contents 53/53、Router 220/220、Bootstrap 56/56、Reflection 69/69、Memory Core 120/120、Learning 11 工件回归均通过，PR CI SUCCESS。**这次不是只靠 mock：v6.53.1 部署后真实 `github_push` 四次成功创建新文件到 dev、返回 `Verified:true/size`，从 GitHub 独立 `git fetch` 后逐字节对比本地四个原始文件一致。**
+- **M1 dev 新文件（还未发布 main）**：`integrations/operit/auto-bootstrap/{manifest.json,main.js,README.md}` 和 `tests/operit_auto_bootstrap_contract_test.mjs` 已真实写入 `mcp-memory/dev`；`package.json` 注册 `test:operit-autoboot`，CI `learning-regression.yml` 增加 E2 M1 步骤。新建文件经 Supabase 自有 `/upload` URL + 已修复 `ziven_mcp.github_push`，不依赖被 GitHub 通用 connector 403 拒绝的 `create_file`。隔离的远端 dev worktree 执行 `npm run test:operit-autoboot` **16/16**、`npm run check`、GitHub Contents 53/53、Router 220/220、Bootstrap 56/56、Reflection 69/69、Memory Core 120/120、Learning 11 全 exit0。**严格区分**：Worker/GitHub 上传 E3 真正成功；Operit 宿主 `before_send_to_model` 真机 E3 **NOT RUN**，不能声称已自动复苏。 
+- **失败→学习闭环**：先误判现成工具可用性，实际先遇 native fetch receiver `Illegal invocation`，修复后再遇 Workers `redirect` 参数不兼容；两次错误分别补模拟原生 receiver、Workers 重定向值与拒绝 302 的合同，并纳入已有 GitHub Contents CI 门禁。以后涉及 Worker 平台行为必须检查其原生 API 兼容性，不能只在 Node mock 通过就宣布 E3；发布后用实际用户场景端到端验证。**下一个任务**：核验最新 CI head，后续仅在柳柳可用时低成本执行 Operit 真机 E3（不让她无故消耗 token），完成后再讨论 M1 是否进 main；Web 端继续排在「一本书架构」整体验收之后。未写私人唯一检查点（旧已核状态 v213）、未碰 DB/Secrets/聊天室/大文件私密聊天。
+
 
 
 
