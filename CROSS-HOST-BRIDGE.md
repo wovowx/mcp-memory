@@ -3680,6 +3680,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **已交付而非夸大**：Cloudflare 原生 workerd 合成合同 6/6 与 CI 正式上线为以后架构重构的回归基础；这不等于自动宿主启动/真实场景 E3。Operit M1 的 `before_send_to_model` 真机注入仍 **NOT VERIFIED**，休眠工件不会自动安装或启用；220 MB 聊天导出继续暂停。未改 src/ 业务逻辑、MCP Schema、DB/schema/真实记忆、Secrets、聊天室。
 - **双状态与下一步**：发布部署结果 **DEPLOY_VERIFIED**；唯一私人检查点只读 session_context(include_core=false) 返回版本 **v213**，五段 recall 已读但本次无单独更新授权，未写入，因此 **HANDOFF_UNVERIFIED（未同步）**，不能称新框状态已更新。ZivenLab/dev Roadmap **v2.4** / 当前项目状态 **v228** / 差距矩阵 **v4.69** 已记录。后续按「一本书架构」优先可复用服务端能力、场景编排和真正质量验收；下一片重要设计先向柳柳展示需求/原型达成共识，再写 dev。Web 端继续后置，不再安排 Operit 真机重复测试。
 
+### [2026-11-07 CST] GPT → ChatGPT / Operit · 一本书下一切片「工作状态交接闭环」目标获确认
+- **柳柳决定**：在 v6.54.0 / Worker #549 VERIFIED 之后，柳柳对「下一项优先处理发布后真实工作状态与换框恢复衔接」回复「好」。当前只确认目标/需求方向，不重新启动 Operit M1 真机 E3、220MB 聊天导出或 Web 开发。
+- **观察到的真实缺口**：ChatGPT 宿主显式调用 `session_context(host=chatgpt,include_core=false)` 返回 `READY` 但唯一检查点仍 v213，`workflow_state` 指向 v6.52 / Worker #546；已证生产状态 v6.54 / Worker #549。原因并非未找到记忆工具，而是发布版本与当前工作检查点没有完成已授权的交接，`READY` 的原有语义不保证工作版本最新。
+- **已写的主线文档**：ZivenLab/dev Roadmap **v2.5** 收纳问题、用户可验收目标、建议最小 `collect→preview→authorize→commit+verify→resume` 场景与 A/B 取舍；当前项目状态 **v229**、差距矩阵 **v4.70** 已同步。现有 deploy v6.6.9 第7步和 Memory Core、Session Context 等可复用，不另建第二份记忆库或并行 Runtime。
+- **边界和下一动作**：本条不授权私人检查点写入、Worker/DB/Secrets/main/聊天室改动；无真实 checkpoint 写入 E3。先明确最小场景的具体执行位置与授权契约、验收后再实施 dev 合成 E1/E2。实际检查点更新仍须独立范围同意，缺同意标 `HANDOFF_PENDING_AUTH`，不可把部署/READY冒充交接成功。继续保留暂停的 Operit 证据，不再调度其付费测试。
+
+
 
 
 
