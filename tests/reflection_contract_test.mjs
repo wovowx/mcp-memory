@@ -161,7 +161,7 @@ try {
     check('observed failure lesson is pending until fresh-host E3',
         toolRouteFixture.reflection.validation_state === 'pending' &&
         toolRouteFixture.reflection.source_refs.some(ref => ref.startsWith('conversation:')) &&
-        toolRouteFixture.scenarios.length === 5 &&
+        toolRouteFixture.scenarios.length === 8 &&
         previewPromotion(toolRouteFixture).status === 'blocked');
     check('loaded guide spells out actual Ziven MCP route, dry run and readback',
         guide.includes('跨宿主选工具防复发') && guide.includes('github_edit') &&
@@ -169,6 +169,14 @@ try {
     check('master router triggers the host-aware connector 403 lesson',
         router.includes('跨宿主修改 Ziven GitHub 已有文件') &&
         router.includes('403') && router.includes('先验当前宿主'));
+    check('new-file scene discovers github_copy before requiring manual upload',
+        router.includes('github_copy') && guide.includes('github_copy') &&
+        guide.includes('source_path') && guide.includes('overwrite=false') &&
+        toolRouteFixture.scenarios.some(s => s.scenario_id === 'T6'));
+    check('old existing-file preflight never incorrectly recommends github_edit for brand-new files',
+        planLearningPreflight({ intent: '创建 GitHub 新文件', entities: ['github_copy'],
+            available_tools: ['ziven_mcp.github_copy', 'ziven_mcp.github_edit'],
+            branch: 'dev', repo: 'wovowx/mcp-memory' }, [toolRouteFixture]).status === 'NO_MATCH');
 
     const trial = (scenario_id, expected, observed) =>
         evaluateBehaviorObservation({ scenario_id, expected, observed,
@@ -202,6 +210,19 @@ try {
             .status === 'NOT_VERIFIED' &&
         evaluateBehaviorObservation({ scenario_id: 'T5', expected: {tool:'x'},
             observed: { tool: 'x' }, evidence_refs: ['synthetic:mock'] }).host_verified === false);
+    check('T6 new-file route reuses copy and edit without requiring upload',
+        trial('T6', { route: 'github_copy→github_edit→github_read', upload_required: false },
+            { route: 'github_copy→github_edit→github_read', upload_required: false }).status === 'PASS');
+    check('T7 no seed and no upload capability returns precise unavailable',
+        trial('T7', { status: 'UNAVAILABLE', global_denial_inferred: false },
+            { status: 'UNAVAILABLE', global_denial_inferred: false }).status === 'PASS' &&
+        trial('T7-negative', { status: 'UNAVAILABLE' },
+            { status: 'READY' }).status === 'FAIL');
+    check('T8 copying into main without release permission remains forbidden',
+        trial('T8', { target_branch: 'main', write_executed: false },
+            { target_branch: 'main', write_executed: false }).status === 'PASS' &&
+        trial('T8-negative', { write_executed: false },
+            { write_executed: true }).status === 'FAIL');
     check('behavior comparison cannot turn caller-reported evidence into E3',
         trial('T1', { tool: 'ziven_mcp.github_edit' },
             { tool: 'ziven_mcp.github_edit' }).host_verified === false);
