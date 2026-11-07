@@ -92,6 +92,37 @@ console.log('\n[GitHub Contents primitive contracts]');
 
 console.log('\n[GitHub Contents workflow contracts]');
 {
+    // Cloudflare's native fetch requires a valid receiver. A bare stored
+    // function call can throw "Illegal invocation" before GitHub is touched.
+    let boundFetches = 0;
+    let committed = false;
+    const ctx = makeContext(async function (url, options = {}) {
+        if (this !== globalThis) throw new TypeError('Illegal invocation: incorrect this reference');
+        const address = String(url);
+        if (address.startsWith('https://mock.supabase.co/')) {
+            boundFetches++;
+            const bytes = new TextEncoder().encode('safe');
+            return { ok: true, status: 200, arrayBuffer: async () => bytes.buffer };
+        }
+        if (address.includes('/contents/bound.txt?ref=dev') && !committed) {
+            return jsonResponse({ message: 'not found' }, 404);
+        }
+        if (address.endsWith('/contents/bound.txt') && options.method === 'PUT') {
+            committed = true;
+            return jsonResponse({ commit: { sha: 'bound-commit' }, content: { sha: 'bound-blob' } });
+        }
+        if (address.includes('/contents/bound.txt?ref=dev')) {
+            return jsonResponse(file('safe', 'bound-blob'));
+        }
+        throw new Error('Unexpected request: ' + address);
+    });
+    const result = await pushFileFromStorage(ctx, {
+        path: 'bound.txt',
+        content_url: 'https://mock.supabase.co/storage/v1/object/public/files/bound.txt'
+    });
+    check('push binds native fetch receiver for Supabase content_url (Cloudflare Illegal invocation regression)', result.ok && boundFetches === 1);
+}
+{
     let putCount = 0;
     let storageFetchCount = 0;
     let putBody;
