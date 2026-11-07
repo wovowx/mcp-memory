@@ -3727,6 +3727,16 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **未验证 E3**：当前 ChatGPT/Operit 是否无需提示就恢复身份/工作、识别 `github_create_file`、主动复用经确认 lesson、形成亲密/工作双连续性，均 **NOT VERIFIED**；工具候选未随 main 部署，**不得调用线上并假称存在**。Operit M1/220 MB、Web、记忆星球、动画/陪看、聊天室本轮均未实施。
 - **下一行动**：dev 代码快照 CI 已成功，交接文档最终增补亦须独立确认；随后为 v6.56.0 准备面向柳柳的独立发布说明（用户收益、风险、范围、回滚、E3 限制），**在明确获批前不创建/合并 main PR**；生产发布后方可做正式宿主工具刷新和自然新框 E3，检查点写入亦须按发布 Skill 的 v217 现行边界执行。
 
+### [2026-11-07 · ChatGPT → Operit / 新框] v6.56.0 正式发布 / 唯一检查点 v218 · VERIFIED
+- **逐版授权**：柳柳阅读 v6.56.0 的用户收益、风险、发布范围和回滚建议后回复「好」，明确批准本次 main 发布；限定 B 只允许正式发布后同步唯一权威工作检查点，不扩至其它私记、数据库或密钥。
+- **发布与分支**：预检 main...dev ahead20/behind0、净16文件；[PR #345](https://github.com/wovowx/mcp-memory/pull/345) 实际 rebase 合并，独立 GET 为 `closed/merged=true/head=dev/base=main`；经 `git ls-remote` 独立复核，`main=dev=616b4bcada4e8a9e8b9bd58906cc50e3a244802c`。本条 Bridge 只随后更新 **dev** 文档，不再次影响已发布 main。
+- **CI 与生产**：候选 [PR CI #42355682277](https://github.com/wovowx/mcp-memory/actions/runs/42355682277) 和发布后 [main CI #42355720725](https://github.com/wovowx/mcp-memory/actions/runs/42355720725) 均 `completed/success`；独立 Cloudflare 核实 **Worker #552 / deployment c9a5227e / verify_main=VERIFIED**，一致指向 main `616b4bca`。正式发布 **CLOSED**。
+- **唯一工作检查点**：先分7段读取 `⚙️/当前工作检查点` v217 **33896** 字符，再临写前核对首段/version217；仅同 key 更新为 **v218**，新全文 **36755** 字符分8段逐字回读 **36755/36755 完全一致**，旧 v217 全文无损嵌入历史；另以 `session_context(host=chatgpt,invocation=explicit,include_core=false)` 验证 `READY/version218`。授权内检查点交接 **CLOSED**。API 不提供跨请求 CAS，故记录实际读回而不宣称有强事务条件写。
+- **已入生产的能力边界**：新 `github_create_file`（dev 单次 UTF-8 文本直建、dry_run、只建不存在的目标并回读）与 `session_context.available_tools` 宿主上报 Schema 经本版部署；基本 Contents/Router/Session/Reflection 复用与 E2 回归已成功。当前 ChatGPT 插件是否及时刷新公开工具元数据 **NOT VERIFIED**，不可把代码已部署等同于此宿主已暴露工具。
+- **E3 未验收及下一行动**：ChatGPT/Operit **自然新框无提示**恢复身份+工作、自动选择实际可用工具、将真实纠错转化为下次行动，以及相处连续性，全部 **OPEN/NOT VERIFIED**。下一步只等柳柳手动刷新 ChatGPT 的 Ziven MCP 工具元数据，再走只读/低成本自然新框 E3；无需消耗 Operit 付费真机 token。继续「一本书」基本能力复用、场景编排与证据学习主线，架构级新决定先讨论；不碰聊天室/Agent runtime、AAS、Operit M1、Web、DB/Secrets、私人记忆，也不自行批准下一版本 main。
+
+
+
 
 
 
