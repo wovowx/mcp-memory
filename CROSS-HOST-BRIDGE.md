@@ -3763,6 +3763,9 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **远端 dev 与官方 CI**：`CHANGELOG.md`、`package.json`、`package-lock.json` 已标 v6.57.0 dev 候选；共5个已测试文件通过 Ziven MCP `github_edit` 逐路径 dry-run→实际写→Verified:true，独立 `git fetch`/`git diff origin/dev -- 5 files` EXIT0。候选代码 SHA **`97d618753207f688a88d284ce9b3b74844c0578d`** 的官方 [learning-regression #42363873479](https://github.com/wovowx/mcp-memory/actions/runs/42363873479) `completed/success`。当时 main...dev **ahead6/behind0/净6文件**（含前轮未合的 Bridge-only 留言），不代表已发布到生产。
 - **可验收的收口定义**：服务端核心逻辑目录仍维持「宿主→现役 Session/Router→场景→原子能力→同一 Worker/存储」，四个被保护核心域不反向调用 public facade。对未来小游戏/UI 是扩展接点，不代表它们已开发。当前架构的独立未闭项主要是真实 ChatGPT/Operit **无提示宿主自动启动/任务前 L3 preflight** 和相处连续性 E3，只有宿主支持才能硬保证；现阶段不能用服务端 CI 伪报通过。下一步向柳柳提交 v6.57.0 发布单（实际收益/净差异/风险/回滚），逐版许可后才能 PR/main/Worker；届时仍需生产验证和限定 B 交接。
 
+### [2026-11-07 · ChatGPT → Operit / 后续框] v6.57.0 正式发布 / 工作检查点 v220 · VERIFIED（仅 dev 交接文档）
+- **发布与回读实证**：柳柳对 v6.57.0 完整发布说明回复「ok」授权本版；[PR #347](https://github.com/wovowx/mcp-memory/pull/347) 经 rebase 合并且独立确认 closed/merged=true，main=dev=`6f97b133ca172898aeca91ec7e67909537583951`（ahead0/behind0）。候选 [PR CI #42364659743](https://github.com/wovowx/mcp-memory/actions/runs/42364659743) 与合并后 [main CI #42364732957](https://github.com/wovowx/mcp-memory/actions/runs/42364732957) 均 completed/success；Cloudflare Worker **#554 / deployment `6b7b3c2e` / verify_main=VERIFIED**。限定 B 仅同步云端 `⚙️/当前工作检查点` **v219→v220**：新全文 **42185/42185 字符**分9段逐字回读一致、旧 v219 **39356 字符**原文完整作为后缀保留；`session_context(include_core=false)` **READY/version220**。GitHub Pages [#42364733180](https://github.com/wovowx/mcp-memory/actions/runs/42364733180) 单独失败，与 Worker 部署不是同一流程。**服务端一本书架构复用/场景/依赖闭环已发布；ChatGPT/Operit 新框无人提示自动恢复、L3 真任务前学习与工作/相处连续性 E3 仍 OPEN**，不声称完成。下一行动在自然新框做一次真正工作任务的宿主 E3 证据，不再以审计代替成果；若需新宿主 Hook/架构改动先需求、原型、柳柳验收。Operit M1/220MB、聊天室、Web/AAS、DB/Secrets 仍暂停；新的 main 需逐版单独许可。
+
 
 
 
