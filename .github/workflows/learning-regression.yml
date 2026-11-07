@@ -24,11 +24,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install pinned Worker test dependency
+        run: npm ci
+
       - name: E1 - Static syntax and import checks
         run: npm run check
 
       - name: E2 - GitHub Contents primitives and workflows
         run: npm run test:github-contents
+
+      - name: E2-runtime - Workerd platform and Contents contracts (synthetic only)
+        run: npm run test:worker-runtime
 
       - name: E2 - Operit M1 auto-bootstrap synthetic contracts (not host E3)
         run: npm run test:operit-autoboot
