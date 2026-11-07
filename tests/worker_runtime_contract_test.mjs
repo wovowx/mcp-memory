@@ -85,6 +85,16 @@ async function callProbe(overrides = {}) {
     return response.json();
 }
 
+async function callCreate(overrides = {}) {
+    const response = await server.getWorker('ziven-workerd-probe').fetch('/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo: 'wovowx/mcp-memory', branch: 'dev', path: gitPath,
+            content: 'Ziven workerd fixture\n', ...overrides })
+    });
+    assert.equal(response.status, 200);
+    return response.json();
+}
+
 test('the actual production entrypoint boots in workerd and answers MCP health', async () => {
     resetScenario('success');
     const response = await server.getWorker('mcp-memory').fetch('/mcp');
@@ -131,5 +141,25 @@ test('main-branch writes are blocked before any network call', async () => {
     resetScenario('success');
     const result = await callProbe({ branch: 'main' });
     assert.equal(result.code, 'MAIN_WRITE_BLOCKED');
+    assert.equal(requests.length, 0);
+});
+
+test('one-book direct text creation runs in native workerd with verified readback', async () => {
+    resetScenario('success');
+    const result = await callCreate();
+    assert.equal(result.ok, true, JSON.stringify({ result, requests }));
+    assert.equal(result.verified, true);
+    assert.deepEqual(requests.map(req => req.method), ['GET', 'PUT', 'GET']);
+});
+
+test('one-book dry-run and main guard do not write from native workerd', async () => {
+    resetScenario('success');
+    const preview = await callCreate({ dry_run: true });
+    assert.equal(preview.ok, true);
+    assert.equal(preview.dryRun, true);
+    assert.deepEqual(requests.map(req => req.method), ['GET']);
+    resetScenario('success');
+    const blocked = await callCreate({ branch: 'main' });
+    assert.equal(blocked.code, 'BRANCH_NOT_ALLOWED');
     assert.equal(requests.length, 0);
 });
