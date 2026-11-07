@@ -920,7 +920,7 @@ try {
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co.evil.example/storage/v1/object/public/files/demo.txt' }, pushEnv);
     check('github_push rejects deceptive Supabase hostname before fetching', pushResult.includes('exact configured SUPABASE_URL origin') && pushFetchCalls === 0);
     pushResult = await handleGitHubTool('github_push', { path: 'demo.txt', branch: 'dev', content_url: 'https://mock.supabase.co/storage/v1/object/public/files/demo.txt' }, pushEnv);
-    check('github_push accepts exact configured public-files origin with redirects disabled', pushResult.includes('Verified: true') && uploadFetchCount === 1 && observedRedirect === 'error' && fileExistenceChecks === 2);
+    check('github_push accepts exact configured public-files origin with redirects manually disabled', pushResult.includes('Verified: true') && uploadFetchCount === 1 && observedRedirect === 'manual' && fileExistenceChecks === 2);
   } finally { globalThis.fetch = previousPushFetch; }
 
   // Patch Engine / release guard contracts.
