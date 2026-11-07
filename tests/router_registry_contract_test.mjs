@@ -605,6 +605,18 @@ try {
   check('tools/list advertises one copy each of the existing Bootstrap and Context static tools',
     ['session_bootstrap', 'session_context'].every(name => recovered.filter(t => t.name === name).length === 1) &&
     recovered.find(t => t.name === 'session_context')?.inputSchema?.properties?.topic?.type === 'string');
+  const createScene = recovered.find(tool => tool.name === 'github_create_file');
+  check('one-book create scene is discoverable once without a skills registry write',
+    recovered.filter(tool => tool.name === 'github_create_file').length === 1 &&
+    createScene?.inputSchema?.required?.join(',') === 'path,content' &&
+    createScene?.inputSchema?.properties?.branch?.enum?.join(',') === 'dev' &&
+    skillsWriteMethods.length === 0);
+  const rejectedCreate = await callTool('github_create_file', { path: 'hello.txt', branch: 'main', content: 'test' });
+  check('one-book create scene rejects a main write before any GitHub request',
+    rejectedCreate.startsWith('MAIN_WRITE_BLOCKED:') || rejectedCreate.includes('DISPATCH_GUARD_REJECT'));
+  const missingCreate = await callTool('github_create_file', { path: 'hello.txt' });
+  check('one-book create scene rejects missing text via shared dispatch schema',
+    missingCreate.includes('DISPATCH_GUARD_REJECT'));
   const discoveredMemoryTool = recovered.find(tool => tool.name === 'memory');
   const discoveredMemorySchema = discoveredMemoryTool?.inputSchema;
   check('tools/list explicitly documents the existing read-only history action',
