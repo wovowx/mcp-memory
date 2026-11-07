@@ -9,7 +9,7 @@
 - **创建 GitHub 新文件不再只想到上传**：现有 `github_copy` 已支持将合法源文件复制到 dev 新路径，联用 `github_edit` 和 `github_read` 可直接形成新文件，免柳柳先下载/上传；没有合适源文件时仍用 `/upload`→`github_push(content_url)`，两者均不可用才精确报缺口。更新 `master-router`、`github-use-guide` 与 L3 候选 T6–T8 合成选路验证，明确一个连接器 403 ≠ 所有工具均不可用。
 
 ### 验收、边界与发布纪律
-- 现有 Router、GitHub Contents、Reflection、Bootstrap、Memory Core、Search History、记忆体检/映射、Operit M1 合成及 Worker 原生运行测试已在独立 clean clone 跑过；最终远程 dev SHA 的 CI 仍需另查，不能拿本地结果当远程正式验收。Reflection 候选保持 `pending`，Host 新框主动调用正确工具的 E3 仍 `NOT_VERIFIED`。
+- 独立 clean clone 已通过 Router 221/221、GitHub Contents 53/53、Reflection 74/74、Bootstrap 56/56、Memory Core 120/120、Search History 20/20、记忆体检17/17/映射36/36、Operit M1 合成16/16、Worker 原生6/6及学习回归。远端 dev 代码候选 SHA `d238ce1f6ea210a82a49778cf29e98d0ee84432c` 的官方 [learning-regression #42347479032](https://github.com/wovowx/mcp-memory/actions/runs/42347479032) `completed/success`，含以上关键 E1/E2 步骤。Reflection 候选保持 `pending`，Host 新框主动调用正确工具的 E3 仍 `NOT_VERIFIED`。
 - 新一轮仅修改共用 Router 失败判定、既有两个 Skill、既有 L3 候选和回归、`package.json`/lockfile、CHANGELOG 和 Bridge。**无新增公开工具或基础库、DB/Schema/Secrets/私人记忆读写、日志采样、聊天室、Web、Operit 真机改动**。Worker 生产仍 v6.54.1 / #550，mcp-memory/main `7703e7dcd541d6da1c948e972e55267b683bb016`；本版 dev 许可**不等于 main/Cloudflare 发布许可**，须柳柳读版本单后单独同意。若需回滚，基线为这条已验证 main/Worker；不删除任何私人历史。
 
 ---
