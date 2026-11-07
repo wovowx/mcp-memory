@@ -2,6 +2,18 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.55.0] - 2026-11-07（dev 候选 · 一本书基础结果语义与 GitHub 新文件选路）
+
+### 柳柳实际会得到什么
+- **工具用失败不会再冒充成功学习**：共享 `mcp_router` 发现 `ERROR:`、`ERROR/UNKNOWN:` 等既有明确失败文本时不增加 `skills.usage_count`；此前缺 GitHub Token 的失败被误计成功，污染 L3 反思与技能使用依据。成功路径仍恰好计一次，原 MCP 工具名称、Schema 和文本返回不变。
+- **创建 GitHub 新文件不再只想到上传**：现有 `github_copy` 已支持将合法源文件复制到 dev 新路径，联用 `github_edit` 和 `github_read` 可直接形成新文件，免柳柳先下载/上传；没有合适源文件时仍用 `/upload`→`github_push(content_url)`，两者均不可用才精确报缺口。更新 `master-router`、`github-use-guide` 与 L3 候选 T6–T8 合成选路验证，明确一个连接器 403 ≠ 所有工具均不可用。
+
+### 验收、边界与发布纪律
+- 现有 Router、GitHub Contents、Reflection、Bootstrap、Memory Core、Search History、记忆体检/映射、Operit M1 合成及 Worker 原生运行测试已在独立 clean clone 跑过；最终远程 dev SHA 的 CI 仍需另查，不能拿本地结果当远程正式验收。Reflection 候选保持 `pending`，Host 新框主动调用正确工具的 E3 仍 `NOT_VERIFIED`。
+- 新一轮仅修改共用 Router 失败判定、既有两个 Skill、既有 L3 候选和回归、`package.json`/lockfile、CHANGELOG 和 Bridge。**无新增公开工具或基础库、DB/Schema/Secrets/私人记忆读写、日志采样、聊天室、Web、Operit 真机改动**。Worker 生产仍 v6.54.1 / #550，mcp-memory/main `7703e7dcd541d6da1c948e972e55267b683bb016`；本版 dev 许可**不等于 main/Cloudflare 发布许可**，须柳柳读版本单后单独同意。若需回滚，基线为这条已验证 main/Worker；不删除任何私人历史。
+
+---
+
 ## [v6.54.1] - 2026-11-07（候选 · 唯一工作检查点有限自动交接）
 
 ### 柳柳实际会得到什么
