@@ -3686,6 +3686,13 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **已写的主线文档**：ZivenLab/dev Roadmap **v2.5** 收纳问题、用户可验收目标、建议最小 `collect→preview→authorize→commit+verify→resume` 场景与 A/B 取舍；当前项目状态 **v229**、差距矩阵 **v4.70** 已同步。现有 deploy v6.6.9 第7步和 Memory Core、Session Context 等可复用，不另建第二份记忆库或并行 Runtime。
 - **边界和下一动作**：本条不授权私人检查点写入、Worker/DB/Secrets/main/聊天室改动；无真实 checkpoint 写入 E3。先明确最小场景的具体执行位置与授权契约、验收后再实施 dev 合成 E1/E2。实际检查点更新仍须独立范围同意，缺同意标 `HANDOFF_PENDING_AUTH`，不可把部署/READY冒充交接成功。继续保留暂停的 Operit 证据，不再调度其付费测试。
 
+### [2026-11-07 CST] GPT → ChatGPT / Operit · 限定自动交接 B 已获授权并实测（v6.54.0 / checkpoint v215）
+- **柳柳刚确认的权限**：对「A 每版额外授权 checkpoint / B 发布本身逐版获批且独立验证后，免再请示同步唯一 checkpoint」明确回复 `b`。这是仅针对 `⚙️/当前工作检查点` 的持续、可撤销写入授权，**不是**此前架构提案中的后台 Worker B；不扩大到其他记忆、主分支/部署、数据库/Secrets、聊天室或宿主自动执行。
+- **实现选择**：复用已有 `src/skills/deploy/SKILL.md` 第7步（dev 修改至 v6.6.10 候选）与 `src/skills/process/publish-workflow/SKILL.md` 指针，无新工具、DB、常驻执行器或 MCP Schema。两份 Skill 在 mcp-memory/dev 均先 dry_run 后 github_edit，返回 Verified:true。**仅 dev，未获本次候选 v6.54.1 发布许可，不能声称 Worker 线上已采用新 Skill。**
+- **独立发布证据**：本轮再查 PR #342 `state=closed/merged=true`、`head=dev/base=main`；Cloudflare `verify_main=VERIFIED`、main `a5e5a73d398a...`、Worker #549 / deployment `0631a690`。dev/main CI 结果 SUCCESS 取自原已验证的发布记录。
+- **实际私密单键交接验收**：读取旧唯一工作检查点 **v213/22967字符/5段**，生成保留全文的 v214/25546字符，`memory(update)` 成功后，6段 `memory(recall)` 25546/25546 逐字符吻合，`session_context` 回读 READY/v214/新 v6.54 指针；然后收束当前 next_action 成 **v215/28069字符**，6段 recall **28069/28069 逐字符一致**，旧 v214 全文仍完整处于历史后缀。最终只读 `session_context(host=chatgpt,include_core=false)` 返回 `READY`、`checkpoint.version=215`、`workflow_state=BOOK_MAINLINE_V654_WORKER549_HANDOFF_VERIFIED_B_LIMITED_AUTO_AUTH_DEV_SKILLS_CANDIDATE_E3_PENDING`。**DEPLOY_VERIFIED ✅ / HANDOFF_VERIFIED ✅**（仅本次状态交接）；`host.startup_hook_verified=false`，ChatGPT/Operit 自动首问恢复及双连续性 E3 未验证。
+- **边界与剩余事项**：`memory(update)` 尚无已验证的原子 CAS/expected_version 接口；临写前二次读缩短但不消除并发竞态，冲突必须停止。未改其他私人记忆、DB/Secrets、main/Worker、聊天室，也未调 Operit 付费测试。ZivenLab/dev Roadmap v2.6、项目状态 v230、差距矩阵 v4.71 已更新 Verified:true。下一步准备 **v6.54.1 限定自动交接发布 Skill 候选**的完整发布单交柳柳审批；未经逐版同意不合 main。一本书可复用底座与场景编排继续优先，Web 后置。
+
 
 
 
