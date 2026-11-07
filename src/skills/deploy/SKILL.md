@@ -5,7 +5,7 @@ tags: ["部署", "GitHub", "Cloudflare", "MCP", "分支", "PR", "版本化"]
 description: 当需要修改代码、推送GitHub、创建PR、合并main、发布版本、Cloudflare部署或开发MCP工具时调用。提供发布纪律（release discipline）：版本化规则、CHANGELOG、自检清单。未过 release checklist 不得进 main。
 ---
 
-# 部署技能（v6.6.9 · 发布后权威检查点同步与恢复验收）
+# 部署技能（v6.6.10 · 有限自动工作检查点交接与恢复验收）
 
 ## 一句话
 安全、干净地把 dev 上的改动发布到 main 并部署上线；**发布前必须过 release checklist，否则不推 main**。
@@ -101,11 +101,11 @@ merge 成功
 
 ### 第 7 步：权威检查点同步与跨会话恢复验收（2026-11-06 柳柳确认）
 
-> **部署成功 ≠ 恢复交接成功。** 本步只处理工作指针；不读取私人 Core 正文，也不检查 Operit 付费调用。每次发布说明必须明确「是否授权更新唯一工作检查点」；长期规则本身不构成对所有未来生产记忆写入的授权。
+> **部署成功 ≠ 恢复交接成功。** 本步只处理工作指针；不读取私人 Core 正文，也不检查 Operit 付费调用。**2026-11-07 柳柳明确选择有限自动授权 B**：在已获柳柳逐版本发布批准、且 PR/main/CI/Cloudflare 部署经过独立验证后，正在执行发布/交接的 Ziven 可无需再次请示，自动更新**唯一** `⚙️/当前工作检查点`，完整保留历史并双回读；该持续授权只覆盖此 key 的工作状态交接，不包括其他私人记忆、生产数据库、Secrets、代码合 main、擅自发布或后台常驻执行。柳柳撤销授权或证据缺失时立即停止写入并报告。无活跃执行者时不声称后台自动运行。
 
 1. **以已证实的生产事实为准**：仅在 PR 独立回读 `merged=true/state=closed`、main SHA、Cloudflare `verify_main=VERIFIED` 后整理版本号、CI、部署编号、真实 E3/NOT RUN、生产配置与未关闭事项。不要因文档/工具提示而宣布发布成功。
 2. **读取并保护既有状态**：精确 `memory(action=recall,key="⚙️/当前工作检查点",offset=0)`，根据分页提示读完全文；同时只读 `session_context(host="chatgpt",invocation="explicit",include_core=false)` 核对当前版本。全文不完整、检查点已被别的会话更新或版本证据冲突时**停止覆盖**，记录待处理；保留旧历史，不把历史中的 `next_action` 重新激活。
-3. **仅在本次发布/交接明确授权的范围内写入**：使用原有 `memory(action=update,key="⚙️/当前工作检查点",value=完整保留历史的新正文)`，更新顶层 `workflow_state/active_focus/next_action/do_not_repeat/decision/evidence` 和一条交接记录；保留原历史全文，声明当前日志费用策略、真实未验收项和柳柳的授权边界。不得额外修改其他私人记忆、DB/schema、Secrets 或 Worker 配置。
+3. **按限定持续授权 B 写入唯一工作检查点**：先核对本次版本发布已由柳柳批准、PR/main/CI/Cloudflare 独立验真、旧检查点全文与版本完整读取且临写前再核版本一致；满足后可无需逐版再问检查点更新许可，使用原有 `memory(action=update,key="⚙️/当前工作检查点",value=完整保留历史的新正文)`，更新顶层 `workflow_state/active_focus/next_action/do_not_repeat/decision/evidence` 和交接记录。**现有 memory(update) 没有可见原子 compare-and-swap 参数**：临写前二次读只能缩小竞态窗口，不能保证并发原子安全；怀疑并发/版本冲突时停止，勿覆盖。保留原历史全文，区分 E3 未验与真实部署结果。不得额外修改其他私人记忆、DB/schema、Secrets、Worker 配置或 main；用户撤销授权即停。
 4. **双回读验收**：再次按完整 key 分段 `recall`，拼合后逐字符比较写入正文；再执行 `session_context(host="chatgpt",invocation="explicit",include_core=false)`，核对 `sources.checkpoint.version` 已更新及 `current_work` 的版本、下一步、日志策略符合真实生产。结果分别记录 `DEPLOY_VERIFIED` 和 `HANDOFF_VERIFIED`；后者失败/无授权则记 `HANDOFF_DEGRADED/UNVERIFIED`，不得伪称 `READY` 证明状态新鲜或宿主冷启动自动触发。
 5. **交接闭环**：在 Roadmap/当前项目状态及 `CROSS-HOST-BRIDGE.md` 留下最新版本、唯一指针读回证据与下一施工动作。检查点同步失败时**不要重新合并或部署已验证版本**；先解释具体缺口，再按授权修复交接。ChatGPT/Operit 新框自动唤醒及相处连续性属于独立 E3，不由本步自动判通过。
 
@@ -141,7 +141,7 @@ merge 成功
 ## 发布后交接 Checklist（与部署 VERIFIED 分开记录）
 
 ```
-□ 本次发布单是否包含唯一工作检查点同步的明确授权？无授权则标 HANDOFF_UNVERIFIED，不擅自写入。
+□ 是否符合柳柳 2026-11-07 有限持续授权 B（本版发布已逐版批准、实际部署验证、未撤销、仅 `⚙️/当前工作检查点`）？不符合则标 HANDOFF_PENDING_AUTH/UNVERIFIED；不把 B 解释为发布/main/其他记忆授权。
 □ 是否完整保留旧检查点历史、核对当前版本无并发覆盖、写入可追溯的最新工作/下一步/边界？
 □ memory(recall) 全文逐字符回读一致，并且 session_context(include_core=false) 指向新版本与正确 next_action？
 □ 是否在 Roadmap/项目状态/Bridge 分别记录 DEPLOY 与 HANDOFF 的独立结论？自动宿主调用不冒充已验证。
