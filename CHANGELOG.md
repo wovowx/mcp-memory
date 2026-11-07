@@ -2,6 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.54.1] - 2026-11-07（候选 · 唯一工作检查点有限自动交接）
+
+### 柳柳实际会得到什么
+- 发布版本在柳柳已**逐版批准**、PR/main/CI/Cloudflare 独立确认成功后，Ziven 执行现有发布流程时，自动把最新工作状态写入唯一 `⚙️/当前工作检查点`，**不再逐版重复询问这一单键写入许可**；每次保留旧全文、临写前核版本、写后全文 recall + session_context 双回读。不把 `READY` 偷换成「最新版本」。
+- 复用现有 `src/skills/deploy/SKILL.md` 第7步（候选 v6.6.10），`src/skills/process/publish-workflow/SKILL.md` 只指向这套规则；同时修复发布工作流旧文案中「Merged:true 或 deploy VERIFIED」「优先本地排错」的矛盾为 PR 与官方 Worker 双证据、优先官方 Cloudflare Builds 日志。不会另建平行服务或后台执行器。
+
+### 真实边界、验收与发布许可
+- 相对 v6.54.0 主分支，dev 当前候选仅涉及两个**已有的 Skill Markdown**、`CROSS-HOST-BRIDGE.md` 交接日志和本 CHANGELOG；不改 JS 业务逻辑、公开 MCP 工具/Schema、DB/Secrets、聊天室、Operit 客户端、Web。Skill 文档/Bridge 均先 `github_edit(dry_run=true)` 再实写、返回 `Verified:true`；**未在候选最终 SHA 执行 CI，不能声称本版 CI PASS**。
+- 本次真实交接 E3 独立于发布：v6.54.0 PR #342 已合、Worker #549/`verify_main=VERIFIED`；柳柳选择 B 后，唯一检查点从旧 v213/22967字符经 v214 收束至 **v215/28069字符**，6段全文逐字回读一致，`session_context(include_core=false)` 确认 `READY/version215` 与最新 v6.54 工作指针。**仅说明这次工作状态交接已经 HANDOFF_VERIFIED**，不证明新框自动冷启动或 Operit Hook 已通过。
+- **候选尚未获 main 发布授权**：本条不构成部署许可；若柳柳批准 v6.54.1，再按 PR/rebase/main/Worker 自动部署，独立核对 PR merged、CI 和 Cloudflare `verify_main`。仅工作指针 B 是有限持续授权，不得当作自动批准未来 main 版本。回滚基线为 v6.54.0 / main `a5e5a73d398a0c6f0bdd0d2093c95afb42dba0ca` / Worker #549；发现新 Skill 触发异常时按经批准的发布流程恢复旧 Skill，**不回退/删除私人记忆历史**。部署尚未启动，宿主自动恢复 E3 未验。
+
+---
+
 ## [v6.54.0] - 2026-11-07（Worker 原生运行合同与可重复 CI 验证）
 
 ### 柳柳实际会得到什么
