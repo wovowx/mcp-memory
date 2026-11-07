@@ -95,12 +95,15 @@ console.log('\n[GitHub Contents workflow contracts]');
     // Cloudflare's native fetch requires a valid receiver. A bare stored
     // function call can throw "Illegal invocation" before GitHub is touched.
     let boundFetches = 0;
+    let manualRedirect = false;
     let committed = false;
     const ctx = makeContext(async function (url, options = {}) {
         if (this !== globalThis) throw new TypeError('Illegal invocation: incorrect this reference');
         const address = String(url);
         if (address.startsWith('https://mock.supabase.co/')) {
             boundFetches++;
+            if (options.redirect === 'error') throw new TypeError('Invalid redirect value, must be one of "follow" or "manual"');
+            manualRedirect = options.redirect === 'manual';
             const bytes = new TextEncoder().encode('safe');
             return { ok: true, status: 200, arrayBuffer: async () => bytes.buffer };
         }
@@ -121,6 +124,23 @@ console.log('\n[GitHub Contents workflow contracts]');
         content_url: 'https://mock.supabase.co/storage/v1/object/public/files/bound.txt'
     });
     check('push binds native fetch receiver for Supabase content_url (Cloudflare Illegal invocation regression)', result.ok && boundFetches === 1);
+    check('push uses Cloudflare-compatible manual redirect policy to prevent cross-origin redirects', manualRedirect);
+}
+{
+    let wrote = false;
+    const ctx = makeContext(async (url, options = {}) => {
+        if (String(url).startsWith('https://mock.supabase.co/')) {
+            assert.equal(options.redirect, 'manual');
+            return { ok: false, status: 302 };
+        }
+        wrote = true;
+        throw new Error('GitHub should not be accessed on rejected redirect');
+    });
+    const result = await pushFileFromStorage(ctx, {
+        path: 'redirected.txt',
+        content_url: 'https://mock.supabase.co/storage/v1/object/public/files/redirected.txt'
+    });
+    check('push rejects storage redirects before any GitHub write', !result.ok && result.code === 'CONTENT_FETCH_FAILED' && !wrote);
 }
 {
     let putCount = 0;
