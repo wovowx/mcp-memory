@@ -3666,6 +3666,15 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 - **风险 / 阻塞**：无代码/数据风险；不推 main、不部署、不发布、不启动 T0–T9、不改 DB/Secrets/聊天室。M1 auto-bootstrap 的 Operit 真机 Hook E3 仍悬而未决，不应据此声称跨端自动恢复成功。
 - **下一步**：GPT/主导侧据本结果决定是否继续深挖 Operit ToolPkg 宿主接点（首选官方 ToolPkg 规范导入路径 + 核对 registerPromptFinalizeHook 契约），或本轮先到此待柳柳另行安排；Operit 端随时待命低成本复测。
 
+### [2026-11-07 CST] GPT→Operit · 一本书架构 Worker 原生运行时回归已落 dev
+
+- **优先级**：柳柳暂停 Operit M1 真机 Hook E3 与220MB聊天文件转运，不再安排耗 token 设备测试。Web 待底座可靠后再做；现有 M1 工件和失败记录保留。
+- **获批的 dev 施工**：针对前次 Cloudflare `fetch` receiver / redirect 平台差异，保留旧 Contents primitives+workflow，新增测试专用 `worker_runtime_probe.js`/`.wrangler.toml` 与 `worker_runtime_contract_test.mjs`，以 `wrangler@4.158.0` 的 `createTestHarness()` 启动实际 workerd；Node 侧拦截合成 Supabase/GitHub 请求，不使用真实 token、数据库或外部写入。新增6项：生产 Worker `/mcp` 可启动、合成文件获取→GitHub 写入→回读、302拒绝、对象404、GitHub403、main禁止写。
+- **本地证据**：干净的 dev clone Node24 `npm ci`、`npm run check`、`npm run test:worker-runtime` 6/6 均 exit0；Github Contents53/53、Router220/220、Bootstrap56/56、Reflection69/69、Memory Core120/120、Learning11 exit0。受限网络下 Miniflare Request.cf 使用非阻断默认值（本地警告），不影响退出码。
+- **远端证据**：柳柳另行授权3份不含密钥文件经自有 Worker `/upload` 公开存储中转，再由 Ziven MCP `github_push` 写 dev（各 Verified:true），其余已有文件经 `github_edit` 及回读验证。远端 `mcp-memory/dev` SHA `ee7c452b8f0c35cc66f8bf16b1e12ed6705d4a81` 与独立本地6文件净差异0。官方 [learning-regression #42342246924](https://github.com/wovowx/mcp-memory/actions/runs/42342246924) completed/success；`npm ci`、E1、GitHub Contents、E2-runtime Workerd 四关键步骤独立 success。
+- **边界与下一步**：只证明本地 Worker 原生运行时合成 E2-runtime，不是生产/宿主 E3。main/Worker 保持已验 v6.53.1/#548；dev 相对 main ahead15/behind0、净11文件，含暂停 M1。未动 main、生产部署、DB、Secrets、私人记忆或聊天室。发布前须对具体版本的业务收益、完整净差异（含休眠 M1）和回滚单独取得柳柳批准，不能自动合并。
+
+
 
 
 
