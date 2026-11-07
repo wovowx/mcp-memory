@@ -2,6 +2,19 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.59.0] - 2026-11-07（仅 dev 候选 · L3 自然语言任务识别）
+
+### 柳柳实际能得到什么
+- **少一次手工填写学习场景字段**：沿用现有 `session_context.learning_task`，支持提供自然语言 `description` 与明确的 `repo/branch`；服务端通过保守的纯规则归一为 `github.file.create` 或 `github.file.edit`，与现有已批准 lesson 的旧 intent 别名兼容。无需新建 MCP 工具、表或学习 Runtime；没有描述时旧 `intent/entities` 路径保持不变。
+- **避免误用经验**：同时提到新建/修改、否定操作、询问教程、无关/本地操作都不强行推荐 GitHub 工具；缺 repo/branch 返回 `NEEDS_SCOPE`，未暴露工具、未批准候选、main、能力冲突及权威恢复失败沿用现有阻断。`tools/list` 对已注册 `session_context` 使用同一静态工具说明和最新 Schema，提示宿主调用时机；返回仍只读、不执行工具、不授予权限。
+- **现实边界**：ChatGPT 暂为主宿主，但 MCP 服务器没有收到宿主调用前无法自行检索。当前两条真实 GitHub lesson 仍是 `candidate/pending/approval_ref=null`，本版不会偷偷晋升或改变工具权限；全新 ChatGPT 自然调用及实际经验应用的 E3 仍须发布后另验收。Router/Scenes 已有的确定性保护与 Contents 复用保持原样。
+
+### dev 测试及授权范围
+- `Reflection` 增加任务文字保守归一、意图别名匹配及分离/反例；`Session` 增加自然语言只读预检、缺作用域提示和阻断优先级；`Router` 仅统一已注册工具的公开描述。相关 E1/E2：Reflection **89/89**、Session **78/78**、Router **227/227**、Scenes **36/36**、GitHub Contents **53/53**、Memory Core **120/120**、原生 Workerd **8/8**、12 个学习工件、`npm run check` 全通过。CI/远端 SHA 在提交后另行核验；本地结果不等于真实宿主 E3。
+- 本版由柳柳确认 L3 v0.1 原型及 ChatGPT 暂为主宿主，仅授权 `dev` 施工和验证；不触及 main、Cloudflare 正式部署、Supabase/私人记忆/生产 Skills、聊天室、Operit、Web/AAS、密钥。版本发布必须另报具体效果和净差异，经柳柳独立批准。
+
+---
+
 ## [v6.58.0] - 2026-11-07（ChatGPT 原生 L3 可选任务前建议）
 
 ### 柳柳能得到的实际变化
