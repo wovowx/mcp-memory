@@ -2,6 +2,18 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.53.1] - 2026-11-07（GitHub 新文件上传 · Cloudflare Redirect 兼容修复候选，仅 dev）
+
+### 柳柳实际会得到什么
+- 修正 v6.53.0 上线后 E3 实测发现的第二个 `github_push` 兼容问题：Cloudflare Workers 原生 `fetch` 不支持 `redirect: 'error'`，因此上传新文件时仍在读取 Supabase URL 处报 `CONTENT_FETCH_FAILED/Invalid redirect value`。将该选项改为 Workers 支持的 `redirect: 'manual'`，并保留 `!response.ok` 拒绝 3xx/失败响应，禁止自动跳转到其他地址。
+- GitHub Contents 合同从 51 增至 53 项：模拟 Workers 对 `error` redirect 选项抛错、验证合法 `manual`、验证 302 被拒且绝不写 GitHub；Router 合同同步更新成 `manual`，确保整体 220 项合同可通过。
+
+### 验收与发布边界
+- 本版只涉及 `src/modules/github/contents.js`、两个回归测试、版本号和本记录，不修改工具名称/Schema、数据库、Secrets、生产配置、聊天室或 Operit 设备。v6.53.0 已上线且 Worker #547 经 `verify_main` 证实；v6.53.1 当前仅准备 dev 候选，**未获得单独 main/Cloudflare 发布同意前不合并**。
+- 如获批准按 dev→PR→rebase→main→Worker `verify_main` 执行，线上再次调用 `github_push` 创建 M1 新文件到 dev，再做 GitHub 回读和 E1/E2；真实 Operit E3 仍需宿主侧后续测试。回滚基线 v6.53.0、main `489001d477e6c6ddeadccf590c631d57ccbb7ca8`、Worker #547。私人云端工作检查点不自动改写。
+
+---
+
 ## [v6.53.0] - 2026-11-07（L3 纠错应用与 GitHub 新文件上传修复）
 
 ### 柳柳实际会得到什么
