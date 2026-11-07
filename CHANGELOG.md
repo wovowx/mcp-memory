@@ -2,6 +2,20 @@
 
 所有重要变更将记录在此文件中。
 
+## [v6.53.0] - 2026-11-07（L3 纠错应用与 GitHub 新文件上传修复）
+
+### 柳柳实际会得到什么
+- **L3 v0.3 可追溯学习前置能力**：在已有 Reflection 原子能力中复用 `evaluateCorrectionTrail`、`planLearningPreflight` 和 `compareLearningTrials`，把真实错误、反馈、恢复路径挂接成可检查来源；仅对已有审批的 active lesson 在当前工具确实可用时给出任务前建议；提供同任务/同工具能力下的前后对照。候选仍是 `pending`，不会自行晋升、执行或假称跨新框已学会。`reflection_preview --preflight` 可只读预览。
+- **修复 GitHub 新文件创建**：`github_push(content_url=自有 Supabase 存储地址)` 原本因 Worker 的 `fetch` 调用丢失 receiver 而返回 `CONTENT_FETCH_FAILED/Illegal invocation`，本版把 `pushFileFromStorage` 的存储读取改成已在同模块使用的 `.call(globalThis,...)`，恢复现有合法上传路径；新增严格模拟原生 `fetch` receiver 的回归，避免再次出现“已有工具却用不了”。**发布后仍须实际再试一次 `github_push` 才能确认生产路径修好。**
+
+### 验收范围与边界
+- 代码净变更在本版发布准备前为 8 路径：现有 `reflection.js`、预览脚本、master-router、Reflection 测试/候选、GitHub Contents 一行调用修复与回归、跨宿主 Bridge。仅再更新 `package.json` 和本 CHANGELOG 完成版本化。没有新 MCP 工具名、Schema、依赖、数据库结构、Secrets、持久日志开关或聊天室改动；不会自动安装 Operit 适配器。
+- E1/E2：`npm run check`、`npm run test:reflection`（69/69）、`npm run test:github-contents`（51/51）、`npm run test:contracts`（220/220）、`npm run test:bootstrap`（56/56）、`npm run test:memory-core`（120/120）、`python3 tests/learning/run_learning_tests.py`（11工件）在隔离工作树运行验证。dev 代码候选 `a5b0e9b4017ca81e31fdfe260a62d7a17a5becf3` 的 GitHub Actions [learning-regression #42334055883](https://github.com/wovowx/mcp-memory/actions/runs/42334055883) 已 `completed/success`；版本化提交之后应再次按最终 SHA 校验 CI。
+- 真实跨新框选路、自动 preflight、完整五源 Operit 恢复仍是 E3 `NOT_VERIFIED`。本版 main 发布仅在柳柳 2026-11-07 明确回复“发布吧”后按 PR/rebase/Worker 自动部署执行。**发布前**不称上线；**部署后**必须读 PR/main 与 `cloudflare_deploy_status(verify_main=true)`，单独证明 `DEPLOY_VERIFIED`。
+- 回滚基线为 v6.52.0、main `1633ae16009597edca1c29232ec2f8c0ee348b1d`、Worker #546。若发布导致异常，在获得相应许可后从该确定基线恢复；不删除数据库或历史证据。云端唯一 `⚙️/当前工作检查点` 本次没有单独写入授权，故保持 v213，不把发布自动扩大为私人记忆更新。
+
+---
+
 ## [v6.52.0] - 2026-11-07（dev 候选 · L3 工具选择纠错与行为证据）
 
 ### 柳柳实际会得到什么
