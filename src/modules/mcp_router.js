@@ -465,7 +465,9 @@ export async function handleMCPRequest(body, env) {
         const skills = await getCachedSkills(env);
         const tools = skills.map(s => ({
             name: s.name,
-            description: s.name === 'memory'
+            description: s.name === SESSION_CONTEXT_TOOL.name
+                ? SESSION_CONTEXT_TOOL.description
+                : s.name === 'memory'
                 ? [s.description, 'history：提供按完整 key 的显式只读历史查询；旧版本和事件账本不会被恢复为当前有效记忆。',
                     'health_check：记忆体检场景；默认 demo 合成预览，sample 仅在柳柳本次明确授权后元数据只读。']
                     .filter(Boolean).join('\n')
