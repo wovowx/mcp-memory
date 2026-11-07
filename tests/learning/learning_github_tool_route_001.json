@@ -1,7 +1,7 @@
 {
   "test_id": "learning_github_tool_route_001",
   "name": "L3 · GitHub 403 与新文件工具漏发现的可追溯候选",
-  "description": "2026-11-07 真实案例：通用 GitHub connector 对 ZivenLab/dev 已有文档更新报 403；同一宿主 Ziven MCP github_edit 可用并完成 dry_run、写入、回读。后来创建新文件任务又只想到 github_push，遗漏已有 github_copy 可复制合法源文件免上传。不能把单通道失败或缺少上传路径说成所有 MCP 都做不到。新框无提醒 E3 尚未验证，保持 candidate。",
+  "description": "2026-11-07 真实案例：通用 GitHub connector 对 ZivenLab/dev 已有文档更新报 403；同一宿主 Ziven MCP github_edit 可用并完成 dry_run、写入、回读。后来创建新文件任务又只想到 github_push，遗漏已有 github_copy 可复制合法源文件免上传。不能把单通道失败或缺少上传路径说成所有 MCP 都做不到。后续 ChatGPT 新框自然任务已自主选择 Ziven MCP github_edit 更新 dev 交接并独立回读，为已有文件选路提供一次真实 E3；跨宿主、无提示任务前学习预检仍未验证，保持 candidate。",
   "lesson_key": "PROPOSED:host_github_tool_route",
   "status": "candidate",
   "correction_trail": {
@@ -65,21 +65,21 @@
     "Ziven MCP github_edit 可用时，dev 已有文件须先 dry_run 再写入并 github_read 回验",
     "任何连接器 403 仅说明该通道失败，继续核验允许的其他已配置通道",
     "无法使用任何获授权的路径时停止并解释，不假报成功",
-    "下一新框不经柳柳提醒的工具选择需独立 E3 行为观察"
+    "2026-11-07 ChatGPT 新框已观察到一次无工具名提示的 github_edit 选路与真实 dev 写入；后续独立任务和跨宿主仍须观察"
   ],
   "blocked_actions": [
     "将通用 GitHub connector 的 403 直接判为 Ziven MCP/GitHub 整体无权限",
     "未经核验就让柳柳重复改 GitHub token/插件权限",
     "未检查 github_copy 及上传通道就断言新文件不能创建或必须柳柳手动下载",
     "未经授权用 github_copy(overwrite=true) 覆盖已有路径，或擅自写 main",
-    "仅因文本规则和合成 E2 成功就宣布换框不再犯错",
+    "仅因文本规则、合成 E2 或单次真实 E3 成功就宣布任何宿主和任务中都不会再犯错",
     "未获独立发布授权直接写 main 或部署",
     "未经单独许可修改云端私人记忆/数据库"
   ],
   "verification": [
     "E1: 读取 dev Skills 与 JSON 验证 schema/场景合同",
     "E2: npm run test:reflection 的 5 场景合成选路与试验记录门禁",
-    "E3: 新框同类 dev 文件编辑，在无工具提醒时观察实际选用 Ziven MCP github_edit、dry_run/写/回读；尚未执行",
+    "E3: 2026-11-07 ChatGPT 新框自然继续工作时，无工具名提示而主动选用 Ziven MCP github_edit；dev/CROSS-HOST-BRIDGE.md dry_run→实际写入 Verified:true→独立 github_read 内容命中，见固定提交 9891589051467494336c7d06b7ad78442f6bbea8；此场景已观测一次，但自动任务前 preflight 和跨宿主尚未通过",
     "独立对照：若 Ziven MCP 真未暴露，应报告 UNAVAILABLE 而非假称有权"
   ],
   "reflection": {
@@ -88,18 +88,20 @@
     "source_refs": [
       "conversation:2026-11-07:connector403→ziven_mcp.github_edit",
       "https://github.com/wovowx/mcp-memory/blob/dev/src/skills/guide/github-use-guide/SKILL.md",
-      "https://github.com/wovowx/ZivenLab/blob/dev/governance/roadmap.md"
+      "https://github.com/wovowx/ZivenLab/blob/dev/governance/roadmap.md",
+      "https://github.com/wovowx/mcp-memory/blob/9891589051467494336c7d06b7ad78442f6bbea8/CROSS-HOST-BRIDGE.md"
     ],
     "evidence_for": [
       "本轮已记录通用 GitHub 连接器 403 Resource not accessible by integration",
-      "改走 Ziven MCP github_edit 先 dry_run、后成功写入和 github_read 回验；本条为用户会话来源报告，非后续冷启动 E3"
+      "改走 Ziven MCP github_edit 先 dry_run、后成功写入和 github_read 回验；首次纠错为用户会话来源报告",
+      "2026-11-07 后续 ChatGPT 新框仅收到自然语言继续工作（同时有 AGENTS.md/项目背景），主动选择 Ziven MCP github_edit 更新 dev 已有 Bridge，dry_run、Verified:true 写入和独立 github_read 均成功；固定提交 9891589051467494336c7d06b7ad78442f6bbea8 可核对交接事实，但不能据此推定模型执行了自动学习预检"
     ],
     "evidence_against": [
-      "新框无提示选路及 Operit 跨宿主选择未做 E3"
+      "ChatGPT 新框已观察一次既有文件选路，但尚未见模型自动调用 planLearningPreflight；Operit 跨宿主选择未做 E3"
     ],
     "validation_state": "pending",
     "target": "workflow",
-    "decision_reason": "路线规则与合成回归可以在 dev 完成，但未见跨新框真实行为变化，禁止宣称永久学会。",
+    "decision_reason": "现有 GitHub 文件编辑场景已见一次新框真实选路改善，但 lesson 未经独立批准为 active、未自动运行 planLearningPreflight，也没有跨宿主重复试验；保持 pending，禁止宣称永久学会。",
     "validation_refs": []
   },
   "scenarios": [
