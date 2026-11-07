@@ -3766,6 +3766,12 @@ GPT 已静态确认：`src/tools/knowledge.js` 通过 `getSkillByName()` 读取�
 ### [2026-11-07 · ChatGPT → Operit / 后续框] v6.57.0 正式发布 / 工作检查点 v220 · VERIFIED（仅 dev 交接文档）
 - **发布与回读实证**：柳柳对 v6.57.0 完整发布说明回复「ok」授权本版；[PR #347](https://github.com/wovowx/mcp-memory/pull/347) 经 rebase 合并且独立确认 closed/merged=true，main=dev=`6f97b133ca172898aeca91ec7e67909537583951`（ahead0/behind0）。候选 [PR CI #42364659743](https://github.com/wovowx/mcp-memory/actions/runs/42364659743) 与合并后 [main CI #42364732957](https://github.com/wovowx/mcp-memory/actions/runs/42364732957) 均 completed/success；Cloudflare Worker **#554 / deployment `6b7b3c2e` / verify_main=VERIFIED**。限定 B 仅同步云端 `⚙️/当前工作检查点` **v219→v220**：新全文 **42185/42185 字符**分9段逐字回读一致、旧 v219 **39356 字符**原文完整作为后缀保留；`session_context(include_core=false)` **READY/version220**。GitHub Pages [#42364733180](https://github.com/wovowx/mcp-memory/actions/runs/42364733180) 单独失败，与 Worker 部署不是同一流程。**服务端一本书架构复用/场景/依赖闭环已发布；ChatGPT/Operit 新框无人提示自动恢复、L3 真任务前学习与工作/相处连续性 E3 仍 OPEN**，不声称完成。下一行动在自然新框做一次真正工作任务的宿主 E3 证据，不再以审计代替成果；若需新宿主 Hook/架构改动先需求、原型、柳柳验收。Operit M1/220MB、聊天室、Web/AAS、DB/Secrets 仍暂停；新的 main 需逐版单独许可。
 
+### [2026-11-07 · ChatGPT → 后续框] 「继续」自然任务·本会话只读 E3 部分实测（不是新框冷启动）
+- **触发与真实路径**：柳柳在 v6.57.0 发布闭环答复后仅回复「继续」，没有指定工具名、路径或重复主线。当前 ChatGPT 会话自主发现宿主 Ziven_MCP 的 `session_context`、`session_bootstrap`、`master_router`、`github_read`、`github_create_file` 等实际入口，并按主线选择恢复与 GitHub 实测，未调 Operit。
+- **恢复证据**：`session_context(host=chatgpt,invocation=explicit,include_core=false)` `READY`、五源 ok、checkpoint **v220**，`startup_hook_verified=false`；`session_bootstrap(host=chatgpt,invocation=explicit)` `SB-RUNTIME-0.1 READY`、实时 memory stats **301条/23类**、`workflow_state=BOOK_CORE_V6570_WORKER554_DEPLOY_VERIFIED_HANDOFF_VERIFIED_USER_VISIBLE_CONTINUITY_E3_PENDING`，`host.capability_evidence=host_reported_not_tested`。这证明当前会话被动 MCP 显式恢复可用，不代表自动新框调用。
+- **独立场景工具调用**：真正调用线上 `github_read(wovowx/mcp-memory/main/package.json,1:16)` 成功读出 `version=6.57.0`；真正调用 `github_create_file(repo=mcp-memory,branch=dev,path=tests/e3/2026-11-07-chatgpt-continuity-probe.md,dry_run=true)` 返回 `Existing target: absent`、`UTF-8 size: 44 bytes`、`No write performed`。故当前宿主不只是工具名可见，GitHub 读取与新文件场景的**预检**实能响应；这不是新文件创建成功、也不是一次完整写入 E3。
+- **判定和边界**：**当前会话自然「继续」→读取权威状态→选对真实工具并完成只读/预检：PARTIAL E3，有工具调用事实**；**全新 ChatGPT 框首次自动调用、无需背景提示恢复人格与任务、L3 无提示 preflight、真实完整 dev 文件创建及双连续性均 NOT TESTED**。不为冒充 E3 新建空文件/修改代码、生产、main、DB、Secrets、私人记忆或聊天室；无需柳柳参与 Operit 付费真机测试。等下次自然新框出现时独立对照首次触发时间、工具调用、实际工作结果，再决定是否需要宿主 Hook 原型讨论。
+
 
 
 
