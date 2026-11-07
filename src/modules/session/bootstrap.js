@@ -2,6 +2,8 @@
 // Reuses Memory Core; no chatroom or Agent Runtime dependency.
 import { getCurrentMemoryByKey } from '../memory/repository.js';
 import { getMemoryStats, searchMemoriesWithStatus } from '../memory/retrieval.js';
+import { planLearningPreflight } from '../reflection.js';
+import { getEnabledSkills } from '../../utils/skills.js';
 import { BOOTSTRAP_KEYS } from './keys.js';
 export { BOOTSTRAP_KEYS } from './keys.js';
 
@@ -23,7 +25,7 @@ export const SESSION_CORE_CONTRACT_VERSION = 'CORE-0.2';
 export const SESSION_CORE_BUDGET_CODE_POINTS = 24000;
 export const SESSION_CONTEXT_TOOL = Object.freeze({
     name: 'session_context',
-    description: '只读继续工作场景：默认返回工作摘要；仅显式 include_core=true 才返回五个权威来源的完整核心上下文。始终不授予执行权限或保证宿主自动调用。',
+    description: '只读继续工作场景：默认返回工作摘要；可选 learning_task 基于已启用 Skill 中结构化审核经验返回任务前建议；include_core=true 才返回完整核心上下文。不授予执行权限，也不保证宿主自动调用。',
     input_schema: {
         type: 'object',
         properties: {
@@ -31,7 +33,18 @@ export const SESSION_CONTEXT_TOOL = Object.freeze({
             invocation: SESSION_BOOTSTRAP_TOOL.input_schema.properties.invocation,
             available_tools: SESSION_BOOTSTRAP_TOOL.input_schema.properties.available_tools,
             topic: { type: 'string', description: '可选，需召回关联记忆的具体主题；留空只恢复当前工作' },
-            include_core: { type: 'boolean', description: '显式返回五个权威来源的完整核心上下文；默认 false，不向旧调用泄露私人全文' }
+            include_core: { type: 'boolean', description: '显式返回五个权威来源的完整核心上下文；默认 false，不向旧调用泄露私人全文' },
+            learning_task: {
+                type: 'object',
+                description: '可选，任务前只读学习建议；available_tools 必须在顶层由当前宿主上报，不会验证工具真的可执行',
+                properties: {
+                    intent: { type: 'string' },
+                    entities: { type: 'array', items: { type: 'string' } },
+                    repo: { type: 'string' },
+                    branch: { type: 'string' }
+                },
+                required: ['intent', 'entities', 'repo', 'branch']
+            }
         }
     }
 });
@@ -378,6 +391,44 @@ function buildEmptySessionCore(reason) {
     };
 }
 
+/** Optional L3 advisory: reuse the existing enabled Skill registry and Reflection gate.
+ * Metadata, approval refs and advertised tools are not independently verified;
+ * this never dispatches a tool, grants permission, or promotes a candidate.
+ */
+async function attachLearningPreflight(result, input, env) {
+    if (!Object.hasOwn(input, 'learning_task')) return result;
+    const request = input.learning_task;
+    const task = {
+        intent: request?.intent,
+        entities: request?.entities,
+        repo: request?.repo,
+        branch: request?.branch,
+        available_tools: result.host?.advertised_tools || []
+    };
+    const evidence = { lesson_source: 'enabled_skills.handler_config.learning',
+        approval_evidence: 'registry_claim_not_independently_verified' };
+    const validation = planLearningPreflight(task, []);
+    if (validation.status === 'INVALID') {
+        result.learning_preflight = { ...validation, ...evidence };
+        return result;
+    }
+    if (result.status === 'BLOCKED') {
+        result.learning_preflight = { status: 'BLOCKED', reason: 'authority_restoration_blocked',
+            advisory_only: true, executed: false, host_verified: false, ...evidence };
+        return result;
+    }
+    try {
+        const skills = await getEnabledSkills(env);
+        const artifacts = skills.map(skill => skill?.handler_config?.learning)
+            .filter(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact));
+        result.learning_preflight = { ...planLearningPreflight(task, artifacts), ...evidence };
+    } catch {
+        result.learning_preflight = { status: 'UNAVAILABLE', reason: 'skill_registry_unavailable',
+            advisory_only: true, executed: false, host_verified: false, ...evidence };
+    }
+    return result;
+}
+
 /**
  * Resume-work context. Default calls preserve the SC-RUNTIME-0.1 summary shape.
  * Full private source text is returned only when include_core=true explicitly.
@@ -398,7 +449,7 @@ export async function buildSessionContext(env, args = {}) {
             blocked.core_contract_version = SESSION_CORE_CONTRACT_VERSION;
             blocked.core = buildEmptySessionCore('request_validation_failed');
         }
-        return blocked;
+        return attachLearningPreflight(blocked, input, env);
     }
 
     const snapshot = await loadSessionSnapshot(env);
@@ -436,7 +487,7 @@ export async function buildSessionContext(env, args = {}) {
         }
         if (!core.critical_complete) result.permissions.permitted_next_step = 'read_only_recovery';
     }
-    if (bootstrap.status === 'BLOCKED') return result;
+    if (bootstrap.status === 'BLOCKED') return attachLearningPreflight(result, input, env);
 
     try {
         const checkpoint = snapshot.records.checkpoint;
@@ -446,7 +497,7 @@ export async function buildSessionContext(env, args = {}) {
             result.blockers.push('checkpoint_missing_from_snapshot');
             result.permissions.permitted_next_step = 'read_only_recovery';
             if (includeCore && result.core.status !== 'BLOCKED') result.core.status = 'BLOCKED';
-            return result;
+            return attachLearningPreflight(result, input, env);
         }
         const parsed = snapshot.checkpoint;
         if (!parsed?.structured_fields_verified) {
@@ -473,7 +524,7 @@ export async function buildSessionContext(env, args = {}) {
         result.blockers.push('checkpoint_context_read_failed');
         result.permissions.permitted_next_step = 'read_only_recovery';
         if (includeCore && result.core.status !== 'BLOCKED') result.core.status = 'BLOCKED';
-        return result;
+        return attachLearningPreflight(result, input, env);
     }
 
     if (topic) {
@@ -534,7 +585,7 @@ export async function buildSessionContext(env, args = {}) {
             if (result.status === 'READY') result.status = 'DEGRADED';
         }
     }
-    return result;
+    return attachLearningPreflight(result, input, env);
 }
 export async function handleSessionContext(name, safeArgs, env) {
     if (name !== SESSION_CONTEXT_TOOL.name) return 'ERROR: Unknown session context tool: ' + name;
