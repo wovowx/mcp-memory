@@ -9,7 +9,7 @@
 - 复用现有 `isSuccessfulToolResult` 的统一出口判定，不改工具名、公开 Schema、GitHub/Memory 基础方法或真实返回正文；已确认的正常成功仍保留一次使用计数。
 
 ### 可核验边界
-- `tests/router_registry_contract_test.mjs` 新增部分成功负例及正常成功正例，先有 RED 后修复 GREEN；实际本地 `npm run check`、Router 226/226、Reflection 74/74、场景 23/23 全部退出码0。最终远端 SHA 与 CI 仍需独立核验；这些只是 E1/E2，不证明 ChatGPT/Operit 自动执行学习预检。
+- `tests/router_registry_contract_test.mjs` 新增部分成功负例及正常成功正例，先有 RED 后修复 GREEN；实际本地 `npm run check`、Router 226/226、Reflection 74/74、场景 23/23 全部退出码0。代码提交 `2a7cbc8b0fe2caca93f1df03edc983319bc05d4d` 的官方 [learning-regression #42360527007](https://github.com/wovowx/mcp-memory/actions/runs/42360527007) 已完成且成功；这些只是 E1/E2，不证明 ChatGPT/Operit 自动执行学习预检。
 - 本版仅 dev 候选，不触碰 main/Cloudflare、数据库 Schema/真实数据/私人记忆、Secrets、聊天室、Operit M1 或 Web。发布仍须柳柳逐版批准。
 
 ---
@@ -24,7 +24,7 @@
 ### 工程闭环、权限与验收
 - 直接文本入口只面向允许仓库的 `dev`、**全新**相对路径、≤64 KiB UTF-8 文本；原有 GitHub 读取/写入/验证原子方法未复制，任何 main、越权仓库、已有目标、错误的目标检查均拒绝写入。若写入成功但回读失败，返回明确的 PARTIAL 与目标，绝不冒充完成。
 - 新增 `tests/scene_workflow_contract_test.mjs` 与 `npm run test:scenes`；路由契约和原生 workerd 契约一并覆盖场景工具发现、schema、读写核验、失败与零写入、Host Core 边界，加入现有 GitHub Actions learning-regression 工作流。验收证明以最终提交 SHA 的本地测试/官方 CI 为准，E3 新宿主主动能力仍未验证。
-- **这是 dev 候选，不是已发布能力**；没有修改数据库 schema、生产数据/记忆、Secret、聊天室、Operit M1、浏览器与生产 Worker；main/Cloudflare 部署仍须柳柳收到下一份有用户价值与风险的独立发布单后明确同意。
+- **v6.56.0 已按柳柳逐版许可正式发布**，GitHub PR #345 合并、Cloudflare Worker #552 经独立验证；该版未修改数据库 schema、私人记忆、Secret、聊天室、Operit M1 或浏览器。新的 dev 候选仍须另行获得 main/Cloudflare 发布许可。
 
 ---
 
