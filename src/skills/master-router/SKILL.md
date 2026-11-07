@@ -63,7 +63,7 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 | **改代码要发布/部署后闭环验证** | **publish-workflow** | code-quality-guard → github_edit(dev,三键) → merge → sleep45 → verify_main |
 | **修改已有文件（改文档/改代码/更新内容）** | github-use-guide | **github_edit**（读→改→写回一次完成；v6.32.5+） |
 | **跨宿主修改 Ziven GitHub 已有文件（尤其 ChatGPT 通用连接器 403）** | github-use-guide · L3 v0.2 跨宿主选路 | **先验当前宿主 Ziven MCP github_edit 是否可用** → dev dry_run → 写 → github_read 回验；通用连接器 403 ≠ 全局无权 |
-| **创建新文件（推新文件）** | github-use-guide | **github_push**（仅新文件；已有文件会被拒） |
+| **创建 GitHub 新文件（先核验全部工具）** | github-use-guide · L3 新文件选路 | **有合法源文件：github_copy → 按需 github_edit → github_read；无源文件：/upload → github_push(content_url) → github_read**。先查本宿主可用工具，不把某条路径不可用误报全局做不到 |
 | 日常 GitHub 操作 | github-use-guide | github_* |
 | 定时任务 / 巡检 / 自续 | workflow | daily_life schedule |
 | 发语音 / 语音问题 | voice_bubble | <v>气泡 |
@@ -78,9 +78,11 @@ AI 的"总调度中心"。不直接回答，而是把用户需求路由到正确
 
 > 🎯 **工具调用三键自查（lesson已登记 ⚙️/lesson-工具调用构造层污染 · 2026-10-18）**：每次构造工具调用，尤其长参数/长命令时，默念三键齐全——① `params`（含 path/repo/branch 等必需字段）② `tool_name`（外层）③ params 若 JSON 则字段完整。缺 tool_name 或 path 是最高频构造层错误。代码层已由 dispatch_tool 硬拦（缺 tool_name→INVALID_TOOL_NAME/UNKNOWN_TOOL；缺 path→MISSING_REQUIRED_PARAM），但构造时主动自查能更快、不浪费一次调用。
 
-> 🎯 **文件操作三入口（v6.32.6 五层保障）**：创建文件 → github_push（新文件）；修改已有文件 → **github_edit**；删除 → github_delete。github_push 对已有文件一律拒绝（GITHUB_PUSH_EXISTING_FILE），这是系统硬约束不是建议。
+> 🎯 **文件操作场景选路（2026-11-07）**：创建 GitHub 新文件先查实际工具与文件来源；**github_copy** 可以把已存在且允许读取的源文件复制到 dev 新路径（`overwrite=false`），**github_edit** 再按需编辑，最后 **github_read** 验证，无须先下载上传；没有合适源文件才走已有 `/upload → github_push(content_url)`。修改已有文件仍用 **github_edit**；删除用 github_delete。**不能直接生成任意新内容**时须说明所缺的源文件或上传通道，不可因为没想到 github_copy 就说整个 MCP 无法创建；不得为凑路径虚构模板、覆写现有文件或擅自写 main。
 >
 > 🎯 **L3 v0.2 跨宿主防复发**：先检查当前实际暴露的工具和 repo/branch，再选择该宿主可用的 Ziven MCP 工具。ChatGPT 通用 GitHub 连接器出现 `403 Resource not accessible by integration`，只代表该连接器当前操作失败；优先核查已有的 `ziven_mcp.github_edit/read`，而不是宣称整个 GitHub 受限、重复让柳柳改权限。dev 改已有文件须 dry_run→写→回读，main 必须独立发布授权。记录真实成功与失败证据，新框无提示选路的 E3 未验证前不称「永久学会」。详细见 github-use-guide 和 `tests/learning/learning_github_tool_route_001.json`。
+
+> 🎯 **L3 新文件再犯纠错**：在回答「做不到」「需要柳柳下载」前，先用当前宿主工具清单验证 `github_copy`、`github_edit`、`github_push` 和上传入口是否真实可调用。只有合法源文件时才可 copy→edit；没有则调查 `/upload`+`content_url`；仍无完整路径才标 `UNAVAILABLE` 和缺失环节，不将权限不足误说为没有工具。`tests/learning/learning_github_tool_route_001.json` T6–T8 是合成选路约束，真实新框 E3 保持待验收。
 
 > 🎯 **L3 v0.3 任务前学习纪律（dev 候选）**：纠错先留下「失败→柳柳反馈→恢复结果」的来源指针，再在相关任务中比对情境标签、当前宿主实际暴露的工具和分支。`src/modules/reflection.js` 的 `evaluateCorrectionTrail` / `planLearningPreflight` / `compareLearningTrials` 是纯读与 E2 对照原子能力；`scripts/reflection_preview.mjs --preflight` 只给建议，不会调用工具。**candidate 与缺有效审核引用的记录不得自动激活**；主分支、缺工具、矛盾路线均需明确拦截。E2 合成对照的 IMPROVED 不等于宿主 E3 学会；ChatGPT/Operit 是否主动执行本纪律仍待真实观察，不能假称已装全局启动钩子。
 
