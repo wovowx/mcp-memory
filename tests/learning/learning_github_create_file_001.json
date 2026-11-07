@@ -1,0 +1,92 @@
+{
+  "test_id": "learning_github_create_file_001",
+  "name": "L3 · GitHub 新文件优先使用可用的场景入口",
+  "description": "2026-11-07 曾在创建新文件时只考虑 github_push 的 content_url 上传前置，漏看同一宿主已有的 github_copy；后来新增并真实调用了 dev-only 的 github_create_file，成功创建 .gitignore 并独立回读。此候选只匹配新文件创建，不影响已有文件修改。它是可追溯学习候选，不是当前生效的建议或对任意新框的保证。",
+  "lesson_key": "PROPOSED:host_github_create_file_route",
+  "status": "candidate",
+  "correction_trail": {
+    "failure": {
+      "action": "new GitHub file request routed only to github_push requiring a content_url",
+      "outcome": "agent implied manual download or upload was unavoidable without checking other exposed paths",
+      "source_ref": "conversation:2026-11-07:new-file-route→github_create_file"
+    },
+    "feedback": {
+      "actor": "柳柳（用户）",
+      "action": "质疑为什么必须自己下载或上传，要求先检查现有工具",
+      "outcome": "route correction requested",
+      "source_ref": "conversation:2026-11-07:new-file-route→github_create_file"
+    },
+    "recovery": {
+      "action": "ChatGPT 选择已暴露的 ziven_mcp.github_create_file，先 dry_run，再实际创建 dev/.gitignore 并回读",
+      "outcome": "verified creation in one real ChatGPT task; automatic preflight still unverified",
+      "source_ref": "https://github.com/wovowx/mcp-memory/blob/7ea41a0982dc8126bceca84b6567fce67d8b8415/CROSS-HOST-BRIDGE.md"
+    }
+  },
+  "application": {
+    "intent_any": ["create-github-file", "创建 GitHub 新文件", "GitHub 新文件创建"],
+    "entity_any": ["GitHub", "github_create_file"],
+    "preferred_tool": "ziven_mcp.github_create_file",
+    "tool_aliases": ["mcp__codex_apps__ziven_mcp_github_create_file", "ziven_mcp:github_create_file"],
+    "steps": ["confirm_new_text_file_and_dev_scope", "dry_run_must_report_absent", "create_only_with_task_authorization", "require_verified_true_and_readback"],
+    "allowed_branches": ["dev"],
+    "allowed_repos": ["wovowx/mcp-memory", "wovowx/ZivenLab"],
+    "approval_ref": null
+  },
+  "trigger": {
+    "intents": ["创建 GitHub 新文件", "GitHub 新文件创建", "没有上传工具", "新文件需要 content_url", "create-github-file"],
+    "entities": ["GitHub", "github_create_file", "github_copy", "github_edit", "github_push", "dev", "content_url"]
+  },
+  "checks": [
+    "先区分新建与修改已有文件；核实当前宿主实际暴露的工具、repo 和 branch",
+    "若 github_create_file 可用且为 dev 新 UTF-8 文本，先 dry_run 检查不存在，再获准执行并要求 verified=true 与独立回读",
+    "若直建工具未暴露，检查有无合法源文件可 github_copy(overwrite=false)→github_edit→github_read；无源时再查可用的 /upload→github_push(content_url) 路径",
+    "推荐工具缺失只意味着该直接入口 UNAVAILABLE，不推断其余已授权 GitHub 通道都不可用",
+    "若目标已存在，不覆盖；先回到已有文件修改场景；main 始终走单独发布审批",
+    "模型是否在另一个新框自主预检、以及跨宿主重现须另做真实 E3，不能凭一个成功场景声称永久学会"
+  ],
+  "blocked_actions": [
+    "仅看到 github_push 需要 content_url 就让柳柳自己下载或上传，且不检查本宿主其它工具",
+    "未验证目标不存在便创建，或用 overwrite=true 覆盖已存在文件",
+    "将 preferred_tool_not_exposed 误报为全体 GitHub 工具不可用",
+    "在 main 或不允许的仓库创建文件，或绕过独立发布批准",
+    "把 dry_run 当作实际创建成功，或把 PARTIAL/UNKNOWN 当成 verified=true",
+    "在没有原始审批引用时将候选自动升为 active 或修改生产 Skills 注册表"
+  ],
+  "verification": [
+    "E1: 读取真实 github_create_file 场景接口、旧 copy/edit/upload 路径与新旧候选的 intent 隔离",
+    "E2: Reflection 合同中 new-file / existing-file 双向隔离、候选不晋升、缺能力返回 UNAVAILABLE、main BLOCKED 与多候选不冲突",
+    "E3: 2026-11-07 ChatGPT 曾用 ziven_mcp.github_create_file 为 dev/.gitignore dry_run→创建→独立 github_read Verified:true，固定交接记录见 7ea41a0982dc8126bceca84b6567fce67d8b8415/CROSS-HOST-BRIDGE.md；无自动 preflight 证据",
+    "待验收：批准注册后的真实 session_context.learning_task READY、工具选择、行为成败与全新自然会话复现"
+  ],
+  "reflection": {
+    "candidate_id": "l3-host-github-create-file-route-2026-11-07",
+    "hypothesis": "把新文件创建与已有文件修改分开匹配，优先选宿主真实暴露的 dev-only github_create_file，可减少误判上传为必需或将单工具不可用扩大成全局无权。",
+    "source_refs": [
+      "conversation:2026-11-07:new-file-route→github_create_file",
+      "https://github.com/wovowx/mcp-memory/blob/7ea41a0982dc8126bceca84b6567fce67d8b8415/CROSS-HOST-BRIDGE.md",
+      "https://github.com/wovowx/mcp-memory/blob/805cbedafc561fafd0cade9fe612f24feb341f7c/src/skills/guide/github-use-guide/SKILL.md",
+      "https://github.com/wovowx/mcp-memory/blob/805cbedafc561fafd0cade9fe612f24feb341f7c/tests/scene_workflow_contract_test.mjs"
+    ],
+    "evidence_for": [
+      "用户指出误判需要上传，原候选已经记录 github_copy 漏发现的情境",
+      "ChatGPT 真实用 github_create_file 创建 dev/.gitignore 并回读；现役 Worker 已部署该 dev-only 场景，存在回归合同",
+      "现有 planLearningPreflight 支持按 intent/entity/actual tool/repo/branch 独立约束，能隔离两条经验"
+    ],
+    "evidence_against": [
+      "没有本候选经柳柳专门审核批准为 active 的来源；没有真正自然新框自主使用学习预检的 E3",
+      "直接 github_create_file 在部分宿主可能未暴露；fallback 只能由现有 guide 另行核验，不由本候选自动派发"
+    ],
+    "validation_state": "pending",
+    "target": "workflow",
+    "decision_reason": "虽然有一次实际创建的 E3，仍缺候选级批准引用及自动任务前预检证据；只作为独立待审核候选，禁止自行发布。",
+    "validation_refs": []
+  },
+  "scenarios": [
+    { "scenario_id": "N1", "condition": "new dev text file with github_create_file exposed", "expected": "PENDING_REVIEW before approval; READY:github_create_file only after reviewed activation" },
+    { "scenario_id": "N2", "condition": "existing GitHub file edit", "expected": "NO_MATCH:never recommend create_file for edits" },
+    { "scenario_id": "N3", "condition": "new dev file with no exposed github_create_file", "expected": "UNAVAILABLE:preferred tool only; continue permitted fallback discovery" },
+    { "scenario_id": "N4", "condition": "direct create on main", "expected": "BLOCKED:main_out_of_scope" },
+    { "scenario_id": "N5", "condition": "existing target or unverified write", "expected": "do not overwrite; no success claim" },
+    { "scenario_id": "N6", "condition": "future natural ChatGPT frame", "expected": "NOT_VERIFIED until separate E3 trace and user acceptance" }
+  ]
+}
